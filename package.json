@@ -15,7 +15,7 @@
     "lint:fix": "eslint --config eslint.config.ts src/ tests/ --fix",
     "format": "prettier --write src/ tests/",
     "format:check": "prettier --check src/ tests/",
-    "prepare": "husky install",
+
     "docker:build": "docker build -t claude-to-azure-proxy .",
     "docker:run": "docker run -p 8080:8080 --env-file .env claude-to-azure-proxy",
     "docker:security": "./scripts/security-scan.sh",
