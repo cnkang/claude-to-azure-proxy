@@ -108,11 +108,12 @@ jobs:
           # Wait for container to start
           sleep 15
 
-          # Check health
-          if docker exec $CONTAINER_ID wget --quiet --tries=1 --spider http://localhost:8080/health; then
+          # Check health using curl from host (not inside container)
+          if curl -f --silent --max-time 10 http://localhost:8080/health > /dev/null; then
             echo "✅ Health check passed"
           else
             echo "❌ Health check failed"
+            echo "Container logs:"
             docker logs $CONTAINER_ID
             exit 1
           fi
