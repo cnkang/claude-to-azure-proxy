@@ -13,8 +13,8 @@ vi.mock('../src/config/index.js', () => ({
     AZURE_OPENAI_API_KEY: 'test-azure-key-12345678901234567890123456789012',
     AZURE_OPENAI_MODEL: 'gpt-5-codex',
     PORT: 3000,
-    NODE_ENV: 'test'
-  }
+    NODE_ENV: 'test',
+  },
 }));
 
 // Mock axios for Azure OpenAI requests
@@ -24,12 +24,12 @@ const mockedAxios = vi.mocked(axios);
 describe('Completions Endpoint', () => {
   let app: express.Application;
   const validApiKey = 'test-api-key-12345678901234567890123456789012';
-  
+
   // Import after mocking
   let correlationIdMiddleware: any;
   let secureAuthenticationMiddleware: any;
   let secureCompletionsHandler: any;
-  
+
   const mockConfig: ServerConfig = {
     port: 3000,
     nodeEnv: 'test',
@@ -37,8 +37,8 @@ describe('Completions Endpoint', () => {
     azureOpenAI: {
       endpoint: 'https://test.openai.azure.com',
       apiKey: 'test-azure-key-12345678901234567890123456789012',
-      model: 'gpt-5-codex'
-    }
+      model: 'gpt-5-codex',
+    },
   };
 
   beforeAll(async () => {
@@ -51,40 +51,46 @@ describe('Completions Endpoint', () => {
           object: 'chat.completion',
           created: 1640995200,
           model: 'gpt-5-codex',
-          choices: [{
-            index: 0,
-            message: {
-              role: 'assistant',
-              content: 'Hello! How can I help you today?'
+          choices: [
+            {
+              index: 0,
+              message: {
+                role: 'assistant',
+                content: 'Hello! How can I help you today?',
+              },
+              finish_reason: 'stop',
             },
-            finish_reason: 'stop'
-          }],
+          ],
           usage: {
             prompt_tokens: 10,
             completion_tokens: 15,
-            total_tokens: 25
-          }
-        }
-      })
+            total_tokens: 25,
+          },
+        },
+      }),
     };
-    
+
     // Mock axios.create to return the mock instance
     mockedAxios.create = vi.fn().mockReturnValue(mockAxiosInstance);
-    
+
     // Import modules after mocking
     const securityModule = await import('../src/middleware/security.js');
     const authModule = await import('../src/middleware/authentication.js');
     const completionsModule = await import('../src/routes/completions.js');
-    
+
     correlationIdMiddleware = securityModule.correlationIdMiddleware;
     secureAuthenticationMiddleware = authModule.secureAuthenticationMiddleware;
     secureCompletionsHandler = completionsModule.secureCompletionsHandler;
-    
+
     // Create test Express app
     app = express();
     app.use(json({ limit: '10mb' }));
     app.use(correlationIdMiddleware);
-    app.post('/v1/completions', secureAuthenticationMiddleware, ...secureCompletionsHandler(mockConfig));
+    app.post(
+      '/v1/completions',
+      secureAuthenticationMiddleware,
+      ...secureCompletionsHandler(mockConfig)
+    );
   });
 
   afterAll(() => {
@@ -93,13 +99,11 @@ describe('Completions Endpoint', () => {
 
   describe('Authentication Required', () => {
     it('should return 401 when no authentication is provided', async () => {
-      const response = await request(app)
-        .post('/v1/completions')
-        .send({
-          model: 'claude-3-5-sonnet-20241022',
-          prompt: 'Hello, world!',
-          max_tokens: 100
-        });
+      const response = await request(app).post('/v1/completions').send({
+        model: 'claude-3-5-sonnet-20241022',
+        prompt: 'Hello, world!',
+        max_tokens: 100,
+      });
 
       expect(response.status).toBe(401);
       expect(response.body).toHaveProperty('error');
@@ -113,7 +117,7 @@ describe('Completions Endpoint', () => {
         .send({
           model: 'claude-3-5-sonnet-20241022',
           prompt: 'Hello, world!',
-          max_tokens: 100
+          max_tokens: 100,
         });
 
       expect(response.status).toBe(401);
@@ -128,7 +132,7 @@ describe('Completions Endpoint', () => {
         .post('/v1/completions')
         .set('Authorization', `Bearer ${validApiKey}`)
         .send({
-          model: 'claude-3-5-sonnet-20241022'
+          model: 'claude-3-5-sonnet-20241022',
           // Missing prompt and max_tokens
         });
 
@@ -144,7 +148,7 @@ describe('Completions Endpoint', () => {
         .send({
           model: 'claude-3-5-sonnet-20241022',
           prompt: 'Hello, world!',
-          max_tokens: -1 // Invalid negative value
+          max_tokens: -1, // Invalid negative value
         });
 
       expect(response.status).toBe(400);
@@ -160,7 +164,7 @@ describe('Completions Endpoint', () => {
           model: 'claude-3-5-sonnet-20241022',
           prompt: 'Hello, world!',
           max_tokens: 100,
-          temperature: 3.0 // Invalid value > 2
+          temperature: 3.0, // Invalid value > 2
         });
 
       expect(response.status).toBe(400);
@@ -175,7 +179,7 @@ describe('Completions Endpoint', () => {
         .send({
           model: 'claude-3-5-sonnet-20241022',
           prompt: '', // Empty prompt
-          max_tokens: 100
+          max_tokens: 100,
         });
 
       expect(response.status).toBe(400);
@@ -192,13 +196,15 @@ describe('Completions Endpoint', () => {
         .send({
           model: 'claude-3-5-sonnet-20241022',
           prompt: '<script>alert("xss")</script>',
-          max_tokens: 100
+          max_tokens: 100,
         });
 
       expect(response.status).toBe(400);
       expect(response.body).toHaveProperty('error');
       expect(response.body.error.type).toBe('invalid_request_error');
-      expect(response.body.error.message).toContain('invalid or potentially harmful content');
+      expect(response.body.error.message).toContain(
+        'invalid or potentially harmful content'
+      );
     });
   });
 
@@ -211,14 +217,17 @@ describe('Completions Endpoint', () => {
           model: 'claude-3-5-sonnet-20241022',
           prompt: 'Hello, world!',
           max_tokens: 100,
-          temperature: 0.7
+          temperature: 0.7,
         });
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('id');
       expect(response.body).toHaveProperty('type', 'completion');
       expect(response.body).toHaveProperty('completion');
-      expect(response.body).toHaveProperty('model', 'claude-3-5-sonnet-20241022');
+      expect(response.body).toHaveProperty(
+        'model',
+        'claude-3-5-sonnet-20241022'
+      );
       expect(response.body).toHaveProperty('stop_reason');
     });
 
@@ -232,7 +241,7 @@ describe('Completions Endpoint', () => {
           max_tokens: 50,
           temperature: 0.5,
           top_p: 0.9,
-          stop_sequences: ['END', 'STOP']
+          stop_sequences: ['END', 'STOP'],
         });
 
       expect(response.status).toBe(200);
@@ -249,7 +258,7 @@ describe('Completions Endpoint', () => {
         .send({
           model: 'claude-3-5-sonnet-20241022',
           prompt: 'Test error handling',
-          max_tokens: 100
+          max_tokens: 100,
         });
 
       // Should get some response (either success or error)
@@ -266,15 +275,16 @@ describe('Completions Endpoint', () => {
         .send({
           model: 'claude-3-5-sonnet-20241022',
           prompt: 'Test headers',
-          max_tokens: 50
+          max_tokens: 50,
         });
 
       // Should have proper headers regardless of success/error
       expect(response.headers['content-type']).toContain('application/json');
       // Correlation ID might be in different header formats
-      const hasCorrelationId = response.headers['x-correlation-id'] || 
-                              response.headers['correlation-id'] ||
-                              response.body.correlationId;
+      const hasCorrelationId =
+        response.headers['x-correlation-id'] ||
+        response.headers['correlation-id'] ||
+        response.body.correlationId;
       expect(hasCorrelationId).toBeDefined();
     });
   });

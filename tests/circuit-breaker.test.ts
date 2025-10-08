@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { CircuitBreaker, CircuitBreakerState } from '../src/resilience/circuit-breaker.js';
+import {
+  CircuitBreaker,
+  CircuitBreakerState,
+} from '../src/resilience/circuit-breaker.js';
 
 describe('Circuit Breaker', () => {
   let circuitBreaker: CircuitBreaker;
@@ -9,7 +12,7 @@ describe('Circuit Breaker', () => {
     circuitBreaker = new CircuitBreaker('test-service', {
       failureThreshold: 3,
       recoveryTimeout: 1000,
-      expectedErrors: ['NETWORK_ERROR', 'TIMEOUT_ERROR']
+      expectedErrors: ['NETWORK_ERROR', 'TIMEOUT_ERROR'],
     });
   });
 
@@ -23,7 +26,7 @@ describe('Circuit Breaker', () => {
 
     it('should execute successful operations', async () => {
       const operation = vi.fn().mockResolvedValue('success');
-      
+
       const result = await circuitBreaker.execute(
         operation,
         'test-correlation-id',
@@ -37,7 +40,7 @@ describe('Circuit Breaker', () => {
 
     it('should track failures', async () => {
       const operation = vi.fn().mockRejectedValue(new Error('NETWORK_ERROR'));
-      
+
       const result = await circuitBreaker.execute(
         operation,
         'test-correlation-id',
@@ -46,7 +49,7 @@ describe('Circuit Breaker', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBeInstanceOf(Error);
-      
+
       const metrics = circuitBreaker.getMetrics();
       expect(metrics.failureCount).toBe(1);
       expect(metrics.state).toBe(CircuitBreakerState.CLOSED);
@@ -54,7 +57,7 @@ describe('Circuit Breaker', () => {
 
     it('should open circuit after threshold failures', async () => {
       const operation = vi.fn().mockRejectedValue(new Error('NETWORK_ERROR'));
-      
+
       // Execute 3 failures to reach threshold
       for (let i = 0; i < 3; i++) {
         await circuitBreaker.execute(operation, 'test-correlation-id');
@@ -67,7 +70,7 @@ describe('Circuit Breaker', () => {
 
     it('should reject requests when circuit is open', async () => {
       const operation = vi.fn().mockRejectedValue(new Error('NETWORK_ERROR'));
-      
+
       // Open the circuit
       for (let i = 0; i < 3; i++) {
         await circuitBreaker.execute(operation, 'test-correlation-id');
@@ -88,7 +91,7 @@ describe('Circuit Breaker', () => {
   describe('Recovery Logic', () => {
     it('should transition to HALF_OPEN after recovery timeout', async () => {
       const operation = vi.fn().mockRejectedValue(new Error('NETWORK_ERROR'));
-      
+
       // Open the circuit
       for (let i = 0; i < 3; i++) {
         await circuitBreaker.execute(operation, 'test-correlation-id');
@@ -107,13 +110,17 @@ describe('Circuit Breaker', () => {
       );
 
       expect(result.success).toBe(true);
-      expect(circuitBreaker.getMetrics().state).toBe(CircuitBreakerState.CLOSED);
+      expect(circuitBreaker.getMetrics().state).toBe(
+        CircuitBreakerState.CLOSED
+      );
     });
 
     it('should reset failure count on successful recovery', async () => {
-      const failOperation = vi.fn().mockRejectedValue(new Error('NETWORK_ERROR'));
+      const failOperation = vi
+        .fn()
+        .mockRejectedValue(new Error('NETWORK_ERROR'));
       const successOperation = vi.fn().mockResolvedValue('success');
-      
+
       // Open the circuit
       for (let i = 0; i < 3; i++) {
         await circuitBreaker.execute(failOperation, 'test-correlation-id');
@@ -134,13 +141,13 @@ describe('Circuit Breaker', () => {
     it('should only count expected errors', async () => {
       const networkError = new Error('NETWORK_ERROR');
       const unexpectedError = new Error('UNEXPECTED_ERROR');
-      
+
       // Network error should count
       await circuitBreaker.execute(
         () => Promise.reject(networkError),
         'test-correlation-id'
       );
-      
+
       expect(circuitBreaker.getMetrics().failureCount).toBe(1);
 
       // Unexpected error should not count
@@ -148,7 +155,7 @@ describe('Circuit Breaker', () => {
         () => Promise.reject(unexpectedError),
         'test-correlation-id'
       );
-      
+
       expect(circuitBreaker.getMetrics().failureCount).toBe(1); // Still 1
     });
   });
@@ -156,7 +163,7 @@ describe('Circuit Breaker', () => {
   describe('Exponential Backoff', () => {
     it('should increase backoff time with each failure', async () => {
       const operation = vi.fn().mockRejectedValue(new Error('NETWORK_ERROR'));
-      
+
       // Open the circuit first time
       for (let i = 0; i < 3; i++) {
         await circuitBreaker.execute(operation, 'test-correlation-id');
@@ -167,7 +174,7 @@ describe('Circuit Breaker', () => {
 
       // Wait for recovery timeout and try again to trigger backoff increase
       vi.advanceTimersByTime(1100);
-      
+
       // This should transition to HALF_OPEN and then back to OPEN, increasing backoff
       await circuitBreaker.execute(operation, 'test-correlation-id');
 
@@ -183,7 +190,7 @@ describe('Circuit Breaker', () => {
 
     it('should report unhealthy when open', async () => {
       const operation = vi.fn().mockRejectedValue(new Error('NETWORK_ERROR'));
-      
+
       // Open the circuit
       for (let i = 0; i < 3; i++) {
         await circuitBreaker.execute(operation, 'test-correlation-id');
@@ -195,14 +202,14 @@ describe('Circuit Breaker', () => {
     it('should calculate failure rate', async () => {
       const successOp = vi.fn().mockResolvedValue('success');
       const failOp = vi.fn().mockRejectedValue(new Error('NETWORK_ERROR'));
-      
+
       // 2 successes, 1 failure
       await circuitBreaker.execute(successOp, 'test-correlation-id');
       await circuitBreaker.execute(successOp, 'test-correlation-id');
       await circuitBreaker.execute(failOp, 'test-correlation-id');
 
       const failureRate = circuitBreaker.getFailureRate();
-      expect(failureRate).toBeCloseTo(1/3, 2); // 1 failure out of 3 total
+      expect(failureRate).toBeCloseTo(1 / 3, 2); // 1 failure out of 3 total
     });
   });
 });

@@ -1,19 +1,19 @@
 /**
  * @fileoverview Configuration management module with comprehensive validation and type safety.
- * 
+ *
  * This module handles loading, validating, and providing type-safe access to all
  * application configuration. It implements fail-fast principles with detailed
  * error messages and prevents runtime configuration modifications through
  * immutable objects.
- * 
+ *
  * @author Claude-to-Azure Proxy Team
  * @version 1.0.0
  * @since 1.0.0
- * 
+ *
  * @example
  * ```typescript
  * import config from './config/index.js';
- * 
+ *
  * // Configuration is automatically loaded and validated
  * console.log(`Server will run on port ${config.PORT}`);
  * console.log(`Azure endpoint: ${config.AZURE_OPENAI_ENDPOINT}`);
@@ -28,14 +28,14 @@ dotenvConfig();
 
 /**
  * Configuration interface defining the structure of validated configuration.
- * 
+ *
  * All properties are required and strictly typed to ensure type safety
  * throughout the application. The configuration is validated at startup
  * and frozen to prevent runtime modifications.
- * 
+ *
  * @public
  * @interface Config
- * 
+ *
  * @example
  * ```typescript
  * const config: Config = {
@@ -51,64 +51,64 @@ dotenvConfig();
 export interface Config {
   /**
    * API key for client authentication with the proxy server.
-   * 
+   *
    * This key is used by clients (like Claude Code CLI) to authenticate
    * with the proxy. It should be a secure, randomly generated string
    * of at least 32 characters.
-   * 
+   *
    * @example "abc123def456ghi789jkl012mno345pqr678"
    */
   PROXY_API_KEY: string;
-  
+
   /**
    * Azure OpenAI endpoint URL for the target resource.
-   * 
+   *
    * Must be a valid HTTPS URL pointing to your Azure OpenAI resource.
    * The URL format is typically: https://{resource-name}.openai.azure.com
-   * 
+   *
    * @example "https://my-openai-resource.openai.azure.com"
    */
   AZURE_OPENAI_ENDPOINT: string;
-  
+
   /**
    * Azure OpenAI API key for backend authentication.
-   * 
+   *
    * This key is used by the proxy to authenticate with Azure OpenAI.
    * It should be kept secure and never exposed to clients.
-   * 
+   *
    * @example "1234567890abcdef1234567890abcdef"
    */
   AZURE_OPENAI_API_KEY: string;
-  
+
   /**
    * Azure OpenAI model deployment name.
-   * 
+   *
    * The name of the model deployment in your Azure OpenAI resource.
    * This should match exactly with the deployment name configured
    * in Azure OpenAI Studio.
-   * 
+   *
    * @example "gpt-4" or "gpt-35-turbo-16k"
    */
   AZURE_OPENAI_MODEL: string;
-  
+
   /**
    * Server port number for HTTP connections.
-   * 
+   *
    * The port on which the proxy server will listen for incoming requests.
    * Default is 8080, which is suitable for AWS App Runner deployment.
    * Must be between 1024 and 65535.
-   * 
+   *
    * @default 8080
    * @example 8080
    */
   PORT: number;
-  
+
   /**
    * Node.js environment setting.
-   * 
+   *
    * Determines the runtime environment and affects logging levels,
    * error handling behavior, and performance optimizations.
-   * 
+   *
    * @default "production"
    * @example "development" | "production" | "test"
    */
@@ -159,7 +159,7 @@ const configSchema = Joi.object<Config>({
   NODE_ENV: Joi.string()
     .valid('development', 'production', 'test')
     .default('production')
-    .description('Node.js environment')
+    .description('Node.js environment'),
 });
 
 /**
@@ -175,29 +175,29 @@ function createConfig(): Readonly<Config> {
     AZURE_OPENAI_API_KEY: process.env.AZURE_OPENAI_API_KEY,
     AZURE_OPENAI_MODEL: process.env.AZURE_OPENAI_MODEL,
     PORT: process.env.PORT,
-    NODE_ENV: process.env.NODE_ENV
+    NODE_ENV: process.env.NODE_ENV,
   };
 
   // Validate against schema
   const { error, value } = configSchema.validate(envVars, {
     abortEarly: false, // Collect all validation errors
     allowUnknown: false, // Reject unknown environment variables
-    stripUnknown: false
+    stripUnknown: false,
   });
 
   // Implement fail-fast principle with detailed error messages
   if (error) {
-    const errorMessages = error.details.map(detail => {
+    const errorMessages = error.details.map((detail) => {
       const key = detail.path[0];
       const message = detail.message;
       const context = detail.context;
-      
+
       return `${key}: ${message}${context?.value ? ` (received: "${context.value}")` : ''}`;
     });
 
     const errorMessage = [
       'Configuration validation failed:',
-      ...errorMessages.map(msg => `  - ${msg}`),
+      ...errorMessages.map((msg) => `  - ${msg}`),
       '',
       'Required environment variables:',
       '  - PROXY_API_KEY: API key for client authentication (32-256 characters)',
@@ -207,7 +207,7 @@ function createConfig(): Readonly<Config> {
       '',
       'Optional environment variables:',
       '  - PORT: Server port number (1024-65535, default: 8080)',
-      '  - NODE_ENV: Node.js environment (development|production|test, default: production)'
+      '  - NODE_ENV: Node.js environment (development|production|test, default: production)',
     ].join('\n');
 
     throw new Error(errorMessage);
@@ -220,11 +220,14 @@ function createConfig(): Readonly<Config> {
     PORT: value.PORT,
     NODE_ENV: value.NODE_ENV,
     PROXY_API_KEY: '[REDACTED]',
-    AZURE_OPENAI_API_KEY: '[REDACTED]'
+    AZURE_OPENAI_API_KEY: '[REDACTED]',
   };
 
   // Log configuration (without sensitive values) for debugging
-  console.log('Configuration loaded successfully:', JSON.stringify(sanitizedConfig, null, 2));
+  console.log(
+    'Configuration loaded successfully:',
+    JSON.stringify(sanitizedConfig, null, 2)
+  );
 
   // Freeze configuration to prevent runtime modifications
   return Object.freeze(value);

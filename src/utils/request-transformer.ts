@@ -48,18 +48,18 @@ const claudeRequestSchema = Joi.object({
     .messages({
       'string.pattern.base': 'Model name contains invalid characters',
       'string.min': 'Model name must not be empty',
-      'string.max': 'Model name too long'
+      'string.max': 'Model name too long',
     }),
-  
+
   prompt: Joi.string()
     .required()
     .min(1)
     .max(8 * 1024 * 1024) // 8MB limit for prompt content
     .messages({
       'string.min': 'Prompt must not be empty',
-      'string.max': 'Prompt exceeds maximum length'
+      'string.max': 'Prompt exceeds maximum length',
     }),
-  
+
   max_tokens: Joi.number()
     .integer()
     .required()
@@ -67,37 +67,24 @@ const claudeRequestSchema = Joi.object({
     .max(131072) // 128K tokens for GPT-5-Codex
     .messages({
       'number.min': 'max_tokens must be at least 1',
-      'number.max': 'max_tokens cannot exceed 131072'
+      'number.max': 'max_tokens cannot exceed 131072',
     }),
-  
-  temperature: Joi.number()
-    .optional()
-    .min(0)
-    .max(2)
-    .messages({
-      'number.min': 'Temperature must be at least 0',
-      'number.max': 'Temperature cannot exceed 2'
-    }),
-  
-  top_p: Joi.number()
-    .optional()
-    .min(0)
-    .max(1)
-    .messages({
-      'number.min': 'top_p must be at least 0',
-      'number.max': 'top_p cannot exceed 1'
-    }),
-  
-  top_k: Joi.number()
-    .integer()
-    .optional()
-    .min(1)
-    .max(100)
-    .messages({
-      'number.min': 'top_k must be at least 1',
-      'number.max': 'top_k cannot exceed 100'
-    }),
-  
+
+  temperature: Joi.number().optional().min(0).max(2).messages({
+    'number.min': 'Temperature must be at least 0',
+    'number.max': 'Temperature cannot exceed 2',
+  }),
+
+  top_p: Joi.number().optional().min(0).max(1).messages({
+    'number.min': 'top_p must be at least 0',
+    'number.max': 'top_p cannot exceed 1',
+  }),
+
+  top_k: Joi.number().integer().optional().min(1).max(100).messages({
+    'number.min': 'top_k must be at least 1',
+    'number.max': 'top_k cannot exceed 100',
+  }),
+
   stop_sequences: Joi.array()
     .items(
       Joi.string()
@@ -108,10 +95,10 @@ const claudeRequestSchema = Joi.object({
     .optional()
     .max(4)
     .messages({
-      'array.max': 'Cannot have more than 4 stop sequences'
+      'array.max': 'Cannot have more than 4 stop sequences',
     }),
-  
-  stream: Joi.boolean().optional()
+
+  stream: Joi.boolean().optional(),
 })
   .required()
   .options({ stripUnknown: true, abortEarly: false });
@@ -151,48 +138,50 @@ function sanitizeString(input: string): string {
 
 function sanitizePrompt(prompt: string): string {
   const sanitized = sanitizeString(prompt);
-  
+
   // Check for potential injection patterns
   const suspiciousPatterns = [
     /\{\{.*\}\}/g, // Template injection
     /<script.*?>.*?<\/script>/gi, // Script tags
     /javascript:/gi, // JavaScript protocol
     /data:.*base64/gi, // Data URLs
-    /\bon\w+\s*=/gi // Event handlers
+    /\bon\w+\s*=/gi, // Event handlers
   ];
-  
+
   for (const pattern of suspiciousPatterns) {
     if (pattern.test(sanitized)) {
       throw new SecurityError('Prompt contains potentially malicious content');
     }
   }
-  
+
   return sanitized;
 }
 
 // Validation Function
-export function validateClaudeRequest(request: unknown): ClaudeCompletionRequest {
+export function validateClaudeRequest(
+  request: unknown
+): ClaudeCompletionRequest {
   const { error, value } = claudeRequestSchema.validate(request);
-  
+
   if (error) {
-    const details = error.details.map(detail => ({
+    const details = error.details.map((detail) => ({
       field: detail.path.join('.'),
       message: detail.message,
-      value: detail.context?.value
+      value: detail.context?.value,
     }));
-    
+
     throw new ValidationError('Request validation failed', details);
   }
-  
+
   // Additional security validation
   const validatedRequest = value as ClaudeCompletionRequest;
-  
+
   // Sanitize prompt
   const sanitizedPrompt = sanitizePrompt(validatedRequest.prompt);
-  
+
   return {
     ...validatedRequest,
-    prompt: sanitizedPrompt
+    prompt: sanitizedPrompt,
   };
 }
 
@@ -205,8 +194,8 @@ export function transformClaudeToAzureRequest(
   const messages: AzureOpenAIMessage[] = [
     {
       role: 'user',
-      content: claudeRequest.prompt
-    }
+      content: claudeRequest.prompt,
+    },
   ];
 
   // Map parameters
@@ -214,14 +203,15 @@ export function transformClaudeToAzureRequest(
     model: azureModel,
     messages,
     max_tokens: claudeRequest.max_tokens,
-    user: uuidv4() // Add user ID for tracking
+    user: uuidv4(), // Add user ID for tracking
   };
 
   // Optional parameters - using object spread to maintain type safety
   const optionalParams: Partial<AzureOpenAIRequest> = {};
 
   if (claudeRequest.temperature !== undefined) {
-    (optionalParams as { temperature: number }).temperature = claudeRequest.temperature;
+    (optionalParams as { temperature: number }).temperature =
+      claudeRequest.temperature;
   }
 
   if (claudeRequest.top_p !== undefined) {
@@ -229,7 +219,8 @@ export function transformClaudeToAzureRequest(
   }
 
   if (claudeRequest.stop_sequences && claudeRequest.stop_sequences.length > 0) {
-    (optionalParams as { stop: readonly string[] }).stop = claudeRequest.stop_sequences;
+    (optionalParams as { stop: readonly string[] }).stop =
+      claudeRequest.stop_sequences;
   }
 
   if (claudeRequest.stream !== undefined) {
@@ -237,8 +228,6 @@ export function transformClaudeToAzureRequest(
   }
 
   return { ...azureRequest, ...optionalParams };
-
-
 }
 
 // Headers Creation
@@ -254,7 +243,7 @@ export function createAzureHeaders(
     'Content-Type': 'application/json',
     'api-key': apiKey,
     'User-Agent': 'claude-to-azure-proxy/1.0.0',
-    'X-Request-ID': requestId || uuidv4()
+    'X-Request-ID': requestId || uuidv4(),
   };
 }
 
@@ -262,10 +251,10 @@ export function createAzureHeaders(
 export function validateRequestSize(request: unknown): void {
   const requestString = JSON.stringify(request);
   const sizeInBytes = Buffer.byteLength(requestString, 'utf8');
-  
+
   // 10MB limit
   const maxSizeBytes = 10 * 1024 * 1024;
-  
+
   if (sizeInBytes > maxSizeBytes) {
     throw new ValidationError(
       `Request size ${sizeInBytes} bytes exceeds maximum allowed size ${maxSizeBytes} bytes`
@@ -286,27 +275,30 @@ export function transformRequest(
   try {
     // Validate request size first
     validateRequestSize(rawRequest);
-    
+
     // Validate and sanitize the Claude request
     const claudeRequest = validateClaudeRequest(rawRequest);
-    
+
     // Transform to Azure format
-    const azureRequest = transformClaudeToAzureRequest(claudeRequest, azureModel);
-    
+    const azureRequest = transformClaudeToAzureRequest(
+      claudeRequest,
+      azureModel
+    );
+
     // Create headers
     const requestId = uuidv4();
     const headers = createAzureHeaders(azureApiKey, requestId);
-    
+
     return {
       azureRequest,
       headers,
-      requestId
+      requestId,
     };
   } catch (error) {
     if (error instanceof RequestTransformationError) {
       throw error;
     }
-    
+
     throw new RequestTransformationError(
       'Unexpected error during request transformation',
       'TRANSFORMATION_ERROR',

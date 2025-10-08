@@ -1,10 +1,10 @@
 /**
  * @fileoverview Metrics collection and monitoring system with TypeScript interfaces.
- * 
+ *
  * This module provides comprehensive metrics collection for monitoring application
  * performance, health, and operational characteristics. All metrics are typed
  * for compile-time safety and runtime validation.
- * 
+ *
  * @author Claude-to-Azure Proxy Team
  * @version 1.0.0
  * @since 1.0.0
@@ -15,7 +15,7 @@ import { logger } from '../middleware/logging.js';
 
 /**
  * Metric data point interface with timestamp and metadata.
- * 
+ *
  * @public
  * @interface MetricDataPoint
  */
@@ -34,7 +34,7 @@ export interface MetricDataPoint {
 
 /**
  * Performance metric for tracking operation timing and success rates.
- * 
+ *
  * @public
  * @interface PerformanceMetric
  */
@@ -51,7 +51,7 @@ export interface PerformanceMetric extends MetricDataPoint {
 
 /**
  * System resource metric for monitoring CPU, memory, and other resources.
- * 
+ *
  * @public
  * @interface ResourceMetric
  */
@@ -68,7 +68,7 @@ export interface ResourceMetric extends MetricDataPoint {
 
 /**
  * Business metric for tracking application-specific KPIs.
- * 
+ *
  * @public
  * @interface BusinessMetric
  */
@@ -83,7 +83,7 @@ export interface BusinessMetric extends MetricDataPoint {
 
 /**
  * Metric collection interface for different metric types.
- * 
+ *
  * @public
  * @interface MetricCollector
  */
@@ -102,7 +102,7 @@ export interface MetricCollector {
 
 /**
  * In-memory metric collector implementation with circular buffer.
- * 
+ *
  * @public
  * @class InMemoryMetricCollector
  * @implements {MetricCollector}
@@ -113,7 +113,7 @@ export class InMemoryMetricCollector implements MetricCollector {
 
   /**
    * Creates a new in-memory metric collector.
-   * 
+   *
    * @param maxMetrics - Maximum number of metrics to store (default: 1000)
    */
   constructor(maxMetrics: number = 1000) {
@@ -122,7 +122,7 @@ export class InMemoryMetricCollector implements MetricCollector {
 
   /**
    * Records a performance metric with validation.
-   * 
+   *
    * @param metric - Performance metric to record
    * @throws {Error} If metric validation fails
    */
@@ -132,7 +132,7 @@ export class InMemoryMetricCollector implements MetricCollector {
       ...metric,
       name: `performance.${metric.name}`,
       value: metric.duration,
-      unit: 'ms'
+      unit: 'ms',
     });
 
     // Log performance metrics for monitoring
@@ -140,13 +140,13 @@ export class InMemoryMetricCollector implements MetricCollector {
       metric: metric.name,
       duration: metric.duration,
       success: metric.success,
-      errorType: metric.errorType
+      errorType: metric.errorType,
     });
   }
 
   /**
    * Records a resource metric with validation.
-   * 
+   *
    * @param metric - Resource metric to record
    * @throws {Error} If metric validation fails
    */
@@ -155,7 +155,7 @@ export class InMemoryMetricCollector implements MetricCollector {
     this.addMetric({
       ...metric,
       name: `resource.${metric.resourceType}.${metric.name}`,
-      value: metric.usage
+      value: metric.usage,
     });
 
     // Log resource metrics for monitoring
@@ -163,13 +163,13 @@ export class InMemoryMetricCollector implements MetricCollector {
       metric: metric.name,
       resourceType: metric.resourceType,
       usage: metric.usage,
-      percentage: metric.percentage
+      percentage: metric.percentage,
     });
   }
 
   /**
    * Records a business metric with validation.
-   * 
+   *
    * @param metric - Business metric to record
    * @throws {Error} If metric validation fails
    */
@@ -178,7 +178,7 @@ export class InMemoryMetricCollector implements MetricCollector {
     this.addMetric({
       ...metric,
       name: `business.${metric.category}.${metric.name}`,
-      value: metric.count
+      value: metric.count,
     });
 
     // Log business metrics for monitoring
@@ -186,13 +186,13 @@ export class InMemoryMetricCollector implements MetricCollector {
       metric: metric.name,
       category: metric.category,
       count: metric.count,
-      rate: metric.rate
+      rate: metric.rate,
     });
   }
 
   /**
    * Gets all collected metrics as a readonly array.
-   * 
+   *
    * @returns Readonly array of all collected metrics
    */
   public getMetrics(): readonly MetricDataPoint[] {
@@ -209,13 +209,13 @@ export class InMemoryMetricCollector implements MetricCollector {
 
   /**
    * Adds a metric to the collection with circular buffer behavior.
-   * 
+   *
    * @private
    * @param metric - Metric to add
    */
   private addMetric(metric: MetricDataPoint): void {
     this.metrics.push(metric);
-    
+
     // Implement circular buffer to prevent memory leaks
     if (this.metrics.length > this.maxMetrics) {
       this.metrics.shift();
@@ -224,7 +224,7 @@ export class InMemoryMetricCollector implements MetricCollector {
 
   /**
    * Validates a metric data point.
-   * 
+   *
    * @private
    * @param metric - Metric to validate
    * @throws {Error} If metric is invalid
@@ -233,11 +233,11 @@ export class InMemoryMetricCollector implements MetricCollector {
     if (!metric.name || typeof metric.name !== 'string') {
       throw new Error('Metric name is required and must be a string');
     }
-    
+
     if (metric.value === undefined || metric.value === null) {
       throw new Error('Metric value is required');
     }
-    
+
     if (typeof metric.value !== 'number' && typeof metric.value !== 'string') {
       throw new Error('Metric value must be a number or string');
     }
@@ -246,7 +246,7 @@ export class InMemoryMetricCollector implements MetricCollector {
 
 /**
  * Performance timer utility for measuring operation duration.
- * 
+ *
  * @public
  * @class PerformanceTimer
  */
@@ -257,7 +257,7 @@ export class PerformanceTimer {
 
   /**
    * Creates a new performance timer.
-   * 
+   *
    * @param operationName - Name of the operation being timed
    * @param correlationId - Optional correlation ID for tracing
    */
@@ -269,14 +269,14 @@ export class PerformanceTimer {
 
   /**
    * Stops the timer and records a performance metric.
-   * 
+   *
    * @param success - Whether the operation was successful
    * @param errorType - Optional error type if operation failed
    * @returns Performance metric data
    */
   public stop(success: boolean = true, errorType?: string): PerformanceMetric {
     const duration = performance.now() - this.startTime;
-    
+
     const metric: PerformanceMetric = {
       name: this.operationName,
       value: duration,
@@ -285,19 +285,19 @@ export class PerformanceTimer {
       success,
       errorType,
       correlationId: this.correlationId,
-      unit: 'ms'
+      unit: 'ms',
     };
 
     // Record the metric
     metricsCollector.recordPerformance(metric);
-    
+
     return metric;
   }
 }
 
 /**
  * System resource monitor for collecting CPU, memory, and other metrics.
- * 
+ *
  * @public
  * @class SystemResourceMonitor
  */
@@ -307,7 +307,7 @@ export class SystemResourceMonitor {
 
   /**
    * Creates a new system resource monitor.
-   * 
+   *
    * @param intervalMs - Monitoring interval in milliseconds (default: 60000)
    */
   constructor(intervalMs: number = 60000) {
@@ -327,7 +327,7 @@ export class SystemResourceMonitor {
     }, this.intervalMs);
 
     logger.info('System resource monitoring started', '', {
-      intervalMs: this.intervalMs
+      intervalMs: this.intervalMs,
     });
   }
 
@@ -338,22 +338,23 @@ export class SystemResourceMonitor {
     if (this.monitoringInterval) {
       clearInterval(this.monitoringInterval);
       this.monitoringInterval = undefined;
-      
+
       logger.info('System resource monitoring stopped', '', {});
     }
   }
 
   /**
    * Collects current system resource metrics.
-   * 
+   *
    * @private
    */
   private collectResourceMetrics(): void {
     try {
       // Memory metrics
       const memoryUsage = process.memoryUsage();
-      const memoryPercentage = (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
-      
+      const memoryPercentage =
+        (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
+
       metricsCollector.recordResource({
         name: 'heap_used',
         value: memoryUsage.heapUsed,
@@ -362,39 +363,38 @@ export class SystemResourceMonitor {
         usage: memoryUsage.heapUsed,
         capacity: memoryUsage.heapTotal,
         percentage: memoryPercentage,
-        unit: 'bytes'
+        unit: 'bytes',
       });
 
       // CPU metrics (basic process CPU time)
       const cpuUsage = process.cpuUsage();
-      
+
       metricsCollector.recordResource({
         name: 'cpu_user_time',
         value: cpuUsage.user,
         timestamp: new Date().toISOString(),
         resourceType: 'cpu',
         usage: cpuUsage.user,
-        unit: 'microseconds'
+        unit: 'microseconds',
       });
 
       // Event loop lag (approximate)
       const start = process.hrtime.bigint();
       setImmediate(() => {
         const lag = Number(process.hrtime.bigint() - start) / 1000000; // Convert to ms
-        
+
         metricsCollector.recordResource({
           name: 'event_loop_lag',
           value: lag,
           timestamp: new Date().toISOString(),
           resourceType: 'cpu',
           usage: lag,
-          unit: 'ms'
+          unit: 'ms',
         });
       });
-
     } catch (error) {
       logger.error('Error collecting resource metrics', '', {
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
@@ -406,11 +406,11 @@ export const resourceMonitor = new SystemResourceMonitor(60000);
 
 /**
  * Utility function to create a performance timer.
- * 
+ *
  * @param operationName - Name of the operation being timed
  * @param correlationId - Optional correlation ID for tracing
  * @returns New performance timer instance
- * 
+ *
  * @example
  * ```typescript
  * const timer = createTimer('api_request', correlationId);
@@ -418,18 +418,21 @@ export const resourceMonitor = new SystemResourceMonitor(60000);
  * timer.stop(true); // success = true
  * ```
  */
-export function createTimer(operationName: string, correlationId?: string): PerformanceTimer {
+export function createTimer(
+  operationName: string,
+  correlationId?: string
+): PerformanceTimer {
   return new PerformanceTimer(operationName, correlationId);
 }
 
 /**
  * Utility function to record a business metric.
- * 
+ *
  * @param name - Metric name
  * @param category - Metric category
  * @param count - Counter value
  * @param tags - Optional metadata tags
- * 
+ *
  * @example
  * ```typescript
  * recordBusinessMetric('api_requests', 'requests', 1, { endpoint: '/v1/completions' });
@@ -447,6 +450,6 @@ export function recordBusinessMetric(
     timestamp: new Date().toISOString(),
     category,
     count,
-    tags
+    tags,
   });
 }

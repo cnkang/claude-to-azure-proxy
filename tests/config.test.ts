@@ -9,12 +9,12 @@ describe('Configuration Module', () => {
   beforeEach(() => {
     // Save original environment
     originalEnv = { ...process.env };
-    
+
     // Mock process.exit to prevent tests from actually exiting
     originalExit = process.exit;
     exitSpy = vi.fn();
     process.exit = exitSpy;
-    
+
     // Clear all environment variables that might affect the config
     delete process.env.PROXY_API_KEY;
     delete process.env.AZURE_OPENAI_ENDPOINT;
@@ -27,10 +27,10 @@ describe('Configuration Module', () => {
   afterEach(() => {
     // Restore original environment
     process.env = originalEnv;
-    
+
     // Restore original process.exit
     process.exit = originalExit;
-    
+
     // Clear module cache for fresh imports
     vi.resetModules();
   });
@@ -45,10 +45,14 @@ describe('Configuration Module', () => {
       process.env.PORT = '3000';
       process.env.NODE_ENV = 'development';
 
-      const { default: config } = await import('../src/config/index.js?t=' + Date.now());
+      const { default: config } = await import(
+        '../src/config/index.js?t=' + Date.now()
+      );
 
       expect(config.PROXY_API_KEY).toBe('a'.repeat(32));
-      expect(config.AZURE_OPENAI_ENDPOINT).toBe('https://test.openai.azure.com');
+      expect(config.AZURE_OPENAI_ENDPOINT).toBe(
+        'https://test.openai.azure.com'
+      );
       expect(config.AZURE_OPENAI_API_KEY).toBe('b'.repeat(32));
       expect(config.AZURE_OPENAI_MODEL).toBe('gpt-4');
       expect(config.PORT).toBe(3000);
@@ -62,7 +66,9 @@ describe('Configuration Module', () => {
       process.env.AZURE_OPENAI_API_KEY = 'b'.repeat(32);
       process.env.AZURE_OPENAI_MODEL = 'gpt-4';
 
-      const { default: config } = await import('../src/config/index.js?t=' + Date.now());
+      const { default: config } = await import(
+        '../src/config/index.js?t=' + Date.now()
+      );
 
       expect(config.PORT).toBe(8080); // Default value
       expect(config.NODE_ENV).toBe('production'); // Default value
@@ -75,15 +81,17 @@ describe('Configuration Module', () => {
       process.env.AZURE_OPENAI_API_KEY = 'b'.repeat(32);
       process.env.AZURE_OPENAI_MODEL = 'gpt-4';
 
-      const { default: config } = await import('../src/config/index.js?t=' + Date.now());
+      const { default: config } = await import(
+        '../src/config/index.js?t=' + Date.now()
+      );
 
       expect(Object.isFrozen(config)).toBe(true);
-      
+
       // Attempting to modify should throw in strict mode (which TypeScript enables)
       expect(() => {
-        (config).PORT = 9999;
+        config.PORT = 9999;
       }).toThrow();
-      
+
       // Value should remain unchanged
       expect(config.PORT).toBe(8080);
     });
@@ -96,7 +104,7 @@ describe('Configuration Module', () => {
       process.env.AZURE_OPENAI_MODEL = 'gpt-4';
 
       await import('../src/config/index.js?t=' + Date.now());
-      
+
       expect(exitSpy).toHaveBeenCalledWith(1);
     });
 
@@ -107,7 +115,7 @@ describe('Configuration Module', () => {
       process.env.AZURE_OPENAI_MODEL = 'gpt-4';
 
       await import('../src/config/index.js?t=' + Date.now());
-      
+
       expect(exitSpy).toHaveBeenCalledWith(1);
     });
 
@@ -118,7 +126,7 @@ describe('Configuration Module', () => {
       process.env.AZURE_OPENAI_MODEL = 'gpt-4';
 
       await import('../src/config/index.js?t=' + Date.now());
-      
+
       expect(exitSpy).toHaveBeenCalledWith(1);
     });
 
@@ -128,7 +136,7 @@ describe('Configuration Module', () => {
       process.env.AZURE_OPENAI_MODEL = 'gpt-4';
 
       await import('../src/config/index.js?t=' + Date.now());
-      
+
       expect(exitSpy).toHaveBeenCalledWith(1);
     });
 
@@ -138,7 +146,7 @@ describe('Configuration Module', () => {
       process.env.AZURE_OPENAI_MODEL = 'gpt-4';
 
       await import('../src/config/index.js?t=' + Date.now());
-      
+
       expect(exitSpy).toHaveBeenCalledWith(1);
     });
 
@@ -148,7 +156,7 @@ describe('Configuration Module', () => {
       process.env.AZURE_OPENAI_API_KEY = 'b'.repeat(32);
 
       await import('../src/config/index.js?t=' + Date.now());
-      
+
       expect(exitSpy).toHaveBeenCalledWith(1);
     });
 
@@ -159,7 +167,7 @@ describe('Configuration Module', () => {
       process.env.AZURE_OPENAI_MODEL = 'invalid@model!';
 
       await import('../src/config/index.js?t=' + Date.now());
-      
+
       expect(exitSpy).toHaveBeenCalledWith(1);
     });
 
@@ -171,7 +179,7 @@ describe('Configuration Module', () => {
       process.env.PORT = '80'; // Below minimum
 
       await import('../src/config/index.js?t=' + Date.now());
-      
+
       expect(exitSpy).toHaveBeenCalledWith(1);
     });
 
@@ -183,7 +191,7 @@ describe('Configuration Module', () => {
       process.env.NODE_ENV = 'invalid';
 
       await import('../src/config/index.js?t=' + Date.now());
-      
+
       expect(exitSpy).toHaveBeenCalledWith(1);
     });
 
@@ -193,7 +201,7 @@ describe('Configuration Module', () => {
       // Missing AZURE_OPENAI_API_KEY and AZURE_OPENAI_MODEL
 
       await import('../src/config/index.js?t=' + Date.now());
-      
+
       expect(exitSpy).toHaveBeenCalledWith(1);
     });
   });
@@ -206,7 +214,9 @@ describe('Configuration Module', () => {
       process.env.AZURE_OPENAI_MODEL = 'gpt-4';
       process.env.PORT = '3000'; // String input
 
-      const { default: config } = await import('../src/config/index.js?t=' + Date.now());
+      const { default: config } = await import(
+        '../src/config/index.js?t=' + Date.now()
+      );
 
       expect(typeof config.PORT).toBe('number');
       expect(config.PORT).toBe(3000);
@@ -219,7 +229,7 @@ describe('Configuration Module', () => {
       process.env.AZURE_OPENAI_MODEL = 'gpt-4';
 
       await import('../src/config/index.js?t=' + Date.now());
-      
+
       expect(exitSpy).toHaveBeenCalledWith(1);
     });
 
@@ -230,7 +240,7 @@ describe('Configuration Module', () => {
       process.env.AZURE_OPENAI_MODEL = 'gpt-4';
 
       await import('../src/config/index.js?t=' + Date.now());
-      
+
       expect(exitSpy).toHaveBeenCalledWith(1);
     });
   });

@@ -2,7 +2,10 @@ import helmet from 'helmet';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { Request, Response, NextFunction } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import type { RateLimitConfig, RequestWithCorrelationId } from '../types/index.js';
+import type {
+  RateLimitConfig,
+  RequestWithCorrelationId,
+} from '../types/index.js';
 
 /**
  * Security middleware configuration for production-ready Express server
@@ -15,8 +18,12 @@ export const helmetConfig = helmet({
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", "https://api.openai.com", "https://*.openai.azure.com"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      connectSrc: [
+        "'self'",
+        'https://api.openai.com',
+        'https://*.openai.azure.com',
+      ],
       fontSrc: ["'self'"],
       objectSrc: ["'none'"],
       mediaSrc: ["'self'"],
@@ -25,20 +32,20 @@ export const helmetConfig = helmet({
   },
   crossOriginEmbedderPolicy: true,
   crossOriginOpenerPolicy: true,
-  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
   dnsPrefetchControl: true,
   frameguard: { action: 'deny' },
   hidePoweredBy: true,
   hsts: {
     maxAge: 31536000,
     includeSubDomains: true,
-    preload: true
+    preload: true,
   },
   ieNoOpen: true,
   noSniff: true,
   originAgentCluster: true,
   permittedCrossDomainPolicies: false,
-  referrerPolicy: { policy: "no-referrer" },
+  referrerPolicy: { policy: 'no-referrer' },
   xssFilter: true,
 });
 
@@ -47,18 +54,18 @@ const rateLimitConfigs: Record<string, RateLimitConfig> = {
   global: {
     windowMs: 15 * 60 * 1000, // 15 minutes
     maxRequests: 5000, // Higher limit as CloudFront will aggregate requests
-    message: 'Too many requests from this IP, please try again later.'
+    message: 'Too many requests from this IP, please try again later.',
   },
   auth: {
     windowMs: 15 * 60 * 1000, // 15 minutes
     maxRequests: 100, // More lenient for legitimate auth attempts through CloudFront
-    message: 'Too many authentication attempts, please try again later.'
+    message: 'Too many authentication attempts, please try again later.',
   },
   api: {
     windowMs: 1 * 60 * 1000, // 1 minute
     maxRequests: 200, // Higher limit for API calls through CloudFront
-    message: 'API rate limit exceeded, please try again later.'
-  }
+    message: 'API rate limit exceeded, please try again later.',
+  },
 };
 
 const resolveClientIp = (req: Request): string | null => {
@@ -78,8 +85,8 @@ export const globalRateLimit = rateLimit({
     error: {
       type: 'rate_limit_exceeded',
       message: rateLimitConfigs.global.message,
-      correlationId: ''
-    }
+      correlationId: '',
+    },
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -89,15 +96,16 @@ export const globalRateLimit = rateLimit({
     return clientIp ? ipKeyGenerator(clientIp) : 'unknown';
   },
   handler: (req: Request, res: Response) => {
-    const correlationId = (req as unknown as RequestWithCorrelationId).correlationId || uuidv4();
+    const correlationId =
+      (req as unknown as RequestWithCorrelationId).correlationId || uuidv4();
     res.status(429).json({
       error: {
         type: 'rate_limit_exceeded',
         message: rateLimitConfigs.global.message,
-        correlationId
-      }
+        correlationId,
+      },
     });
-  }
+  },
 });
 
 // Authentication rate limiter optimized for CloudFront
@@ -108,8 +116,8 @@ export const authRateLimit = rateLimit({
     error: {
       type: 'auth_rate_limit_exceeded',
       message: rateLimitConfigs.auth.message,
-      correlationId: ''
-    }
+      correlationId: '',
+    },
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -118,15 +126,16 @@ export const authRateLimit = rateLimit({
     return clientIp ? ipKeyGenerator(clientIp) : 'unknown';
   },
   handler: (req: Request, res: Response) => {
-    const correlationId = (req as unknown as RequestWithCorrelationId).correlationId || uuidv4();
+    const correlationId =
+      (req as unknown as RequestWithCorrelationId).correlationId || uuidv4();
     res.status(429).json({
       error: {
         type: 'auth_rate_limit_exceeded',
         message: rateLimitConfigs.auth.message,
-        correlationId
-      }
+        correlationId,
+      },
     });
-  }
+  },
 });
 
 // API rate limiter optimized for CloudFront
@@ -137,8 +146,8 @@ export const apiRateLimit = rateLimit({
     error: {
       type: 'api_rate_limit_exceeded',
       message: rateLimitConfigs.api.message,
-      correlationId: ''
-    }
+      correlationId: '',
+    },
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -147,15 +156,16 @@ export const apiRateLimit = rateLimit({
     return clientIp ? ipKeyGenerator(clientIp) : 'unknown';
   },
   handler: (req: Request, res: Response) => {
-    const correlationId = (req as unknown as RequestWithCorrelationId).correlationId || uuidv4();
+    const correlationId =
+      (req as unknown as RequestWithCorrelationId).correlationId || uuidv4();
     res.status(429).json({
       error: {
         type: 'api_rate_limit_exceeded',
         message: rateLimitConfigs.api.message,
-        correlationId
-      }
+        correlationId,
+      },
     });
-  }
+  },
 });
 
 // Correlation ID middleware
@@ -165,14 +175,18 @@ export const correlationIdMiddleware = (
   next: NextFunction
 ): void => {
   let correlationId = req.headers['x-correlation-id'];
-  
+
   // Handle array headers (take first value)
   if (Array.isArray(correlationId)) {
     correlationId = correlationId[0];
   }
-  
+
   // Validate and sanitize correlation ID
-  if (!correlationId || typeof correlationId !== 'string' || correlationId.trim() === '') {
+  if (
+    !correlationId ||
+    typeof correlationId !== 'string' ||
+    correlationId.trim() === ''
+  ) {
     correlationId = uuidv4();
   } else {
     // Truncate very large correlation IDs
@@ -181,7 +195,7 @@ export const correlationIdMiddleware = (
       correlationId = uuidv4();
     }
   }
-  
+
   (req as unknown as RequestWithCorrelationId).correlationId = correlationId;
   res.setHeader('X-Correlation-ID', correlationId);
   next();
@@ -192,13 +206,15 @@ export const timeoutMiddleware = (timeoutMs: number = 30000) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     const timeout = setTimeout(() => {
       if (!res.headersSent) {
-        const correlationId = (req as unknown as RequestWithCorrelationId).correlationId || uuidv4();
+        const correlationId =
+          (req as unknown as RequestWithCorrelationId).correlationId ||
+          uuidv4();
         res.status(408).json({
           error: {
             type: 'request_timeout',
             message: 'Request timeout exceeded',
-            correlationId
-          }
+            correlationId,
+          },
         });
       }
     }, timeoutMs);
@@ -219,7 +235,7 @@ export const timeoutMiddleware = (timeoutMs: number = 30000) => {
 export const corsOptions = {
   origin: false, // Disable CORS for security - API should be accessed directly
   credentials: false,
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
 };
 
 /**
@@ -236,34 +252,44 @@ export const securityHeadersMiddleware = (
   res.set('X-XSS-Protection', '1; mode=block');
   res.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.set('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
-  res.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
-  res.set('Content-Security-Policy', "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; media-src 'none'; child-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
-  
+  res.set(
+    'Strict-Transport-Security',
+    'max-age=31536000; includeSubDomains; preload'
+  );
+  res.set(
+    'Content-Security-Policy',
+    "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; media-src 'none'; child-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+  );
+
   next();
 };
 
 /**
  * Request size middleware
  */
-export const requestSizeMiddleware = (maxSizeBytes: number = 10 * 1024 * 1024) => {
+export const requestSizeMiddleware = (
+  maxSizeBytes: number = 10 * 1024 * 1024
+) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     const contentLength = req.headers['content-length'];
-    
+
     if (contentLength) {
       const size = parseInt(contentLength, 10);
       if (!isNaN(size) && size > maxSizeBytes) {
-        const correlationId = (req as unknown as RequestWithCorrelationId).correlationId || 'unknown';
+        const correlationId =
+          (req as unknown as RequestWithCorrelationId).correlationId ||
+          'unknown';
         res.status(413).json({
           error: {
             type: 'request_too_large',
             message: `Request size exceeds maximum allowed size of ${maxSizeBytes} bytes`,
-            correlationId
-          }
+            correlationId,
+          },
         });
         return;
       }
     }
-    
+
     next();
   };
 };
@@ -275,19 +301,21 @@ export const requestTimeoutMiddleware = (timeoutMs: number = 30000) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (req.setTimeout) {
       req.setTimeout(timeoutMs, () => {
-        const correlationId = (req as unknown as RequestWithCorrelationId).correlationId || 'unknown';
+        const correlationId =
+          (req as unknown as RequestWithCorrelationId).correlationId ||
+          'unknown';
         if (!res.headersSent) {
           res.status(408).json({
             error: {
               type: 'request_timeout',
               message: `Request timed out after ${timeoutMs}ms`,
-              correlationId
-            }
+              correlationId,
+            },
           });
         }
       });
     }
-    
+
     next();
   };
 };
@@ -295,33 +323,38 @@ export const requestTimeoutMiddleware = (timeoutMs: number = 30000) => {
 /**
  * Input sanitization function with circular reference protection
  */
-export const sanitizeInput = (input: unknown, visited = new WeakSet()): unknown => {
+export const sanitizeInput = (
+  input: unknown,
+  visited = new WeakSet()
+): unknown => {
   if (typeof input === 'string') {
-    return input
-      // Remove control characters except newlines and tabs
-      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
-      // Remove script tags
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-      // Remove img tags with event handlers
-      .replace(/<img[^>]*onerror[^>]*>/gi, '')
-      // Remove event handlers
-      .replace(/\son\w+\s*=/gi, '')
-      // Remove javascript: protocols
-      .replace(/javascript:/gi, '')
-      // Remove data URLs with base64
-      .replace(/data:text\/html;base64,[^"']*/gi, '');
+    return (
+      input
+        // Remove control characters except newlines and tabs
+        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+        // Remove script tags
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        // Remove img tags with event handlers
+        .replace(/<img[^>]*onerror[^>]*>/gi, '')
+        // Remove event handlers
+        .replace(/\son\w+\s*=/gi, '')
+        // Remove javascript: protocols
+        .replace(/javascript:/gi, '')
+        // Remove data URLs with base64
+        .replace(/data:text\/html;base64,[^"']*/gi, '')
+    );
   }
-  
+
   if (Array.isArray(input)) {
     if (visited.has(input)) {
       return '[Circular Reference]';
     }
     visited.add(input);
-    const result = input.map(item => sanitizeInput(item, visited));
+    const result = input.map((item) => sanitizeInput(item, visited));
     visited.delete(input);
     return result;
   }
-  
+
   if (input && typeof input === 'object') {
     if (visited.has(input)) {
       return '[Circular Reference]';
@@ -334,24 +367,27 @@ export const sanitizeInput = (input: unknown, visited = new WeakSet()): unknown 
     visited.delete(input);
     return sanitized;
   }
-  
+
   return input;
 };
 
 /**
  * Content type validation
  */
-export const validateContentType = (req: Request, allowedTypes: string[]): boolean => {
+export const validateContentType = (
+  req: Request,
+  allowedTypes: string[]
+): boolean => {
   const contentType = req.headers['content-type'];
-  
+
   if (!contentType) {
     return false;
   }
-  
+
   const normalizedContentType = contentType.toLowerCase().split(';')[0].trim();
-  
-  return allowedTypes.some(type => 
-    normalizedContentType === type.toLowerCase()
+
+  return allowedTypes.some(
+    (type) => normalizedContentType === type.toLowerCase()
   );
 };
 
@@ -361,5 +397,5 @@ export const validateContentType = (req: Request, allowedTypes: string[]): boole
 export const rateLimitConfig = {
   global: rateLimitConfigs.global,
   perIP: rateLimitConfigs.auth,
-  completions: rateLimitConfigs.api
+  completions: rateLimitConfigs.api,
 };

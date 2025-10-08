@@ -6,8 +6,11 @@ net.Server.prototype.listen = function patchedListen(...args: unknown[]) {
   if (typeof args[0] === 'number') {
     const port = args[0] as number;
     const hostArg = args[1];
-    const hostProvided = typeof hostArg === 'string' ||
-      (typeof hostArg === 'object' && hostArg !== null && 'host' in (hostArg as Record<string, unknown>));
+    const hostProvided =
+      typeof hostArg === 'string' ||
+      (typeof hostArg === 'object' &&
+        hostArg !== null &&
+        'host' in (hostArg as Record<string, unknown>));
 
     if (!hostProvided) {
       let callback: (() => void) | undefined;

@@ -5,12 +5,12 @@ import {
   transformClaudeToAzureRequest,
   createAzureHeaders,
   ValidationError,
-  SecurityError
+  SecurityError,
 } from '../src/utils/request-transformer.js';
 import {
   transformAzureResponseToClaude,
   isAzureOpenAIResponse,
-  isAzureOpenAIError
+  isAzureOpenAIError,
 } from '../src/utils/response-transformer.js';
 import { sanitizeInput } from '../src/middleware/security.js';
 
@@ -27,13 +27,13 @@ describe('Property-Based Tests', () => {
         {
           model: 'claude-3-5-sonnet-20241022',
           prompt: 'Hello, world!',
-          max_tokens: 100
+          max_tokens: 100,
         },
         {
           model: 'claude-3-5-sonnet-20241022',
           prompt: 'Test with temperature',
           max_tokens: 50,
-          temperature: 0.7
+          temperature: 0.7,
         },
         {
           model: 'claude-3-5-sonnet-20241022',
@@ -41,13 +41,16 @@ describe('Property-Based Tests', () => {
           max_tokens: 200,
           temperature: 0.5,
           top_p: 0.9,
-          stop_sequences: ['END', 'STOP']
-        }
+          stop_sequences: ['END', 'STOP'],
+        },
       ];
 
-      testCases.forEach(claudeRequest => {
+      testCases.forEach((claudeRequest) => {
         const azureModel = 'gpt-5-codex';
-        const azureRequest = transformClaudeToAzureRequest(claudeRequest, azureModel);
+        const azureRequest = transformClaudeToAzureRequest(
+          claudeRequest,
+          azureModel
+        );
 
         // Property: Model should be mapped to Azure model
         expect(azureRequest.model).toBe(azureModel);
@@ -78,10 +81,10 @@ describe('Property-Based Tests', () => {
       const apiKeys = [
         'a'.repeat(32),
         'b'.repeat(64),
-        'test-api-key-1234567890123456789012'
+        'test-api-key-1234567890123456789012',
       ];
 
-      apiKeys.forEach(apiKey => {
+      apiKeys.forEach((apiKey) => {
         const headers = createAzureHeaders(apiKey);
 
         // Property: All required headers should be present
@@ -101,26 +104,38 @@ describe('Property-Based Tests', () => {
       // Property: Validation should be consistent for boundary values
       const boundaryTests = [
         // max_tokens boundaries
-        { field: 'max_tokens', validValues: [1, 100, 131072], invalidValues: [0, -1, 131073] },
+        {
+          field: 'max_tokens',
+          validValues: [1, 100, 131072],
+          invalidValues: [0, -1, 131073],
+        },
         // temperature boundaries
-        { field: 'temperature', validValues: [0, 1, 2], invalidValues: [-0.1, 2.1, 3] },
+        {
+          field: 'temperature',
+          validValues: [0, 1, 2],
+          invalidValues: [-0.1, 2.1, 3],
+        },
         // top_p boundaries
-        { field: 'top_p', validValues: [0, 0.5, 1], invalidValues: [-0.1, 1.1, 2] }
+        {
+          field: 'top_p',
+          validValues: [0, 0.5, 1],
+          invalidValues: [-0.1, 1.1, 2],
+        },
       ];
 
       boundaryTests.forEach(({ field, validValues, invalidValues }) => {
         const baseRequest = {
           model: 'claude-3-5-sonnet-20241022',
           prompt: 'Test prompt',
-          max_tokens: 100
+          max_tokens: 100,
         };
 
-        validValues.forEach(value => {
+        validValues.forEach((value) => {
           const request = { ...baseRequest, [field]: value };
           expect(() => validateClaudeRequest(request)).not.toThrow();
         });
 
-        invalidValues.forEach(value => {
+        invalidValues.forEach((value) => {
           const request = { ...baseRequest, [field]: value };
           expect(() => validateClaudeRequest(request)).toThrow(ValidationError);
         });
@@ -134,20 +149,23 @@ describe('Property-Based Tests', () => {
         'Emoji test 🌍🚀💻',
         'Accented characters: café, naïve, résumé',
         'Mathematical symbols: ∑∫∆√π',
-        'Mixed: Hello 世界 with emoji 🌍 and math ∑'
+        'Mixed: Hello 世界 with emoji 🌍 and math ∑',
       ];
 
-      unicodePrompts.forEach(prompt => {
+      unicodePrompts.forEach((prompt) => {
         const request = {
           model: 'claude-3-5-sonnet-20241022',
           prompt,
-          max_tokens: 100
+          max_tokens: 100,
         };
 
         const validatedRequest = validateClaudeRequest(request);
         expect(validatedRequest.prompt).toBe(prompt);
 
-        const azureRequest = transformClaudeToAzureRequest(validatedRequest, 'gpt-4');
+        const azureRequest = transformClaudeToAzureRequest(
+          validatedRequest,
+          'gpt-4'
+        );
         expect(azureRequest.messages[0].content).toBe(prompt);
       });
     });
@@ -159,14 +177,14 @@ describe('Property-Based Tests', () => {
         'javascript:alert(1)',
         '{{user.password}}',
         '<img src=x onerror=alert(1)>',
-        'data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg=='
+        'data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==',
       ];
 
-      maliciousPatterns.forEach(maliciousPrompt => {
+      maliciousPatterns.forEach((maliciousPrompt) => {
         const request = {
           model: 'claude-3-5-sonnet-20241022',
           prompt: maliciousPrompt,
-          max_tokens: 100
+          max_tokens: 100,
         };
 
         expect(() => validateClaudeRequest(request)).toThrow(SecurityError);
@@ -183,27 +201,34 @@ describe('Property-Based Tests', () => {
           object: 'chat.completion',
           created: 1640995200,
           model: 'gpt-4',
-          choices: [{
-            index: 0,
-            message: { role: 'assistant', content: 'Hello!' },
-            finish_reason: 'stop'
-          }]
+          choices: [
+            {
+              index: 0,
+              message: { role: 'assistant', content: 'Hello!' },
+              finish_reason: 'stop',
+            },
+          ],
         },
         {
           id: 'chatcmpl-456',
           object: 'chat.completion',
           created: 1640995300,
           model: 'gpt-4',
-          choices: [{
-            index: 0,
-            message: { role: 'assistant', content: 'Longer response with more content.' },
-            finish_reason: 'length'
-          }],
-          usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 }
-        }
+          choices: [
+            {
+              index: 0,
+              message: {
+                role: 'assistant',
+                content: 'Longer response with more content.',
+              },
+              finish_reason: 'length',
+            },
+          ],
+          usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
+        },
       ];
 
-      azureResponses.forEach(azureResponse => {
+      azureResponses.forEach((azureResponse) => {
         const result = transformAzureResponseToClaude(
           azureResponse,
           200,
@@ -219,7 +244,9 @@ describe('Property-Based Tests', () => {
         const claudeResponse = result.claudeResponse as any;
         expect(claudeResponse.id).toBe(azureResponse.id);
         expect(claudeResponse.type).toBe('completion');
-        expect(claudeResponse.completion).toBe(azureResponse.choices[0].message.content);
+        expect(claudeResponse.completion).toBe(
+          azureResponse.choices[0].message.content
+        );
         expect(claudeResponse.model).toBe('claude-3-5-sonnet-20241022');
 
         // Property: Headers should be valid
@@ -235,25 +262,25 @@ describe('Property-Based Tests', () => {
           error: {
             message: 'Invalid request',
             type: 'invalid_request_error',
-            code: 'invalid_parameter'
-          }
+            code: 'invalid_parameter',
+          },
         },
         {
           error: {
             message: 'Rate limit exceeded',
-            type: 'rate_limit_error'
-          }
+            type: 'rate_limit_error',
+          },
         },
         {
           error: {
             message: 'Authentication failed',
             type: 'authentication_error',
-            code: 'invalid_api_key'
-          }
-        }
+            code: 'invalid_api_key',
+          },
+        },
       ];
 
-      azureErrors.forEach(azureError => {
+      azureErrors.forEach((azureError) => {
         const result = transformAzureResponseToClaude(
           azureError,
           400,
@@ -276,8 +303,14 @@ describe('Property-Based Tests', () => {
           object: 'chat.completion',
           created: 123,
           model: 'gpt-4',
-          choices: [{ index: 0, message: { role: 'assistant', content: 'test' }, finish_reason: 'stop' }]
-        }
+          choices: [
+            {
+              index: 0,
+              message: { role: 'assistant', content: 'test' },
+              finish_reason: 'stop',
+            },
+          ],
+        },
       ];
 
       const invalidResponses = [
@@ -288,33 +321,31 @@ describe('Property-Based Tests', () => {
         {},
         { id: 'test' },
         { id: 'test', object: 'wrong' },
-        { id: 'test', object: 'chat.completion', choices: [] }
+        { id: 'test', object: 'chat.completion', choices: [] },
       ];
 
-      validResponses.forEach(response => {
+      validResponses.forEach((response) => {
         expect(isAzureOpenAIResponse(response)).toBe(true);
       });
 
-      invalidResponses.forEach(response => {
+      invalidResponses.forEach((response) => {
         expect(isAzureOpenAIResponse(response)).toBe(false);
       });
 
-      const validErrors = [
-        { error: { message: 'test', type: 'error' } }
-      ];
+      const validErrors = [{ error: { message: 'test', type: 'error' } }];
 
       const invalidErrors = [
         null,
         { error: 'string' },
         { error: {} },
-        { error: { message: 'test' } }
+        { error: { message: 'test' } },
       ];
 
-      validErrors.forEach(error => {
+      validErrors.forEach((error) => {
         expect(isAzureOpenAIError(error)).toBe(true);
       });
 
-      invalidErrors.forEach(error => {
+      invalidErrors.forEach((error) => {
         expect(isAzureOpenAIError(error)).toBe(false);
       });
     });
@@ -326,23 +357,23 @@ describe('Property-Based Tests', () => {
       const testCases = [
         {
           input: 'Safe content with numbers 123 and symbols !@#',
-          expectPreserved: ['Safe content', 'numbers 123', 'symbols !@#']
+          expectPreserved: ['Safe content', 'numbers 123', 'symbols !@#'],
         },
         {
           input: 'Mixed <script>alert(1)</script> safe content',
           expectPreserved: ['Mixed', 'safe content'],
-          expectRemoved: ['<script>', 'alert(1)']
-        }
+          expectRemoved: ['<script>', 'alert(1)'],
+        },
       ];
 
       testCases.forEach(({ input, expectPreserved, expectRemoved }) => {
         const sanitized = sanitizeInput(input);
-        
-        expectPreserved?.forEach(preserved => {
+
+        expectPreserved?.forEach((preserved) => {
           expect(sanitized).toContain(preserved);
         });
-        
-        expectRemoved?.forEach(removed => {
+
+        expectRemoved?.forEach((removed) => {
           expect(sanitized).not.toContain(removed);
         });
       });
@@ -354,9 +385,9 @@ describe('Property-Based Tests', () => {
         level1: {
           level2: {
             dangerous: '<script>alert("nested")</script>',
-            safe: 'This is safe content'
-          }
-        }
+            safe: 'This is safe content',
+          },
+        },
       };
 
       const sanitized = sanitizeInput(testObject) as any;
@@ -373,10 +404,10 @@ describe('Property-Based Tests', () => {
         null,
         undefined,
         [1, 2, 3],
-        { number: 42, boolean: true }
+        { number: 42, boolean: true },
       ];
 
-      inputs.forEach(input => {
+      inputs.forEach((input) => {
         const result = sanitizeInput(input);
         if (typeof input === 'object' && input !== null) {
           expect(typeof result).toBe('object');
@@ -398,10 +429,10 @@ describe('Property-Based Tests', () => {
         [],
         { model: null },
         { prompt: null },
-        { max_tokens: 'not a number' }
+        { max_tokens: 'not a number' },
       ];
 
-      malformedRequests.forEach(request => {
+      malformedRequests.forEach((request) => {
         try {
           validateClaudeRequest(request as any);
           // If no error thrown, that's also acceptable for some cases
@@ -416,10 +447,10 @@ describe('Property-Based Tests', () => {
       // Property: Edge cases should not cause crashes
       const edgeCases = [
         { model: '', prompt: '', max_tokens: 0 },
-        { model: 'a'.repeat(1000), prompt: 'b'.repeat(10000), max_tokens: -1 }
+        { model: 'a'.repeat(1000), prompt: 'b'.repeat(10000), max_tokens: -1 },
       ];
 
-      edgeCases.forEach(request => {
+      edgeCases.forEach((request) => {
         try {
           validateClaudeRequest(request);
           // If validation passes, transformation should also work
@@ -436,20 +467,20 @@ describe('Property-Based Tests', () => {
       const request = {
         model: 'claude-3-5-sonnet-20241022',
         prompt: 'Test concurrent access',
-        max_tokens: 100
+        max_tokens: 100,
       };
 
-      const promises = Array.from({ length: 10 }, () => 
+      const promises = Array.from({ length: 10 }, () =>
         Promise.resolve().then(() => {
           const validated = validateClaudeRequest(request);
           return transformClaudeToAzureRequest(validated, 'gpt-4');
         })
       );
 
-      return Promise.all(promises).then(results => {
+      return Promise.all(promises).then((results) => {
         // All results should be identical
         const first = results[0];
-        results.forEach(result => {
+        results.forEach((result) => {
           expect(result.model).toBe(first.model);
           expect(result.messages[0].content).toBe(first.messages[0].content);
           expect(result.max_tokens).toBe(first.max_tokens);
@@ -462,13 +493,13 @@ describe('Property-Based Tests', () => {
     it('should handle large inputs efficiently', () => {
       // Property: Performance should degrade gracefully with input size
       const sizes = [100, 1000, 10000];
-      
-      sizes.forEach(size => {
+
+      sizes.forEach((size) => {
         const largePrompt = 'x'.repeat(size);
         const request = {
           model: 'claude-3-5-sonnet-20241022',
           prompt: largePrompt,
-          max_tokens: 100
+          max_tokens: 100,
         };
 
         const startTime = Date.now();
@@ -487,7 +518,7 @@ describe('Property-Based Tests', () => {
       const request = {
         model: 'claude-3-5-sonnet-20241022',
         prompt: 'Repeated operation test',
-        max_tokens: 100
+        max_tokens: 100,
       };
 
       const iterations = 100;
@@ -510,25 +541,42 @@ describe('Property-Based Tests', () => {
     it('should maintain request-response correlation', () => {
       // Property: Request and response should maintain correlation
       const requests = [
-        { model: 'claude-3-5-sonnet-20241022', prompt: 'Test 1', max_tokens: 50 },
-        { model: 'claude-3-5-sonnet-20241022', prompt: 'Test 2', max_tokens: 100 },
-        { model: 'claude-3-5-sonnet-20241022', prompt: 'Test 3', max_tokens: 150 }
+        {
+          model: 'claude-3-5-sonnet-20241022',
+          prompt: 'Test 1',
+          max_tokens: 50,
+        },
+        {
+          model: 'claude-3-5-sonnet-20241022',
+          prompt: 'Test 2',
+          max_tokens: 100,
+        },
+        {
+          model: 'claude-3-5-sonnet-20241022',
+          prompt: 'Test 3',
+          max_tokens: 150,
+        },
       ];
 
       requests.forEach((claudeRequest, index) => {
-        const azureRequest = transformClaudeToAzureRequest(claudeRequest, 'gpt-4');
-        
+        const azureRequest = transformClaudeToAzureRequest(
+          claudeRequest,
+          'gpt-4'
+        );
+
         // Mock Azure response
         const azureResponse = {
           id: `test-${index}`,
           object: 'chat.completion',
           created: Date.now(),
           model: 'gpt-4',
-          choices: [{
-            index: 0,
-            message: { role: 'assistant', content: `Response ${index}` },
-            finish_reason: 'stop'
-          }]
+          choices: [
+            {
+              index: 0,
+              message: { role: 'assistant', content: `Response ${index}` },
+              finish_reason: 'stop',
+            },
+          ],
         };
 
         const result = transformAzureResponseToClaude(
@@ -550,11 +598,14 @@ describe('Property-Based Tests', () => {
         prompt: 'Round trip test',
         max_tokens: 100,
         temperature: 0.7,
-        top_p: 0.9
+        top_p: 0.9,
       };
 
-      const azureRequest = transformClaudeToAzureRequest(originalRequest, 'gpt-4');
-      
+      const azureRequest = transformClaudeToAzureRequest(
+        originalRequest,
+        'gpt-4'
+      );
+
       // Verify transformation preserved essential data
       expect(azureRequest.messages[0].content).toBe(originalRequest.prompt);
       expect(azureRequest.max_tokens).toBe(originalRequest.max_tokens);
@@ -572,12 +623,12 @@ function generateTestRequest(overrides: any = {}) {
     model: 'claude-3-5-sonnet-20241022',
     prompt: 'Test prompt',
     max_tokens: 100,
-    ...overrides
+    ...overrides,
   };
 }
 
 /**
- * Helper function to generate Azure response with specific properties  
+ * Helper function to generate Azure response with specific properties
  */
 function generateAzureResponse(overrides: any = {}) {
   return {
@@ -585,12 +636,13 @@ function generateAzureResponse(overrides: any = {}) {
     object: 'chat.completion',
     created: Date.now(),
     model: 'gpt-4',
-    choices: [{
-      index: 0,
-      message: { role: 'assistant', content: 'Test response' },
-      finish_reason: 'stop'
-    }],
-    ...overrides
+    choices: [
+      {
+        index: 0,
+        message: { role: 'assistant', content: 'Test response' },
+        finish_reason: 'stop',
+      },
+    ],
+    ...overrides,
   };
-
 }

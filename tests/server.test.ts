@@ -11,8 +11,8 @@ const mockConfig: ServerConfig = {
   azureOpenAI: {
     endpoint: 'https://test.openai.azure.com',
     apiKey: 'test-azure-key-12345678901234567890123456789012',
-    model: 'gpt-4'
-  }
+    model: 'gpt-4',
+  },
 };
 
 describe('Express Server Configuration', () => {
@@ -21,7 +21,7 @@ describe('Express Server Configuration', () => {
   beforeAll(() => {
     // Create a minimal Express app for testing middleware
     app = express();
-    
+
     // Test basic Express setup
     app.get('/test', (req, res) => {
       res.json({ message: 'test endpoint' });
@@ -32,15 +32,15 @@ describe('Express Server Configuration', () => {
     expect(mockConfig.port).toBe(3001);
     expect(mockConfig.nodeEnv).toBe('test');
     expect(mockConfig.proxyApiKey.length).toBeGreaterThanOrEqual(32);
-    expect(mockConfig.azureOpenAI.endpoint).toBe('https://test.openai.azure.com');
+    expect(mockConfig.azureOpenAI.endpoint).toBe(
+      'https://test.openai.azure.com'
+    );
     expect(mockConfig.azureOpenAI.model).toBe('gpt-4');
   });
 
   it('should respond to test endpoint', async () => {
-    const response = await request(app)
-      .get('/test')
-      .expect(200);
-    
+    const response = await request(app).get('/test').expect(200);
+
     expect(response.body.message).toBe('test endpoint');
   });
 

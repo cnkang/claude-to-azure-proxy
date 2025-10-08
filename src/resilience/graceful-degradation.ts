@@ -5,7 +5,10 @@
 
 import { logger } from '../middleware/logging.js';
 import { BaseError, ServiceUnavailableError } from '../errors/index.js';
-import { CircuitBreakerState, circuitBreakerRegistry } from './circuit-breaker.js';
+import {
+  CircuitBreakerState,
+  circuitBreakerRegistry,
+} from './circuit-breaker.js';
 
 export interface DegradationStrategy {
   readonly name: string;
@@ -50,18 +53,18 @@ export class GracefulDegradationManager {
       {
         name: 'full',
         features: ['completions', 'models', 'streaming', 'health', 'metrics'],
-        description: 'Full service with all features available'
+        description: 'Full service with all features available',
       },
       {
         name: 'degraded',
         features: ['completions', 'models', 'health'],
-        description: 'Core functionality with reduced features'
+        description: 'Core functionality with reduced features',
       },
       {
         name: 'minimal',
         features: ['health'],
-        description: 'Health checks only, service unavailable'
-      }
+        description: 'Health checks only, service unavailable',
+      },
     ];
 
     this.currentServiceLevel = this.serviceLevels[0]; // Start with full service
@@ -77,14 +80,13 @@ export class GracefulDegradationManager {
       name: 'cached_response',
       priority: 1,
       condition: (context) => {
-        return context.operation === 'completions' && 
-               context.attempt > 1;
+        return context.operation === 'completions' && context.attempt > 1;
       },
       execute: async (context) => {
         // In a real implementation, this would check a cache
         logger.info('Using cached response fallback', context.correlationId, {
           operation: context.operation,
-          attempt: context.attempt
+          attempt: context.attempt,
         });
 
         return {
@@ -92,15 +94,16 @@ export class GracefulDegradationManager {
           data: {
             id: `cached_${Date.now()}`,
             type: 'completion',
-            completion: 'I apologize, but I\'m experiencing temporary difficulties. Please try again in a moment.',
+            completion:
+              "I apologize, but I'm experiencing temporary difficulties. Please try again in a moment.",
             model: 'claude-3-5-sonnet-20241022',
-            stop_reason: 'stop_sequence'
+            stop_reason: 'stop_sequence',
           },
           fallbackUsed: 'cached_response',
           degraded: true,
-          message: 'Using cached response due to service issues'
+          message: 'Using cached response due to service issues',
         };
-      }
+      },
     });
 
     // Static response strategy
@@ -113,7 +116,7 @@ export class GracefulDegradationManager {
       execute: async (context) => {
         logger.warn('Using static response fallback', context.correlationId, {
           operation: context.operation,
-          error: context.error?.message
+          error: context.error?.message,
         });
 
         return {
@@ -121,15 +124,16 @@ export class GracefulDegradationManager {
           data: {
             id: `static_${Date.now()}`,
             type: 'completion',
-            completion: 'The service is temporarily experiencing issues. Please try again later.',
+            completion:
+              'The service is temporarily experiencing issues. Please try again later.',
             model: 'claude-3-5-sonnet-20241022',
-            stop_reason: 'stop_sequence'
+            stop_reason: 'stop_sequence',
           },
           fallbackUsed: 'static_response',
           degraded: true,
-          message: 'Using static response due to service unavailability'
+          message: 'Using static response due to service unavailability',
         };
-      }
+      },
     });
 
     // Service unavailable strategy
@@ -138,10 +142,14 @@ export class GracefulDegradationManager {
       priority: 10,
       condition: () => true, // Always applicable as last resort
       execute: async (context) => {
-        logger.error('Service unavailable fallback triggered', context.correlationId, {
-          operation: context.operation,
-          error: context.error?.message
-        });
+        logger.error(
+          'Service unavailable fallback triggered',
+          context.correlationId,
+          {
+            operation: context.operation,
+            error: context.error?.message,
+          }
+        );
 
         throw new ServiceUnavailableError(
           'Service is temporarily unavailable. Please try again later.',
@@ -149,7 +157,7 @@ export class GracefulDegradationManager {
           300, // Retry after 5 minutes
           context.operation
         );
-      }
+      },
     });
   }
 
@@ -160,7 +168,7 @@ export class GracefulDegradationManager {
     this.strategies.set(strategy.name, strategy);
     logger.info('Degradation strategy registered', '', {
       name: strategy.name,
-      priority: strategy.priority
+      priority: strategy.priority,
     });
   }
 
@@ -172,24 +180,24 @@ export class GracefulDegradationManager {
   ): Promise<DegradationResult> {
     // Get applicable strategies sorted by priority
     const applicableStrategies = Array.from(this.strategies.values())
-      .filter(strategy => strategy.condition(context))
+      .filter((strategy) => strategy.condition(context))
       .sort((a, b) => a.priority - b.priority);
 
     logger.info('Executing graceful degradation', context.correlationId, {
       operation: context.operation,
       applicableStrategies: applicableStrategies.length,
-      attempt: context.attempt
+      attempt: context.attempt,
     });
 
     // Try each strategy in order
     for (const strategy of applicableStrategies) {
       try {
         const result = await strategy.execute(context);
-        
+
         logger.info('Degradation strategy succeeded', context.correlationId, {
           strategy: strategy.name,
           operation: context.operation,
-          degraded: result.degraded
+          degraded: result.degraded,
         });
 
         return result;
@@ -197,11 +205,13 @@ export class GracefulDegradationManager {
         logger.warn('Degradation strategy failed', context.correlationId, {
           strategy: strategy.name,
           operation: context.operation,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error instanceof Error ? error.message : 'Unknown error',
         });
 
         // If this is the last strategy, re-throw the error
-        if (strategy === applicableStrategies[applicableStrategies.length - 1]) {
+        if (
+          strategy === applicableStrategies[applicableStrategies.length - 1]
+        ) {
           throw error;
         }
       }
@@ -228,15 +238,15 @@ export class GracefulDegradationManager {
    */
   public degradeServiceLevel(reason: string, correlationId: string): void {
     const currentIndex = this.serviceLevels.indexOf(this.currentServiceLevel);
-    
+
     if (currentIndex < this.serviceLevels.length - 1) {
       const newLevel = this.serviceLevels[currentIndex + 1];
-      
+
       logger.warn('Service level degraded', correlationId, {
         from: this.currentServiceLevel.name,
         to: newLevel.name,
         reason,
-        availableFeatures: newLevel.features
+        availableFeatures: newLevel.features,
       });
 
       this.currentServiceLevel = newLevel;
@@ -248,14 +258,14 @@ export class GracefulDegradationManager {
    */
   public restoreServiceLevel(correlationId: string): void {
     const currentIndex = this.serviceLevels.indexOf(this.currentServiceLevel);
-    
+
     if (currentIndex > 0) {
       const newLevel = this.serviceLevels[currentIndex - 1];
-      
+
       logger.info('Service level restored', correlationId, {
         from: this.currentServiceLevel.name,
         to: newLevel.name,
-        availableFeatures: newLevel.features
+        availableFeatures: newLevel.features,
       });
 
       this.currentServiceLevel = newLevel;
@@ -267,7 +277,9 @@ export class GracefulDegradationManager {
    */
   public autoAdjustServiceLevel(correlationId: string): void {
     const circuitBreakerHealth = circuitBreakerRegistry.getHealthStatus();
-    const unhealthyBreakers = Object.values(circuitBreakerHealth).filter(healthy => !healthy).length;
+    const unhealthyBreakers = Object.values(circuitBreakerHealth).filter(
+      (healthy) => !healthy
+    ).length;
     const totalBreakers = Object.keys(circuitBreakerHealth).length;
 
     if (totalBreakers === 0) {
@@ -279,14 +291,16 @@ export class GracefulDegradationManager {
     // Degrade to minimal if more than 80% are unhealthy
     if (unhealthyRatio >= 0.8 && this.currentServiceLevel.name !== 'minimal') {
       // Set directly to minimal level
-      const minimalLevel = this.serviceLevels.find(level => level.name === 'minimal');
+      const minimalLevel = this.serviceLevels.find(
+        (level) => level.name === 'minimal'
+      );
       if (minimalLevel) {
         logger.warn('Service level degraded to minimal', correlationId, {
           from: this.currentServiceLevel.name,
           to: minimalLevel.name,
           reason: 'Majority of circuit breakers open',
           unhealthyRatio,
-          availableFeatures: minimalLevel.features
+          availableFeatures: minimalLevel.features,
         });
         this.currentServiceLevel = minimalLevel;
       }
@@ -326,7 +340,7 @@ export class GracefulDegradationManager {
     return {
       currentLevel: this.currentServiceLevel.name,
       registeredStrategies: this.strategies.size,
-      availableFeatures: this.currentServiceLevel.features
+      availableFeatures: this.currentServiceLevel.features,
     };
   }
 
@@ -335,11 +349,11 @@ export class GracefulDegradationManager {
    */
   public resetToFullService(correlationId: string): void {
     const fullService = this.serviceLevels[0];
-    
+
     if (this.currentServiceLevel !== fullService) {
       logger.info('Service level reset to full', correlationId, {
         from: this.currentServiceLevel.name,
-        to: fullService.name
+        to: fullService.name,
       });
 
       this.currentServiceLevel = fullService;
@@ -357,19 +371,25 @@ export function checkFeatureAvailability(feature: string) {
   return (req: any, res: any, next: any) => {
     if (!gracefulDegradationManager.isFeatureAvailable(feature)) {
       const correlationId = req.correlationId || 'unknown';
-      
-      logger.warn('Feature unavailable at current service level', correlationId, {
-        feature,
-        currentLevel: gracefulDegradationManager.getCurrentServiceLevel().name
-      });
+
+      logger.warn(
+        'Feature unavailable at current service level',
+        correlationId,
+        {
+          feature,
+          currentLevel:
+            gracefulDegradationManager.getCurrentServiceLevel().name,
+        }
+      );
 
       return res.status(503).json({
         error: {
           type: 'service_unavailable',
           message: `Feature '${feature}' is temporarily unavailable`,
           correlationId,
-          serviceLevel: gracefulDegradationManager.getCurrentServiceLevel().name
-        }
+          serviceLevel:
+            gracefulDegradationManager.getCurrentServiceLevel().name,
+        },
       });
     }
 

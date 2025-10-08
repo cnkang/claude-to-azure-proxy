@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   GracefulDegradationManager,
   gracefulDegradationManager,
-  checkFeatureAvailability
+  checkFeatureAvailability,
 } from '../src/resilience/graceful-degradation.js';
 import { ServiceUnavailableError } from '../src/errors/index.js';
 import { circuitBreakerRegistry } from '../src/resilience/circuit-breaker.js';
@@ -13,8 +13,8 @@ vi.mock('../src/middleware/logging.js', () => ({
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
-    debug: vi.fn()
-  }
+    debug: vi.fn(),
+  },
 }));
 
 describe('Graceful Degradation Manager', () => {
@@ -27,7 +27,7 @@ describe('Graceful Degradation Manager', () => {
   describe('Service Levels', () => {
     it('should start with full service level', () => {
       const currentLevel = manager.getCurrentServiceLevel();
-      
+
       expect(currentLevel.name).toBe('full');
       expect(currentLevel.features).toContain('completions');
       expect(currentLevel.features).toContain('models');
@@ -44,7 +44,7 @@ describe('Graceful Degradation Manager', () => {
 
     it('should degrade service level', () => {
       manager.degradeServiceLevel('Test degradation', 'test-correlation-id');
-      
+
       const currentLevel = manager.getCurrentServiceLevel();
       expect(currentLevel.name).toBe('degraded');
       expect(currentLevel.features).toContain('completions');
@@ -58,7 +58,7 @@ describe('Graceful Degradation Manager', () => {
       // First degrade
       manager.degradeServiceLevel('Test degradation', 'test-correlation-id');
       expect(manager.getCurrentServiceLevel().name).toBe('degraded');
-      
+
       // Then restore
       manager.restoreServiceLevel('test-correlation-id');
       expect(manager.getCurrentServiceLevel().name).toBe('full');
@@ -68,11 +68,11 @@ describe('Graceful Degradation Manager', () => {
       // Degrade to degraded
       manager.degradeServiceLevel('First degradation', 'test-correlation-id');
       expect(manager.getCurrentServiceLevel().name).toBe('degraded');
-      
+
       // Degrade to minimal
       manager.degradeServiceLevel('Second degradation', 'test-correlation-id');
       expect(manager.getCurrentServiceLevel().name).toBe('minimal');
-      
+
       // Try to degrade further (should stay at minimal)
       manager.degradeServiceLevel('Third degradation', 'test-correlation-id');
       expect(manager.getCurrentServiceLevel().name).toBe('minimal');
@@ -89,7 +89,7 @@ describe('Graceful Degradation Manager', () => {
       manager.degradeServiceLevel('Test degradation 1', 'test-correlation-id');
       manager.degradeServiceLevel('Test degradation 2', 'test-correlation-id');
       expect(manager.getCurrentServiceLevel().name).toBe('minimal');
-      
+
       // Reset to full
       manager.resetToFullService('test-correlation-id');
       expect(manager.getCurrentServiceLevel().name).toBe('full');
@@ -106,12 +106,12 @@ describe('Graceful Degradation Manager', () => {
           success: true,
           data: 'custom_result',
           fallbackUsed: 'custom_test',
-          degraded: true
-        })
+          degraded: true,
+        }),
       };
 
       manager.registerStrategy(customStrategy);
-      
+
       const stats = manager.getStatistics();
       expect(stats.registeredStrategies).toBeGreaterThan(3); // Default + custom
     });
@@ -121,7 +121,7 @@ describe('Graceful Degradation Manager', () => {
         correlationId: 'test-correlation-id',
         operation: 'completions',
         attempt: 2, // Second attempt triggers cached response
-        error: new Error('Service unavailable')
+        error: new Error('Service unavailable'),
       };
 
       const result = await manager.executeGracefulDegradation(context);
@@ -138,7 +138,7 @@ describe('Graceful Degradation Manager', () => {
         correlationId: 'test-correlation-id',
         operation: 'completions',
         attempt: 1, // First attempt, cached response not applicable
-        error: new Error('Service unavailable')
+        error: new Error('Service unavailable'),
       };
 
       const result = await manager.executeGracefulDegradation(context);
@@ -154,11 +154,12 @@ describe('Graceful Degradation Manager', () => {
         correlationId: 'test-correlation-id',
         operation: 'unsupported_operation',
         attempt: 1,
-        error: new Error('Service unavailable')
+        error: new Error('Service unavailable'),
       };
 
-      await expect(manager.executeGracefulDegradation(context))
-        .rejects.toThrow(ServiceUnavailableError);
+      await expect(manager.executeGracefulDegradation(context)).rejects.toThrow(
+        ServiceUnavailableError
+      );
     });
 
     it('should execute strategies in priority order', async () => {
@@ -175,9 +176,9 @@ describe('Graceful Degradation Manager', () => {
             success: true,
             data: 'high_priority_result',
             fallbackUsed: 'high_priority',
-            degraded: true
+            degraded: true,
           };
-        }
+        },
       });
 
       manager.registerStrategy({
@@ -190,15 +191,15 @@ describe('Graceful Degradation Manager', () => {
             success: true,
             data: 'low_priority_result',
             fallbackUsed: 'low_priority',
-            degraded: true
+            degraded: true,
           };
-        }
+        },
       });
 
       const context = {
         correlationId: 'test-correlation-id',
         operation: 'test',
-        attempt: 1
+        attempt: 1,
       };
 
       const result = await manager.executeGracefulDegradation(context);
@@ -217,7 +218,7 @@ describe('Graceful Degradation Manager', () => {
         execute: async () => {
           executionOrder.push('failing_strategy');
           throw new Error('Strategy failed');
-        }
+        },
       });
 
       manager.registerStrategy({
@@ -230,15 +231,15 @@ describe('Graceful Degradation Manager', () => {
             success: true,
             data: 'working_result',
             fallbackUsed: 'working_strategy',
-            degraded: true
+            degraded: true,
           };
-        }
+        },
       });
 
       const context = {
         correlationId: 'test-correlation-id',
         operation: 'test',
-        attempt: 1
+        attempt: 1,
       };
 
       const result = await manager.executeGracefulDegradation(context);
@@ -256,9 +257,9 @@ describe('Graceful Degradation Manager', () => {
 
     it('should degrade when more than 50% circuit breakers are unhealthy', () => {
       (circuitBreakerRegistry.getHealthStatus as any).mockReturnValue({
-        'service1': false,
-        'service2': false,
-        'service3': true
+        service1: false,
+        service2: false,
+        service3: true,
       });
 
       manager.autoAdjustServiceLevel('test-correlation-id');
@@ -270,13 +271,13 @@ describe('Graceful Degradation Manager', () => {
       // First degrade to degraded level
       manager.degradeServiceLevel('Initial degradation', 'test-correlation-id');
       expect(manager.getCurrentServiceLevel().name).toBe('degraded');
-      
+
       (circuitBreakerRegistry.getHealthStatus as any).mockReturnValue({
-        'service1': false,
-        'service2': false,
-        'service3': false,
-        'service4': false,
-        'service5': true
+        service1: false,
+        service2: false,
+        service3: false,
+        service4: false,
+        service5: true,
       });
 
       manager.autoAdjustServiceLevel('test-correlation-id');
@@ -289,11 +290,11 @@ describe('Graceful Degradation Manager', () => {
       // First degrade
       manager.degradeServiceLevel('Test degradation', 'test-correlation-id');
       expect(manager.getCurrentServiceLevel().name).toBe('degraded');
-      
+
       (circuitBreakerRegistry.getHealthStatus as any).mockReturnValue({
-        'service1': true,
-        'service2': true,
-        'service3': true
+        service1: true,
+        service2: true,
+        service3: true,
       });
 
       manager.autoAdjustServiceLevel('test-correlation-id');
@@ -345,16 +346,18 @@ describe('Graceful Degradation Manager', () => {
 describe('Global Graceful Degradation Manager', () => {
   it('should be available as singleton', () => {
     expect(gracefulDegradationManager).toBeDefined();
-    expect(gracefulDegradationManager).toBeInstanceOf(GracefulDegradationManager);
+    expect(gracefulDegradationManager).toBeInstanceOf(
+      GracefulDegradationManager
+    );
   });
 
   it('should maintain state across imports', () => {
     const initialLevel = gracefulDegradationManager.getCurrentServiceLevel();
     gracefulDegradationManager.degradeServiceLevel('Test', 'test-id');
-    
+
     const degradedLevel = gracefulDegradationManager.getCurrentServiceLevel();
     expect(degradedLevel.name).not.toBe(initialLevel.name);
-    
+
     // Reset for other tests
     gracefulDegradationManager.resetToFullService('test-id');
   });
@@ -367,23 +370,23 @@ describe('Feature Availability Middleware', () => {
 
   beforeEach(() => {
     mockReq = {
-      correlationId: 'test-correlation-id'
+      correlationId: 'test-correlation-id',
     };
-    
+
     mockRes = {
       status: vi.fn().mockReturnThis(),
-      json: vi.fn().mockReturnThis()
+      json: vi.fn().mockReturnThis(),
     };
-    
+
     mockNext = vi.fn();
   });
 
   it('should allow request when feature is available', () => {
     const middleware = checkFeatureAvailability('completions');
-    
+
     // Ensure feature is available
     gracefulDegradationManager.resetToFullService('test-correlation-id');
-    
+
     middleware(mockReq, mockRes, mockNext);
 
     expect(mockNext).toHaveBeenCalledOnce();
@@ -393,10 +396,13 @@ describe('Feature Availability Middleware', () => {
 
   it('should block request when feature is unavailable', () => {
     const middleware = checkFeatureAvailability('streaming');
-    
+
     // Degrade to level where streaming is not available
-    gracefulDegradationManager.degradeServiceLevel('Test degradation', 'test-correlation-id');
-    
+    gracefulDegradationManager.degradeServiceLevel(
+      'Test degradation',
+      'test-correlation-id'
+    );
+
     middleware(mockReq, mockRes, mockNext);
 
     expect(mockNext).not.toHaveBeenCalled();
@@ -406,30 +412,33 @@ describe('Feature Availability Middleware', () => {
         type: 'service_unavailable',
         message: "Feature 'streaming' is temporarily unavailable",
         correlationId: 'test-correlation-id',
-        serviceLevel: 'degraded'
-      }
+        serviceLevel: 'degraded',
+      },
     });
-    
+
     // Reset for other tests
     gracefulDegradationManager.resetToFullService('test-correlation-id');
   });
 
   it('should handle missing correlation ID', () => {
     const middleware = checkFeatureAvailability('streaming');
-    
+
     delete mockReq.correlationId;
-    gracefulDegradationManager.degradeServiceLevel('Test degradation', 'test-correlation-id');
-    
+    gracefulDegradationManager.degradeServiceLevel(
+      'Test degradation',
+      'test-correlation-id'
+    );
+
     middleware(mockReq, mockRes, mockNext);
 
     expect(mockRes.json).toHaveBeenCalledWith(
       expect.objectContaining({
         error: expect.objectContaining({
-          correlationId: 'unknown'
-        })
+          correlationId: 'unknown',
+        }),
       })
     );
-    
+
     // Reset for other tests
     gracefulDegradationManager.resetToFullService('test-correlation-id');
   });
@@ -444,14 +453,16 @@ describe('Integration with Circuit Breakers', () => {
     (circuitBreakerRegistry.getHealthStatus as any).mockReturnValue({
       'azure-openai': false,
       'health-check': false,
-      'metrics': true
+      metrics: true,
     });
 
     gracefulDegradationManager.autoAdjustServiceLevel('test-correlation-id');
 
     // Should degrade due to 2/3 circuit breakers being unhealthy
-    expect(gracefulDegradationManager.getCurrentServiceLevel().name).toBe('degraded');
-    
+    expect(gracefulDegradationManager.getCurrentServiceLevel().name).toBe(
+      'degraded'
+    );
+
     // Reset for other tests
     gracefulDegradationManager.resetToFullService('test-correlation-id');
   });
@@ -459,10 +470,13 @@ describe('Integration with Circuit Breakers', () => {
   it('should handle empty circuit breaker registry', () => {
     (circuitBreakerRegistry.getHealthStatus as any).mockReturnValue({});
 
-    const initialLevel = gracefulDegradationManager.getCurrentServiceLevel().name;
+    const initialLevel =
+      gracefulDegradationManager.getCurrentServiceLevel().name;
     gracefulDegradationManager.autoAdjustServiceLevel('test-correlation-id');
 
     // Should not change service level
-    expect(gracefulDegradationManager.getCurrentServiceLevel().name).toBe(initialLevel);
+    expect(gracefulDegradationManager.getCurrentServiceLevel().name).toBe(
+      initialLevel
+    );
   });
 });

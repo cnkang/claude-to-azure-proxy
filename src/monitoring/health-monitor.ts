@@ -46,9 +46,9 @@ export class HealthMonitor {
 
   async getHealthStatus(): Promise<HealthStatus> {
     const now = Date.now();
-    
+
     // Return cached result if within cache timeout
-    if (this.lastHealthCheck && (now - this.lastCheckTime) < this.cacheTimeout) {
+    if (this.lastHealthCheck && now - this.lastCheckTime < this.cacheTimeout) {
       return this.lastHealthCheck;
     }
 
@@ -73,7 +73,7 @@ export class HealthMonitor {
       timestamp: new Date().toISOString(),
       uptime,
       memory,
-      azureOpenAI: azureOpenAIStatus
+      azureOpenAI: azureOpenAIStatus,
     };
 
     this.lastHealthCheck = healthStatus;
@@ -86,41 +86,41 @@ export class HealthMonitor {
     const memUsage = process.memoryUsage();
     const totalMemory = memUsage.heapTotal || memUsage.rss;
     const usedMemory = memUsage.heapUsed;
-    
+
     return {
       used: usedMemory,
       total: totalMemory,
-      percentage: Math.round((usedMemory / totalMemory) * 100)
+      percentage: Math.round((usedMemory / totalMemory) * 100),
     };
   }
 
   private async checkAzureOpenAI(): Promise<HealthStatus['azureOpenAI']> {
     if (!this.axiosInstance) {
       return {
-        status: 'disconnected'
+        status: 'disconnected',
       };
     }
 
     try {
       const startTime = Date.now();
       await this.axiosInstance.get('/models', {
-        timeout: 5000
+        timeout: 5000,
       });
       const responseTime = Date.now() - startTime;
 
       return {
         status: 'connected',
-        responseTime
+        responseTime,
       };
     } catch (error) {
       return {
-        status: 'disconnected'
+        status: 'disconnected',
       };
     }
   }
 
   private determineHealthStatus(
-    memory: HealthStatus['memory'], 
+    memory: HealthStatus['memory'],
     azureOpenAI?: HealthStatus['azureOpenAI']
   ): boolean {
     // Check memory usage - unhealthy if over 90%
@@ -145,9 +145,10 @@ export class HealthMonitor {
 
     try {
       const axiosModule = (await import('axios')) as unknown as AxiosStatic;
-      const factory = typeof axiosModule.create === 'function'
-        ? axiosModule.create.bind(axiosModule)
-        : undefined;
+      const factory =
+        typeof axiosModule.create === 'function'
+          ? axiosModule.create.bind(axiosModule)
+          : undefined;
 
       if (!factory) {
         throw new Error('Axios create factory is unavailable');
@@ -162,8 +163,8 @@ export class HealthMonitor {
         baseURL: endpointUrl.toString(),
         headers: {
           'api-key': this.azureApiKey!,
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+        },
       });
     } catch {
       this.axiosInstance = undefined;
@@ -184,7 +185,7 @@ export class HealthMonitor {
     if (this.monitoringInterval) {
       clearInterval(this.monitoringInterval);
     }
-    
+
     this.monitoringInterval = setInterval(async () => {
       await this.getHealthStatus();
     }, intervalMs);
@@ -224,17 +225,22 @@ export const getHealthMonitor = (config?: ServerConfig): HealthMonitor => {
     healthMonitorInstance = new HealthMonitor(config);
   }
   if (!healthMonitorInstance) {
-    throw new Error('Health monitor not initialized. Call getHealthMonitor with config first.');
+    throw new Error(
+      'Health monitor not initialized. Call getHealthMonitor with config first.'
+    );
   }
   return healthMonitorInstance;
 };
 
 // For backward compatibility
 export const healthMonitor = {
-  registerHealthCheck: (check: any) => getHealthMonitor().registerHealthCheck(check),
-  startMonitoring: (intervalMs: number) => getHealthMonitor().startMonitoring(intervalMs),
+  registerHealthCheck: (check: any) =>
+    getHealthMonitor().registerHealthCheck(check),
+  startMonitoring: (intervalMs: number) =>
+    getHealthMonitor().startMonitoring(intervalMs),
   stopMonitoring: () => getHealthMonitor().stopMonitoring(),
-  checkHealth: (correlationId: string) => getHealthMonitor().checkHealth(correlationId),
+  checkHealth: (correlationId: string) =>
+    getHealthMonitor().checkHealth(correlationId),
   getHealthStatus: () => getHealthMonitor().getHealthStatus(),
-  triggerAlert: (alert: any) => getHealthMonitor().triggerAlert(alert)
+  triggerAlert: (alert: any) => getHealthMonitor().triggerAlert(alert),
 };

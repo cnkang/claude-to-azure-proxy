@@ -58,12 +58,12 @@ export enum AuthenticationResult {
   SUCCESS = 'success',
   MISSING_CREDENTIALS = 'missing_credentials',
   INVALID_CREDENTIALS = 'invalid_credentials',
-  RATE_LIMITED = 'rate_limited'
+  RATE_LIMITED = 'rate_limited',
 }
 
 export enum AuthenticationMethod {
   BEARER_TOKEN = 'bearer_token',
-  API_KEY_HEADER = 'api_key_header'
+  API_KEY_HEADER = 'api_key_header',
 }
 
 export interface AuthenticationRequest extends RequestWithCorrelationId {
@@ -214,9 +214,15 @@ export interface ResponseSizeLimits {
 }
 
 // Type guards for response validation
-export type AzureOpenAIResponseTypeGuard = (value: unknown) => value is AzureOpenAIResponse;
-export type AzureOpenAIStreamResponseTypeGuard = (value: unknown) => value is AzureOpenAIStreamResponse;
-export type AzureOpenAIErrorTypeGuard = (value: unknown) => value is AzureOpenAIError;
+export type AzureOpenAIResponseTypeGuard = (
+  value: unknown
+) => value is AzureOpenAIResponse;
+export type AzureOpenAIStreamResponseTypeGuard = (
+  value: unknown
+) => value is AzureOpenAIStreamResponse;
+export type AzureOpenAIErrorTypeGuard = (
+  value: unknown
+) => value is AzureOpenAIError;
 
 // Express middleware types
 export type AsyncMiddleware = (

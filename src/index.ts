@@ -1,37 +1,51 @@
 import express from 'express';
 import cors from 'cors';
 import { json, urlencoded } from 'express';
-import type { ServerConfig, RequestWithCorrelationId, ErrorResponse } from './types/index.js';
+import type {
+  ServerConfig,
+  RequestWithCorrelationId,
+  ErrorResponse,
+} from './types/index.js';
 import loadedConfig from './config/index.js';
 import type { Config } from './config/index.js';
-import { 
-  helmetConfig, 
-  globalRateLimit, 
-  correlationIdMiddleware, 
+import {
+  helmetConfig,
+  globalRateLimit,
+  correlationIdMiddleware,
   timeoutMiddleware,
-  corsOptions 
+  corsOptions,
 } from './middleware/security.js';
-import { requestLoggingMiddleware, errorLoggingMiddleware, logger } from './middleware/logging.js';
+import {
+  requestLoggingMiddleware,
+  errorLoggingMiddleware,
+  logger,
+} from './middleware/logging.js';
 import { enhancedErrorHandler } from './middleware/error-handler.js';
 import { secureAuthenticationMiddleware } from './middleware/authentication.js';
 import { healthCheckHandler } from './routes/health.js';
 import { modelsHandler } from './routes/models.js';
-import { completionsRateLimit, completionsHandler } from './routes/completions.js';
+import {
+  completionsRateLimit,
+  completionsHandler,
+} from './routes/completions.js';
 import { getHealthMonitor } from './monitoring/health-monitor.js';
-import { gracefulDegradationManager, checkFeatureAvailability } from './resilience/graceful-degradation.js';
+import {
+  gracefulDegradationManager,
+  checkFeatureAvailability,
+} from './resilience/graceful-degradation.js';
 
 /**
  * @fileoverview Main application entry point for the Claude-to-Azure OpenAI Proxy Server.
- * 
+ *
  * This module implements a hardened TypeScript Express server that acts as an API gateway,
  * translating requests from Claude Code CLI format to Azure OpenAI v1 API format.
  * The server provides comprehensive security, monitoring, and resilience features
  * designed for production deployment on AWS App Runner.
- * 
+ *
  * @author Claude-to-Azure Proxy Team
  * @version 1.0.0
  * @since 1.0.0
- * 
+ *
  * @example
  * ```typescript
  * // Basic usage
@@ -39,7 +53,7 @@ import { gracefulDegradationManager, checkFeatureAvailability } from './resilien
  * const server = new ProxyServer(config);
  * await server.start();
  * ```
- * 
+ *
  * @example
  * ```bash
  * # Environment variables required
@@ -53,7 +67,7 @@ import { gracefulDegradationManager, checkFeatureAvailability } from './resilien
 
 /**
  * Main proxy server class that handles HTTP requests and provides API gateway functionality.
- * 
+ *
  * This class implements a comprehensive Express.js server with the following features:
  * - Type-safe request/response handling with TypeScript
  * - Comprehensive security middleware (Helmet, CORS, rate limiting)
@@ -62,10 +76,10 @@ import { gracefulDegradationManager, checkFeatureAvailability } from './resilien
  * - Health monitoring and graceful degradation
  * - Structured logging with correlation IDs
  * - Graceful shutdown handling
- * 
+ *
  * @public
  * @class ProxyServer
- * 
+ *
  * @example
  * ```typescript
  * const config: ServerConfig = {
@@ -78,7 +92,7 @@ import { gracefulDegradationManager, checkFeatureAvailability } from './resilien
  *     model: 'gpt-4'
  *   }
  * };
- * 
+ *
  * const server = new ProxyServer(config);
  * await server.start();
  * ```
@@ -90,14 +104,14 @@ class ProxyServer {
    * @readonly
    */
   private readonly app: express.Application;
-  
+
   /**
    * Server configuration containing all necessary settings for operation.
    * @private
    * @readonly
    */
   private readonly config: ServerConfig;
-  
+
   /**
    * HTTP server instance, null until server is started.
    * @private
@@ -106,14 +120,14 @@ class ProxyServer {
 
   /**
    * Creates a new ProxyServer instance with the provided configuration.
-   * 
+   *
    * Initializes the Express application and sets up all middleware, routes,
    * and error handling. The server is not started until start() is called.
-   * 
+   *
    * @param config - Server configuration object containing all necessary settings
-   * 
+   *
    * @throws {Error} If configuration is invalid or middleware setup fails
-   * 
+   *
    * @example
    * ```typescript
    * const config: ServerConfig = {
@@ -139,14 +153,14 @@ class ProxyServer {
 
   /**
    * Sets up all Express middleware in the correct order for security and functionality.
-   * 
+   *
    * Middleware is applied in the following order:
    * 1. Trust proxy settings for AWS App Runner
    * 2. Security middleware (Helmet, CORS)
    * 3. Request processing (correlation ID, timeout, rate limiting)
    * 4. Body parsing with size limits
    * 5. Request logging
-   * 
+   *
    * @private
    * @throws {Error} If middleware configuration fails
    */
@@ -154,91 +168,98 @@ class ProxyServer {
     // Trust proxy for AWS App Runner and CloudFront
     // CloudFront adds multiple proxy layers, so we trust all proxies
     this.app.set('trust proxy', true);
-    
+
     // Disable unnecessary Express features
     this.app.disable('x-powered-by');
     this.app.disable('etag');
-    
+
     // Security middleware
     this.app.use(helmetConfig);
     this.app.use(cors(corsOptions));
-    
+
     // Request processing middleware
     this.app.use(correlationIdMiddleware);
     this.app.use(timeoutMiddleware(30000)); // 30 second timeout
     this.app.use(globalRateLimit);
-    
+
     // Body parsing with size limits
-    this.app.use(json({ 
-      limit: '10mb', // Allow larger payloads for AI requests with long context
-      strict: true,
-      type: 'application/json'
-    }));
-    
-    this.app.use(urlencoded({ 
-      extended: false, 
-      limit: '1mb',
-      parameterLimit: 100 // Limit number of parameters
-    }));
-    
+    this.app.use(
+      json({
+        limit: '10mb', // Allow larger payloads for AI requests with long context
+        strict: true,
+        type: 'application/json',
+      })
+    );
+
+    this.app.use(
+      urlencoded({
+        extended: false,
+        limit: '1mb',
+        parameterLimit: 100, // Limit number of parameters
+      })
+    );
+
     // Logging middleware
     this.app.use(requestLoggingMiddleware);
   }
 
   /**
    * Sets up all application routes with proper authentication and feature availability checks.
-   * 
+   *
    * Routes configured:
    * - GET /health - Health check endpoint for AWS App Runner
    * - GET / - Root endpoint with service information
    * - GET /v1/models - Claude API compatible models endpoint
    * - POST /v1/completions - Claude API compatible completions endpoint
    * - * - Catch-all for undefined routes (404 handler)
-   * 
+   *
    * All API routes require authentication and feature availability checks.
-   * 
+   *
    * @private
    * @throws {Error} If route configuration fails
    */
   private setupRoutes(): void {
     // Health check endpoint for AWS App Runner
     this.app.get('/health', healthCheckHandler(this.config));
-    
+
     // Root endpoint
     this.app.get('/', (req, res) => {
-      const correlationId = (req as unknown as RequestWithCorrelationId).correlationId;
+      const correlationId = (req as unknown as RequestWithCorrelationId)
+        .correlationId;
       logger.info('Root endpoint accessed', correlationId);
-      
+
       res.json({
         service: 'Claude-to-Azure Proxy',
         version: '1.0.0',
         status: 'running',
-        correlationId
+        correlationId,
       });
     });
-    
+
     // Claude API compatible endpoints with authentication and feature availability checks
-    this.app.get('/v1/models', 
-      secureAuthenticationMiddleware, 
+    this.app.get(
+      '/v1/models',
+      secureAuthenticationMiddleware,
       checkFeatureAvailability('models'),
       modelsHandler
     );
-    this.app.post('/v1/completions', 
-      secureAuthenticationMiddleware, 
+    this.app.post(
+      '/v1/completions',
+      secureAuthenticationMiddleware,
       checkFeatureAvailability('completions'),
       completionsRateLimit,
       completionsHandler(this.config)
     );
-    
+
     // Catch-all for undefined routes - temporarily disabled for Express 5.x compatibility
     // this.app.all('*', (req, res) => {
     //   const correlationId = (req as unknown as RequestWithCorrelationId).correlationId;
-    //   
+    //
     //   logger.warn('Route not found', correlationId, {
     //     method: req.method,
     //     url: req.originalUrl
     //   });
-    //   
+    //
     //   const errorResponse: ErrorResponse = {
     //     error: {
     //       type: 'not_found',
@@ -246,44 +267,44 @@ class ProxyServer {
     //       correlationId
     //     }
     //   };
-    //   
+    //
     //   res.status(404).json(errorResponse);
     // });
   }
 
   /**
    * Sets up comprehensive error handling middleware.
-   * 
+   *
    * Error handling includes:
    * - Error logging with correlation IDs
    * - Enhanced error handler with resilience features
    * - Proper HTTP status code mapping
    * - Error sanitization to prevent information leakage
-   * 
+   *
    * @private
    */
   private setupErrorHandling(): void {
     // Error logging middleware
     this.app.use(errorLoggingMiddleware);
-    
+
     // Enhanced error handler with resilience features
     this.app.use(enhancedErrorHandler);
   }
 
   /**
    * Starts the HTTP server and begins accepting connections.
-   * 
+   *
    * This method:
    * 1. Binds the server to the configured port on all interfaces (0.0.0.0)
    * 2. Sets up error handling for server startup failures
    * 3. Initializes health monitoring
    * 4. Logs successful startup with configuration details
-   * 
+   *
    * @public
    * @async
    * @returns Promise that resolves when server is successfully started
    * @throws {Error} If server fails to start or bind to port
-   * 
+   *
    * @example
    * ```typescript
    * const server = new ProxyServer(config);
@@ -303,12 +324,12 @@ class ProxyServer {
             port: this.config.port,
             nodeEnv: this.config.nodeEnv,
             azureEndpoint: this.config.azureOpenAI.endpoint,
-            model: this.config.azureOpenAI.model
+            model: this.config.azureOpenAI.model,
           });
 
           // Start health monitoring
           this.setupHealthMonitoring();
-          
+
           resolve();
         });
 
@@ -317,10 +338,9 @@ class ProxyServer {
           logger.error('Server error', '', { error: error.message });
           reject(error);
         });
-
       } catch (error) {
-        logger.error('Failed to start server', '', { 
-          error: error instanceof Error ? error.message : 'Unknown error' 
+        logger.error('Failed to start server', '', {
+          error: error instanceof Error ? error.message : 'Unknown error',
         });
         reject(error);
       }
@@ -329,21 +349,21 @@ class ProxyServer {
 
   /**
    * Sets up comprehensive health monitoring for the application.
-   * 
+   *
    * Registers health checks for:
    * - Memory usage monitoring with thresholds
    * - System resource monitoring
    * - External service connectivity
-   * 
+   *
    * Health checks run continuously and provide status information
    * for the /health endpoint and operational monitoring.
-   * 
+   *
    * @private
    */
   private setupHealthMonitoring(): void {
     // Initialize health monitor with config
     const healthMonitor = getHealthMonitor(this.config);
-    
+
     // Register basic health checks
     healthMonitor.registerHealthCheck({
       name: 'memory',
@@ -352,30 +372,30 @@ class ProxyServer {
       check: async () => {
         const memoryUsage = process.memoryUsage();
         const memoryUsagePercent = memoryUsage.heapUsed / memoryUsage.heapTotal;
-        
+
         if (memoryUsagePercent > 0.9) {
           return {
             status: 'unhealthy',
             responseTime: 0,
             message: `High memory usage: ${(memoryUsagePercent * 100).toFixed(1)}%`,
-            details: { memoryUsage, threshold: 0.9 }
+            details: { memoryUsage, threshold: 0.9 },
           };
         } else if (memoryUsagePercent > 0.8) {
           return {
             status: 'degraded',
             responseTime: 0,
             message: `Elevated memory usage: ${(memoryUsagePercent * 100).toFixed(1)}%`,
-            details: { memoryUsage, threshold: 0.8 }
+            details: { memoryUsage, threshold: 0.8 },
           };
         }
-        
+
         return {
           status: 'healthy',
           responseTime: 0,
           message: `Memory usage: ${(memoryUsagePercent * 100).toFixed(1)}%`,
-          details: { memoryUsage }
+          details: { memoryUsage },
         };
-      }
+      },
     });
 
     // Start continuous monitoring
@@ -384,17 +404,17 @@ class ProxyServer {
 
   /**
    * Gracefully stops the HTTP server and cleans up resources.
-   * 
+   *
    * This method:
    * 1. Stops health monitoring
    * 2. Closes the HTTP server gracefully
    * 3. Waits for existing connections to complete
    * 4. Forces shutdown after timeout if necessary
-   * 
+   *
    * @public
    * @async
    * @returns Promise that resolves when server is fully stopped
-   * 
+   *
    * @example
    * ```typescript
    * // Graceful shutdown
@@ -408,10 +428,10 @@ class ProxyServer {
     return new Promise((resolve) => {
       if (this.server) {
         logger.info('Shutting down server gracefully');
-        
+
         // Stop health monitoring
         getHealthMonitor().stopMonitoring();
-        
+
         this.server.close(() => {
           logger.info('Server shutdown complete');
           resolve();
@@ -433,13 +453,13 @@ class ProxyServer {
 const setupGracefulShutdown = (server: ProxyServer): void => {
   const shutdown = async (signal: string): Promise<void> => {
     logger.info(`Received ${signal}, starting graceful shutdown`);
-    
+
     try {
       await server.stop();
       process.exit(0);
     } catch (error) {
-      logger.error('Error during shutdown', '', { 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+      logger.error('Error during shutdown', '', {
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       process.exit(1);
     }
@@ -447,20 +467,20 @@ const setupGracefulShutdown = (server: ProxyServer): void => {
 
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT', () => shutdown('SIGINT'));
-  
+
   // Handle uncaught exceptions
   process.on('uncaughtException', (error: Error) => {
-    logger.error('Uncaught exception', '', { 
+    logger.error('Uncaught exception', '', {
       error: error.message,
-      stack: error.stack 
+      stack: error.stack,
     });
     process.exit(1);
   });
 
   // Handle unhandled promise rejections
   process.on('unhandledRejection', (reason: unknown) => {
-    logger.error('Unhandled promise rejection', '', { 
-      reason: reason instanceof Error ? reason.message : String(reason)
+    logger.error('Unhandled promise rejection', '', {
+      reason: reason instanceof Error ? reason.message : String(reason),
     });
     process.exit(1);
   });
@@ -474,8 +494,8 @@ const createServerConfig = (config: Config): ServerConfig => ({
   azureOpenAI: {
     endpoint: config.AZURE_OPENAI_ENDPOINT,
     apiKey: config.AZURE_OPENAI_API_KEY,
-    model: config.AZURE_OPENAI_MODEL
-  }
+    model: config.AZURE_OPENAI_MODEL,
+  },
 });
 
 // Main application entry point
@@ -483,19 +503,18 @@ const main = async (): Promise<void> => {
   try {
     // Load and validate configuration
     const config = createServerConfig(loadedConfig);
-    
+
     // Create and start server
     const server = new ProxyServer(config);
-    
+
     // Setup graceful shutdown
     setupGracefulShutdown(server);
-    
+
     // Start the server
     await server.start();
-    
   } catch (error) {
-    logger.error('Failed to start application', '', { 
-      error: error instanceof Error ? error.message : 'Unknown error' 
+    logger.error('Failed to start application', '', {
+      error: error instanceof Error ? error.message : 'Unknown error',
     });
     process.exit(1);
   }

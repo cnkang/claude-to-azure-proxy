@@ -4,9 +4,9 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { 
-  BaseError, 
-  isBaseError, 
+import {
+  BaseError,
+  isBaseError,
   isOperationalError,
   NetworkError,
   TimeoutError,
@@ -17,12 +17,15 @@ import {
   RateLimitError,
   CircuitBreakerError,
   ServiceUnavailableError,
-  InternalServerError
+  InternalServerError,
 } from '../errors/index.js';
 import { logger } from './logging.js';
 import { healthMonitor } from '../monitoring/health-monitor.js';
 import { gracefulDegradationManager } from '../resilience/graceful-degradation.js';
-import type { RequestWithCorrelationId, ErrorResponse } from '../types/index.js';
+import type {
+  RequestWithCorrelationId,
+  ErrorResponse,
+} from '../types/index.js';
 
 export interface ErrorHandlerConfig {
   readonly exposeStackTrace: boolean;
@@ -53,7 +56,7 @@ export class EnhancedErrorHandler {
       logErrors: true,
       enableGracefulDegradation: true,
       enableHealthMonitoring: true,
-      ...config
+      ...config,
     };
   }
 
@@ -86,7 +89,10 @@ export class EnhancedErrorHandler {
       res.status(errorResponse.statusCode).json(errorResponse.body);
 
       // Trigger health monitoring alerts if enabled
-      if (this.config.enableHealthMonitoring && this.shouldTriggerAlert(error)) {
+      if (
+        this.config.enableHealthMonitoring &&
+        this.shouldTriggerAlert(error)
+      ) {
         await this.triggerHealthAlert(error, context);
       }
 
@@ -94,7 +100,6 @@ export class EnhancedErrorHandler {
       if (this.config.enableGracefulDegradation) {
         this.adjustServiceLevel(error, context);
       }
-
     } catch (handlingError) {
       // Error occurred while handling the original error
       logger.critical(
@@ -102,7 +107,10 @@ export class EnhancedErrorHandler {
         context.correlationId,
         {
           originalError: error.message,
-          handlingError: handlingError instanceof Error ? handlingError.message : 'Unknown error'
+          handlingError:
+            handlingError instanceof Error
+              ? handlingError.message
+              : 'Unknown error',
         },
         handlingError as Error
       );
@@ -113,8 +121,8 @@ export class EnhancedErrorHandler {
           error: {
             type: 'internal_server_error',
             message: 'An unexpected error occurred',
-            correlationId: context.correlationId
-          }
+            correlationId: context.correlationId,
+          },
         });
       }
     }
@@ -124,8 +132,9 @@ export class EnhancedErrorHandler {
    * Create error context from request
    */
   private createErrorContext(req: Request): ErrorContext {
-    const correlationId = (req as RequestWithCorrelationId).correlationId || 'unknown';
-    
+    const correlationId =
+      (req as RequestWithCorrelationId).correlationId || 'unknown';
+
     return {
       correlationId,
       operation: req.route?.path,
@@ -133,7 +142,7 @@ export class EnhancedErrorHandler {
       ip: req.ip || req.connection.remoteAddress,
       method: req.method,
       url: req.originalUrl,
-      timestamp: new Date()
+      timestamp: new Date(),
     };
   }
 
@@ -146,13 +155,13 @@ export class EnhancedErrorHandler {
       method: context.method,
       url: context.url,
       userAgent: context.userAgent,
-      ip: context.ip
+      ip: context.ip,
     };
 
     if (isBaseError(error)) {
       // Use appropriate log level based on error type
       const logLevel = this.getLogLevel(error);
-      
+
       if (logLevel === 'critical') {
         logger.critical(error.message, context.correlationId, metadata, error);
       } else if (logLevel === 'error') {
@@ -179,15 +188,19 @@ export class EnhancedErrorHandler {
       return 'critical';
     }
 
-    if (error instanceof AuthenticationError || 
-        error instanceof AuthorizationError ||
-        error instanceof ValidationError ||
-        error instanceof RateLimitError) {
+    if (
+      error instanceof AuthenticationError ||
+      error instanceof AuthorizationError ||
+      error instanceof ValidationError ||
+      error instanceof RateLimitError
+    ) {
       return 'warn';
     }
 
-    if (error instanceof CircuitBreakerError ||
-        error instanceof ServiceUnavailableError) {
+    if (
+      error instanceof CircuitBreakerError ||
+      error instanceof ServiceUnavailableError
+    ) {
       return 'error';
     }
 
@@ -226,9 +239,11 @@ export class EnhancedErrorHandler {
     const body: ErrorResponse = {
       error: {
         type: error.errorCode.toLowerCase(),
-        message: error.isOperational ? error.message : 'An internal server error occurred',
-        correlationId: context.correlationId
-      }
+        message: error.isOperational
+          ? error.message
+          : 'An internal server error occurred',
+        correlationId: context.correlationId,
+      },
     };
 
     // Add additional fields for specific error types
@@ -237,7 +252,8 @@ export class EnhancedErrorHandler {
     }
 
     if (error instanceof CircuitBreakerError) {
-      (body.error as any).nextAttemptTime = error.nextAttemptTime?.toISOString();
+      (body.error as any).nextAttemptTime =
+        error.nextAttemptTime?.toISOString();
     }
 
     if (error instanceof ValidationError && error.field) {
@@ -265,7 +281,7 @@ export class EnhancedErrorHandler {
 
     // Map Node.js errors to appropriate HTTP status codes
     const errorCode = (error as any).code;
-    
+
     switch (errorCode) {
       case 'ECONNRESET':
       case 'ECONNREFUSED':
@@ -287,8 +303,8 @@ export class EnhancedErrorHandler {
       error: {
         type: errorType,
         message,
-        correlationId: context.correlationId
-      }
+        correlationId: context.correlationId,
+      },
     };
 
     return { statusCode, body };
@@ -304,26 +320,25 @@ export class EnhancedErrorHandler {
     // Try graceful degradation if enabled
     if (this.config.enableGracefulDegradation) {
       try {
-        const degradationResult = await gracefulDegradationManager.executeGracefulDegradation({
-          correlationId: context.correlationId,
-          operation: context.operation || 'unknown',
-          error,
-          attempt: 1
-        });
+        const degradationResult =
+          await gracefulDegradationManager.executeGracefulDegradation({
+            correlationId: context.correlationId,
+            operation: context.operation || 'unknown',
+            error,
+            attempt: 1,
+          });
 
         if (degradationResult.success) {
           return {
             statusCode: 200,
-            body: degradationResult.data as ErrorResponse
+            body: degradationResult.data as ErrorResponse,
           };
         }
       } catch (degradationError) {
         // Graceful degradation failed, continue with normal error handling
-        logger.warn(
-          'Graceful degradation failed',
-          context.correlationId,
-          { originalError: error.message }
-        );
+        logger.warn('Graceful degradation failed', context.correlationId, {
+          originalError: error.message,
+        });
       }
     }
 
@@ -331,8 +346,8 @@ export class EnhancedErrorHandler {
       error: {
         type: 'internal_server_error',
         message: 'An internal server error occurred',
-        correlationId: context.correlationId
-      }
+        correlationId: context.correlationId,
+      },
     };
 
     // Add error details in development
@@ -340,7 +355,7 @@ export class EnhancedErrorHandler {
       (body.error as any).details = {
         name: error.name,
         message: error.message,
-        stack: error.stack
+        stack: error.stack,
       };
     }
 
@@ -352,10 +367,16 @@ export class EnhancedErrorHandler {
    */
   private isKnownNodeError(error: Error): boolean {
     const knownCodes = [
-      'ECONNRESET', 'ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT',
-      'EMFILE', 'ENFILE', 'EACCES', 'EPERM'
+      'ECONNRESET',
+      'ECONNREFUSED',
+      'ENOTFOUND',
+      'ETIMEDOUT',
+      'EMFILE',
+      'ENFILE',
+      'EACCES',
+      'EPERM',
     ];
-    
+
     return knownCodes.includes((error as any).code);
   }
 
@@ -364,21 +385,27 @@ export class EnhancedErrorHandler {
    */
   private shouldTriggerAlert(error: Error): boolean {
     if (isBaseError(error)) {
-      return !error.isOperational || 
-             error instanceof CircuitBreakerError ||
-             error instanceof ServiceUnavailableError;
+      return (
+        !error.isOperational ||
+        error instanceof CircuitBreakerError ||
+        error instanceof ServiceUnavailableError
+      );
     }
-    
+
     return true; // Unknown errors should trigger alerts
   }
 
   /**
    * Trigger health monitoring alert
    */
-  private async triggerHealthAlert(error: Error, context: ErrorContext): Promise<void> {
+  private async triggerHealthAlert(
+    error: Error,
+    context: ErrorContext
+  ): Promise<void> {
     try {
-      const severity = isBaseError(error) && !error.isOperational ? 'critical' : 'high';
-      
+      const severity =
+        isBaseError(error) && !error.isOperational ? 'critical' : 'high';
+
       await healthMonitor.triggerAlert({
         id: `error_${context.correlationId}_${Date.now()}`,
         type: 'error_rate',
@@ -390,8 +417,8 @@ export class EnhancedErrorHandler {
           errorType: error.name,
           operation: context.operation,
           url: context.url,
-          method: context.method
-        }
+          method: context.method,
+        },
       });
     } catch (alertError) {
       logger.error(
@@ -465,7 +492,7 @@ export async function withErrorBoundary<T>(
       { operation: operationName },
       error as Error
     );
-    
+
     throw error;
   }
 }

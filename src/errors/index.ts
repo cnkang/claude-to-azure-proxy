@@ -30,21 +30,21 @@ export abstract class BaseError extends Error {
     metadata?: Record<string, unknown>
   ) {
     super(message);
-    
+
     // Maintain proper prototype chain
     Object.setPrototypeOf(this, new.target.prototype);
-    
+
     this.name = this.constructor.name;
     this.statusCode = statusCode;
     this.errorCode = errorCode;
     this.isOperational = isOperational;
-    
+
     this.context = {
       correlationId,
       timestamp: new Date().toISOString(),
       service: 'claude-to-azure-proxy',
       operation,
-      metadata: this.sanitizeMetadata(metadata)
+      metadata: this.sanitizeMetadata(metadata),
     };
 
     // Capture stack trace
@@ -56,22 +56,31 @@ export abstract class BaseError extends Error {
   /**
    * Sanitize metadata to prevent sensitive information leakage
    */
-  private sanitizeMetadata(metadata?: Record<string, unknown>): Record<string, unknown> | undefined {
+  private sanitizeMetadata(
+    metadata?: Record<string, unknown>
+  ): Record<string, unknown> | undefined {
     if (!metadata) return undefined;
 
     const sanitized = { ...metadata };
-    const sensitiveKeys = ['password', 'token', 'key', 'secret', 'authorization', 'apikey'];
-    
+    const sensitiveKeys = [
+      'password',
+      'token',
+      'key',
+      'secret',
+      'authorization',
+      'apikey',
+    ];
+
     for (const [key, value] of Object.entries(sanitized)) {
       const lowerKey = key.toLowerCase();
-      if (sensitiveKeys.some(sensitive => lowerKey.includes(sensitive))) {
+      if (sensitiveKeys.some((sensitive) => lowerKey.includes(sensitive))) {
         sanitized[key] = '[REDACTED]';
       } else if (typeof value === 'string' && value.length > 1000) {
         // Truncate very long strings
         sanitized[key] = value.substring(0, 1000) + '...[TRUNCATED]';
       }
     }
-    
+
     return sanitized;
   }
 
@@ -86,7 +95,7 @@ export abstract class BaseError extends Error {
       errorCode: this.errorCode,
       isOperational: this.isOperational,
       context: this.context,
-      stack: process.env.NODE_ENV === 'development' ? this.stack : undefined
+      stack: process.env.NODE_ENV === 'development' ? this.stack : undefined,
     };
   }
 
@@ -96,8 +105,10 @@ export abstract class BaseError extends Error {
   public toClientError(): Record<string, unknown> {
     return {
       type: this.errorCode,
-      message: this.isOperational ? this.message : 'An internal server error occurred',
-      correlationId: this.context.correlationId
+      message: this.isOperational
+        ? this.message
+        : 'An internal server error occurred',
+      correlationId: this.context.correlationId,
     };
   }
 }
@@ -112,7 +123,15 @@ export class AuthenticationError extends BaseError {
     operation?: string,
     metadata?: Record<string, unknown>
   ) {
-    super(message, 401, 'AUTHENTICATION_ERROR', correlationId, true, operation, metadata);
+    super(
+      message,
+      401,
+      'AUTHENTICATION_ERROR',
+      correlationId,
+      true,
+      operation,
+      metadata
+    );
   }
 }
 
@@ -126,7 +145,15 @@ export class AuthorizationError extends BaseError {
     operation?: string,
     metadata?: Record<string, unknown>
   ) {
-    super(message, 403, 'AUTHORIZATION_ERROR', correlationId, true, operation, metadata);
+    super(
+      message,
+      403,
+      'AUTHORIZATION_ERROR',
+      correlationId,
+      true,
+      operation,
+      metadata
+    );
   }
 }
 
@@ -144,7 +171,10 @@ export class ValidationError extends BaseError {
     value?: unknown,
     operation?: string
   ) {
-    super(message, 400, 'VALIDATION_ERROR', correlationId, true, operation, { field, value });
+    super(message, 400, 'VALIDATION_ERROR', correlationId, true, operation, {
+      field,
+      value,
+    });
     this.field = field;
     this.value = value;
   }
@@ -162,7 +192,9 @@ export class RateLimitError extends BaseError {
     retryAfter: number = 60,
     operation?: string
   ) {
-    super(message, 429, 'RATE_LIMIT_ERROR', correlationId, true, operation, { retryAfter });
+    super(message, 429, 'RATE_LIMIT_ERROR', correlationId, true, operation, {
+      retryAfter,
+    });
     this.retryAfter = retryAfter;
   }
 }
@@ -208,8 +240,8 @@ export class NetworkError extends BaseError {
     cause?: Error,
     operation?: string
   ) {
-    super(message, 503, 'NETWORK_ERROR', correlationId, true, operation, { 
-      cause: cause?.message 
+    super(message, 503, 'NETWORK_ERROR', correlationId, true, operation, {
+      cause: cause?.message,
     });
     this.cause = cause;
   }
@@ -227,7 +259,9 @@ export class TimeoutError extends BaseError {
     timeoutMs: number,
     operation?: string
   ) {
-    super(message, 408, 'TIMEOUT_ERROR', correlationId, true, operation, { timeoutMs });
+    super(message, 408, 'TIMEOUT_ERROR', correlationId, true, operation, {
+      timeoutMs,
+    });
     this.timeoutMs = timeoutMs;
   }
 }
@@ -246,10 +280,18 @@ export class CircuitBreakerError extends BaseError {
     nextAttemptTime?: Date,
     operation?: string
   ) {
-    super(message, 503, 'CIRCUIT_BREAKER_ERROR', correlationId, true, operation, {
-      state,
-      nextAttemptTime: nextAttemptTime?.toISOString()
-    });
+    super(
+      message,
+      503,
+      'CIRCUIT_BREAKER_ERROR',
+      correlationId,
+      true,
+      operation,
+      {
+        state,
+        nextAttemptTime: nextAttemptTime?.toISOString(),
+      }
+    );
     this.state = state;
     this.nextAttemptTime = nextAttemptTime;
   }
@@ -265,7 +307,15 @@ export class ConfigurationError extends BaseError {
     operation?: string,
     metadata?: Record<string, unknown>
   ) {
-    super(message, 500, 'CONFIGURATION_ERROR', correlationId, false, operation, metadata);
+    super(
+      message,
+      500,
+      'CONFIGURATION_ERROR',
+      correlationId,
+      false,
+      operation,
+      metadata
+    );
   }
 }
 
@@ -281,7 +331,15 @@ export class ServiceUnavailableError extends BaseError {
     retryAfter?: number,
     operation?: string
   ) {
-    super(message, 503, 'SERVICE_UNAVAILABLE_ERROR', correlationId, true, operation, { retryAfter });
+    super(
+      message,
+      503,
+      'SERVICE_UNAVAILABLE_ERROR',
+      correlationId,
+      true,
+      operation,
+      { retryAfter }
+    );
     this.retryAfter = retryAfter;
   }
 }
@@ -296,7 +354,15 @@ export class InternalServerError extends BaseError {
     operation?: string,
     metadata?: Record<string, unknown>
   ) {
-    super(message, 500, 'INTERNAL_SERVER_ERROR', correlationId, false, operation, metadata);
+    super(
+      message,
+      500,
+      'INTERNAL_SERVER_ERROR',
+      correlationId,
+      false,
+      operation,
+      metadata
+    );
   }
 }
 
@@ -326,7 +392,7 @@ export class ErrorFactory {
     const message = azureError?.error?.message || 'Unknown Azure OpenAI error';
     const type = azureError?.error?.type || 'unknown_error';
     const code = azureError?.error?.code;
-    
+
     // Map Azure error types to appropriate status codes
     let statusCode = 500;
     switch (type) {
@@ -353,7 +419,14 @@ export class ErrorFactory {
         statusCode = 500;
     }
 
-    return new AzureOpenAIError(message, statusCode, correlationId, type, code, operation);
+    return new AzureOpenAIError(
+      message,
+      statusCode,
+      correlationId,
+      type,
+      code,
+      operation
+    );
   }
 
   public static fromNetworkError(

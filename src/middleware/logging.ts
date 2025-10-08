@@ -83,13 +83,25 @@ const sanitizeData = (data: unknown): unknown => {
   if (typeof data === 'object') {
     const sanitized: Record<string, unknown> = {};
     const sensitiveKeys = [
-      'authorization', 'x-api-key', 'cookie', 'set-cookie', 'password', 
-      'token', 'key', 'secret', 'apikey', 'api_key', 'bearer', 'auth'
+      'authorization',
+      'x-api-key',
+      'cookie',
+      'set-cookie',
+      'password',
+      'token',
+      'key',
+      'secret',
+      'apikey',
+      'api_key',
+      'bearer',
+      'auth',
     ];
 
-    for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+    for (const [key, value] of Object.entries(
+      data as Record<string, unknown>
+    )) {
       const lowerKey = key.toLowerCase();
-      if (sensitiveKeys.some(sensitive => lowerKey.includes(sensitive))) {
+      if (sensitiveKeys.some((sensitive) => lowerKey.includes(sensitive))) {
         sanitized[key] = '[REDACTED]';
       } else {
         sanitized[key] = sanitizeData(value);
@@ -103,23 +115,33 @@ const sanitizeData = (data: unknown): unknown => {
 };
 
 const sanitizeString = (str: string): string => {
-  return str
-    // Email addresses
-    .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, '[EMAIL_REDACTED]')
-    // Credit card numbers
-    .replace(/\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b/g, '[CARD_REDACTED]')
-    // SSN
-    .replace(/\b\d{3}-\d{2}-\d{4}\b/g, '[SSN_REDACTED]')
-    // Bearer tokens
-    .replace(/Bearer\s+[A-Za-z0-9\-._~+/]+=*/gi, 'Bearer [TOKEN_REDACTED]')
-    // API keys
-    .replace(/api[_-]?key[:\s=]+[A-Za-z0-9\-._~+/]+=*/gi, 'api_key=[KEY_REDACTED]')
-    // Phone numbers
-    .replace(/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, '[PHONE_REDACTED]');
+  return (
+    str
+      // Email addresses
+      .replace(
+        /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,
+        '[EMAIL_REDACTED]'
+      )
+      // Credit card numbers
+      .replace(/\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b/g, '[CARD_REDACTED]')
+      // SSN
+      .replace(/\b\d{3}-\d{2}-\d{4}\b/g, '[SSN_REDACTED]')
+      // Bearer tokens
+      .replace(/Bearer\s+[A-Za-z0-9\-._~+/]+=*/gi, 'Bearer [TOKEN_REDACTED]')
+      // API keys
+      .replace(
+        /api[_-]?key[:\s=]+[A-Za-z0-9\-._~+/]+=*/gi,
+        'api_key=[KEY_REDACTED]'
+      )
+      // Phone numbers
+      .replace(/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, '[PHONE_REDACTED]')
+  );
 };
 
 // Sanitize sensitive headers and data
-const sanitizeHeaders = (headers: Record<string, unknown>): Record<string, unknown> => {
+const sanitizeHeaders = (
+  headers: Record<string, unknown>
+): Record<string, unknown> => {
   return sanitizeData(headers) as Record<string, unknown>;
 };
 
@@ -140,7 +162,7 @@ const createLogEntry = (
     message,
     service: 'claude-to-azure-proxy',
     version: '1.0.0',
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
   };
 
   if (metadata) {
@@ -166,7 +188,7 @@ const createLogEntry = (
 const createErrorLogEntry = (error: Error): ErrorLogEntry => {
   const errorEntry: ErrorLogEntry = {
     name: error.name,
-    message: sanitizeString(error.message)
+    message: sanitizeString(error.message),
   };
 
   if (isBaseError(error)) {
@@ -187,47 +209,66 @@ const createErrorLogEntry = (error: Error): ErrorLogEntry => {
 // Enhanced logger utility with comprehensive logging capabilities
 export const logger = {
   info: (
-    message: string, 
-    correlationId: string = '', 
+    message: string,
+    correlationId: string = '',
     metadata?: Record<string, unknown>,
     performance?: PerformanceLogEntry
   ): void => {
-    const entry = createLogEntry('info', message, correlationId, metadata, undefined, performance);
+    const entry = createLogEntry(
+      'info',
+      message,
+      correlationId,
+      metadata,
+      undefined,
+      performance
+    );
     console.log(JSON.stringify(entry));
   },
-  
+
   warn: (
-    message: string, 
-    correlationId: string = '', 
+    message: string,
+    correlationId: string = '',
     metadata?: Record<string, unknown>
   ): void => {
     const entry = createLogEntry('warn', message, correlationId, metadata);
     console.warn(JSON.stringify(entry));
   },
-  
+
   error: (
-    message: string, 
-    correlationId: string = '', 
+    message: string,
+    correlationId: string = '',
     metadata?: Record<string, unknown>,
     error?: Error
   ): void => {
-    const entry = createLogEntry('error', message, correlationId, metadata, error);
+    const entry = createLogEntry(
+      'error',
+      message,
+      correlationId,
+      metadata,
+      error
+    );
     console.error(JSON.stringify(entry));
   },
 
   critical: (
-    message: string, 
-    correlationId: string = '', 
+    message: string,
+    correlationId: string = '',
     metadata?: Record<string, unknown>,
     error?: Error
   ): void => {
-    const entry = createLogEntry('critical', message, correlationId, metadata, error);
+    const entry = createLogEntry(
+      'critical',
+      message,
+      correlationId,
+      metadata,
+      error
+    );
     console.error(JSON.stringify(entry));
   },
-  
+
   debug: (
-    message: string, 
-    correlationId: string = '', 
+    message: string,
+    correlationId: string = '',
     metadata?: Record<string, unknown>
   ): void => {
     if (process.env.NODE_ENV === 'development') {
@@ -248,9 +289,17 @@ export const logger = {
       event,
       severity,
       source,
-      details: sanitizeData(details) as Record<string, unknown>
+      details: sanitizeData(details) as Record<string, unknown>,
     };
-    const entry = createLogEntry('warn', message, correlationId, undefined, undefined, undefined, security);
+    const entry = createLogEntry(
+      'warn',
+      message,
+      correlationId,
+      undefined,
+      undefined,
+      undefined,
+      security
+    );
     console.warn(JSON.stringify(entry));
   },
 
@@ -267,10 +316,11 @@ export const logger = {
         component,
         status,
         responseTime,
-        details: sanitizeData(details)
-      }
+        details: sanitizeData(details),
+      },
     };
-    const level = status === 'healthy' ? 'info' : status === 'degraded' ? 'warn' : 'error';
+    const level =
+      status === 'healthy' ? 'info' : status === 'degraded' ? 'warn' : 'error';
     const entry = createLogEntry(level, message, correlationId, metadata);
     console.log(JSON.stringify(entry));
   },
@@ -283,11 +333,18 @@ export const logger = {
   ): void => {
     const performance: PerformanceLogEntry = {
       duration,
-      memoryUsage: process.memoryUsage()
+      memoryUsage: process.memoryUsage(),
     };
-    const entry = createLogEntry('info', message, correlationId, metadata, undefined, performance);
+    const entry = createLogEntry(
+      'info',
+      message,
+      correlationId,
+      metadata,
+      undefined,
+      performance
+    );
     console.log(JSON.stringify(entry));
-  }
+  },
 };
 
 // Request logging middleware
@@ -297,8 +354,9 @@ export const requestLoggingMiddleware = (
   next: NextFunction
 ): void => {
   const startTime = Date.now();
-  const correlationId = (req as unknown as RequestWithCorrelationId).correlationId;
-  
+  const correlationId = (req as unknown as RequestWithCorrelationId)
+    .correlationId;
+
   // Log incoming request
   const requestLog: RequestLogEntry = {
     timestamp: new Date().toISOString(),
@@ -313,12 +371,14 @@ export const requestLoggingMiddleware = (
       url: req.url,
       userAgent: req.headers['user-agent'],
       ip: req.ip || req.connection.remoteAddress || 'unknown',
-      contentLength: req.headers['content-length'] ? parseInt(req.headers['content-length'] as string, 10) : undefined
-    }
+      contentLength: req.headers['content-length']
+        ? parseInt(req.headers['content-length'] as string, 10)
+        : undefined,
+    },
   };
-  
+
   console.log(JSON.stringify(requestLog));
-  
+
   // Log response when finished
   res.on('finish', () => {
     const responseTime = Date.now() - startTime;
@@ -333,14 +393,16 @@ export const requestLoggingMiddleware = (
       request: requestLog.request,
       response: {
         statusCode: res.statusCode,
-        contentLength: res.get('content-length') ? parseInt(res.get('content-length') as string, 10) : undefined,
-        responseTime
-      }
+        contentLength: res.get('content-length')
+          ? parseInt(res.get('content-length') as string, 10)
+          : undefined,
+        responseTime,
+      },
     };
-    
+
     console.log(JSON.stringify(responseLog));
   });
-  
+
   next();
 };
 
@@ -351,20 +413,21 @@ export const errorLoggingMiddleware = (
   _res: Response,
   next: NextFunction
 ): void => {
-  const correlationId = (req as unknown as RequestWithCorrelationId).correlationId || 'unknown';
-  
+  const correlationId =
+    (req as unknown as RequestWithCorrelationId).correlationId || 'unknown';
+
   logger.error('Request error', correlationId, {
     error: {
       name: error.name,
       message: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
     },
     request: {
       method: req.method,
       url: req.url,
-      headers: sanitizeHeaders(req.headers as Record<string, unknown>)
-    }
+      headers: sanitizeHeaders(req.headers as Record<string, unknown>),
+    },
   });
-  
+
   next(error);
 };

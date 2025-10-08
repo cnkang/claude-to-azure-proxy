@@ -7,7 +7,7 @@ import {
   requestTimeoutMiddleware,
   sanitizeInput,
   validateContentType,
-  rateLimitConfig
+  rateLimitConfig,
 } from '../src/middleware/security.js';
 import type { RequestWithCorrelationId } from '../src/types/index.js';
 
@@ -21,28 +21,28 @@ describe('Security Middleware', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     jsonSpy = vi.fn().mockReturnThis();
     statusSpy = vi.fn().mockReturnThis();
     setSpy = vi.fn().mockReturnThis();
-    
+
     mockRequest = {
       headers: {},
       body: {},
       ip: '127.0.0.1',
       method: 'POST',
       url: '/v1/completions',
-      get: vi.fn()
+      get: vi.fn(),
     };
-    
+
     mockResponse = {
       status: statusSpy,
       json: jsonSpy,
       set: setSpy,
       setHeader: vi.fn().mockReturnThis(),
-      header: vi.fn().mockReturnThis()
+      header: vi.fn().mockReturnThis(),
     };
-    
+
     mockNext = vi.fn();
   });
 
@@ -57,14 +57,16 @@ describe('Security Middleware', () => {
       const req = mockRequest as RequestWithCorrelationId;
       expect(req.correlationId).toBeDefined();
       expect(typeof req.correlationId).toBe('string');
-      expect(req.correlationId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+      expect(req.correlationId).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+      );
       expect(mockNext).toHaveBeenCalledOnce();
     });
 
     it('should use existing correlation ID from header', () => {
       const existingId = 'existing-correlation-id';
       mockRequest.headers = {
-        'x-correlation-id': existingId
+        'x-correlation-id': existingId,
       };
 
       correlationIdMiddleware(
@@ -80,7 +82,7 @@ describe('Security Middleware', () => {
 
     it('should handle array header values', () => {
       mockRequest.headers = {
-        'x-correlation-id': ['first-id', 'second-id']
+        'x-correlation-id': ['first-id', 'second-id'],
       };
 
       correlationIdMiddleware(
@@ -96,7 +98,7 @@ describe('Security Middleware', () => {
 
     it('should generate new ID for invalid existing ID', () => {
       mockRequest.headers = {
-        'x-correlation-id': '' // Empty string
+        'x-correlation-id': '', // Empty string
       };
 
       correlationIdMiddleware(
@@ -123,8 +125,14 @@ describe('Security Middleware', () => {
       expect(setSpy).toHaveBeenCalledWith('X-Content-Type-Options', 'nosniff');
       expect(setSpy).toHaveBeenCalledWith('X-Frame-Options', 'DENY');
       expect(setSpy).toHaveBeenCalledWith('X-XSS-Protection', '1; mode=block');
-      expect(setSpy).toHaveBeenCalledWith('Referrer-Policy', 'strict-origin-when-cross-origin');
-      expect(setSpy).toHaveBeenCalledWith('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+      expect(setSpy).toHaveBeenCalledWith(
+        'Referrer-Policy',
+        'strict-origin-when-cross-origin'
+      );
+      expect(setSpy).toHaveBeenCalledWith(
+        'Permissions-Policy',
+        'geolocation=(), microphone=(), camera=()'
+      );
       expect(setSpy).toHaveBeenCalledWith(
         'Strict-Transport-Security',
         'max-age=31536000; includeSubDomains; preload'
@@ -159,14 +167,10 @@ describe('Security Middleware', () => {
     it('should allow requests within size limit', () => {
       const middleware = requestSizeMiddleware(1024); // 1KB limit
       mockRequest.headers = {
-        'content-length': '512'
+        'content-length': '512',
       };
 
-      middleware(
-        mockRequest as Request,
-        mockResponse as Response,
-        mockNext
-      );
+      middleware(mockRequest as Request, mockResponse as Response, mockNext);
 
       expect(mockNext).toHaveBeenCalledOnce();
       expect(statusSpy).not.toHaveBeenCalled();
@@ -175,15 +179,12 @@ describe('Security Middleware', () => {
     it('should reject requests exceeding size limit', () => {
       const middleware = requestSizeMiddleware(1024); // 1KB limit
       mockRequest.headers = {
-        'content-length': '2048'
+        'content-length': '2048',
       };
-      (mockRequest as RequestWithCorrelationId).correlationId = 'test-correlation-id';
+      (mockRequest as RequestWithCorrelationId).correlationId =
+        'test-correlation-id';
 
-      middleware(
-        mockRequest as Request,
-        mockResponse as Response,
-        mockNext
-      );
+      middleware(mockRequest as Request, mockResponse as Response, mockNext);
 
       expect(mockNext).not.toHaveBeenCalled();
       expect(statusSpy).toHaveBeenCalledWith(413);
@@ -191,8 +192,8 @@ describe('Security Middleware', () => {
         error: {
           type: 'request_too_large',
           message: 'Request size exceeds maximum allowed size of 1024 bytes',
-          correlationId: 'test-correlation-id'
-        }
+          correlationId: 'test-correlation-id',
+        },
       });
     });
 
@@ -200,11 +201,7 @@ describe('Security Middleware', () => {
       const middleware = requestSizeMiddleware(1024);
       mockRequest.headers = {}; // No content-length
 
-      middleware(
-        mockRequest as Request,
-        mockResponse as Response,
-        mockNext
-      );
+      middleware(mockRequest as Request, mockResponse as Response, mockNext);
 
       expect(mockNext).toHaveBeenCalledOnce();
     });
@@ -212,14 +209,10 @@ describe('Security Middleware', () => {
     it('should handle invalid content-length header', () => {
       const middleware = requestSizeMiddleware(1024);
       mockRequest.headers = {
-        'content-length': 'invalid'
+        'content-length': 'invalid',
       };
 
-      middleware(
-        mockRequest as Request,
-        mockResponse as Response,
-        mockNext
-      );
+      middleware(mockRequest as Request, mockResponse as Response, mockNext);
 
       expect(mockNext).toHaveBeenCalledOnce();
     });
@@ -227,14 +220,10 @@ describe('Security Middleware', () => {
     it('should use default size limit', () => {
       const middleware = requestSizeMiddleware(); // No limit specified
       mockRequest.headers = {
-        'content-length': '5242880' // 5MB - within default 10MB limit
+        'content-length': '5242880', // 5MB - within default 10MB limit
       };
 
-      middleware(
-        mockRequest as Request,
-        mockResponse as Response,
-        mockNext
-      );
+      middleware(mockRequest as Request, mockResponse as Response, mockNext);
 
       expect(mockNext).toHaveBeenCalledOnce(); // Should pass with default 10MB limit
     });
@@ -254,11 +243,7 @@ describe('Security Middleware', () => {
       const timeoutSpy = vi.fn();
       mockRequest.setTimeout = timeoutSpy;
 
-      middleware(
-        mockRequest as Request,
-        mockResponse as Response,
-        mockNext
-      );
+      middleware(mockRequest as Request, mockResponse as Response, mockNext);
 
       expect(timeoutSpy).toHaveBeenCalledWith(5000, expect.any(Function));
       expect(mockNext).toHaveBeenCalledOnce();
@@ -267,17 +252,14 @@ describe('Security Middleware', () => {
     it('should handle timeout callback', () => {
       const middleware = requestTimeoutMiddleware(5000);
       let timeoutCallback: Function;
-      
+
       mockRequest.setTimeout = vi.fn((timeout, callback) => {
         timeoutCallback = callback;
       });
-      (mockRequest as RequestWithCorrelationId).correlationId = 'test-correlation-id';
+      (mockRequest as RequestWithCorrelationId).correlationId =
+        'test-correlation-id';
 
-      middleware(
-        mockRequest as Request,
-        mockResponse as Response,
-        mockNext
-      );
+      middleware(mockRequest as Request, mockResponse as Response, mockNext);
 
       // Simulate timeout
       timeoutCallback!();
@@ -287,8 +269,8 @@ describe('Security Middleware', () => {
         error: {
           type: 'request_timeout',
           message: 'Request timed out after 5000ms',
-          correlationId: 'test-correlation-id'
-        }
+          correlationId: 'test-correlation-id',
+        },
       });
     });
 
@@ -297,11 +279,7 @@ describe('Security Middleware', () => {
       const timeoutSpy = vi.fn();
       mockRequest.setTimeout = timeoutSpy;
 
-      middleware(
-        mockRequest as Request,
-        mockResponse as Response,
-        mockNext
-      );
+      middleware(mockRequest as Request, mockResponse as Response, mockNext);
 
       expect(timeoutSpy).toHaveBeenCalledWith(30000, expect.any(Function)); // Default 30s
     });
@@ -310,11 +288,7 @@ describe('Security Middleware', () => {
       const middleware = requestTimeoutMiddleware(5000);
       delete (mockRequest as any).setTimeout;
 
-      middleware(
-        mockRequest as Request,
-        mockResponse as Response,
-        mockNext
-      );
+      middleware(mockRequest as Request, mockResponse as Response, mockNext);
 
       expect(mockNext).toHaveBeenCalledOnce();
     });
@@ -337,9 +311,9 @@ describe('Security Middleware', () => {
         name: '<script>alert("xss")</script>',
         description: 'Safe content',
         nested: {
-          value: 'Hello\x00World'
+          value: 'Hello\x00World',
         },
-        array: ['<img src=x onerror=alert(1)>', 'safe item']
+        array: ['<img src=x onerror=alert(1)>', 'safe item'],
       };
 
       const sanitized = sanitizeInput(maliciousObject) as any;
@@ -355,7 +329,7 @@ describe('Security Middleware', () => {
       const maliciousArray = [
         '<script>alert("xss")</script>',
         'Safe content',
-        { nested: 'Hello\x00World' }
+        { nested: 'Hello\x00World' },
       ];
 
       const sanitized = sanitizeInput(maliciousArray) as any[];
@@ -399,7 +373,8 @@ describe('Security Middleware', () => {
     });
 
     it('should remove data: URLs with base64', () => {
-      const input = '<img src="data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==">';
+      const input =
+        '<img src="data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==">';
       const sanitized = sanitizeInput(input);
 
       expect(sanitized).not.toContain('data:text/html;base64');
@@ -409,56 +384,66 @@ describe('Security Middleware', () => {
   describe('Content Type Validation', () => {
     it('should allow valid JSON content type', () => {
       mockRequest.headers = {
-        'content-type': 'application/json'
+        'content-type': 'application/json',
       };
 
-      const result = validateContentType(mockRequest as Request, ['application/json']);
+      const result = validateContentType(mockRequest as Request, [
+        'application/json',
+      ]);
       expect(result).toBe(true);
     });
 
     it('should allow valid content type with charset', () => {
       mockRequest.headers = {
-        'content-type': 'application/json; charset=utf-8'
+        'content-type': 'application/json; charset=utf-8',
       };
 
-      const result = validateContentType(mockRequest as Request, ['application/json']);
+      const result = validateContentType(mockRequest as Request, [
+        'application/json',
+      ]);
       expect(result).toBe(true);
     });
 
     it('should reject invalid content type', () => {
       mockRequest.headers = {
-        'content-type': 'text/plain'
+        'content-type': 'text/plain',
       };
 
-      const result = validateContentType(mockRequest as Request, ['application/json']);
+      const result = validateContentType(mockRequest as Request, [
+        'application/json',
+      ]);
       expect(result).toBe(false);
     });
 
     it('should handle missing content type', () => {
       mockRequest.headers = {};
 
-      const result = validateContentType(mockRequest as Request, ['application/json']);
+      const result = validateContentType(mockRequest as Request, [
+        'application/json',
+      ]);
       expect(result).toBe(false);
     });
 
     it('should handle multiple allowed content types', () => {
       mockRequest.headers = {
-        'content-type': 'application/x-www-form-urlencoded'
+        'content-type': 'application/x-www-form-urlencoded',
       };
 
-      const result = validateContentType(
-        mockRequest as Request,
-        ['application/json', 'application/x-www-form-urlencoded']
-      );
+      const result = validateContentType(mockRequest as Request, [
+        'application/json',
+        'application/x-www-form-urlencoded',
+      ]);
       expect(result).toBe(true);
     });
 
     it('should be case insensitive', () => {
       mockRequest.headers = {
-        'content-type': 'APPLICATION/JSON'
+        'content-type': 'APPLICATION/JSON',
       };
 
-      const result = validateContentType(mockRequest as Request, ['application/json']);
+      const result = validateContentType(mockRequest as Request, [
+        'application/json',
+      ]);
       expect(result).toBe(true);
     });
   });
@@ -506,9 +491,11 @@ describe('Security Middleware', () => {
         mockNext
       );
 
-      const cspCall = setSpy.mock.calls.find(call => call[0] === 'Content-Security-Policy');
+      const cspCall = setSpy.mock.calls.find(
+        (call) => call[0] === 'Content-Security-Policy'
+      );
       expect(cspCall).toBeDefined();
-      
+
       const cspValue = cspCall![1];
       expect(cspValue).toContain("default-src 'none'");
       expect(cspValue).toContain("script-src 'self'");
@@ -523,9 +510,11 @@ describe('Security Middleware', () => {
         mockNext
       );
 
-      const hstsCall = setSpy.mock.calls.find(call => call[0] === 'Strict-Transport-Security');
+      const hstsCall = setSpy.mock.calls.find(
+        (call) => call[0] === 'Strict-Transport-Security'
+      );
       expect(hstsCall).toBeDefined();
-      
+
       const hstsValue = hstsCall![1];
       expect(hstsValue).toContain('max-age=31536000');
       expect(hstsValue).toContain('includeSubDomains');
@@ -539,9 +528,11 @@ describe('Security Middleware', () => {
         mockNext
       );
 
-      const permissionsCall = setSpy.mock.calls.find(call => call[0] === 'Permissions-Policy');
+      const permissionsCall = setSpy.mock.calls.find(
+        (call) => call[0] === 'Permissions-Policy'
+      );
       expect(permissionsCall).toBeDefined();
-      
+
       const permissionsValue = permissionsCall![1];
       expect(permissionsValue).toContain('geolocation=()');
       expect(permissionsValue).toContain('microphone=()');
@@ -553,7 +544,7 @@ describe('Security Middleware', () => {
     it('should handle malformed headers gracefully', () => {
       mockRequest.headers = {
         'content-length': 'not-a-number',
-        'x-correlation-id': null as any
+        'x-correlation-id': null as any,
       };
 
       correlationIdMiddleware(
@@ -563,13 +554,15 @@ describe('Security Middleware', () => {
       );
 
       expect(mockNext).toHaveBeenCalledOnce();
-      expect((mockRequest as RequestWithCorrelationId).correlationId).toBeDefined();
+      expect(
+        (mockRequest as RequestWithCorrelationId).correlationId
+      ).toBeDefined();
     });
 
     it('should handle very large correlation IDs', () => {
       const largeId = 'x'.repeat(1000);
       mockRequest.headers = {
-        'x-correlation-id': largeId
+        'x-correlation-id': largeId,
       };
 
       correlationIdMiddleware(
@@ -581,7 +574,9 @@ describe('Security Middleware', () => {
       const req = mockRequest as RequestWithCorrelationId;
       // Should generate new UUID for very large ones
       expect(req.correlationId).not.toBe(largeId);
-      expect(req.correlationId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+      expect(req.correlationId).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+      );
     });
 
     it('should handle special characters in input sanitization', () => {
@@ -598,7 +593,7 @@ describe('Security Middleware', () => {
     it('should handle deeply nested objects in sanitization', () => {
       const deepObject: any = { level1: {} };
       let current = deepObject.level1;
-      
+
       // Create 10 levels of nesting
       for (let i = 2; i <= 10; i++) {
         current[`level${i}`] = {};
@@ -607,13 +602,13 @@ describe('Security Middleware', () => {
       current.value = '<script>alert("deep")</script>';
 
       const sanitized = sanitizeInput(deepObject) as any;
-      
+
       // Navigate to the deep value
       let deepValue = sanitized.level1;
       for (let i = 2; i <= 10; i++) {
         deepValue = deepValue[`level${i}`];
       }
-      
+
       expect(deepValue.value).not.toContain('<script>');
     });
   });

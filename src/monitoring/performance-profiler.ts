@@ -1,10 +1,10 @@
 /**
  * @fileoverview Performance profiling and memory leak detection utilities.
- * 
+ *
  * This module provides comprehensive performance monitoring capabilities
  * including CPU profiling, memory leak detection, and performance metrics
  * collection with TypeScript type safety.
- * 
+ *
  * @author Claude-to-Azure Proxy Team
  * @version 1.0.0
  * @since 1.0.0
@@ -15,7 +15,7 @@ import { logger } from '../middleware/logging.js';
 
 /**
  * Performance profile data interface.
- * 
+ *
  * @public
  * @interface PerformanceProfile
  */
@@ -38,7 +38,7 @@ export interface PerformanceProfile {
 
 /**
  * CPU profile interface.
- * 
+ *
  * @public
  * @interface CPUProfile
  */
@@ -53,7 +53,7 @@ export interface CPUProfile {
 
 /**
  * Memory profile interface.
- * 
+ *
  * @public
  * @interface MemoryProfile
  */
@@ -74,7 +74,7 @@ export interface MemoryProfile {
 
 /**
  * Event loop profile interface.
- * 
+ *
  * @public
  * @interface EventLoopProfile
  */
@@ -89,7 +89,7 @@ export interface EventLoopProfile {
 
 /**
  * Garbage collection profile interface.
- * 
+ *
  * @public
  * @interface GCProfile
  */
@@ -104,7 +104,7 @@ export interface GCProfile {
 
 /**
  * Performance mark interface.
- * 
+ *
  * @public
  * @interface PerformanceMark
  */
@@ -119,7 +119,7 @@ export interface PerformanceMark {
 
 /**
  * Performance measure interface.
- * 
+ *
  * @public
  * @interface PerformanceMeasure
  */
@@ -134,7 +134,7 @@ export interface PerformanceMeasure {
 
 /**
  * Memory leak detection result interface.
- * 
+ *
  * @public
  * @interface MemoryLeakDetection
  */
@@ -153,7 +153,7 @@ export interface MemoryLeakDetection {
 
 /**
  * Memory sample interface.
- * 
+ *
  * @public
  * @interface MemorySample
  */
@@ -170,7 +170,7 @@ export interface MemorySample {
 
 /**
  * Performance profiler class with comprehensive monitoring capabilities.
- * 
+ *
  * @public
  * @class PerformanceProfiler
  */
@@ -185,7 +185,7 @@ export class PerformanceProfiler {
 
   /**
    * Creates a new performance profiler.
-   * 
+   *
    * @param maxSamples - Maximum number of memory samples to keep (default: 100)
    * @param sampleInterval - Memory sampling interval in milliseconds (default: 5000)
    */
@@ -196,23 +196,23 @@ export class PerformanceProfiler {
 
   /**
    * Starts performance profiling.
-   * 
+   *
    * @public
    */
   public startProfiling(): void {
     this.setupPerformanceObserver();
     this.setupGCObserver();
     this.startMemoryMonitoring();
-    
+
     logger.info('Performance profiling started', '', {
       maxSamples: this.maxSamples,
-      sampleInterval: this.sampleInterval
+      sampleInterval: this.sampleInterval,
     });
   }
 
   /**
    * Stops performance profiling.
-   * 
+   *
    * @public
    */
   public stopProfiling(): void {
@@ -236,7 +236,7 @@ export class PerformanceProfiler {
 
   /**
    * Gets current performance profile.
-   * 
+   *
    * @public
    * @returns Current performance profile
    */
@@ -249,7 +249,7 @@ export class PerformanceProfiler {
       timestamp: new Date().toISOString(),
       cpu: {
         user: cpuUsage.user,
-        system: cpuUsage.system
+        system: cpuUsage.system,
       },
       memory: {
         rss: memoryUsage.rss,
@@ -257,22 +257,22 @@ export class PerformanceProfiler {
         heapUsed: memoryUsage.heapUsed,
         external: memoryUsage.external,
         arrayBuffers: memoryUsage.arrayBuffers,
-        heapUsagePercent: (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100
+        heapUsagePercent: (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100,
       },
       eventLoop: {
         lag: eventLoopLag,
         activeHandles: (process as any)._getActiveHandles().length,
-        activeRequests: (process as any)._getActiveRequests().length
+        activeRequests: (process as any)._getActiveRequests().length,
       },
       gc: [...this.gcProfiles],
       marks: this.getPerformanceMarks(),
-      measures: this.getPerformanceMeasures()
+      measures: this.getPerformanceMeasures(),
     };
   }
 
   /**
    * Detects potential memory leaks based on memory growth patterns.
-   * 
+   *
    * @public
    * @returns Memory leak detection results
    */
@@ -283,7 +283,7 @@ export class PerformanceProfiler {
         growthRate: 0,
         samples: [...this.memorySamples],
         timestamp: new Date().toISOString(),
-        recommendations: ['Insufficient data - need at least 10 samples']
+        recommendations: ['Insufficient data - need at least 10 samples'],
       };
     }
 
@@ -293,12 +293,18 @@ export class PerformanceProfiler {
     const leakDetected = growthRate > leakThreshold;
 
     const recommendations: string[] = [];
-    
+
     if (leakDetected) {
       recommendations.push('Potential memory leak detected');
-      recommendations.push('Review object creation and cleanup in request handlers');
-      recommendations.push('Check for unclosed resources (files, connections, timers)');
-      recommendations.push('Consider using heap snapshots for detailed analysis');
+      recommendations.push(
+        'Review object creation and cleanup in request handlers'
+      );
+      recommendations.push(
+        'Check for unclosed resources (files, connections, timers)'
+      );
+      recommendations.push(
+        'Consider using heap snapshots for detailed analysis'
+      );
     }
 
     if (growthRate > leakThreshold / 2) {
@@ -311,13 +317,13 @@ export class PerformanceProfiler {
       growthRate,
       samples: [...this.memorySamples],
       timestamp: new Date().toISOString(),
-      recommendations
+      recommendations,
     };
   }
 
   /**
    * Creates a performance mark.
-   * 
+   *
    * @public
    * @param name - Mark name
    */
@@ -327,7 +333,7 @@ export class PerformanceProfiler {
 
   /**
    * Creates a performance measure between two marks.
-   * 
+   *
    * @public
    * @param name - Measure name
    * @param startMark - Start mark name
@@ -339,7 +345,7 @@ export class PerformanceProfiler {
 
   /**
    * Clears all performance marks and measures.
-   * 
+   *
    * @public
    */
   public clearPerformanceData(): void {
@@ -351,7 +357,7 @@ export class PerformanceProfiler {
 
   /**
    * Sets up performance observer for marks and measures.
-   * 
+   *
    * @private
    */
   private setupPerformanceObserver(): void {
@@ -362,7 +368,7 @@ export class PerformanceProfiler {
           name: entry.name,
           type: entry.entryType,
           startTime: entry.startTime,
-          duration: entry.duration
+          duration: entry.duration,
         });
       }
     });
@@ -372,7 +378,7 @@ export class PerformanceProfiler {
 
   /**
    * Sets up garbage collection observer.
-   * 
+   *
    * @private
    */
   private setupGCObserver(): void {
@@ -383,11 +389,11 @@ export class PerformanceProfiler {
           const gcProfile: GCProfile = {
             kind: (entry as any).kind || 0,
             duration: entry.duration * 1000000, // Convert to nanoseconds
-            timestamp: entry.startTime
+            timestamp: entry.startTime,
           };
 
           this.gcProfiles.push(gcProfile);
-          
+
           // Keep only recent GC profiles
           if (this.gcProfiles.length > this.maxSamples) {
             this.gcProfiles.shift();
@@ -396,7 +402,7 @@ export class PerformanceProfiler {
           logger.debug('GC event recorded', '', {
             kind: gcProfile.kind,
             duration: gcProfile.duration,
-            timestamp: gcProfile.timestamp
+            timestamp: gcProfile.timestamp,
           });
         }
       });
@@ -404,14 +410,14 @@ export class PerformanceProfiler {
       this.gcObserver.observe({ entryTypes: ['gc'] });
     } catch (error) {
       logger.warn('GC observer not available', '', {
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
 
   /**
    * Starts memory monitoring with periodic sampling.
-   * 
+   *
    * @private
    */
   private startMemoryMonitoring(): void {
@@ -421,7 +427,7 @@ export class PerformanceProfiler {
         timestamp: Date.now(),
         heapUsed: memoryUsage.heapUsed,
         heapTotal: memoryUsage.heapTotal,
-        rss: memoryUsage.rss
+        rss: memoryUsage.rss,
       };
 
       this.memorySamples.push(sample);
@@ -432,12 +438,13 @@ export class PerformanceProfiler {
       }
 
       // Log memory usage if it's high
-      const heapUsagePercent = (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
+      const heapUsagePercent =
+        (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
       if (heapUsagePercent > 80) {
         logger.warn('High memory usage detected', '', {
           heapUsagePercent: heapUsagePercent.toFixed(1),
           heapUsed: memoryUsage.heapUsed,
-          heapTotal: memoryUsage.heapTotal
+          heapTotal: memoryUsage.heapTotal,
         });
       }
     }, this.sampleInterval);
@@ -445,7 +452,7 @@ export class PerformanceProfiler {
 
   /**
    * Measures current event loop lag.
-   * 
+   *
    * @private
    * @returns Event loop lag in milliseconds
    */
@@ -457,14 +464,14 @@ export class PerformanceProfiler {
         resolve(lag);
       });
     }) as any; // Simplified for synchronous usage
-    
+
     // Simplified synchronous approximation
     return 0;
   }
 
   /**
    * Calculates memory growth rate using linear regression.
-   * 
+   *
    * @private
    * @returns Memory growth rate in bytes per sample interval
    */
@@ -482,7 +489,7 @@ export class PerformanceProfiler {
     for (let i = 0; i < n; i++) {
       const x = i;
       const y = this.memorySamples[i]!.heapUsed;
-      
+
       sumX += x;
       sumY += y;
       sumXY += x * y;
@@ -495,29 +502,29 @@ export class PerformanceProfiler {
 
   /**
    * Gets current performance marks.
-   * 
+   *
    * @private
    * @returns Array of performance marks
    */
   private getPerformanceMarks(): PerformanceMark[] {
-    return performance.getEntriesByType('mark').map(entry => ({
+    return performance.getEntriesByType('mark').map((entry) => ({
       name: entry.name,
       startTime: entry.startTime,
-      duration: entry.duration
+      duration: entry.duration,
     }));
   }
 
   /**
    * Gets current performance measures.
-   * 
+   *
    * @private
    * @returns Array of performance measures
    */
   private getPerformanceMeasures(): PerformanceMeasure[] {
-    return performance.getEntriesByType('measure').map(entry => ({
+    return performance.getEntriesByType('measure').map((entry) => ({
       name: entry.name,
       startTime: entry.startTime,
-      duration: entry.duration
+      duration: entry.duration,
     }));
   }
 }
@@ -527,12 +534,12 @@ export const performanceProfiler = new PerformanceProfiler();
 
 /**
  * Utility function to profile an async operation.
- * 
+ *
  * @public
  * @param name - Operation name
  * @param operation - Async operation to profile
  * @returns Promise resolving to operation result
- * 
+ *
  * @example
  * ```typescript
  * const result = await profileOperation('database_query', async () => {
@@ -549,7 +556,7 @@ export async function profileOperation<T>(
   const measureName = `${name}_duration`;
 
   performanceProfiler.mark(startMark);
-  
+
   try {
     const result = await operation();
     performanceProfiler.mark(endMark);
@@ -564,11 +571,11 @@ export async function profileOperation<T>(
 
 /**
  * Utility function to start memory leak detection monitoring.
- * 
+ *
  * @public
  * @param intervalMs - Check interval in milliseconds (default: 60000)
  * @returns Function to stop monitoring
- * 
+ *
  * @example
  * ```typescript
  * const stopMonitoring = startMemoryLeakDetection(30000);
@@ -576,19 +583,22 @@ export async function profileOperation<T>(
  * stopMonitoring();
  * ```
  */
-export function startMemoryLeakDetection(intervalMs: number = 60000): () => void {
+export function startMemoryLeakDetection(
+  intervalMs: number = 60000
+): () => void {
   const interval = setInterval(() => {
     const detection = performanceProfiler.detectMemoryLeaks();
-    
+
     if (detection.leakDetected) {
       logger.error('Memory leak detected', '', {
         growthRate: detection.growthRate,
-        recommendations: detection.recommendations
+        recommendations: detection.recommendations,
       });
-    } else if (detection.growthRate > 512 * 1024) { // 512KB threshold
+    } else if (detection.growthRate > 512 * 1024) {
+      // 512KB threshold
       logger.warn('Elevated memory growth detected', '', {
         growthRate: detection.growthRate,
-        recommendations: detection.recommendations
+        recommendations: detection.recommendations,
       });
     }
   }, intervalMs);

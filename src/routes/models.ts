@@ -29,9 +29,9 @@ const STATIC_MODELS_RESPONSE: ClaudeModelsResponse = {
       id: 'gpt-5-codex',
       object: 'model',
       created: 1640995200, // Unix timestamp
-      owned_by: 'openai'
-    }
-  ]
+      owned_by: 'openai',
+    },
+  ],
 } as const;
 
 /**
@@ -40,30 +40,30 @@ const STATIC_MODELS_RESPONSE: ClaudeModelsResponse = {
  * Model name is gpt-5-codex but response format follows Claude API standards
  */
 export const modelsHandler = (req: Request, res: Response): void => {
-  const correlationId = (req as unknown as RequestWithCorrelationId).correlationId;
-  
+  const correlationId = (req as unknown as RequestWithCorrelationId)
+    .correlationId;
+
   try {
     logger.info('Models endpoint accessed', correlationId, {
       ip: req.ip,
-      userAgent: req.headers['user-agent']
+      userAgent: req.headers['user-agent'],
     });
-    
+
     // Return static models response
     res.status(200).json(STATIC_MODELS_RESPONSE);
-    
   } catch (error) {
     logger.error('Models endpoint error', correlationId, {
       error: error instanceof Error ? error.message : 'Unknown error',
-      ip: req.ip
+      ip: req.ip,
     });
-    
+
     // Return error response in Claude API format
     res.status(500).json({
       error: {
         type: 'internal_server_error',
         message: 'Failed to retrieve models',
-        correlationId
-      }
+        correlationId,
+      },
     });
   }
 };

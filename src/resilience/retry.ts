@@ -3,7 +3,11 @@
  * Provides resilient operation execution with configurable retry strategies
  */
 
-import { TimeoutError, NetworkError, AzureOpenAIError } from '../errors/index.js';
+import {
+  TimeoutError,
+  NetworkError,
+  AzureOpenAIError,
+} from '../errors/index.js';
 
 export interface RetryConfig {
   readonly maxAttempts: number;
@@ -62,9 +66,9 @@ export class RetryStrategy {
         'ECONNRESET',
         'ENOTFOUND',
         'ECONNREFUSED',
-        'ETIMEDOUT'
+        'ETIMEDOUT',
       ],
-      ...config
+      ...config,
     };
 
     this.metrics = {
@@ -72,7 +76,7 @@ export class RetryStrategy {
       successfulAttempts: 0,
       failedAttempts: 0,
       averageAttempts: 0,
-      averageDurationMs: 0
+      averageDurationMs: 0,
     };
   }
 
@@ -96,18 +100,23 @@ export class RetryStrategy {
 
       const attemptStartTime = Date.now();
       const recordedDelay = attempt === 1 ? 0 : delayBeforeAttempt;
-      
+
       try {
         // Add timeout wrapper if configured
-        const result = this.config.timeoutMs 
-          ? await this.withTimeout(operation(), this.config.timeoutMs, correlationId, operationName)
+        const result = this.config.timeoutMs
+          ? await this.withTimeout(
+              operation(),
+              this.config.timeoutMs,
+              correlationId,
+              operationName
+            )
           : await operation();
 
         // Success - record attempt and return
         attempts.push({
           attemptNumber: attempt,
           delayMs: recordedDelay,
-          timestamp: new Date(attemptStartTime)
+          timestamp: new Date(attemptStartTime),
         });
 
         const totalDurationMs = Date.now() - startTime;
@@ -117,9 +126,8 @@ export class RetryStrategy {
           success: true,
           data: result,
           attempts,
-          totalDurationMs
+          totalDurationMs,
         };
-
       } catch (error) {
         lastError = error as Error;
 
@@ -127,11 +135,14 @@ export class RetryStrategy {
           attemptNumber: attempt,
           delayMs: recordedDelay,
           error: lastError,
-          timestamp: new Date(attemptStartTime)
+          timestamp: new Date(attemptStartTime),
         });
 
         // Check if error is retryable
-        if (!this.isRetryableError(lastError) || attempt === this.config.maxAttempts) {
+        if (
+          !this.isRetryableError(lastError) ||
+          attempt === this.config.maxAttempts
+        ) {
           break;
         }
 
@@ -147,7 +158,7 @@ export class RetryStrategy {
       success: false,
       error: lastError,
       attempts,
-      totalDurationMs
+      totalDurationMs,
     };
   }
 
@@ -159,10 +170,13 @@ export class RetryStrategy {
     const errorMessage = error.message || '';
     const errorCode = (error as any).code;
 
-    return this.config.retryableErrors.some(retryableError => 
-      errorName.includes(retryableError) ||
-      errorMessage.includes(retryableError) ||
-      (errorCode && typeof errorCode === 'string' && errorCode.includes(retryableError))
+    return this.config.retryableErrors.some(
+      (retryableError) =>
+        errorName.includes(retryableError) ||
+        errorMessage.includes(retryableError) ||
+        (errorCode &&
+          typeof errorCode === 'string' &&
+          errorCode.includes(retryableError))
     );
   }
 
@@ -171,14 +185,16 @@ export class RetryStrategy {
    */
   private calculateDelay(attemptNumber: number): number {
     // Exponential backoff: baseDelay * (multiplier ^ (attempt - 1))
-    const exponentialDelay = this.config.baseDelayMs * 
+    const exponentialDelay =
+      this.config.baseDelayMs *
       Math.pow(this.config.backoffMultiplier, attemptNumber - 1);
 
     // Apply maximum delay limit
     const cappedDelay = Math.min(exponentialDelay, this.config.maxDelayMs);
 
     // Add jitter to prevent thundering herd
-    const jitter = cappedDelay * this.config.jitterFactor * (Math.random() - 0.5);
+    const jitter =
+      cappedDelay * this.config.jitterFactor * (Math.random() - 0.5);
     const finalDelay = Math.max(0, cappedDelay + jitter);
 
     return Math.round(finalDelay);
@@ -188,7 +204,7 @@ export class RetryStrategy {
    * Delay execution for specified milliseconds
    */
   private async delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
@@ -202,12 +218,14 @@ export class RetryStrategy {
   ): Promise<T> {
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => {
-        reject(new TimeoutError(
-          `Operation timed out after ${timeoutMs}ms`,
-          correlationId,
-          timeoutMs,
-          operationName
-        ));
+        reject(
+          new TimeoutError(
+            `Operation timed out after ${timeoutMs}ms`,
+            correlationId,
+            timeoutMs,
+            operationName
+          )
+        );
       }, timeoutMs);
     });
 
@@ -217,15 +235,28 @@ export class RetryStrategy {
   /**
    * Update retry metrics
    */
-  private updateMetrics(success: boolean, attempts: number, durationMs: number): void {
-    const totalOperations = this.metrics.successfulAttempts + this.metrics.failedAttempts + 1;
-    
+  private updateMetrics(
+    success: boolean,
+    attempts: number,
+    durationMs: number
+  ): void {
+    const totalOperations =
+      this.metrics.successfulAttempts + this.metrics.failedAttempts + 1;
+
     this.metrics = {
       totalAttempts: this.metrics.totalAttempts + attempts,
-      successfulAttempts: success ? this.metrics.successfulAttempts + 1 : this.metrics.successfulAttempts,
-      failedAttempts: success ? this.metrics.failedAttempts : this.metrics.failedAttempts + 1,
-      averageAttempts: (this.metrics.averageAttempts * (totalOperations - 1) + attempts) / totalOperations,
-      averageDurationMs: (this.metrics.averageDurationMs * (totalOperations - 1) + durationMs) / totalOperations
+      successfulAttempts: success
+        ? this.metrics.successfulAttempts + 1
+        : this.metrics.successfulAttempts,
+      failedAttempts: success
+        ? this.metrics.failedAttempts
+        : this.metrics.failedAttempts + 1,
+      averageAttempts:
+        (this.metrics.averageAttempts * (totalOperations - 1) + attempts) /
+        totalOperations,
+      averageDurationMs:
+        (this.metrics.averageDurationMs * (totalOperations - 1) + durationMs) /
+        totalOperations,
     };
   }
 
@@ -245,7 +276,7 @@ export class RetryStrategy {
       successfulAttempts: 0,
       failedAttempts: 0,
       averageAttempts: 0,
-      averageDurationMs: 0
+      averageDurationMs: 0,
     };
   }
 
@@ -286,9 +317,9 @@ export class RetryStrategyRegistry {
         'ECONNRESET',
         'ENOTFOUND',
         'ECONNREFUSED',
-        'ETIMEDOUT'
+        'ETIMEDOUT',
       ],
-      ...defaultConfig
+      ...defaultConfig,
     };
   }
 
@@ -303,7 +334,7 @@ export class RetryStrategyRegistry {
       const mergedConfig = { ...this.defaultConfig, ...config };
       this.strategies.set(name, new RetryStrategy(name, mergedConfig));
     }
-    
+
     return this.strategies.get(name)!;
   }
 
@@ -312,11 +343,11 @@ export class RetryStrategyRegistry {
    */
   public getAllMetrics(): Record<string, RetryMetrics> {
     const metrics: Record<string, RetryMetrics> = {};
-    
+
     for (const [name, strategy] of this.strategies) {
       metrics[name] = strategy.getMetrics();
     }
-    
+
     return metrics;
   }
 
@@ -361,11 +392,14 @@ export function withRetry<T>(
   const wrappedPromise = new Promise<T>((resolve, reject) => {
     strategy
       .execute(operation, correlationId, operationName)
-      .then(result => {
+      .then((result) => {
         if (result.success && result.data !== undefined) {
           resolve(result.data);
         } else {
-          reject(result.error || new Error('Operation failed after all retry attempts'));
+          reject(
+            result.error ||
+              new Error('Operation failed after all retry attempts')
+          );
         }
       })
       .catch(reject);

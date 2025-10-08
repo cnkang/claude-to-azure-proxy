@@ -9,7 +9,7 @@ import {
   ValidationError,
   SecurityError,
   type ClaudeCompletionRequest,
-  type AzureOpenAIRequest
+  type AzureOpenAIRequest,
 } from '../src/utils/request-transformer.js';
 
 describe('Request Transformer', () => {
@@ -19,7 +19,7 @@ describe('Request Transformer', () => {
     max_tokens: 100,
     temperature: 0.7,
     top_p: 0.9,
-    stop_sequences: ['\\n\\n']
+    stop_sequences: ['\\n\\n'],
   };
 
   const azureModel = 'gpt-5-codex';
@@ -37,67 +37,81 @@ describe('Request Transformer', () => {
         // missing prompt and max_tokens
       };
 
-      expect(() => validateClaudeRequest(invalidRequest)).toThrow(ValidationError);
+      expect(() => validateClaudeRequest(invalidRequest)).toThrow(
+        ValidationError
+      );
     });
 
     it('should throw ValidationError for invalid model name', () => {
       const invalidRequest = {
         ...validClaudeRequest,
-        model: 'invalid@model#name'
+        model: 'invalid@model#name',
       };
 
-      expect(() => validateClaudeRequest(invalidRequest)).toThrow(ValidationError);
+      expect(() => validateClaudeRequest(invalidRequest)).toThrow(
+        ValidationError
+      );
     });
 
     it('should throw ValidationError for empty prompt', () => {
       const invalidRequest = {
         ...validClaudeRequest,
-        prompt: ''
+        prompt: '',
       };
 
-      expect(() => validateClaudeRequest(invalidRequest)).toThrow(ValidationError);
+      expect(() => validateClaudeRequest(invalidRequest)).toThrow(
+        ValidationError
+      );
     });
 
     it('should throw ValidationError for max_tokens out of range', () => {
       const invalidRequest = {
         ...validClaudeRequest,
-        max_tokens: 200000 // exceeds 131072 limit
+        max_tokens: 200000, // exceeds 131072 limit
       };
 
-      expect(() => validateClaudeRequest(invalidRequest)).toThrow(ValidationError);
+      expect(() => validateClaudeRequest(invalidRequest)).toThrow(
+        ValidationError
+      );
     });
 
     it('should throw ValidationError for temperature out of range', () => {
       const invalidRequest = {
         ...validClaudeRequest,
-        temperature: 3.0 // exceeds limit
+        temperature: 3.0, // exceeds limit
       };
 
-      expect(() => validateClaudeRequest(invalidRequest)).toThrow(ValidationError);
+      expect(() => validateClaudeRequest(invalidRequest)).toThrow(
+        ValidationError
+      );
     });
 
     it('should throw ValidationError for top_p out of range', () => {
       const invalidRequest = {
         ...validClaudeRequest,
-        top_p: 1.5 // exceeds limit
+        top_p: 1.5, // exceeds limit
       };
 
-      expect(() => validateClaudeRequest(invalidRequest)).toThrow(ValidationError);
+      expect(() => validateClaudeRequest(invalidRequest)).toThrow(
+        ValidationError
+      );
     });
 
     it('should throw ValidationError for too many stop sequences', () => {
       const invalidRequest = {
         ...validClaudeRequest,
-        stop_sequences: ['\\n', '\\n\\n', 'END', 'STOP', 'FINISH'] // too many
+        stop_sequences: ['\\n', '\\n\\n', 'END', 'STOP', 'FINISH'], // too many
       };
 
-      expect(() => validateClaudeRequest(invalidRequest)).toThrow(ValidationError);
+      expect(() => validateClaudeRequest(invalidRequest)).toThrow(
+        ValidationError
+      );
     });
 
     it('should sanitize prompt by removing control characters', () => {
       const requestWithControlChars = {
         ...validClaudeRequest,
-        prompt: 'Hello\x00\x01world\x7F'
+        prompt: 'Hello\x00\x01world\x7F',
       };
 
       const result = validateClaudeRequest(requestWithControlChars);
@@ -107,35 +121,41 @@ describe('Request Transformer', () => {
     it('should throw SecurityError for template injection patterns', () => {
       const maliciousRequest = {
         ...validClaudeRequest,
-        prompt: 'Hello {{user.password}} world'
+        prompt: 'Hello {{user.password}} world',
       };
 
-      expect(() => validateClaudeRequest(maliciousRequest)).toThrow(SecurityError);
+      expect(() => validateClaudeRequest(maliciousRequest)).toThrow(
+        SecurityError
+      );
     });
 
     it('should throw SecurityError for script tags', () => {
       const maliciousRequest = {
         ...validClaudeRequest,
-        prompt: 'Hello <script>alert("xss")</script> world'
+        prompt: 'Hello <script>alert("xss")</script> world',
       };
 
-      expect(() => validateClaudeRequest(maliciousRequest)).toThrow(SecurityError);
+      expect(() => validateClaudeRequest(maliciousRequest)).toThrow(
+        SecurityError
+      );
     });
 
     it('should throw SecurityError for javascript protocol', () => {
       const maliciousRequest = {
         ...validClaudeRequest,
-        prompt: 'Click here: javascript:alert("xss")'
+        prompt: 'Click here: javascript:alert("xss")',
       };
 
-      expect(() => validateClaudeRequest(maliciousRequest)).toThrow(SecurityError);
+      expect(() => validateClaudeRequest(maliciousRequest)).toThrow(
+        SecurityError
+      );
     });
 
     it('should strip unknown properties', () => {
       const requestWithExtra = {
         ...validClaudeRequest,
         unknownProperty: 'should be removed',
-        anotherUnknown: 123
+        anotherUnknown: 123,
       };
 
       const result = validateClaudeRequest(requestWithExtra);
@@ -146,13 +166,16 @@ describe('Request Transformer', () => {
 
   describe('transformClaudeToAzureRequest', () => {
     it('should transform Claude request to Azure OpenAI format', () => {
-      const result = transformClaudeToAzureRequest(validClaudeRequest, azureModel);
+      const result = transformClaudeToAzureRequest(
+        validClaudeRequest,
+        azureModel
+      );
 
       expect(result.model).toBe(azureModel);
       expect(result.messages).toHaveLength(1);
       expect(result.messages[0]).toEqual({
         role: 'user',
-        content: validClaudeRequest.prompt
+        content: validClaudeRequest.prompt,
       });
       expect(result.max_tokens).toBe(validClaudeRequest.max_tokens);
       expect(result.temperature).toBe(validClaudeRequest.temperature);
@@ -165,7 +188,7 @@ describe('Request Transformer', () => {
       const minimalRequest: ClaudeCompletionRequest = {
         model: 'claude-3-5-sonnet-20241022',
         prompt: 'Hello',
-        max_tokens: 50
+        max_tokens: 50,
       };
 
       const result = transformClaudeToAzureRequest(minimalRequest, azureModel);
@@ -181,10 +204,13 @@ describe('Request Transformer', () => {
     it('should handle empty stop_sequences array', () => {
       const requestWithEmptyStop = {
         ...validClaudeRequest,
-        stop_sequences: [] as readonly string[]
+        stop_sequences: [] as readonly string[],
       };
 
-      const result = transformClaudeToAzureRequest(requestWithEmptyStop, azureModel);
+      const result = transformClaudeToAzureRequest(
+        requestWithEmptyStop,
+        azureModel
+      );
       expect(result.stop).toBeUndefined();
     });
   });
@@ -197,7 +223,9 @@ describe('Request Transformer', () => {
       expect(headers['api-key']).toBe(azureApiKey);
       expect(headers['User-Agent']).toBe('claude-to-azure-proxy/1.0.0');
       expect(headers['X-Request-ID']).toBeDefined();
-      expect(headers['X-Request-ID']).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+      expect(headers['X-Request-ID']).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+      );
     });
 
     it('should use provided request ID', () => {
@@ -210,7 +238,9 @@ describe('Request Transformer', () => {
     it('should throw SecurityError for invalid API key', () => {
       expect(() => createAzureHeaders('')).toThrow(SecurityError);
       expect(() => createAzureHeaders('short')).toThrow(SecurityError);
-      expect(() => createAzureHeaders(null as unknown as string)).toThrow(SecurityError);
+      expect(() => createAzureHeaders(null as unknown as string)).toThrow(
+        SecurityError
+      );
     });
   });
 
@@ -222,7 +252,7 @@ describe('Request Transformer', () => {
     it('should throw ValidationError for oversized requests', () => {
       const largeRequest = {
         ...validClaudeRequest,
-        prompt: 'x'.repeat(10 * 1024 * 1024 + 1) // Over 10MB
+        prompt: 'x'.repeat(10 * 1024 * 1024 + 1), // Over 10MB
       };
 
       expect(() => validateRequestSize(largeRequest)).toThrow(ValidationError);
@@ -231,7 +261,11 @@ describe('Request Transformer', () => {
 
   describe('transformRequest (integration)', () => {
     it('should successfully transform a valid request', () => {
-      const result = transformRequest(validClaudeRequest, azureModel, azureApiKey);
+      const result = transformRequest(
+        validClaudeRequest,
+        azureModel,
+        azureApiKey
+      );
 
       expect(result.azureRequest).toBeDefined();
       expect(result.headers).toBeDefined();
@@ -250,43 +284,51 @@ describe('Request Transformer', () => {
       const invalidRequest = {
         model: 'invalid@model',
         prompt: '',
-        max_tokens: -1
+        max_tokens: -1,
       };
 
-      expect(() => transformRequest(invalidRequest, azureModel, azureApiKey))
-        .toThrow(ValidationError);
+      expect(() =>
+        transformRequest(invalidRequest, azureModel, azureApiKey)
+      ).toThrow(ValidationError);
     });
 
     it('should throw SecurityError for malicious input', () => {
       const maliciousRequest = {
         ...validClaudeRequest,
-        prompt: 'Hello {{user.secret}} world'
+        prompt: 'Hello {{user.secret}} world',
       };
 
-      expect(() => transformRequest(maliciousRequest, azureModel, azureApiKey))
-        .toThrow(SecurityError);
+      expect(() =>
+        transformRequest(maliciousRequest, azureModel, azureApiKey)
+      ).toThrow(SecurityError);
     });
 
     it('should throw ValidationError for oversized request', () => {
       const largeRequest = {
         ...validClaudeRequest,
-        prompt: 'x'.repeat(10 * 1024 * 1024 + 1) // Over 10MB
+        prompt: 'x'.repeat(10 * 1024 * 1024 + 1), // Over 10MB
       };
 
-      expect(() => transformRequest(largeRequest, azureModel, azureApiKey))
-        .toThrow(ValidationError);
+      expect(() =>
+        transformRequest(largeRequest, azureModel, azureApiKey)
+      ).toThrow(ValidationError);
     });
 
     it('should handle transformation errors gracefully', () => {
       // Test with null input to trigger unexpected error path
-      expect(() => transformRequest(null as unknown, azureModel, azureApiKey))
-        .toThrow(RequestTransformationError);
+      expect(() =>
+        transformRequest(null as unknown, azureModel, azureApiKey)
+      ).toThrow(RequestTransformationError);
     });
   });
 
   describe('Error Classes', () => {
     it('should create RequestTransformationError with proper properties', () => {
-      const error = new RequestTransformationError('Test message', 'TEST_CODE', { detail: 'test' });
+      const error = new RequestTransformationError(
+        'Test message',
+        'TEST_CODE',
+        { detail: 'test' }
+      );
 
       expect(error.name).toBe('RequestTransformationError');
       expect(error.message).toBe('Test message');
@@ -313,7 +355,11 @@ describe('Request Transformer', () => {
 
   describe('Immutability', () => {
     it('should return readonly objects', () => {
-      const result = transformRequest(validClaudeRequest, azureModel, azureApiKey);
+      const result = transformRequest(
+        validClaudeRequest,
+        azureModel,
+        azureApiKey
+      );
 
       // TypeScript should enforce readonly, but we can test runtime behavior
       expect(() => {
@@ -341,7 +387,7 @@ describe('Request Transformer', () => {
     it('should handle Unicode characters in prompt', () => {
       const unicodeRequest = {
         ...validClaudeRequest,
-        prompt: 'Hello 世界 🌍 émojis'
+        prompt: 'Hello 世界 🌍 émojis',
       };
 
       const result = transformRequest(unicodeRequest, azureModel, azureApiKey);
@@ -353,29 +399,37 @@ describe('Request Transformer', () => {
       const longPrompt = 'x'.repeat(50000); // 50KB, within limits
       const longRequest = {
         ...validClaudeRequest,
-        prompt: longPrompt
+        prompt: longPrompt,
       };
 
-      expect(() => transformRequest(longRequest, azureModel, azureApiKey)).not.toThrow();
+      expect(() =>
+        transformRequest(longRequest, azureModel, azureApiKey)
+      ).not.toThrow();
     });
 
     it('should handle large valid requests up to 10MB', () => {
       const largePrompt = 'x'.repeat(5 * 1024 * 1024); // 5MB, within 10MB limit
       const largeRequest = {
         ...validClaudeRequest,
-        prompt: largePrompt
+        prompt: largePrompt,
       };
 
-      expect(() => transformRequest(largeRequest, azureModel, azureApiKey)).not.toThrow();
+      expect(() =>
+        transformRequest(largeRequest, azureModel, azureApiKey)
+      ).not.toThrow();
     });
 
     it('should handle max_tokens up to 131072', () => {
       const maxTokensRequest = {
         ...validClaudeRequest,
-        max_tokens: 131072 // GPT-5-Codex maximum
+        max_tokens: 131072, // GPT-5-Codex maximum
       };
 
-      const result = transformRequest(maxTokensRequest, azureModel, azureApiKey);
+      const result = transformRequest(
+        maxTokensRequest,
+        azureModel,
+        azureApiKey
+      );
       const azureReq = result.azureRequest as AzureOpenAIRequest;
       expect(azureReq.max_tokens).toBe(131072);
     });
@@ -386,10 +440,12 @@ describe('Request Transformer', () => {
         max_tokens: 1, // minimum
         temperature: 0, // minimum
         top_p: 0, // minimum
-        top_k: 1 // minimum
+        top_k: 1, // minimum
       };
 
-      expect(() => transformRequest(boundaryRequest, azureModel, azureApiKey)).not.toThrow();
+      expect(() =>
+        transformRequest(boundaryRequest, azureModel, azureApiKey)
+      ).not.toThrow();
     });
 
     it('should handle maximum boundary values', () => {
@@ -398,10 +454,12 @@ describe('Request Transformer', () => {
         max_tokens: 131072, // maximum for GPT-5-Codex
         temperature: 2, // maximum
         top_p: 1, // maximum
-        top_k: 100 // maximum
+        top_k: 100, // maximum
       };
 
-      expect(() => transformRequest(maxBoundaryRequest, azureModel, azureApiKey)).not.toThrow();
+      expect(() =>
+        transformRequest(maxBoundaryRequest, azureModel, azureApiKey)
+      ).not.toThrow();
     });
   });
 });

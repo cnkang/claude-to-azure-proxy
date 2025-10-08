@@ -14,14 +14,19 @@ describe('Models Endpoint', () => {
     // Set up test environment variables
     process.env.PROXY_API_KEY = validApiKey;
     process.env.AZURE_OPENAI_ENDPOINT = 'https://test.openai.azure.com';
-    process.env.AZURE_OPENAI_API_KEY = 'test-azure-key-12345678901234567890123456789012';
+    process.env.AZURE_OPENAI_API_KEY =
+      'test-azure-key-12345678901234567890123456789012';
     process.env.AZURE_OPENAI_MODEL = 'gpt-4';
     process.env.NODE_ENV = 'test';
 
     // Import modules after setting environment variables
     const { modelsHandler } = await import('../src/routes/models.js');
-    const { secureAuthenticationMiddleware } = await import('../src/middleware/authentication.js');
-    const { correlationIdMiddleware } = await import('../src/middleware/security.js');
+    const { secureAuthenticationMiddleware } = await import(
+      '../src/middleware/authentication.js'
+    );
+    const { correlationIdMiddleware } = await import(
+      '../src/middleware/security.js'
+    );
 
     // Create test Express app
     app = express();
@@ -40,9 +45,7 @@ describe('Models Endpoint', () => {
 
   describe('Authentication Required', () => {
     it('should return 401 when no authentication is provided', async () => {
-      const response = await request(app)
-        .get('/v1/models')
-        .expect(401);
+      const response = await request(app).get('/v1/models').expect(401);
 
       expect(response.body).toHaveProperty('error');
       expect(response.body.error.type).toBe('authentication_required');
@@ -117,7 +120,7 @@ describe('Models Endpoint', () => {
         .expect(200);
 
       const modelIds = response.body.data.map((model: any) => model.id);
-      
+
       // Verify expected model ID is present
       expect(modelIds).toContain('gpt-5-codex');
 
@@ -153,7 +156,7 @@ describe('Models Endpoint', () => {
       // Verify top-level structure
       expect(response.body).toEqual({
         object: 'list',
-        data: expect.any(Array)
+        data: expect.any(Array),
       });
 
       // Verify each model structure
@@ -162,7 +165,7 @@ describe('Models Endpoint', () => {
           id: expect.any(String),
           object: 'model',
           created: expect.any(Number),
-          owned_by: expect.any(String)
+          owned_by: expect.any(String),
         });
       });
     });

@@ -27,7 +27,7 @@ export interface CircuitBreakerMetrics {
 export enum CircuitBreakerState {
   CLOSED = 'CLOSED',
   OPEN = 'OPEN',
-  HALF_OPEN = 'HALF_OPEN'
+  HALF_OPEN = 'HALF_OPEN',
 }
 
 export interface CircuitBreakerResult<T> {
@@ -60,7 +60,7 @@ export class CircuitBreaker {
       expectedErrors: ['NETWORK_ERROR', 'TIMEOUT_ERROR', 'AZURE_OPENAI_ERROR'],
       maxBackoffMs: 300000, // 5 minutes
       backoffMultiplier: 2,
-      ...config
+      ...config,
     };
     this.currentBackoffMs = 1000; // Start with 1 second
   }
@@ -91,7 +91,7 @@ export class CircuitBreaker {
         return {
           success: false,
           error,
-          metrics: this.getMetrics()
+          metrics: this.getMetrics(),
         };
       }
     }
@@ -99,19 +99,19 @@ export class CircuitBreaker {
     try {
       const result = await operation();
       this.onSuccess();
-      
+
       return {
         success: true,
         data: result,
-        metrics: this.getMetrics()
+        metrics: this.getMetrics(),
       };
     } catch (error) {
       this.onFailure(error as Error);
-      
+
       return {
         success: false,
         error: error as Error,
-        metrics: this.getMetrics()
+        metrics: this.getMetrics(),
       };
     }
   }
@@ -123,7 +123,7 @@ export class CircuitBreaker {
     this.successCount++;
     this.failureCount = 0;
     this.currentBackoffMs = 1000; // Reset backoff
-    
+
     if (this.state === CircuitBreakerState.HALF_OPEN) {
       this.state = CircuitBreakerState.CLOSED;
     }
@@ -136,8 +136,10 @@ export class CircuitBreaker {
     // Only count expected errors towards circuit breaker
     const errorName = error.name || '';
     const errorMessage = error.message || '';
-    const isExpectedError = this.config.expectedErrors.some(expectedError => 
-      errorName.includes(expectedError) || errorMessage.includes(expectedError)
+    const isExpectedError = this.config.expectedErrors.some(
+      (expectedError) =>
+        errorName.includes(expectedError) ||
+        errorMessage.includes(expectedError)
     );
 
     if (!isExpectedError) {
@@ -170,9 +172,9 @@ export class CircuitBreaker {
     // Exponential backoff with jitter
     const jitter = Math.random() * 0.1; // 10% jitter
     const backoffWithJitter = this.currentBackoffMs * (1 + jitter);
-    
+
     this.nextAttemptTime = new Date(Date.now() + backoffWithJitter);
-    
+
     // Increase backoff for next time, up to maximum
     this.currentBackoffMs = Math.min(
       this.currentBackoffMs * this.config.backoffMultiplier,
@@ -187,7 +189,7 @@ export class CircuitBreaker {
     if (!this.nextAttemptTime) {
       return true;
     }
-    
+
     return Date.now() >= this.nextAttemptTime.getTime();
   }
 
@@ -202,7 +204,7 @@ export class CircuitBreaker {
       totalRequests: this.totalRequests,
       lastFailureTime: this.lastFailureTime,
       nextAttemptTime: this.nextAttemptTime,
-      currentBackoffMs: this.currentBackoffMs
+      currentBackoffMs: this.currentBackoffMs,
     };
   }
 
@@ -239,7 +241,7 @@ export class CircuitBreaker {
     if (this.totalRequests === 0) {
       return 0;
     }
-    
+
     return this.failureCount / this.totalRequests;
   }
 }
@@ -259,7 +261,7 @@ export class CircuitBreakerRegistry {
       expectedErrors: ['NETWORK_ERROR', 'TIMEOUT_ERROR', 'AZURE_OPENAI_ERROR'],
       maxBackoffMs: 300000,
       backoffMultiplier: 2,
-      ...defaultConfig
+      ...defaultConfig,
     };
   }
 
@@ -274,7 +276,7 @@ export class CircuitBreakerRegistry {
       const mergedConfig = { ...this.defaultConfig, ...config };
       this.circuitBreakers.set(name, new CircuitBreaker(name, mergedConfig));
     }
-    
+
     return this.circuitBreakers.get(name)!;
   }
 
@@ -283,11 +285,11 @@ export class CircuitBreakerRegistry {
    */
   public getAllMetrics(): Record<string, CircuitBreakerMetrics> {
     const metrics: Record<string, CircuitBreakerMetrics> = {};
-    
+
     for (const [name, circuitBreaker] of this.circuitBreakers) {
       metrics[name] = circuitBreaker.getMetrics();
     }
-    
+
     return metrics;
   }
 
@@ -305,11 +307,11 @@ export class CircuitBreakerRegistry {
    */
   public getHealthStatus(): Record<string, boolean> {
     const health: Record<string, boolean> = {};
-    
+
     for (const [name, circuitBreaker] of this.circuitBreakers) {
       health[name] = circuitBreaker.isHealthy();
     }
-    
+
     return health;
   }
 

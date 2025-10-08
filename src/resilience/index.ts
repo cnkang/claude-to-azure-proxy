@@ -11,7 +11,7 @@ export {
   circuitBreakerRegistry,
   type CircuitBreakerConfig,
   type CircuitBreakerMetrics,
-  type CircuitBreakerResult
+  type CircuitBreakerResult,
 } from './circuit-breaker.js';
 
 // Retry logic exports
@@ -23,7 +23,7 @@ export {
   type RetryConfig,
   type RetryAttempt,
   type RetryResult,
-  type RetryMetrics
+  type RetryMetrics,
 } from './retry.js';
 
 // Graceful degradation exports
@@ -34,5 +34,5 @@ export {
   type DegradationStrategy,
   type DegradationContext,
   type DegradationResult,
-  type ServiceLevel
+  type ServiceLevel,
 } from './graceful-degradation.js';

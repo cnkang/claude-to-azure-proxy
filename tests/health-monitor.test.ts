@@ -12,8 +12,8 @@ describe('Health Monitor', () => {
     azureOpenAI: {
       endpoint: 'https://test.openai.azure.com',
       apiKey: 'test-api-key',
-      model: 'gpt-4'
-    }
+      model: 'gpt-4',
+    },
   };
 
   beforeEach(() => {
@@ -27,8 +27,8 @@ describe('Health Monitor', () => {
       const mockAxiosInstance = {
         get: vi.fn().mockResolvedValue({
           status: 200,
-          data: { object: 'list', data: [] }
-        })
+          data: { object: 'list', data: [] },
+        }),
       };
       mockedAxios.create = vi.fn().mockReturnValue(mockAxiosInstance);
 
@@ -48,8 +48,8 @@ describe('Health Monitor', () => {
       const mockAxiosInstance = {
         get: vi.fn().mockResolvedValue({
           status: 200,
-          data: { object: 'list', data: [] }
-        })
+          data: { object: 'list', data: [] },
+        }),
       };
       mockedAxios.create = vi.fn().mockReturnValue(mockAxiosInstance);
 
@@ -62,7 +62,7 @@ describe('Health Monitor', () => {
 
     it('should return unhealthy status when Azure OpenAI is down', async () => {
       const mockAxiosInstance = {
-        get: vi.fn().mockRejectedValue(new Error('Connection failed'))
+        get: vi.fn().mockRejectedValue(new Error('Connection failed')),
       };
       mockedAxios.create = vi.fn().mockReturnValue(mockAxiosInstance);
 
@@ -80,8 +80,8 @@ describe('Health Monitor', () => {
       const mockAxiosInstance = {
         get: vi.fn().mockResolvedValue({
           status: 200,
-          data: { object: 'list', data: [] }
-        })
+          data: { object: 'list', data: [] },
+        }),
       };
       mockedAxios.create = vi.fn().mockReturnValue(mockAxiosInstance);
 
@@ -102,21 +102,21 @@ describe('Health Monitor', () => {
         heapTotal: 800000000, // 800MB
         heapUsed: 750000000, // 750MB
         external: 50000000, // 50MB
-        arrayBuffers: 10000000 // 10MB
+        arrayBuffers: 10000000, // 10MB
       });
 
       const mockAxiosInstance = {
         get: vi.fn().mockResolvedValue({
           status: 200,
-          data: { object: 'list', data: [] }
-        })
+          data: { object: 'list', data: [] },
+        }),
       };
       mockedAxios.create = vi.fn().mockReturnValue(mockAxiosInstance);
 
       const result = await healthMonitor.getHealthStatus();
 
       expect(result.memory.percentage).toBeGreaterThan(50);
-      
+
       // Restore original function
       process.memoryUsage = originalMemoryUsage;
     });
@@ -127,8 +127,8 @@ describe('Health Monitor', () => {
       const mockAxiosInstance = {
         get: vi.fn().mockResolvedValue({
           status: 200,
-          data: { object: 'list', data: [{ id: 'gpt-4' }] }
-        })
+          data: { object: 'list', data: [{ id: 'gpt-4' }] },
+        }),
       };
       mockedAxios.create = vi.fn().mockReturnValue(mockAxiosInstance);
 
@@ -136,7 +136,7 @@ describe('Health Monitor', () => {
 
       expect(result.azureOpenAI!.status).toBe('connected');
       expect(mockAxiosInstance.get).toHaveBeenCalledWith('/models', {
-        timeout: 5000
+        timeout: 5000,
       });
     });
 
@@ -144,8 +144,8 @@ describe('Health Monitor', () => {
       const mockAxiosInstance = {
         get: vi.fn().mockRejectedValue({
           code: 'ECONNABORTED',
-          message: 'timeout of 5000ms exceeded'
-        })
+          message: 'timeout of 5000ms exceeded',
+        }),
       };
       mockedAxios.create = vi.fn().mockReturnValue(mockAxiosInstance);
 
@@ -160,9 +160,9 @@ describe('Health Monitor', () => {
         get: vi.fn().mockRejectedValue({
           response: {
             status: 401,
-            data: { error: { message: 'Invalid API key' } }
-          }
-        })
+            data: { error: { message: 'Invalid API key' } },
+          },
+        }),
       };
       mockedAxios.create = vi.fn().mockReturnValue(mockAxiosInstance);
 
@@ -177,9 +177,9 @@ describe('Health Monitor', () => {
         get: vi.fn().mockRejectedValue({
           response: {
             status: 429,
-            data: { error: { message: 'Rate limit exceeded' } }
-          }
-        })
+            data: { error: { message: 'Rate limit exceeded' } },
+          },
+        }),
       };
       mockedAxios.create = vi.fn().mockReturnValue(mockAxiosInstance);
 
@@ -191,14 +191,19 @@ describe('Health Monitor', () => {
 
     it('should measure response time accurately', async () => {
       const mockAxiosInstance = {
-        get: vi.fn().mockImplementation(() => 
-          new Promise(resolve => 
-            setTimeout(() => resolve({
-              status: 200,
-              data: { object: 'list', data: [] }
-            }), 100)
-          )
-        )
+        get: vi.fn().mockImplementation(
+          () =>
+            new Promise((resolve) =>
+              setTimeout(
+                () =>
+                  resolve({
+                    status: 200,
+                    data: { object: 'list', data: [] },
+                  }),
+                100
+              )
+            )
+        ),
       };
       mockedAxios.create = vi.fn().mockReturnValue(mockAxiosInstance);
 
@@ -214,14 +219,14 @@ describe('Health Monitor', () => {
       const mockAxiosInstance = {
         get: vi.fn().mockResolvedValue({
           status: 200,
-          data: { object: 'list', data: [] }
-        })
+          data: { object: 'list', data: [] },
+        }),
       };
       mockedAxios.create = vi.fn().mockReturnValue(mockAxiosInstance);
 
       // First call
       const result1 = await healthMonitor.getHealthStatus();
-      
+
       // Second call immediately after
       const result2 = await healthMonitor.getHealthStatus();
 
@@ -233,8 +238,8 @@ describe('Health Monitor', () => {
       const mockAxiosInstance = {
         get: vi.fn().mockResolvedValue({
           status: 200,
-          data: { object: 'list', data: [] }
-        })
+          data: { object: 'list', data: [] },
+        }),
       };
       mockedAxios.create = vi.fn().mockReturnValue(mockAxiosInstance);
 
@@ -243,10 +248,10 @@ describe('Health Monitor', () => {
 
       // First call
       await shortCacheMonitor.getHealthStatus();
-      
+
       // Wait for cache to expire
-      await new Promise(resolve => setTimeout(resolve, 150));
-      
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
       // Second call after cache expiry
       await shortCacheMonitor.getHealthStatus();
 
@@ -257,7 +262,7 @@ describe('Health Monitor', () => {
   describe('Error Handling', () => {
     it('should handle network errors gracefully', async () => {
       const mockAxiosInstance = {
-        get: vi.fn().mockRejectedValue(new Error('ENOTFOUND'))
+        get: vi.fn().mockRejectedValue(new Error('ENOTFOUND')),
       };
       mockedAxios.create = vi.fn().mockReturnValue(mockAxiosInstance);
 
@@ -271,8 +276,8 @@ describe('Health Monitor', () => {
       const mockAxiosInstance = {
         get: vi.fn().mockResolvedValue({
           status: 200,
-          data: 'invalid json response'
-        })
+          data: 'invalid json response',
+        }),
       };
       mockedAxios.create = vi.fn().mockReturnValue(mockAxiosInstance);
 
@@ -300,16 +305,16 @@ describe('Health Monitor', () => {
       const mockAxiosInstance = {
         get: vi.fn().mockResolvedValue({
           status: 200,
-          data: { object: 'list', data: [] }
-        })
+          data: { object: 'list', data: [] },
+        }),
       };
       mockedAxios.create = vi.fn().mockReturnValue(mockAxiosInstance);
 
       const result1 = await healthMonitor.getHealthStatus();
-      
+
       // Wait a bit
-      await new Promise(resolve => setTimeout(resolve, 10));
-      
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
       const result2 = await healthMonitor.getHealthStatus();
 
       expect(result2.uptime).toBeGreaterThanOrEqual(result1.uptime);
@@ -319,14 +324,14 @@ describe('Health Monitor', () => {
       const mockAxiosInstance = {
         get: vi.fn().mockResolvedValue({
           status: 200,
-          data: { object: 'list', data: [] }
-        })
+          data: { object: 'list', data: [] },
+        }),
       };
       mockedAxios.create = vi.fn().mockReturnValue(mockAxiosInstance);
 
       // Wait a bit after creation
-      await new Promise(resolve => setTimeout(resolve, 10));
-      
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
       const result = await healthMonitor.getHealthStatus();
 
       expect(result.uptime).toBeGreaterThan(0);
@@ -349,8 +354,8 @@ describe('Health Monitor', () => {
         azureOpenAI: {
           endpoint: 'invalid-url',
           apiKey: 'test-key',
-          model: 'gpt-4'
-        }
+          model: 'gpt-4',
+        },
       };
       const monitor = new HealthMonitor(invalidConfig);
 
@@ -366,8 +371,8 @@ describe('Health Monitor', () => {
       const mockAxiosInstance = {
         get: vi.fn().mockResolvedValue({
           status: 200,
-          data: { object: 'list', data: [] }
-        })
+          data: { object: 'list', data: [] },
+        }),
       };
       mockedAxios.create = vi.fn().mockReturnValue(mockAxiosInstance);
 
@@ -378,7 +383,7 @@ describe('Health Monitor', () => {
 
     it('should be unhealthy when Azure OpenAI is disconnected', async () => {
       const mockAxiosInstance = {
-        get: vi.fn().mockRejectedValue(new Error('Connection failed'))
+        get: vi.fn().mockRejectedValue(new Error('Connection failed')),
       };
       mockedAxios.create = vi.fn().mockReturnValue(mockAxiosInstance);
 
@@ -395,14 +400,14 @@ describe('Health Monitor', () => {
         heapTotal: 1800000000, // 1.8GB
         heapUsed: 1750000000, // 1.75GB (very high usage)
         external: 100000000, // 100MB
-        arrayBuffers: 50000000 // 50MB
+        arrayBuffers: 50000000, // 50MB
       });
 
       const mockAxiosInstance = {
         get: vi.fn().mockResolvedValue({
           status: 200,
-          data: { object: 'list', data: [] }
-        })
+          data: { object: 'list', data: [] },
+        }),
       };
       mockedAxios.create = vi.fn().mockReturnValue(mockAxiosInstance);
 
@@ -411,7 +416,7 @@ describe('Health Monitor', () => {
       // Should be unhealthy due to high memory usage
       expect(result.status).toBe('unhealthy');
       expect(result.memory.percentage).toBeGreaterThan(90);
-      
+
       // Restore original function
       process.memoryUsage = originalMemoryUsage;
     });
@@ -422,14 +427,16 @@ describe('Health Monitor', () => {
       const mockAxiosInstance = {
         get: vi.fn().mockResolvedValue({
           status: 200,
-          data: { object: 'list', data: [] }
-        })
+          data: { object: 'list', data: [] },
+        }),
       };
       mockedAxios.create = vi.fn().mockReturnValue(mockAxiosInstance);
 
       const result = await healthMonitor.getHealthStatus();
 
-      expect(result.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+      expect(result.timestamp).toMatch(
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
+      );
       expect(new Date(result.timestamp).getTime()).toBeCloseTo(Date.now(), -3);
     });
 
@@ -437,8 +444,8 @@ describe('Health Monitor', () => {
       const mockAxiosInstance = {
         get: vi.fn().mockResolvedValue({
           status: 200,
-          data: { object: 'list', data: [] }
-        })
+          data: { object: 'list', data: [] },
+        }),
       };
       mockedAxios.create = vi.fn().mockReturnValue(mockAxiosInstance);
 

@@ -5,15 +5,15 @@ import {
   authenticationMiddleware,
   secureAuthenticationMiddleware,
   AuthenticationResult,
-  AuthenticationMethod
+  AuthenticationMethod,
 } from '../src/middleware/authentication.js';
 import type { AuthenticationRequest } from '../src/types/index.js';
 
 // Mock the config module
 vi.mock('../src/config/index.js', () => ({
   default: {
-    PROXY_API_KEY: 'test-api-key-12345678901234567890123456789012'
-  }
+    PROXY_API_KEY: 'test-api-key-12345678901234567890123456789012',
+  },
 }));
 
 // Mock the logger
@@ -22,8 +22,8 @@ vi.mock('../src/middleware/logging.js', () => ({
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
-    debug: vi.fn()
-  }
+    debug: vi.fn(),
+  },
 }));
 
 describe('Authentication Middleware', () => {
@@ -36,27 +36,28 @@ describe('Authentication Middleware', () => {
   beforeEach(() => {
     // Reset mocks
     vi.clearAllMocks();
-    
+
     // Create mock response with chainable methods
     jsonSpy = vi.fn().mockReturnThis();
     statusSpy = vi.fn().mockReturnThis();
-    
+
     mockRequest = {
       headers: {},
       ip: '127.0.0.1',
       method: 'POST',
-      url: '/v1/completions'
+      url: '/v1/completions',
     };
-    
+
     mockResponse = {
       status: statusSpy,
-      json: jsonSpy
+      json: jsonSpy,
     };
-    
+
     mockNext = vi.fn();
-    
+
     // Add correlation ID to request
-    (mockRequest as AuthenticationRequest).correlationId = 'test-correlation-id';
+    (mockRequest as AuthenticationRequest).correlationId =
+      'test-correlation-id';
   });
 
   afterEach(() => {
@@ -66,7 +67,7 @@ describe('Authentication Middleware', () => {
   describe('Bearer Token Authentication', () => {
     it('should authenticate successfully with valid Bearer token', () => {
       mockRequest.headers = {
-        authorization: 'Bearer test-api-key-12345678901234567890123456789012'
+        authorization: 'Bearer test-api-key-12345678901234567890123456789012',
       };
 
       authenticationMiddleware(
@@ -78,13 +79,17 @@ describe('Authentication Middleware', () => {
       expect(mockNext).toHaveBeenCalledOnce();
       expect(statusSpy).not.toHaveBeenCalled();
       expect(jsonSpy).not.toHaveBeenCalled();
-      expect((mockRequest as AuthenticationRequest).authResult).toBe(AuthenticationResult.SUCCESS);
-      expect((mockRequest as AuthenticationRequest).authMethod).toBe(AuthenticationMethod.BEARER_TOKEN);
+      expect((mockRequest as AuthenticationRequest).authResult).toBe(
+        AuthenticationResult.SUCCESS
+      );
+      expect((mockRequest as AuthenticationRequest).authMethod).toBe(
+        AuthenticationMethod.BEARER_TOKEN
+      );
     });
 
     it('should reject invalid Bearer token', () => {
       mockRequest.headers = {
-        authorization: 'Bearer invalid-token'
+        authorization: 'Bearer invalid-token',
       };
 
       authenticationMiddleware(
@@ -100,15 +105,17 @@ describe('Authentication Middleware', () => {
           type: 'authentication_failed',
           message: 'Invalid credentials provided.',
           correlationId: 'test-correlation-id',
-          timestamp: expect.any(String)
-        }
+          timestamp: expect.any(String),
+        },
       });
-      expect((mockRequest as AuthenticationRequest).authResult).toBe(AuthenticationResult.INVALID_CREDENTIALS);
+      expect((mockRequest as AuthenticationRequest).authResult).toBe(
+        AuthenticationResult.INVALID_CREDENTIALS
+      );
     });
 
     it('should handle malformed Bearer token', () => {
       mockRequest.headers = {
-        authorization: 'Bearer'
+        authorization: 'Bearer',
       };
 
       authenticationMiddleware(
@@ -122,16 +129,17 @@ describe('Authentication Middleware', () => {
       expect(jsonSpy).toHaveBeenCalledWith({
         error: {
           type: 'authentication_required',
-          message: 'Authentication required. Provide credentials via Authorization Bearer token or x-api-key header.',
+          message:
+            'Authentication required. Provide credentials via Authorization Bearer token or x-api-key header.',
           correlationId: 'test-correlation-id',
-          timestamp: expect.any(String)
-        }
+          timestamp: expect.any(String),
+        },
       });
     });
 
     it('should handle case-insensitive Bearer token', () => {
       mockRequest.headers = {
-        authorization: 'bearer test-api-key-12345678901234567890123456789012'
+        authorization: 'bearer test-api-key-12345678901234567890123456789012',
       };
 
       authenticationMiddleware(
@@ -141,14 +149,16 @@ describe('Authentication Middleware', () => {
       );
 
       expect(mockNext).toHaveBeenCalledOnce();
-      expect((mockRequest as AuthenticationRequest).authResult).toBe(AuthenticationResult.SUCCESS);
+      expect((mockRequest as AuthenticationRequest).authResult).toBe(
+        AuthenticationResult.SUCCESS
+      );
     });
   });
 
   describe('API Key Header Authentication', () => {
     it('should authenticate successfully with valid x-api-key header', () => {
       mockRequest.headers = {
-        'x-api-key': 'test-api-key-12345678901234567890123456789012'
+        'x-api-key': 'test-api-key-12345678901234567890123456789012',
       };
 
       authenticationMiddleware(
@@ -160,13 +170,17 @@ describe('Authentication Middleware', () => {
       expect(mockNext).toHaveBeenCalledOnce();
       expect(statusSpy).not.toHaveBeenCalled();
       expect(jsonSpy).not.toHaveBeenCalled();
-      expect((mockRequest as AuthenticationRequest).authResult).toBe(AuthenticationResult.SUCCESS);
-      expect((mockRequest as AuthenticationRequest).authMethod).toBe(AuthenticationMethod.API_KEY_HEADER);
+      expect((mockRequest as AuthenticationRequest).authResult).toBe(
+        AuthenticationResult.SUCCESS
+      );
+      expect((mockRequest as AuthenticationRequest).authMethod).toBe(
+        AuthenticationMethod.API_KEY_HEADER
+      );
     });
 
     it('should reject invalid x-api-key header', () => {
       mockRequest.headers = {
-        'x-api-key': 'invalid-api-key'
+        'x-api-key': 'invalid-api-key',
       };
 
       authenticationMiddleware(
@@ -182,15 +196,17 @@ describe('Authentication Middleware', () => {
           type: 'authentication_failed',
           message: 'Invalid credentials provided.',
           correlationId: 'test-correlation-id',
-          timestamp: expect.any(String)
-        }
+          timestamp: expect.any(String),
+        },
       });
-      expect((mockRequest as AuthenticationRequest).authResult).toBe(AuthenticationResult.INVALID_CREDENTIALS);
+      expect((mockRequest as AuthenticationRequest).authResult).toBe(
+        AuthenticationResult.INVALID_CREDENTIALS
+      );
     });
 
     it('should handle empty x-api-key header', () => {
       mockRequest.headers = {
-        'x-api-key': ''
+        'x-api-key': '',
       };
 
       authenticationMiddleware(
@@ -201,7 +217,9 @@ describe('Authentication Middleware', () => {
 
       expect(mockNext).not.toHaveBeenCalled();
       expect(statusSpy).toHaveBeenCalledWith(401);
-      expect((mockRequest as AuthenticationRequest).authResult).toBe(AuthenticationResult.MISSING_CREDENTIALS);
+      expect((mockRequest as AuthenticationRequest).authResult).toBe(
+        AuthenticationResult.MISSING_CREDENTIALS
+      );
     });
   });
 
@@ -220,17 +238,20 @@ describe('Authentication Middleware', () => {
       expect(jsonSpy).toHaveBeenCalledWith({
         error: {
           type: 'authentication_required',
-          message: 'Authentication required. Provide credentials via Authorization Bearer token or x-api-key header.',
+          message:
+            'Authentication required. Provide credentials via Authorization Bearer token or x-api-key header.',
           correlationId: 'test-correlation-id',
-          timestamp: expect.any(String)
-        }
+          timestamp: expect.any(String),
+        },
       });
-      expect((mockRequest as AuthenticationRequest).authResult).toBe(AuthenticationResult.MISSING_CREDENTIALS);
+      expect((mockRequest as AuthenticationRequest).authResult).toBe(
+        AuthenticationResult.MISSING_CREDENTIALS
+      );
     });
 
     it('should reject request with invalid authorization header format', () => {
       mockRequest.headers = {
-        authorization: 'Basic dGVzdDp0ZXN0'
+        authorization: 'Basic dGVzdDp0ZXN0',
       };
 
       authenticationMiddleware(
@@ -241,7 +262,9 @@ describe('Authentication Middleware', () => {
 
       expect(mockNext).not.toHaveBeenCalled();
       expect(statusSpy).toHaveBeenCalledWith(401);
-      expect((mockRequest as AuthenticationRequest).authResult).toBe(AuthenticationResult.MISSING_CREDENTIALS);
+      expect((mockRequest as AuthenticationRequest).authResult).toBe(
+        AuthenticationResult.MISSING_CREDENTIALS
+      );
     });
   });
 
@@ -249,7 +272,7 @@ describe('Authentication Middleware', () => {
     it('should prioritize Bearer token over x-api-key when both are present', () => {
       mockRequest.headers = {
         authorization: 'Bearer test-api-key-12345678901234567890123456789012',
-        'x-api-key': 'different-key'
+        'x-api-key': 'different-key',
       };
 
       authenticationMiddleware(
@@ -259,12 +282,14 @@ describe('Authentication Middleware', () => {
       );
 
       expect(mockNext).toHaveBeenCalledOnce();
-      expect((mockRequest as AuthenticationRequest).authMethod).toBe(AuthenticationMethod.BEARER_TOKEN);
+      expect((mockRequest as AuthenticationRequest).authMethod).toBe(
+        AuthenticationMethod.BEARER_TOKEN
+      );
     });
 
     it('should handle whitespace in credentials', () => {
       mockRequest.headers = {
-        'x-api-key': '  test-api-key-12345678901234567890123456789012  '
+        'x-api-key': '  test-api-key-12345678901234567890123456789012  ',
       };
 
       authenticationMiddleware(
@@ -274,13 +299,15 @@ describe('Authentication Middleware', () => {
       );
 
       expect(mockNext).toHaveBeenCalledOnce();
-      expect((mockRequest as AuthenticationRequest).authResult).toBe(AuthenticationResult.SUCCESS);
+      expect((mockRequest as AuthenticationRequest).authResult).toBe(
+        AuthenticationResult.SUCCESS
+      );
     });
 
     it('should handle missing correlation ID gracefully', () => {
       delete (mockRequest as AuthenticationRequest).correlationId;
       mockRequest.headers = {
-        'x-api-key': 'invalid-key'
+        'x-api-key': 'invalid-key',
       };
 
       authenticationMiddleware(
@@ -295,8 +322,8 @@ describe('Authentication Middleware', () => {
           type: 'authentication_failed',
           message: 'Invalid credentials provided.',
           correlationId: 'unknown',
-          timestamp: expect.any(String)
-        }
+          timestamp: expect.any(String),
+        },
       });
     });
   });
@@ -305,7 +332,7 @@ describe('Authentication Middleware', () => {
     it('should use constant-time comparison for credential validation', () => {
       // Test that valid credentials work (implying constant-time comparison is used)
       mockRequest.headers = {
-        'x-api-key': 'test-api-key-12345678901234567890123456789012'
+        'x-api-key': 'test-api-key-12345678901234567890123456789012',
       };
 
       authenticationMiddleware(
@@ -315,12 +342,14 @@ describe('Authentication Middleware', () => {
       );
 
       expect(mockNext).toHaveBeenCalledOnce();
-      expect((mockRequest as AuthenticationRequest).authResult).toBe(AuthenticationResult.SUCCESS);
+      expect((mockRequest as AuthenticationRequest).authResult).toBe(
+        AuthenticationResult.SUCCESS
+      );
     });
 
     it('should handle different length credentials securely', () => {
       mockRequest.headers = {
-        'x-api-key': 'short'
+        'x-api-key': 'short',
       };
 
       authenticationMiddleware(
@@ -331,7 +360,9 @@ describe('Authentication Middleware', () => {
 
       // Should reject different length credentials
       expect(statusSpy).toHaveBeenCalledWith(401);
-      expect((mockRequest as AuthenticationRequest).authResult).toBe(AuthenticationResult.INVALID_CREDENTIALS);
+      expect((mockRequest as AuthenticationRequest).authResult).toBe(
+        AuthenticationResult.INVALID_CREDENTIALS
+      );
     });
   });
 
@@ -339,7 +370,7 @@ describe('Authentication Middleware', () => {
     it('should handle crypto errors gracefully', () => {
       // Test error handling by providing malformed credentials that could cause issues
       mockRequest.headers = {
-        'x-api-key': null as any // This could potentially cause issues in Buffer.from
+        'x-api-key': null as any, // This could potentially cause issues in Buffer.from
       };
 
       authenticationMiddleware(
@@ -349,7 +380,9 @@ describe('Authentication Middleware', () => {
       );
 
       expect(statusSpy).toHaveBeenCalledWith(401);
-      expect((mockRequest as AuthenticationRequest).authResult).toBe(AuthenticationResult.MISSING_CREDENTIALS);
+      expect((mockRequest as AuthenticationRequest).authResult).toBe(
+        AuthenticationResult.MISSING_CREDENTIALS
+      );
     });
 
     it('should handle unexpected errors during authentication', () => {
@@ -360,7 +393,7 @@ describe('Authentication Middleware', () => {
       });
 
       mockRequest.headers = {
-        'x-api-key': 'test-key'
+        'x-api-key': 'test-key',
       };
 
       authenticationMiddleware(
@@ -375,8 +408,8 @@ describe('Authentication Middleware', () => {
           type: 'authentication_failed',
           message: 'Invalid credentials provided.',
           correlationId: 'test-correlation-id',
-          timestamp: expect.any(String)
-        }
+          timestamp: expect.any(String),
+        },
       });
 
       Buffer.from = originalBufferFrom;
@@ -393,7 +426,7 @@ describe('Authentication Middleware', () => {
   describe('Type Safety', () => {
     it('should properly type authentication request properties', () => {
       mockRequest.headers = {
-        'x-api-key': 'test-api-key-12345678901234567890123456789012'
+        'x-api-key': 'test-api-key-12345678901234567890123456789012',
       };
 
       authenticationMiddleware(

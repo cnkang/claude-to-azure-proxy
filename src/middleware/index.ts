@@ -8,7 +8,7 @@ export {
   secureAuthenticationMiddleware,
   authenticationRateLimit,
   AuthenticationResult,
-  AuthenticationMethod
+  AuthenticationMethod,
 } from './authentication.js';
 
 // Security middleware
@@ -19,19 +19,19 @@ export {
   apiRateLimit,
   correlationIdMiddleware,
   timeoutMiddleware,
-  corsOptions
+  corsOptions,
 } from './security.js';
 
 // Logging middleware
 export {
   logger,
   requestLoggingMiddleware,
-  errorLoggingMiddleware
+  errorLoggingMiddleware,
 } from './logging.js';
 
 // Type exports
 export type {
   AuthenticationRequest,
   AuthenticationError,
-  AuthenticationResponse
+  AuthenticationResponse,
 } from '../types/index.js';

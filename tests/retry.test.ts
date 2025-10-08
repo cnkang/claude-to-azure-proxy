@@ -3,7 +3,7 @@ import {
   RetryStrategy,
   RetryStrategyRegistry,
   withRetry,
-  retryStrategyRegistry
+  retryStrategyRegistry,
 } from '../src/resilience/retry.js';
 import { TimeoutError, NetworkError } from '../src/errors/index.js';
 
@@ -18,7 +18,7 @@ describe('Retry Strategy', () => {
       maxDelayMs: 1000,
       backoffMultiplier: 2,
       jitterFactor: 0.1,
-      retryableErrors: ['NETWORK_ERROR', 'TIMEOUT_ERROR', 'ECONNRESET']
+      retryableErrors: ['NETWORK_ERROR', 'TIMEOUT_ERROR', 'ECONNRESET'],
     });
   });
 
@@ -30,7 +30,7 @@ describe('Retry Strategy', () => {
   describe('Successful Operations', () => {
     it('should execute successful operation on first attempt', async () => {
       const operation = vi.fn().mockResolvedValue('success');
-      
+
       const result = await retryStrategy.execute(
         operation,
         'test-correlation-id',
@@ -46,7 +46,8 @@ describe('Retry Strategy', () => {
     });
 
     it('should succeed after retries', async () => {
-      const operation = vi.fn()
+      const operation = vi
+        .fn()
         .mockRejectedValueOnce(new Error('NETWORK_ERROR'))
         .mockRejectedValueOnce(new Error('TIMEOUT_ERROR'))
         .mockResolvedValue('success');
@@ -145,14 +146,14 @@ describe('Retry Strategy', () => {
       const result = await executePromise;
 
       expect(result.attempts).toHaveLength(3);
-      
+
       // First attempt has no delay
       expect(result.attempts[0].delayMs).toBe(0);
-      
+
       // Subsequent attempts should have increasing delays (with jitter)
       expect(result.attempts[1].delayMs).toBeGreaterThan(80); // ~100ms with jitter
       expect(result.attempts[1].delayMs).toBeLessThan(120);
-      
+
       expect(result.attempts[2].delayMs).toBeGreaterThan(180); // ~200ms with jitter
       expect(result.attempts[2].delayMs).toBeLessThan(220);
     });
@@ -162,7 +163,7 @@ describe('Retry Strategy', () => {
         maxAttempts: 5,
         baseDelayMs: 500,
         maxDelayMs: 600, // Low max delay
-        backoffMultiplier: 3
+        backoffMultiplier: 3,
       });
 
       const error = new Error('NETWORK_ERROR');
@@ -179,7 +180,7 @@ describe('Retry Strategy', () => {
       const result = await executePromise;
 
       // All delays should be capped at maxDelayMs
-      result.attempts.slice(1).forEach(attempt => {
+      result.attempts.slice(1).forEach((attempt) => {
         expect(attempt.delayMs).toBeLessThanOrEqual(660); // 600 + 10% jitter
       });
     });
@@ -187,13 +188,14 @@ describe('Retry Strategy', () => {
 
   describe('Timeout Wrapper', () => {
     it('should timeout operations that exceed configured timeout', async () => {
-      const slowOperation = () => new Promise(resolve => 
-        setTimeout(() => resolve('slow-result'), 2000)
-      );
+      const slowOperation = () =>
+        new Promise((resolve) =>
+          setTimeout(() => resolve('slow-result'), 2000)
+        );
 
       const timeoutStrategy = new RetryStrategy('timeout-test', {
         maxAttempts: 1,
-        timeoutMs: 500
+        timeoutMs: 500,
       });
 
       const executePromise = timeoutStrategy.execute(
@@ -216,7 +218,7 @@ describe('Retry Strategy', () => {
 
       const timeoutStrategy = new RetryStrategy('timeout-test', {
         maxAttempts: 1,
-        timeoutMs: 1000
+        timeoutMs: 1000,
       });
 
       const result = await timeoutStrategy.execute(
@@ -233,12 +235,12 @@ describe('Retry Strategy', () => {
   describe('Metrics', () => {
     it('should track successful operations', async () => {
       const operation = vi.fn().mockResolvedValue('success');
-      
+
       await retryStrategy.execute(operation, 'test-correlation-id');
       await retryStrategy.execute(operation, 'test-correlation-id');
 
       const metrics = retryStrategy.getMetrics();
-      
+
       expect(metrics.successfulAttempts).toBe(2);
       expect(metrics.failedAttempts).toBe(0);
       expect(metrics.totalAttempts).toBe(2);
@@ -248,11 +250,11 @@ describe('Retry Strategy', () => {
     it('should track failed operations', async () => {
       const error = new Error('NON_RETRYABLE_ERROR');
       const operation = vi.fn().mockRejectedValue(error);
-      
+
       await retryStrategy.execute(operation, 'test-correlation-id');
 
       const metrics = retryStrategy.getMetrics();
-      
+
       expect(metrics.successfulAttempts).toBe(0);
       expect(metrics.failedAttempts).toBe(1);
       expect(metrics.totalAttempts).toBe(1);
@@ -260,30 +262,34 @@ describe('Retry Strategy', () => {
 
     it('should calculate average attempts correctly', async () => {
       const successOp = vi.fn().mockResolvedValue('success');
-      const retryOp = vi.fn()
+      const retryOp = vi
+        .fn()
         .mockRejectedValueOnce(new Error('NETWORK_ERROR'))
         .mockResolvedValue('success');
 
       await retryStrategy.execute(successOp, 'test-correlation-id');
-      
-      const executePromise = retryStrategy.execute(retryOp, 'test-correlation-id');
+
+      const executePromise = retryStrategy.execute(
+        retryOp,
+        'test-correlation-id'
+      );
       await vi.advanceTimersByTimeAsync(500);
       await executePromise;
 
       const metrics = retryStrategy.getMetrics();
-      
+
       expect(metrics.successfulAttempts).toBe(2);
       expect(metrics.averageAttempts).toBe(1.5); // (1 + 2) / 2
     });
 
     it('should reset metrics', async () => {
       const operation = vi.fn().mockResolvedValue('success');
-      
+
       await retryStrategy.execute(operation, 'test-correlation-id');
       retryStrategy.resetMetrics();
 
       const metrics = retryStrategy.getMetrics();
-      
+
       expect(metrics.successfulAttempts).toBe(0);
       expect(metrics.failedAttempts).toBe(0);
       expect(metrics.totalAttempts).toBe(0);
@@ -294,10 +300,16 @@ describe('Retry Strategy', () => {
 
   describe('Error Type Detection', () => {
     it('should detect retryable errors by name', async () => {
-      const networkError = new NetworkError('Connection failed', 'test-correlation-id');
+      const networkError = new NetworkError(
+        'Connection failed',
+        'test-correlation-id'
+      );
       const operation = vi.fn().mockRejectedValue(networkError);
 
-      const result = await retryStrategy.execute(operation, 'test-correlation-id');
+      const result = await retryStrategy.execute(
+        operation,
+        'test-correlation-id'
+      );
 
       expect(result.attempts).toHaveLength(1); // NetworkError should be retryable, but we're not advancing timers
     });
@@ -306,7 +318,10 @@ describe('Retry Strategy', () => {
       const error = new Error('Request failed with ECONNRESET');
       const operation = vi.fn().mockRejectedValue(error);
 
-      const executePromise = retryStrategy.execute(operation, 'test-correlation-id');
+      const executePromise = retryStrategy.execute(
+        operation,
+        'test-correlation-id'
+      );
       await vi.advanceTimersByTimeAsync(2000);
       const result = await executePromise;
 
@@ -318,7 +333,10 @@ describe('Retry Strategy', () => {
       error.code = 'ECONNRESET';
       const operation = vi.fn().mockRejectedValue(error);
 
-      const executePromise = retryStrategy.execute(operation, 'test-correlation-id');
+      const executePromise = retryStrategy.execute(
+        operation,
+        'test-correlation-id'
+      );
       await vi.advanceTimersByTimeAsync(2000);
       const result = await executePromise;
 
@@ -333,7 +351,7 @@ describe('Retry Strategy Registry', () => {
   beforeEach(() => {
     registry = new RetryStrategyRegistry({
       maxAttempts: 2,
-      baseDelayMs: 50
+      baseDelayMs: 50,
     });
   });
 
@@ -347,7 +365,7 @@ describe('Retry Strategy Registry', () => {
 
   it('should merge default and custom config', () => {
     const strategy = registry.getStrategy('custom-strategy', {
-      maxAttempts: 5
+      maxAttempts: 5,
     });
 
     const config = strategy.getConfig();
@@ -374,7 +392,7 @@ describe('Retry Strategy Registry', () => {
   it('should reset all metrics', async () => {
     const strategy = registry.getStrategy('test-strategy');
     const operation = vi.fn().mockResolvedValue('success');
-    
+
     await strategy.execute(operation, 'test-correlation-id');
     registry.resetAllMetrics();
 
@@ -412,7 +430,7 @@ describe('withRetry Convenience Function', () => {
 
   it('should execute successful operation', async () => {
     const operation = vi.fn().mockResolvedValue('success');
-    
+
     const result = await withRetry(
       operation,
       'test-correlation-id',
@@ -451,7 +469,7 @@ describe('Global Retry Strategy Registry', () => {
   it('should maintain state across imports', () => {
     const strategy = retryStrategyRegistry.getStrategy('global-test');
     expect(strategy.getName()).toBe('global-test');
-    
+
     // Should be the same instance when accessed again
     const sameStrategy = retryStrategyRegistry.getStrategy('global-test');
     expect(sameStrategy).toBe(strategy);

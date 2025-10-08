@@ -8,7 +8,7 @@ import {
   CircuitBreakerError,
   ErrorFactory,
   isBaseError,
-  isOperationalError
+  isOperationalError,
 } from '../src/errors/index.js';
 
 describe('Error Handling System', () => {
@@ -58,7 +58,7 @@ describe('Error Handling System', () => {
       expect(clientError).toEqual({
         type: 'NETWORK_ERROR',
         message: 'Connection failed',
-        correlationId: 'test-correlation-id'
+        correlationId: 'test-correlation-id',
       });
     });
 
@@ -83,8 +83,8 @@ describe('Error Handling System', () => {
         error: {
           message: 'Rate limit exceeded',
           type: 'rate_limit_error',
-          code: 'rate_limit_exceeded'
-        }
+          code: 'rate_limit_exceeded',
+        },
       };
 
       const error = ErrorFactory.fromAzureOpenAIError(
@@ -138,8 +138,17 @@ describe('Error Handling System', () => {
     });
 
     it('should identify operational errors', () => {
-      const operationalError = new AuthenticationError('Auth failed', 'test-id');
-      const nonOperationalError = new BaseError('Critical', 500, 'CRITICAL', 'test-id', false);
+      const operationalError = new AuthenticationError(
+        'Auth failed',
+        'test-id'
+      );
+      const nonOperationalError = new BaseError(
+        'Critical',
+        500,
+        'CRITICAL',
+        'test-id',
+        false
+      );
       const regularError = new Error('Regular');
 
       expect(isOperationalError(operationalError)).toBe(true);
