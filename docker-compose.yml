@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  claude-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${PORT:-8080}:${PORT:-8080}"
+    environment:
+      - NODE_ENV=production
+      - PORT=${PORT:-8080}
+      - PROXY_API_KEY=${PROXY_API_KEY}
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
+      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY}
+      - AZURE_OPENAI_MODEL=${AZURE_OPENAI_MODEL}
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:' + (process.env.PORT || 8080) + '/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE

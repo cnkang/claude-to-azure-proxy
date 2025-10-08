@@ -1,0 +1,36 @@
+# Hadolint configuration for Dockerfile linting
+# https://github.com/hadolint/hadolint
+
+# Rules to ignore
+ignored:
+  # DL3008: Pin versions in apt get install
+  - DL3008
+  # DL3009: Delete the apt-get lists after installing something
+  - DL3009
+
+# Rules to treat as warnings instead of errors
+warning:
+  # DL3018: Pin versions in apk add
+  - DL3018
+
+# Rules to treat as info instead of warnings
+info: []
+
+# Rules to treat as style instead of info
+style: []
+
+# Trusted registries for base images
+trustedRegistries:
+  - docker.io
+  - gcr.io
+  - ghcr.io
+
+# Override specific rules
+override:
+  error: []
+  warning: []
+  info: []
+  style: []
+
+# Strict labels validation
+strictLabels: false

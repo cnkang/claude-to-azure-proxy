@@ -1,0 +1,140 @@
+{
+  "entryPoints": [
+    "src/index.ts",
+    "src/config/index.ts",
+    "src/middleware/authentication.ts",
+    "src/middleware/logging.ts",
+    "src/middleware/security.ts",
+    "src/middleware/error-handler.ts",
+    "src/monitoring/health-monitor.ts",
+    "src/monitoring/metrics.ts",
+    "src/resilience/circuit-breaker.ts",
+    "src/resilience/graceful-degradation.ts",
+    "src/resilience/retry.ts",
+    "src/utils/request-transformer.ts",
+    "src/utils/response-transformer.ts",
+    "src/types/index.ts"
+  ],
+  "out": "docs/api",
+  "theme": "default",
+  "name": "Claude-to-Azure Proxy API Documentation",
+  "includeVersion": true,
+  "excludePrivate": false,
+  "excludeProtected": false,
+  "excludeExternals": true,
+  "excludeNotDocumented": false,
+  "readme": "README.md",
+  "plugin": [
+    "typedoc-plugin-markdown"
+  ],
+  "gitRevision": "main",
+  "gitRemote": "origin",
+  "gaID": "",
+  "hideGenerator": false,
+  "searchInComments": true,
+  "cleanOutputDir": true,
+  "treatWarningsAsErrors": false,
+  "validation": {
+    "notExported": true,
+    "invalidLink": true,
+    "notDocumented": false
+  },
+  "categorizeByGroup": true,
+  "categoryOrder": [
+    "Server",
+    "Configuration",
+    "Middleware",
+    "Monitoring",
+    "Resilience",
+    "Utilities",
+    "Types",
+    "*"
+  ],
+  "sort": [
+    "source-order"
+  ],
+  "kindSortOrder": [
+    "Document",
+    "Project",
+    "Module",
+    "Namespace",
+    "Enum",
+    "EnumMember",
+    "Class",
+    "Interface",
+    "TypeAlias",
+    "Constructor",
+    "Property",
+    "Variable",
+    "Function",
+    "Accessor",
+    "Method",
+    "Parameter",
+    "TypeParameter",
+    "TypeLiteral",
+    "CallSignature",
+    "ConstructorSignature",
+    "IndexSignature",
+    "GetSignature",
+    "SetSignature"
+  ],
+  "visibilityFilters": {
+    "protected": false,
+    "private": false,
+    "inherited": true,
+    "external": false,
+    "@alpha": false,
+    "@beta": false
+  },
+  "searchCategoryBoosts": {
+    "Classes": 1.5,
+    "Interfaces": 1.2,
+    "Functions": 1.0
+  },
+  "navigationLinks": {
+    "GitHub": "https://github.com/your-org/claude-to-azure-proxy",
+    "API Specification": "./api-specification.yaml"
+  },
+  "sidebarLinks": {
+    "Deployment Guide": "./DEPLOYMENT.md",
+    "Security Guide": "./SECURITY.md"
+  },
+  "customCss": "./docs/custom.css",
+  "markedOptions": {
+    "mangle": false
+  },
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "declarationMap": true
+  },
+  "tsconfig": "./tsconfig.json",
+  "exclude": [
+    "node_modules/**/*",
+    "dist/**/*",
+    "tests/**/*",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ],
+  "externalPattern": [
+    "**/node_modules/**"
+  ],
+  "excludeInternal": false,
+  "excludeCategories": [],
+  "defaultCategory": "Other",
+  "categoryOrder": [
+    "Server",
+    "Configuration", 
+    "Middleware",
+    "Monitoring",
+    "Resilience",
+    "Utilities",
+    "Types"
+  ]
+}
