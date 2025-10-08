@@ -9,8 +9,7 @@ pnpm-debug.log*
 dist
 *.tsbuildinfo
 
-# Development files
-src
+# Development files (keep src for build stage)
 tests
 *.test.ts
 *.test.js

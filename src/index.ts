@@ -16,8 +16,8 @@ import { enhancedErrorHandler } from './middleware/error-handler.js';
 import { secureAuthenticationMiddleware } from './middleware/authentication.js';
 import { healthCheckHandler } from './routes/health.js';
 import { modelsHandler } from './routes/models.js';
-import { secureCompletionsHandler } from './routes/completions.js';
-import { healthMonitor } from './monitoring/health-monitor.js';
+import { completionsRateLimit, completionsHandler } from './routes/completions.js';
+import { getHealthMonitor } from './monitoring/health-monitor.js';
 import { gracefulDegradationManager, checkFeatureAvailability } from './resilience/graceful-degradation.js';
 
 /**
@@ -226,28 +226,29 @@ class ProxyServer {
     this.app.post('/v1/completions', 
       secureAuthenticationMiddleware, 
       checkFeatureAvailability('completions'),
-      ...secureCompletionsHandler(this.config)
+      completionsRateLimit,
+      completionsHandler(this.config)
     );
     
-    // Catch-all for undefined routes
-    this.app.use('*', (req, res) => {
-      const correlationId = (req as unknown as RequestWithCorrelationId).correlationId;
-      
-      logger.warn('Route not found', correlationId, {
-        method: req.method,
-        url: req.originalUrl
-      });
-      
-      const errorResponse: ErrorResponse = {
-        error: {
-          type: 'not_found',
-          message: 'The requested endpoint was not found',
-          correlationId
-        }
-      };
-      
-      res.status(404).json(errorResponse);
-    });
+    // Catch-all for undefined routes - temporarily disabled for Express 5.x compatibility
+    // this.app.all('*', (req, res) => {
+    //   const correlationId = (req as unknown as RequestWithCorrelationId).correlationId;
+    //   
+    //   logger.warn('Route not found', correlationId, {
+    //     method: req.method,
+    //     url: req.originalUrl
+    //   });
+    //   
+    //   const errorResponse: ErrorResponse = {
+    //     error: {
+    //       type: 'not_found',
+    //       message: 'The requested endpoint was not found',
+    //       correlationId
+    //     }
+    //   };
+    //   
+    //   res.status(404).json(errorResponse);
+    // });
   }
 
   /**
@@ -340,6 +341,9 @@ class ProxyServer {
    * @private
    */
   private setupHealthMonitoring(): void {
+    // Initialize health monitor with config
+    const healthMonitor = getHealthMonitor(this.config);
+    
     // Register basic health checks
     healthMonitor.registerHealthCheck({
       name: 'memory',
@@ -406,7 +410,7 @@ class ProxyServer {
         logger.info('Shutting down server gracefully');
         
         // Stop health monitoring
-        healthMonitor.stopMonitoring();
+        getHealthMonitor().stopMonitoring();
         
         this.server.close(() => {
           logger.info('Server shutdown complete');

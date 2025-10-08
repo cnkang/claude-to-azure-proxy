@@ -217,4 +217,24 @@ export class HealthMonitor {
 }
 
 // Global health monitor instance - will be initialized when needed
-export let healthMonitor: HealthMonitor;
+let healthMonitorInstance: HealthMonitor | null = null;
+
+export const getHealthMonitor = (config?: ServerConfig): HealthMonitor => {
+  if (!healthMonitorInstance && config) {
+    healthMonitorInstance = new HealthMonitor(config);
+  }
+  if (!healthMonitorInstance) {
+    throw new Error('Health monitor not initialized. Call getHealthMonitor with config first.');
+  }
+  return healthMonitorInstance;
+};
+
+// For backward compatibility
+export const healthMonitor = {
+  registerHealthCheck: (check: any) => getHealthMonitor().registerHealthCheck(check),
+  startMonitoring: (intervalMs: number) => getHealthMonitor().startMonitoring(intervalMs),
+  stopMonitoring: () => getHealthMonitor().stopMonitoring(),
+  checkHealth: (correlationId: string) => getHealthMonitor().checkHealth(correlationId),
+  getHealthStatus: () => getHealthMonitor().getHealthStatus(),
+  triggerAlert: (alert: any) => getHealthMonitor().triggerAlert(alert)
+};
