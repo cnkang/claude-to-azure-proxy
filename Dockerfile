@@ -3,7 +3,7 @@ FROM node:22-alpine AS base
 
 # Install security updates and required packages
 RUN apk update && apk upgrade && \
-    apk add --no-cache dumb-init && \
+    apk add --no-cache dumb-init=1.2.5-r3 && \
     rm -rf /var/cache/apk/*
 
 # Create non-root user for security
@@ -36,7 +36,7 @@ FROM node:22-alpine AS runner
 
 # Install security updates and dumb-init for proper signal handling
 RUN apk update && apk upgrade && \
-    apk add --no-cache dumb-init && \
+    apk add --no-cache dumb-init=1.2.5-r3 && \
     rm -rf /var/cache/apk/*
 
 # Create non-root user

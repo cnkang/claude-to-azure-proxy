@@ -86,9 +86,11 @@ EOF
     BUILD_OUTPUT=$(docker build -f Dockerfile.test -t env-test . 2>&1 || true)
     
     # Check if any .env files were found in the build output
-    if echo "$BUILD_OUTPUT" | grep -q "\.env"; then
+    # Look for actual file paths, not just any mention of .env
+    ENV_FILES_IN_CONTEXT=$(echo "$BUILD_OUTPUT" | grep -E "^/test/\.env" | grep -v "No .env files found" || true)
+    if [ -n "$ENV_FILES_IN_CONTEXT" ]; then
         echo -e "${RED}❌ .env files found in Docker build context:${NC}"
-        echo "$BUILD_OUTPUT" | grep "\.env" | sed 's/^/   /'
+        echo "$ENV_FILES_IN_CONTEXT" | sed 's/^/   /'
         echo "   Update .dockerignore to exclude these files"
         docker rmi env-test &>/dev/null || true
         rm -f Dockerfile.test
@@ -108,15 +110,22 @@ fi
 echo ""
 echo "🔍 Checking git status for .env files..."
 if command -v git &> /dev/null && [ -d ".git" ]; then
-    ENV_FILES_IN_GIT=$(git ls-files | grep "\.env" || true)
+    # Check for .env files but exclude template files (.env.example, .env.sample)
+    ENV_FILES_IN_GIT=$(git ls-files | grep "\.env" | grep -v "\.env\.example" | grep -v "\.env\.sample" || true)
     if [ -n "$ENV_FILES_IN_GIT" ]; then
-        echo -e "${RED}❌ .env files found in git repository:${NC}"
+        echo -e "${RED}❌ Sensitive .env files found in git repository:${NC}"
         echo "$ENV_FILES_IN_GIT" | sed 's/^/   /'
         echo "   Remove these files from git:"
         echo "$ENV_FILES_IN_GIT" | sed 's/^/   git rm --cached /'
         exit 1
     else
-        echo -e "${GREEN}✅ No .env files found in git repository${NC}"
+        echo -e "${GREEN}✅ No sensitive .env files found in git repository${NC}"
+        # Check if template files exist and show them as acceptable
+        TEMPLATE_FILES=$(git ls-files | grep -E "\.env\.(example|sample)" || true)
+        if [ -n "$TEMPLATE_FILES" ]; then
+            echo -e "${GREEN}ℹ️  Template files found (acceptable):${NC}"
+            echo "$TEMPLATE_FILES" | sed 's/^/   /'
+        fi
     fi
 else
     echo -e "${YELLOW}⚠️  Not a git repository or git not available${NC}"
