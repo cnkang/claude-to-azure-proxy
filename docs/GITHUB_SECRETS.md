@@ -8,47 +8,41 @@ This document describes the GitHub secrets that need to be configured for the CI
 
 - `GITHUB_TOKEN` - Automatically provided by GitHub Actions for repository access
 
-### Optional Secrets (for enhanced Docker Scout functionality)
+## How GitHub Actions Work
 
-These secrets are optional but recommended for better Docker Scout vulnerability scanning:
+The CI/CD pipeline uses only the automatically provided `GITHUB_TOKEN` secret, which gives the workflow permission to:
 
-- `DOCKERHUB_USER` - Your Docker Hub username
-- `DOCKERHUB_TOKEN` - Your Docker Hub access token
+- Read repository contents
+- Write to GitHub Container Registry (ghcr.io)
+- Upload security scan results to GitHub Security tab
+- Write comments on pull requests
 
-## How to Configure Secrets
+## Security Scanning
 
-1. Go to your GitHub repository
-2. Click on **Settings** tab
-3. In the left sidebar, click **Secrets and variables** → **Actions**
-4. Click **New repository secret**
-5. Add the secret name and value
+The pipeline includes comprehensive security scanning:
 
-## Docker Hub Setup (Optional)
+1. **Environment File Security Check** - Ensures no sensitive files are exposed
+2. **Trivy Vulnerability Scanner** - Scans container images for known vulnerabilities
+3. **Hadolint** - Checks Dockerfile best practices
+4. **Container Security Verification** - Ensures containers run as non-root user
+5. **Health Check Testing** - Verifies application functionality
 
-If you want to use Docker Scout with enhanced features:
+## No Additional Configuration Required
 
-1. Create a Docker Hub account at https://hub.docker.com
-2. Go to **Account Settings** → **Security**
-3. Click **New Access Token**
-4. Create a token with **Public Repo Read** permissions
-5. Add the username and token to GitHub secrets
-
-## Without Docker Hub Secrets
-
-The pipeline will still work without Docker Hub secrets, but Docker Scout may have limited functionality. The security scanning will still work using GitHub Container Registry.
+The security pipeline is designed to work out-of-the-box without requiring any additional secrets or configuration. All security scan results are automatically uploaded to the GitHub Security tab for easy review.
 
 ## Security Notes
 
-- Never commit secrets to your repository
-- Use the minimum required permissions for access tokens
-- Regularly rotate your access tokens
-- Monitor secret usage in GitHub Actions logs (secrets are automatically masked)
+- The `GITHUB_TOKEN` is automatically provided and rotated by GitHub
+- All security scan results are uploaded to GitHub Security tab
+- No external service credentials are required
+- The pipeline follows security best practices with minimal permissions
 
 ## Troubleshooting
 
-If you see Docker Scout authentication errors:
-1. Verify your Docker Hub credentials are correct
-2. Check that your Docker Hub token has the right permissions
-3. You can disable Docker Scout by commenting out the step in `.github/workflows/docker-security.yml`
+If you encounter issues with the security pipeline:
 
-The security pipeline will continue to work with Trivy vulnerability scanning even without Docker Scout.
+1. Check that GitHub Actions are enabled for your repository
+2. Verify that the workflow has the necessary permissions (contents: read, packages: write, security-events: write)
+3. Review the Actions logs for specific error messages
+4. Ensure your repository has GitHub Advanced Security features enabled for security tab uploads
