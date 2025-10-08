@@ -22,7 +22,7 @@ docker build -t claude-to-azure-proxy .
 # Run the container
 make run
 # or
-docker run -d -p 8080:8080 --env-file .env claude-to-azure-proxy
+docker run --init -d -p 8080:8080 --env-file .env claude-to-azure-proxy
 ```
 
 ## Security Features
@@ -261,7 +261,7 @@ make size
 Run container with debug logging:
 
 ```bash
-docker run -e NODE_ENV=development -e DEBUG=* claude-to-azure-proxy
+docker run --init -e NODE_ENV=development -e DEBUG=* claude-to-azure-proxy
 ```
 
 ## Security Best Practices

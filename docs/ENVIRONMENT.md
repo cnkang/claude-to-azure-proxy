@@ -108,7 +108,7 @@ env:
 Pass environment variables at runtime:
 
 ```bash
-docker run -e PROXY_API_KEY=xxx -e AZURE_OPENAI_ENDPOINT=xxx claude-to-azure-proxy
+docker run --init -e PROXY_API_KEY=xxx -e AZURE_OPENAI_ENDPOINT=xxx claude-to-azure-proxy
 ```
 
 #### AWS Secrets Manager

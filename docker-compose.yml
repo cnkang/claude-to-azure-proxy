@@ -5,6 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    init: true  # Use Docker's built-in init system
     ports:
       - "${PORT:-8080}:${PORT:-8080}"
     environment:

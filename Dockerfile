@@ -1,9 +1,8 @@
 # Use Node.js 22 LTS Alpine base image with security updates
 FROM node:22-alpine AS base
 
-# Install security updates and required packages
+# Install security updates
 RUN apk update && apk upgrade && \
-    apk add --no-cache dumb-init=1.2.5-r3 && \
     rm -rf /var/cache/apk/*
 
 # Create non-root user for security
@@ -34,9 +33,8 @@ RUN pnpm run build
 # Production stage
 FROM node:22-alpine AS runner
 
-# Install security updates and dumb-init for proper signal handling
+# Install security updates
 RUN apk update && apk upgrade && \
-    apk add --no-cache dumb-init=1.2.5-r3 && \
     rm -rf /var/cache/apk/*
 
 # Create non-root user
@@ -60,8 +58,8 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 8080) + '/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"
 
-# Use dumb-init for proper signal handling and graceful shutdown
-ENTRYPOINT ["dumb-init", "--"]
+# No need for external init system - use Docker's built-in init
+# Run with: docker run --init your-image
 
 # Start the application
 CMD ["node", "dist/index.js"]
