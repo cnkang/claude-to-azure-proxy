@@ -91,9 +91,15 @@
     "vitest": "^3.2.4"
   },
   "lint-staged": {
-    "*.ts": [
+    "*.{ts,js}": [
       "eslint --config eslint.config.ts --fix",
       "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ],
+    "*.{dockerfile,Dockerfile}": [
+      "prettier --write --parser dockerfile"
     ]
   },
   "pnpm": {

@@ -1,0 +1,55 @@
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Dependencies
+node_modules/
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Generated files
+coverage/
+*.lcov
+.nyc_output
+
+# Logs
+logs/
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Git
+.git/
+
+# Docker
+.dockerignore
+
+# Environment files
+.env*
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Binary files
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+*.pdf
+*.zip
+*.tar.gz
+
+# Husky
+.husky/_/
