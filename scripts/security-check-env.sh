@@ -85,17 +85,16 @@ EOF
     echo "   Building test image to check for .env files in context..."
     BUILD_OUTPUT=$(docker build -f Dockerfile.test -t env-test . 2>&1 || true)
     
-    # Check if any .env files were found (excluding .env.example)
-    ENV_FILES_FOUND=$(echo "$BUILD_OUTPUT" | grep "\.env" | grep -v "\.env\.example" || true)
-    if [ -n "$ENV_FILES_FOUND" ]; then
+    # Check if any .env files were found in the build output
+    if echo "$BUILD_OUTPUT" | grep -q "\.env"; then
         echo -e "${RED}❌ .env files found in Docker build context:${NC}"
-        echo "$ENV_FILES_FOUND" | sed 's/^/   /'
+        echo "$BUILD_OUTPUT" | grep "\.env" | sed 's/^/   /'
         echo "   Update .dockerignore to exclude these files"
         docker rmi env-test &>/dev/null || true
         rm -f Dockerfile.test
         exit 1
     else
-        echo -e "${GREEN}✅ No sensitive .env files found in Docker build context${NC}"
+        echo -e "${GREEN}✅ No .env files found in Docker build context${NC}"
     fi
     
     # Cleanup

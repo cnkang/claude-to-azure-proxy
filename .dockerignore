@@ -17,12 +17,10 @@ tests
 coverage
 .nyc_output
 
-# Environment files
-.env
-.env.local
-.env.development
-.env.test
-.env.production
+# Environment files (exclude all .env* files for security)
+# This prevents any environment files from being included in the Docker image
+.env*
+*.env
 
 # IDE and editor files
 .vscode
