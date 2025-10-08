@@ -21,12 +21,12 @@ RUN npm install -g pnpm@10.18.1
 # Install dependencies in a separate layer for better caching
 FROM base AS deps
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --prod
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
 # Build stage
 FROM base AS builder
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --ignore-scripts
 COPY . .
 RUN pnpm run build
 
