@@ -1,0 +1,30 @@
+version: 1.0
+runtime: nodejs22
+build:
+  commands:
+    build:
+      # Install pnpm using corepack (built into Node.js 22)
+      - corepack enable
+      - corepack prepare pnpm@10.18.1 --activate
+      # Install dependencies (production only, ignore scripts to avoid husky)
+      - pnpm install --frozen-lockfile --prod --ignore-scripts
+      # Build the TypeScript application
+      - pnpm run build
+  env:
+    # Build-time environment variables
+    - name: NODE_ENV
+      value: production
+    - name: PNPM_HOME
+      value: /root/.local/share/pnpm
+run:
+  runtime-version: 22
+  command: node dist/index.js
+  network:
+    port: 8080
+    env: PORT
+  env:
+    # Runtime environment variables (these will be set in App Runner service configuration)
+    - name: NODE_ENV
+      value: production
+    - name: PORT
+      value: "8080"

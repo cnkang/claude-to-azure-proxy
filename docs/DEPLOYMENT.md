@@ -122,28 +122,47 @@ NODE_ENV=production
 - Healthy threshold: 1
 - Unhealthy threshold: 5
 
-#### Using AWS CLI
+#### Using AWS CLI with apprunner.yaml
 
-```bash
-# Create apprunner.yaml configuration file
-cat > apprunner.yaml << EOF
+The repository includes an `apprunner.yaml` configuration file for easy deployment:
+
+**Option 1: Using pnpm (recommended)**
+```yaml
+# apprunner.yaml (already included in repository)
 version: 1.0
 runtime: nodejs22
 build:
   commands:
     build:
-      - npm ci --production
-      - npm run build
+      - corepack enable
+      - corepack prepare pnpm@10.18.1 --activate
+      - pnpm install --frozen-lockfile --prod --ignore-scripts
+      - pnpm run build
 run:
   runtime-version: 22
-  command: npm start
+  command: node dist/index.js
   network:
     port: 8080
     env: PORT
-  env:
-    - name: NODE_ENV
-      value: production
-EOF
+```
+
+**Option 2: Using npm (fallback)**
+```yaml
+# apprunner-npm.yaml (fallback option)
+version: 1.0
+runtime: nodejs22
+build:
+  commands:
+    build:
+      - npm ci --production --ignore-scripts
+      - npm run build
+run:
+  runtime-version: 22
+  command: node dist/index.js
+  network:
+    port: 8080
+    env: PORT
+```
 
 # Deploy using AWS CLI
 aws apprunner create-service \
@@ -180,6 +199,37 @@ aws apprunner update-service \
 - Max instances: 10
 - Target CPU utilization: 70%
 - Target memory utilization: 80%
+
+### Troubleshooting App Runner Builds
+
+#### Build Command Issues
+
+If you encounter build issues with pnpm:
+
+1. **Use the npm fallback configuration:**
+   ```bash
+   # Rename the configuration file
+   mv apprunner.yaml apprunner-pnpm.yaml
+   mv apprunner-npm.yaml apprunner.yaml
+   ```
+
+2. **Common build errors and solutions:**
+   
+   **Error: `corepack: command not found`**
+   - Solution: Use the npm configuration instead
+   
+   **Error: `pnpm: command not found`**
+   - Solution: Ensure corepack is enabled in build commands
+   
+   **Error: `husky: command not found`**
+   - Solution: Ensure `--ignore-scripts` flag is used in install commands
+
+3. **Manual build command configuration:**
+   ```bash
+   # If apprunner.yaml doesn't work, configure manually in AWS Console:
+   # Build command: npm ci --production --ignore-scripts && npm run build
+   # Start command: node dist/index.js
+   ```
 
 ## Docker Deployment
 

@@ -1,6 +1,7 @@
 # GitHub Secrets Configuration
 
-This document describes the GitHub secrets that need to be configured for the CI/CD pipeline to work properly.
+This document describes the GitHub secrets that need to be configured for the CI/CD pipeline to work
+properly.
 
 ## Required Secrets
 
@@ -10,7 +11,8 @@ This document describes the GitHub secrets that need to be configured for the CI
 
 ## How GitHub Actions Work
 
-The CI/CD pipeline uses only the automatically provided `GITHUB_TOKEN` secret, which gives the workflow permission to:
+The CI/CD pipeline uses only the automatically provided `GITHUB_TOKEN` secret, which gives the
+workflow permission to:
 
 - Read repository contents
 - Write to GitHub Container Registry (ghcr.io)
@@ -29,7 +31,9 @@ The pipeline includes comprehensive security scanning:
 
 ## No Additional Configuration Required
 
-The security pipeline is designed to work out-of-the-box without requiring any additional secrets or configuration. All security scan results are automatically uploaded to the GitHub Security tab for easy review.
+The security pipeline is designed to work out-of-the-box without requiring any additional secrets or
+configuration. All security scan results are automatically uploaded to the GitHub Security tab for
+easy review.
 
 ## Security Notes
 
@@ -43,6 +47,7 @@ The security pipeline is designed to work out-of-the-box without requiring any a
 If you encounter issues with the security pipeline:
 
 1. Check that GitHub Actions are enabled for your repository
-2. Verify that the workflow has the necessary permissions (contents: read, packages: write, security-events: write)
+2. Verify that the workflow has the necessary permissions (contents: read, packages: write,
+   security-events: write)
 3. Review the Actions logs for specific error messages
 4. Ensure your repository has GitHub Advanced Security features enabled for security tab uploads
