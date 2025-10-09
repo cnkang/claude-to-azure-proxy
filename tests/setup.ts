@@ -1,10 +1,10 @@
 import net from 'node:net';
 
-const originalListen = net.Server.prototype.listen;
+const originalListen = net.Server.prototype.listen.bind(net.Server.prototype);
 
 net.Server.prototype.listen = function patchedListen(...args: unknown[]) {
   if (typeof args[0] === 'number') {
-    const port = args[0] as number;
+    const port = args[0];
     const hostArg = args[1];
     const hostProvided =
       typeof hostArg === 'string' ||

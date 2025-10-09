@@ -24,8 +24,8 @@ const config: Linter.FlatConfig[] = [
       'no-console': 'warn',
       'no-var': 'error',
       'prefer-const': 'error',
-      'eqeqeq': ['error', 'always'],
-      'curly': ['error', 'all'],
+      eqeqeq: ['error', 'always'],
+      curly: ['error', 'all'],
     },
   },
 
@@ -34,7 +34,7 @@ const config: Linter.FlatConfig[] = [
     ...config,
     files: ['**/*.ts', '**/*.tsx'],
   })),
-  
+
   ...tseslint.configs.recommendedTypeChecked.map((config) => ({
     ...config,
     files: ['**/*.ts', '**/*.tsx'],
@@ -49,7 +49,7 @@ const config: Linter.FlatConfig[] = [
     rules: {
       // Security plugin rules (latest version 3.0.1 supports ESLint 9)
       ...security.configs.recommended.rules,
-      
+
       // Enhanced security rules
       'security/detect-object-injection': 'error',
       'security/detect-non-literal-regexp': 'error',
@@ -63,7 +63,7 @@ const config: Linter.FlatConfig[] = [
       'security/detect-non-literal-require': 'error',
       'security/detect-possible-timing-attacks': 'error',
       'security/detect-pseudoRandomBytes': 'error',
-      
+
       // Additional built-in security rules
       'no-eval': 'error',
       'no-implied-eval': 'error',
@@ -86,20 +86,20 @@ const config: Linter.FlatConfig[] = [
       'no-useless-concat': 'error',
       'no-void': 'error',
       'no-with': 'error',
-      'radix': 'error',
+      radix: 'error',
       'wrap-iife': ['error', 'inside'],
-      'yoda': 'error',
+      yoda: 'error',
     },
   },
 
-  // TypeScript-specific configuration with enhanced rules
+  // TypeScript-specific configuration with enhanced rules for source code
   {
-    files: ['**/*.ts', '**/*.tsx'],
+    files: ['src/**/*.ts', 'src/**/*.tsx'],
     languageOptions: {
       parserOptions: {
         ecmaVersion: 2022,
         sourceType: 'module',
-        project: ['./tsconfig.json', './tsconfig.test.json'],
+        project: ['./tsconfig.json'],
         tsconfigRootDir: import.meta.dirname,
       },
       globals: {
@@ -110,7 +110,61 @@ const config: Linter.FlatConfig[] = [
         __filename: 'readonly',
         global: 'readonly',
         console: 'readonly',
-        
+      },
+    },
+    rules: {
+      // Enhanced TypeScript rules for security and best practices
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-unsafe-assignment': 'error',
+      '@typescript-eslint/no-unsafe-call': 'error',
+      '@typescript-eslint/no-unsafe-member-access': 'error',
+      '@typescript-eslint/no-unsafe-return': 'error',
+      '@typescript-eslint/no-unsafe-argument': 'error',
+      '@typescript-eslint/prefer-readonly': 'error',
+      '@typescript-eslint/prefer-readonly-parameter-types': 'off',
+      '@typescript-eslint/strict-boolean-expressions': 'error',
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/await-thenable': 'error',
+      '@typescript-eslint/no-misused-promises': 'error',
+      '@typescript-eslint/require-await': 'error',
+      '@typescript-eslint/prefer-nullish-coalescing': 'error',
+      '@typescript-eslint/prefer-optional-chain': 'error',
+      '@typescript-eslint/no-unnecessary-condition': 'error',
+      '@typescript-eslint/no-unused-vars': 'error',
+      '@typescript-eslint/unbound-method': 'error',
+
+      // Override base rules that conflict with TypeScript
+      'no-unused-vars': 'off',
+      'no-undef': 'off', // TypeScript handles this
+
+      // General best practices
+      'no-console': 'warn',
+      'no-var': 'error',
+      'prefer-const': 'error',
+      eqeqeq: ['error', 'always'],
+      curly: ['error', 'all'],
+    },
+  },
+
+  // TypeScript configuration for test files - same strict rules as source code
+  {
+    files: ['tests/**/*.ts', 'tests/**/*.tsx', '**/*.test.ts', '**/*.spec.ts'],
+    languageOptions: {
+      parserOptions: {
+        ecmaVersion: 2022,
+        sourceType: 'module',
+        project: ['./tsconfig.test.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      globals: {
+        // Node.js globals
+        process: 'readonly',
+        Buffer: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        global: 'readonly',
+        console: 'readonly',
+
         // Test globals
         describe: 'readonly',
         it: 'readonly',
@@ -124,7 +178,7 @@ const config: Linter.FlatConfig[] = [
       },
     },
     rules: {
-      // Enhanced TypeScript rules for security and best practices
+      // Same strict TypeScript rules as source code
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-unsafe-assignment': 'error',
       '@typescript-eslint/no-unsafe-call': 'error',
@@ -132,7 +186,7 @@ const config: Linter.FlatConfig[] = [
       '@typescript-eslint/no-unsafe-return': 'error',
       '@typescript-eslint/no-unsafe-argument': 'error',
       '@typescript-eslint/prefer-readonly': 'error',
-      '@typescript-eslint/prefer-readonly-parameter-types': 'warn',
+      '@typescript-eslint/prefer-readonly-parameter-types': 'off',
       '@typescript-eslint/strict-boolean-expressions': 'error',
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/await-thenable': 'error',
@@ -142,17 +196,37 @@ const config: Linter.FlatConfig[] = [
       '@typescript-eslint/prefer-optional-chain': 'error',
       '@typescript-eslint/no-unnecessary-condition': 'error',
       '@typescript-eslint/no-unused-vars': 'error',
-      
+      '@typescript-eslint/unbound-method': 'error',
+
       // Override base rules that conflict with TypeScript
       'no-unused-vars': 'off',
       'no-undef': 'off', // TypeScript handles this
-      
+
       // General best practices
-      'no-console': 'warn',
+      'no-console': 'off', // Allow console in tests
       'no-var': 'error',
       'prefer-const': 'error',
-      'eqeqeq': ['error', 'always'],
-      'curly': ['error', 'all'],
+      eqeqeq: ['error', 'always'],
+      curly: ['error', 'all'],
+
+      // Security rules - keep strict for tests too
+      'security/detect-object-injection': 'error',
+      'no-script-url': 'error',
+    },
+  },
+
+  // Enforce readonly parameters on pure utility modules where mutation must be explicit
+  {
+    files: ['src/utils/**/*.ts'],
+    rules: {
+      '@typescript-eslint/prefer-readonly-parameter-types': [
+        'error',
+        {
+          checkParameterProperties: true,
+          ignoreInferredTypes: true,
+          treatMethodsAsReadonly: true,
+        },
+      ],
     },
   },
 
@@ -178,8 +252,8 @@ const config: Linter.FlatConfig[] = [
       'no-unused-vars': 'error',
       'no-var': 'error',
       'prefer-const': 'error',
-      'eqeqeq': ['error', 'always'],
-      'curly': ['error', 'all'],
+      eqeqeq: ['error', 'always'],
+      curly: ['error', 'all'],
       'no-eval': 'error',
       'no-implied-eval': 'error',
       'no-new-func': 'error',
