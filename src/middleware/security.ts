@@ -1,6 +1,7 @@
 import helmet from 'helmet';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { Request, Response, NextFunction } from 'express';
+import type { IncomingHttpHeaders } from 'http';
 import { v4 as uuidv4 } from 'uuid';
 import type {
   RateLimitConfig,
@@ -68,13 +69,77 @@ const rateLimitConfigs: Record<string, RateLimitConfig> = {
   },
 };
 
-const resolveClientIp = (req: Request): string | null => {
-  const cfConnectingIp = req.headers['cf-connecting-ip'] as string | undefined;
-  const realIp = req.headers['x-real-ip'] as string | undefined;
-  const xForwardedFor = req.headers['x-forwarded-for'] as string | undefined;
-  const firstForwardedIp = xForwardedFor?.split(',')[0]?.trim();
+type ClientIpHeader = 'cf-connecting-ip' | 'x-real-ip' | 'x-forwarded-for';
 
-  return cfConnectingIp || realIp || firstForwardedIp || req.ip || null;
+type KnownHeaderName =
+  | ClientIpHeader
+  | 'x-correlation-id'
+  | 'content-length'
+  | 'content-type';
+
+const extractHeaderValue = (
+  headers: IncomingHttpHeaders,
+  name: KnownHeaderName
+): string | undefined => {
+  const headerValue: string | string[] | undefined = (() => {
+    switch (name) {
+      case 'cf-connecting-ip':
+        return headers['cf-connecting-ip'];
+      case 'x-real-ip':
+        return headers['x-real-ip'];
+      case 'x-forwarded-for':
+        return headers['x-forwarded-for'];
+      case 'x-correlation-id':
+        return headers['x-correlation-id'];
+      case 'content-length':
+        return headers['content-length'];
+      case 'content-type':
+        return headers['content-type'];
+      default:
+        return undefined;
+    }
+  })();
+  if (typeof headerValue === 'string') {
+    const trimmed = headerValue.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
+
+  if (Array.isArray(headerValue)) {
+    for (const entry of headerValue) {
+      if (typeof entry === 'string') {
+        const trimmed = entry.trim();
+        if (trimmed.length > 0) {
+          return trimmed;
+        }
+      }
+    }
+  }
+
+  return undefined;
+};
+
+const extractClientIpFromHeader = (
+  headers: IncomingHttpHeaders,
+  headerName: ClientIpHeader
+): string | undefined => {
+  const headerValue = extractHeaderValue(headers, headerName);
+  if (headerValue === undefined) {
+    return undefined;
+  }
+
+  const firstSegment = headerValue.split(',')[0]?.trim();
+  return firstSegment && firstSegment.length > 0 ? firstSegment : undefined;
+};
+
+const resolveClientIp = (req: Request): string | null => {
+  const cfConnectingIp = extractClientIpFromHeader(
+    req.headers,
+    'cf-connecting-ip'
+  );
+  const realIp = extractClientIpFromHeader(req.headers, 'x-real-ip');
+  const forwardedIp = extractClientIpFromHeader(req.headers, 'x-forwarded-for');
+
+  return cfConnectingIp ?? realIp ?? forwardedIp ?? req.ip ?? null;
 };
 
 // Global rate limiter optimized for CloudFront
@@ -93,7 +158,7 @@ export const globalRateLimit = rateLimit({
   // Use CloudFront headers for real client IP identification
   keyGenerator: (req: Request): string => {
     const clientIp = resolveClientIp(req);
-    return clientIp ? ipKeyGenerator(clientIp) : 'unknown';
+    return clientIp !== null ? ipKeyGenerator(clientIp) : 'unknown';
   },
   handler: (req: Request, res: Response) => {
     const correlationId =
@@ -123,7 +188,7 @@ export const authRateLimit = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req: Request): string => {
     const clientIp = resolveClientIp(req);
-    return clientIp ? ipKeyGenerator(clientIp) : 'unknown';
+    return clientIp !== null ? ipKeyGenerator(clientIp) : 'unknown';
   },
   handler: (req: Request, res: Response) => {
     const correlationId =
@@ -153,7 +218,7 @@ export const apiRateLimit = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req: Request): string => {
     const clientIp = resolveClientIp(req);
-    return clientIp ? ipKeyGenerator(clientIp) : 'unknown';
+    return clientIp !== null ? ipKeyGenerator(clientIp) : 'unknown';
   },
   handler: (req: Request, res: Response) => {
     const correlationId =
@@ -174,23 +239,14 @@ export const correlationIdMiddleware = (
   res: Response,
   next: NextFunction
 ): void => {
-  let correlationId = req.headers['x-correlation-id'];
-
-  // Handle array headers (take first value)
-  if (Array.isArray(correlationId)) {
-    correlationId = correlationId[0];
-  }
+  const headerValue = extractHeaderValue(req.headers, 'x-correlation-id');
+  let correlationId = headerValue;
 
   // Validate and sanitize correlation ID
-  if (
-    !correlationId ||
-    typeof correlationId !== 'string' ||
-    correlationId.trim() === ''
-  ) {
+  if (correlationId === undefined || correlationId.length === 0) {
     correlationId = uuidv4();
   } else {
     // Truncate very large correlation IDs
-    correlationId = correlationId.trim();
     if (correlationId.length > 100) {
       correlationId = uuidv4();
     }
@@ -271,11 +327,14 @@ export const requestSizeMiddleware = (
   maxSizeBytes: number = 10 * 1024 * 1024
 ) => {
   return (req: Request, res: Response, next: NextFunction): void => {
-    const contentLength = req.headers['content-length'];
+    const contentLengthHeader = extractHeaderValue(
+      req.headers,
+      'content-length'
+    );
 
-    if (contentLength) {
-      const size = parseInt(contentLength, 10);
-      if (!isNaN(size) && size > maxSizeBytes) {
+    if (contentLengthHeader !== undefined) {
+      const size = Number.parseInt(contentLengthHeader, 10);
+      if (Number.isFinite(size) && size > maxSizeBytes) {
         const correlationId =
           (req as unknown as RequestWithCorrelationId).correlationId ||
           'unknown';
@@ -299,7 +358,7 @@ export const requestSizeMiddleware = (
  */
 export const requestTimeoutMiddleware = (timeoutMs: number = 30000) => {
   return (req: Request, res: Response, next: NextFunction): void => {
-    if (req.setTimeout) {
+    if (typeof req.setTimeout === 'function') {
       req.setTimeout(timeoutMs, () => {
         const correlationId =
           (req as unknown as RequestWithCorrelationId).correlationId ||
@@ -328,21 +387,7 @@ export const sanitizeInput = (
   visited = new WeakSet()
 ): unknown => {
   if (typeof input === 'string') {
-    return (
-      input
-        // Remove control characters except newlines and tabs
-        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
-        // Remove script tags
-        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-        // Remove img tags with event handlers
-        .replace(/<img[^>]*onerror[^>]*>/gi, '')
-        // Remove event handlers
-        .replace(/\son\w+\s*=/gi, '')
-        // Remove javascript: protocols
-        .replace(/javascript:/gi, '')
-        // Remove data URLs with base64
-        .replace(/data:text\/html;base64,[^"']*/gi, '')
-    );
+    return sanitizeStringInput(input);
   }
 
   if (Array.isArray(input)) {
@@ -355,20 +400,32 @@ export const sanitizeInput = (
     return result;
   }
 
-  if (input && typeof input === 'object') {
+  if (input !== null && typeof input === 'object') {
     if (visited.has(input)) {
       return '[Circular Reference]';
     }
     visited.add(input);
-    const sanitized: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(input)) {
-      sanitized[key] = sanitizeInput(value, visited);
-    }
+    const sanitizedEntries = Object.entries(
+      input as Record<string, unknown>
+    ).map(([key, value]) => [key, sanitizeInput(value, visited)] as const);
     visited.delete(input);
-    return sanitized;
+    return Object.fromEntries(sanitizedEntries);
   }
 
   return input;
+};
+
+const sanitizeStringInput = (value: string): string => {
+  let sanitized = value.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+  sanitized = sanitized.replace(/<script[\s\S]*?<\/script>/gi, '');
+  sanitized = sanitized.replace(
+    /<img[^>]*onerror\s*=\s*['"][^'"]*['"][^>]*>/gi,
+    '<img>'
+  );
+  sanitized = sanitized.replace(/\son[a-z]+\s*=\s*['"][^'"]*['"]/gi, '');
+  sanitized = sanitized.replace(/javascript:\s*/gi, '');
+  sanitized = sanitized.replace(/data:text\/html;base64,[^"']*/gi, '');
+  return sanitized;
 };
 
 /**
@@ -378,9 +435,9 @@ export const validateContentType = (
   req: Request,
   allowedTypes: string[]
 ): boolean => {
-  const contentType = req.headers['content-type'];
+  const contentType = extractHeaderValue(req.headers, 'content-type');
 
-  if (!contentType) {
+  if (contentType === undefined) {
     return false;
   }
 

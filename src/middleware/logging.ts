@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
+import type { IncomingHttpHeaders } from 'http';
 import type { RequestWithCorrelationId } from '../types/index.js';
-import { BaseError, isBaseError } from '../errors/index.js';
+import { isBaseError } from '../errors/index.js';
 
 /**
  * Enhanced structured logging middleware with correlation IDs and sanitized output
@@ -67,7 +68,37 @@ interface RequestLogEntry extends LogEntry {
 }
 
 // Enhanced sanitization for sensitive data
-const sanitizeData = (data: unknown): unknown => {
+const sensitiveKeys = [
+  'authorization',
+  'x-api-key',
+  'cookie',
+  'set-cookie',
+  'password',
+  'token',
+  'key',
+  'secret',
+  'apikey',
+  'api_key',
+  'bearer',
+  'auth',
+] as const;
+
+function sanitizeRecord(
+  record: Record<string, unknown>
+): Record<string, unknown> {
+  const sanitizedEntries = Object.entries(record).map(([key, value]) => {
+    const lowerKey = key.toLowerCase();
+    const shouldRedact = sensitiveKeys.some((sensitive) =>
+      lowerKey.includes(sensitive)
+    );
+    const sanitizedValue = shouldRedact ? '[REDACTED]' : sanitizeData(value);
+    return [key, sanitizedValue] as const;
+  });
+
+  return Object.fromEntries(sanitizedEntries);
+}
+
+function sanitizeData(data: unknown): unknown {
   if (data === null || data === undefined) {
     return data;
   }
@@ -77,42 +108,15 @@ const sanitizeData = (data: unknown): unknown => {
   }
 
   if (Array.isArray(data)) {
-    return data.map(sanitizeData);
+    return data.map((item) => sanitizeData(item));
   }
 
   if (typeof data === 'object') {
-    const sanitized: Record<string, unknown> = {};
-    const sensitiveKeys = [
-      'authorization',
-      'x-api-key',
-      'cookie',
-      'set-cookie',
-      'password',
-      'token',
-      'key',
-      'secret',
-      'apikey',
-      'api_key',
-      'bearer',
-      'auth',
-    ];
-
-    for (const [key, value] of Object.entries(
-      data as Record<string, unknown>
-    )) {
-      const lowerKey = key.toLowerCase();
-      if (sensitiveKeys.some((sensitive) => lowerKey.includes(sensitive))) {
-        sanitized[key] = '[REDACTED]';
-      } else {
-        sanitized[key] = sanitizeData(value);
-      }
-    }
-
-    return sanitized;
+    return sanitizeRecord(data as Record<string, unknown>);
   }
 
   return data;
-};
+}
 
 const sanitizeString = (str: string): string => {
   return (
@@ -140,9 +144,9 @@ const sanitizeString = (str: string): string => {
 
 // Sanitize sensitive headers and data
 const sanitizeHeaders = (
-  headers: Record<string, unknown>
+  headers: IncomingHttpHeaders
 ): Record<string, unknown> => {
-  return sanitizeData(headers) as Record<string, unknown>;
+  return sanitizeRecord(headers as unknown as Record<string, unknown>);
 };
 
 // Create structured log entry with enhanced context
@@ -162,22 +166,22 @@ const createLogEntry = (
     message,
     service: 'claude-to-azure-proxy',
     version: '1.0.0',
-    environment: process.env.NODE_ENV || 'development',
+    environment: getEnvironment(),
   };
 
-  if (metadata) {
-    entry.metadata = sanitizeData(metadata) as Record<string, unknown>;
+  if (metadata !== undefined) {
+    entry.metadata = sanitizeRecord(metadata);
   }
 
-  if (error) {
+  if (error !== undefined) {
     entry.error = createErrorLogEntry(error);
   }
 
-  if (performance) {
+  if (performance !== undefined) {
     entry.performance = performance;
   }
 
-  if (security) {
+  if (security !== undefined) {
     entry.security = security;
   }
 
@@ -195,18 +199,29 @@ const createErrorLogEntry = (error: Error): ErrorLogEntry => {
     errorEntry.code = error.errorCode;
     errorEntry.statusCode = error.statusCode;
     errorEntry.isOperational = error.isOperational;
-    errorEntry.context = sanitizeData(error.context) as Record<string, unknown>;
+    errorEntry.context = sanitizeRecord(error.context);
   }
 
   // Only include stack trace in development
-  if (process.env.NODE_ENV === 'development' && error.stack) {
-    errorEntry.stack = error.stack;
+  if (process.env.NODE_ENV === 'development') {
+    const stack = typeof error.stack === 'string' ? error.stack : undefined;
+    if (stack !== undefined && stack.length > 0) {
+      errorEntry.stack = stack;
+    }
   }
 
   return errorEntry;
 };
 
 // Enhanced logger utility with comprehensive logging capabilities
+const writeStdout = (payload: unknown): void => {
+  process.stdout.write(`${JSON.stringify(payload)}\n`);
+};
+
+const writeStderr = (payload: unknown): void => {
+  process.stderr.write(`${JSON.stringify(payload)}\n`);
+};
+
 export const logger = {
   info: (
     message: string,
@@ -222,7 +237,7 @@ export const logger = {
       undefined,
       performance
     );
-    console.log(JSON.stringify(entry));
+    writeStdout(entry);
   },
 
   warn: (
@@ -231,7 +246,7 @@ export const logger = {
     metadata?: Record<string, unknown>
   ): void => {
     const entry = createLogEntry('warn', message, correlationId, metadata);
-    console.warn(JSON.stringify(entry));
+    writeStderr(entry);
   },
 
   error: (
@@ -247,7 +262,7 @@ export const logger = {
       metadata,
       error
     );
-    console.error(JSON.stringify(entry));
+    writeStderr(entry);
   },
 
   critical: (
@@ -263,7 +278,7 @@ export const logger = {
       metadata,
       error
     );
-    console.error(JSON.stringify(entry));
+    writeStderr(entry);
   },
 
   debug: (
@@ -273,7 +288,7 @@ export const logger = {
   ): void => {
     if (process.env.NODE_ENV === 'development') {
       const entry = createLogEntry('debug', message, correlationId, metadata);
-      console.debug(JSON.stringify(entry));
+      writeStdout(entry);
     }
   },
 
@@ -300,7 +315,7 @@ export const logger = {
       undefined,
       security
     );
-    console.warn(JSON.stringify(entry));
+    writeStderr(entry);
   },
 
   health: (
@@ -322,7 +337,7 @@ export const logger = {
     const level =
       status === 'healthy' ? 'info' : status === 'degraded' ? 'warn' : 'error';
     const entry = createLogEntry(level, message, correlationId, metadata);
-    console.log(JSON.stringify(entry));
+    writeStdout(entry);
   },
 
   performance: (
@@ -343,7 +358,7 @@ export const logger = {
       undefined,
       performance
     );
-    console.log(JSON.stringify(entry));
+    writeStdout(entry);
   },
 };
 
@@ -357,7 +372,14 @@ export const requestLoggingMiddleware = (
   const correlationId = (req as unknown as RequestWithCorrelationId)
     .correlationId;
 
-  // Log incoming request
+  const clientIp = req.ip ?? req.socket.remoteAddress ?? 'unknown';
+  const userAgentHeader = extractHeaderValue(req.headers['user-agent']);
+  const contentLengthHeader = extractHeaderValue(req.headers['content-length']);
+  const requestContentLength =
+    contentLengthHeader !== undefined
+      ? parseContentLength(contentLengthHeader)
+      : undefined;
+
   const requestLog: RequestLogEntry = {
     timestamp: new Date().toISOString(),
     level: 'info',
@@ -365,23 +387,27 @@ export const requestLoggingMiddleware = (
     message: 'Incoming request',
     service: 'claude-to-azure-proxy',
     version: '1.0.0',
-    environment: process.env.NODE_ENV || 'development',
+    environment: getEnvironment(),
     request: {
       method: req.method,
       url: req.url,
-      userAgent: req.headers['user-agent'],
-      ip: req.ip || req.connection.remoteAddress || 'unknown',
-      contentLength: req.headers['content-length']
-        ? parseInt(req.headers['content-length'] as string, 10)
-        : undefined,
+      userAgent: userAgentHeader,
+      ip: clientIp,
+      contentLength: requestContentLength,
     },
   };
 
-  console.log(JSON.stringify(requestLog));
+  writeStdout(requestLog);
 
   // Log response when finished
   res.on('finish', () => {
     const responseTime = Date.now() - startTime;
+    const responseContentLengthHeader = res.getHeader('content-length');
+    const responseContentLength =
+      responseContentLengthHeader !== undefined
+        ? parseHeaderContentLength(responseContentLengthHeader)
+        : undefined;
+
     const responseLog: RequestLogEntry = {
       timestamp: new Date().toISOString(),
       level: res.statusCode >= 400 ? 'warn' : 'info',
@@ -389,18 +415,16 @@ export const requestLoggingMiddleware = (
       message: 'Request completed',
       service: 'claude-to-azure-proxy',
       version: '1.0.0',
-      environment: process.env.NODE_ENV || 'development',
+      environment: getEnvironment(),
       request: requestLog.request,
       response: {
         statusCode: res.statusCode,
-        contentLength: res.get('content-length')
-          ? parseInt(res.get('content-length') as string, 10)
-          : undefined,
+        contentLength: responseContentLength,
         responseTime,
       },
     };
 
-    console.log(JSON.stringify(responseLog));
+    writeStdout(responseLog);
   });
 
   next();
@@ -420,14 +444,75 @@ export const errorLoggingMiddleware = (
     error: {
       name: error.name,
       message: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      stack:
+        process.env.NODE_ENV === 'development' &&
+        typeof error.stack === 'string' &&
+        error.stack.length > 0
+          ? error.stack
+          : undefined,
     },
     request: {
       method: req.method,
       url: req.url,
-      headers: sanitizeHeaders(req.headers as Record<string, unknown>),
+      headers: sanitizeHeaders(req.headers),
     },
   });
 
   next(error);
 };
+
+const extractHeaderValue = (
+  value: string | string[] | undefined
+): string | undefined => {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
+
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      if (typeof entry === 'string' && entry.trim().length > 0) {
+        return entry.trim();
+      }
+    }
+  }
+
+  return undefined;
+};
+
+const parseContentLength = (value: string): number | undefined => {
+  if (value.trim().length === 0) {
+    return undefined;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+};
+
+const parseHeaderContentLength = (
+  value: number | string | readonly string[]
+): number | undefined => {
+  if (typeof value === 'number') {
+    return value >= 0 ? value : undefined;
+  }
+
+  if (typeof value === 'string') {
+    return parseContentLength(value);
+  }
+
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      const parsed =
+        typeof entry === 'string' ? parseContentLength(entry) : undefined;
+      if (parsed !== undefined) {
+        return parsed;
+      }
+    }
+  }
+
+  return undefined;
+};
+
+function getEnvironment(): string {
+  return process.env.NODE_ENV ?? 'development';
+}

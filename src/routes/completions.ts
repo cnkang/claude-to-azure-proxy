@@ -29,7 +29,6 @@ import {
 import {
   transformAzureResponseToClaude,
   createDefensiveResponseHandler,
-  extractErrorInfo,
   isAzureOpenAIError,
 } from '../utils/response-transformer.js';
 
@@ -52,7 +51,7 @@ export const completionsRateLimit = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  handler: (req: Request, res: Response) => {
+  handler: (req: Readonly<Request>, res: Response) => {
     const correlationId =
       (req as RequestWithCorrelationId).correlationId || 'unknown';
 
@@ -169,7 +168,8 @@ async function makeAzureRequestWithResilience(
               }
 
               if (
-                axiosError.response?.data &&
+                axiosError.response?.data !== undefined &&
+                axiosError.response.data !== null &&
                 isAzureOpenAIError(axiosError.response.data)
               ) {
                 throw ErrorFactory.fromAzureOpenAIError(
@@ -187,27 +187,27 @@ async function makeAzureRequestWithResilience(
         'azure-openai-request'
       );
 
-      if (retryResult.success && retryResult.data) {
+      if (retryResult.success && retryResult.data !== undefined) {
         return retryResult.data;
       }
 
-      throw (
-        retryResult.error ||
-        new Error('Request failed after all retry attempts')
-      );
+      const retryFailureError =
+        retryResult.error ??
+        new Error('Request failed after all retry attempts');
+      throw retryFailureError;
     },
     correlationId,
     'azure-openai-request'
   );
 
-  if (circuitResult.success && circuitResult.data) {
-    return circuitResult.data as AxiosResponse;
+  if (circuitResult.success && circuitResult.data !== undefined) {
+    return circuitResult.data;
   }
 
-  throw (
-    circuitResult.error ||
-    new Error('Circuit breaker prevented request execution')
-  );
+  const circuitFailureError =
+    circuitResult.error ??
+    new Error('Circuit breaker prevented request execution');
+  throw circuitFailureError;
 }
 
 /**
@@ -216,7 +216,7 @@ async function makeAzureRequestWithResilience(
 export const completionsHandler = (config: ServerConfig) => {
   return asyncErrorHandler(
     async (req: Request, res: Response): Promise<void> => {
-      const {correlationId} = req as RequestWithCorrelationId;
+      const { correlationId } = req as RequestWithCorrelationId;
       const metrics: RequestMetrics = {
         startTime: Date.now(),
         requestSize: JSON.stringify(req.body).length,
@@ -376,17 +376,27 @@ export const completionsHandler = (config: ServerConfig) => {
 
               // Extract status code and error data from original error
               let statusCode = 500;
-              let errorData: any = degradationResult.message;
+              let errorData: unknown = degradationResult.message;
 
-              if (error && typeof error === 'object' && 'response' in error) {
-                const axiosError = error as any;
-                statusCode = axiosError.response?.status || 500;
+              if (
+                typeof error === 'object' &&
+                error !== null &&
+                'response' in error
+              ) {
+                const axiosError = error as {
+                  response?: { status?: number; data?: unknown };
+                };
+                statusCode = axiosError.response?.status ?? 500;
                 errorData =
-                  axiosError.response?.data || degradationResult.message;
+                  axiosError.response?.data ?? degradationResult.message;
               }
 
               // Ensure we have a valid error structure for transformation
-              if (!errorData || typeof errorData !== 'object') {
+              if (
+                errorData === null ||
+                errorData === undefined ||
+                typeof errorData !== 'object'
+              ) {
                 // Create a fallback error structure
                 errorData = {
                   error: {
@@ -461,7 +471,7 @@ export const completionsHandler = (config: ServerConfig) => {
             const claudeError: ClaudeError = {
               type: 'error',
               error: {
-                type: error.azureErrorType || 'api_error',
+                type: error.azureErrorType ?? 'api_error',
                 message: error.message,
               },
             };

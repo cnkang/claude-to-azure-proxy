@@ -1,9 +1,9 @@
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { timingSafeEqual } from 'crypto';
 import rateLimit from 'express-rate-limit';
 import config from '../config/index.js';
 import { logger } from './logging.js';
-import type { RequestWithCorrelationId } from '../types/index.js';
+import type { RequestWithCorrelationId, Mutable } from '../types/index.js';
 
 /**
  * Authentication middleware with TypeScript types and security best practices
@@ -53,9 +53,10 @@ export const authenticationRateLimit = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  handler: (req: Request, res: Response) => {
-    const correlationId =
-      (req as AuthenticationRequest).correlationId || 'unknown';
+  handler: (req: Readonly<Request>, res: Readonly<Response>) => {
+    const mutableRequest = req as Mutable<AuthenticationRequest>;
+    const correlationId = resolveCorrelationId(mutableRequest.correlationId);
+    const userAgent = normalizeHeaderValue(req.headers['user-agent']);
     const authError: AuthenticationResponse = {
       error: {
         type: 'auth_rate_limit_exceeded',
@@ -68,7 +69,7 @@ export const authenticationRateLimit = rateLimit({
     // Log rate limiting event (without exposing sensitive data)
     logger.warn('Authentication rate limit exceeded', correlationId, {
       ip: req.ip,
-      userAgent: req.headers['user-agent'],
+      userAgent,
       method: req.method,
       url: req.url,
     });
@@ -98,10 +99,12 @@ function constantTimeCompare(provided: string, expected: string): boolean {
     }
 
     return timingSafeEqual(providedBuffer, expectedBuffer);
-  } catch (error) {
-    // Log error but don't expose details
+  } catch (unknownError: unknown) {
+    const sanitizedError =
+      unknownError instanceof Error ? unknownError.message : 'Unknown error';
     logger.error('Error during credential comparison', '', {
       error: 'Credential comparison failed',
+      details: sanitizedError,
     });
     return false;
   }
@@ -117,9 +120,9 @@ function extractCredentials(
 ): { credentials: string; method: AuthenticationMethod } | null {
   // Check for Authorization Bearer token
   const authHeader = req.headers.authorization;
-  if (authHeader && typeof authHeader === 'string') {
+  if (typeof authHeader === 'string') {
     const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i);
-    if (bearerMatch && bearerMatch[1]) {
+    if (bearerMatch?.[1] !== undefined) {
       return {
         credentials: bearerMatch[1].trim(),
         method: AuthenticationMethod.BEARER_TOKEN,
@@ -128,8 +131,8 @@ function extractCredentials(
   }
 
   // Check for x-api-key header
-  const apiKeyHeader = req.headers['x-api-key'];
-  if (apiKeyHeader && typeof apiKeyHeader === 'string') {
+  const apiKeyHeader = normalizeHeaderValue(req.headers['x-api-key']);
+  if (typeof apiKeyHeader === 'string') {
     return {
       credentials: apiKeyHeader.trim(),
       method: AuthenticationMethod.API_KEY_HEADER,
@@ -190,20 +193,26 @@ function createAuthErrorResponse(
  * Validates Authorization Bearer tokens and x-api-key headers with type safety
  */
 export const authenticationMiddleware = (
-  req: Request,
-  res: Response,
+  req: Readonly<Request>,
+  res: Readonly<Response>,
   next: NextFunction
 ): void => {
-  const authReq = req as AuthenticationRequest;
-  const correlationId = authReq.correlationId || 'unknown';
+  const mutableRequest = req as Mutable<AuthenticationRequest>;
+  const correlationId = resolveCorrelationId(mutableRequest.correlationId);
+  const userAgent = normalizeHeaderValue(req.headers['user-agent']);
+  const hasAuthHeader =
+    typeof req.headers.authorization === 'string' &&
+    req.headers.authorization.trim().length > 0;
+  const hasApiKeyHeader =
+    typeof normalizeHeaderValue(req.headers['x-api-key']) === 'string';
 
   try {
     // Extract credentials from request headers
     const credentialData = extractCredentials(req);
 
-    if (!credentialData) {
+    if (credentialData === null) {
       // No credentials provided
-      authReq.authResult = AuthenticationResult.MISSING_CREDENTIALS;
+      mutableRequest.authResult = AuthenticationResult.MISSING_CREDENTIALS;
 
       // Log authentication attempt (without exposing sensitive data)
       logger.warn(
@@ -211,11 +220,11 @@ export const authenticationMiddleware = (
         correlationId,
         {
           ip: req.ip,
-          userAgent: req.headers['user-agent'],
+          userAgent,
           method: req.method,
           url: req.url,
-          hasAuthHeader: !!req.headers.authorization,
-          hasApiKeyHeader: !!req.headers['x-api-key'],
+          hasAuthHeader,
+          hasApiKeyHeader,
         }
       );
 
@@ -228,7 +237,7 @@ export const authenticationMiddleware = (
     }
 
     // Store authentication method for logging
-    authReq.authMethod = credentialData.method;
+    mutableRequest.authMethod = credentialData.method;
 
     // Compare client credentials against PROXY_API_KEY with constant-time comparison
     const isValidCredential = constantTimeCompare(
@@ -238,7 +247,7 @@ export const authenticationMiddleware = (
 
     if (!isValidCredential) {
       // Invalid credentials
-      authReq.authResult = AuthenticationResult.INVALID_CREDENTIALS;
+      mutableRequest.authResult = AuthenticationResult.INVALID_CREDENTIALS;
 
       // Log authentication failure (without exposing sensitive data)
       logger.warn(
@@ -246,7 +255,7 @@ export const authenticationMiddleware = (
         correlationId,
         {
           ip: req.ip,
-          userAgent: req.headers['user-agent'],
+          userAgent,
           method: req.method,
           url: req.url,
           authMethod: credentialData.method,
@@ -263,12 +272,12 @@ export const authenticationMiddleware = (
     }
 
     // Authentication successful
-    authReq.authResult = AuthenticationResult.SUCCESS;
+    mutableRequest.authResult = AuthenticationResult.SUCCESS;
 
     // Log successful authentication (without exposing sensitive data)
     logger.info('Authentication successful', correlationId, {
       ip: req.ip,
-      userAgent: req.headers['user-agent'],
+      userAgent,
       method: req.method,
       url: req.url,
       authMethod: credentialData.method,
@@ -276,10 +285,15 @@ export const authenticationMiddleware = (
 
     // Continue to next middleware
     next();
-  } catch (error) {
+  } catch (error: unknown) {
     // Handle unexpected errors during authentication
+    const failure =
+      error instanceof Error
+        ? error.message
+        : 'Unknown error during authentication';
+
     logger.error('Authentication middleware error', correlationId, {
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: failure,
       ip: req.ip,
       method: req.method,
       url: req.url,
@@ -301,3 +315,21 @@ export const secureAuthenticationMiddleware = [
   authenticationRateLimit,
   authenticationMiddleware,
 ];
+
+function normalizeHeaderValue(
+  value: string | readonly string[] | undefined
+): string | undefined {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (Array.isArray(value) && typeof value[0] === 'string') {
+    return value[0];
+  }
+
+  return undefined;
+}
+
+function resolveCorrelationId(correlationId: string): string {
+  return correlationId.trim().length > 0 ? correlationId : 'unknown';
+}

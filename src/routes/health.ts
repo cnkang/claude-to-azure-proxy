@@ -49,7 +49,7 @@ const checkAzureOpenAI = async (
     } else {
       return { status: 'disconnected' };
     }
-  } catch (error) {
+  } catch {
     return { status: 'disconnected' };
   }
 };
@@ -70,8 +70,7 @@ const getMemoryUsage = (): HealthCheckResult['memory'] => {
 // Health check handler
 export const healthCheckHandler = (config: ServerConfig) => {
   return async (req: Request, res: Response): Promise<void> => {
-    const correlationId = (req as unknown as RequestWithCorrelationId)
-      .correlationId;
+    const { correlationId } = req as unknown as RequestWithCorrelationId;
     const startTime = Date.now();
 
     try {

@@ -3,21 +3,16 @@
  * Integrates custom errors, circuit breakers, retry logic, and graceful degradation
  */
 
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import {
   BaseError,
   isBaseError,
-  isOperationalError,
-  NetworkError,
-  TimeoutError,
-  AzureOpenAIError,
   ValidationError,
   AuthenticationError,
   AuthorizationError,
   RateLimitError,
   CircuitBreakerError,
   ServiceUnavailableError,
-  InternalServerError,
 } from '../errors/index.js';
 import { logger } from './logging.js';
 import { healthMonitor } from '../monitoring/health-monitor.js';
@@ -44,6 +39,16 @@ export interface ErrorContext {
   readonly timestamp: Date;
 }
 
+type ExtendedErrorPayload = ErrorResponse['error'] & {
+  retryAfter?: number;
+  nextAttemptTime?: string;
+  field?: string;
+  stack?: string;
+  details?: Record<string, unknown>;
+};
+
+type ExtendedErrorResponse = { error: ExtendedErrorPayload };
+
 /**
  * Enhanced error handler class
  */
@@ -64,9 +69,9 @@ export class EnhancedErrorHandler {
    * Main error handling middleware
    */
   public handleError = async (
-    error: Error,
-    req: Request,
-    res: Response,
+    error: Readonly<Error>,
+    req: Readonly<Request>,
+    res: Readonly<Response>,
     next: NextFunction
   ): Promise<void> => {
     const context = this.createErrorContext(req);
@@ -74,7 +79,7 @@ export class EnhancedErrorHandler {
     try {
       // Log the error
       if (this.config.logErrors) {
-        await this.logError(error, context);
+        this.logError(error, context);
       }
 
       // Check if response was already sent
@@ -131,15 +136,20 @@ export class EnhancedErrorHandler {
   /**
    * Create error context from request
    */
-  private createErrorContext(req: Request): ErrorContext {
-    const correlationId =
-      (req as RequestWithCorrelationId).correlationId || 'unknown';
+  private createErrorContext(req: Readonly<Request>): ErrorContext {
+    const requestWithCorrelation = req as RequestWithCorrelationId;
+    const correlationId = resolveCorrelationId(
+      requestWithCorrelation.correlationId
+    );
+    const operation = extractRoutePath(req);
+    const userAgent = normalizeHeaderValue(req.headers['user-agent']);
+    const clientIp = resolveClientIp(req);
 
     return {
       correlationId,
-      operation: req.route?.path,
-      userAgent: req.headers['user-agent'],
-      ip: req.ip || req.connection.remoteAddress,
+      operation,
+      userAgent,
+      ip: clientIp,
       method: req.method,
       url: req.originalUrl,
       timestamp: new Date(),
@@ -149,7 +159,10 @@ export class EnhancedErrorHandler {
   /**
    * Log error with appropriate level and context
    */
-  private async logError(error: Error, context: ErrorContext): Promise<void> {
+  private logError(
+    error: Readonly<Error>,
+    context: Readonly<ErrorContext>
+  ): void {
     const metadata = {
       operation: context.operation,
       method: context.method,
@@ -183,7 +196,9 @@ export class EnhancedErrorHandler {
   /**
    * Get appropriate log level for error
    */
-  private getLogLevel(error: BaseError): 'warn' | 'error' | 'critical' {
+  private getLogLevel(
+    error: Readonly<BaseError>
+  ): 'warn' | 'error' | 'critical' {
     if (!error.isOperational) {
       return 'critical';
     }
@@ -211,8 +226,8 @@ export class EnhancedErrorHandler {
    * Process error and create appropriate response
    */
   private async processError(
-    error: Error,
-    context: ErrorContext
+    error: Readonly<Error>,
+    context: Readonly<ErrorContext>
   ): Promise<{ statusCode: number; body: ErrorResponse }> {
     // Handle BaseError instances
     if (isBaseError(error)) {
@@ -231,56 +246,64 @@ export class EnhancedErrorHandler {
   /**
    * Handle BaseError instances
    */
-  private async handleBaseError(
-    error: BaseError,
-    context: ErrorContext
-  ): Promise<{ statusCode: number; body: ErrorResponse }> {
+  private handleBaseError(
+    error: Readonly<BaseError>,
+    context: Readonly<ErrorContext>
+  ): { statusCode: number; body: ErrorResponse } {
     const statusCode = error.statusCode;
-    const body: ErrorResponse = {
-      error: {
-        type: error.errorCode.toLowerCase(),
-        message: error.isOperational
-          ? error.message
-          : 'An internal server error occurred',
-        correlationId: context.correlationId,
-      },
+    const errorPayload: ExtendedErrorPayload = {
+      type: error.errorCode.toLowerCase(),
+      message: error.isOperational
+        ? error.message
+        : 'An internal server error occurred',
+      correlationId: context.correlationId,
     };
 
     // Add additional fields for specific error types
     if (error instanceof RateLimitError) {
-      (body.error as any).retryAfter = error.retryAfter;
+      errorPayload.retryAfter = error.retryAfter;
     }
 
     if (error instanceof CircuitBreakerError) {
-      (body.error as any).nextAttemptTime =
-        error.nextAttemptTime?.toISOString();
+      errorPayload.nextAttemptTime = error.nextAttemptTime
+        ? error.nextAttemptTime.toISOString()
+        : undefined;
     }
 
-    if (error instanceof ValidationError && error.field) {
-      (body.error as any).field = error.field;
+    if (
+      error instanceof ValidationError &&
+      typeof error.field === 'string' &&
+      error.field.length > 0
+    ) {
+      errorPayload.field = error.field;
     }
 
     // Add stack trace in development
-    if (this.config.exposeStackTrace && error.stack) {
-      (body.error as any).stack = error.stack;
+    if (
+      this.config.exposeStackTrace &&
+      typeof error.stack === 'string' &&
+      error.stack.length > 0
+    ) {
+      errorPayload.stack = error.stack;
     }
 
+    const body: ExtendedErrorResponse = { error: errorPayload };
     return { statusCode, body };
   }
 
   /**
    * Handle known Node.js errors
    */
-  private async handleNodeError(
-    error: Error,
-    context: ErrorContext
-  ): Promise<{ statusCode: number; body: ErrorResponse }> {
+  private handleNodeError(
+    error: Readonly<Error>,
+    context: Readonly<ErrorContext>
+  ): { statusCode: number; body: ErrorResponse } {
     let statusCode = 500;
     let errorType = 'internal_server_error';
     let message = 'An internal server error occurred';
 
     // Map Node.js errors to appropriate HTTP status codes
-    const errorCode = (error as any).code;
+    const errorCode = extractErrorCode(error);
 
     switch (errorCode) {
       case 'ECONNRESET':
@@ -314,8 +337,8 @@ export class EnhancedErrorHandler {
    * Handle unknown errors
    */
   private async handleUnknownError(
-    error: Error,
-    context: ErrorContext
+    error: Readonly<Error>,
+    context: Readonly<ErrorContext>
   ): Promise<{ statusCode: number; body: ErrorResponse }> {
     // Try graceful degradation if enabled
     if (this.config.enableGracefulDegradation) {
@@ -323,7 +346,7 @@ export class EnhancedErrorHandler {
         const degradationResult =
           await gracefulDegradationManager.executeGracefulDegradation({
             correlationId: context.correlationId,
-            operation: context.operation || 'unknown',
+            operation: context.operation ?? 'unknown',
             error,
             attempt: 1,
           });
@@ -338,26 +361,30 @@ export class EnhancedErrorHandler {
         // Graceful degradation failed, continue with normal error handling
         logger.warn('Graceful degradation failed', context.correlationId, {
           originalError: error.message,
+          degradationError:
+            degradationError instanceof Error
+              ? degradationError.message
+              : 'Unknown degradation error',
         });
       }
     }
 
-    const body: ErrorResponse = {
-      error: {
-        type: 'internal_server_error',
-        message: 'An internal server error occurred',
-        correlationId: context.correlationId,
-      },
+    const errorPayload: ExtendedErrorPayload = {
+      type: 'internal_server_error',
+      message: 'An internal server error occurred',
+      correlationId: context.correlationId,
     };
 
     // Add error details in development
     if (this.config.exposeStackTrace) {
-      (body.error as any).details = {
+      errorPayload.details = {
         name: error.name,
         message: error.message,
         stack: error.stack,
       };
     }
+
+    const body: ExtendedErrorResponse = { error: errorPayload };
 
     return { statusCode: 500, body };
   }
@@ -365,7 +392,7 @@ export class EnhancedErrorHandler {
   /**
    * Check if error is a known Node.js error
    */
-  private isKnownNodeError(error: Error): boolean {
+  private isKnownNodeError(error: Readonly<Error>): boolean {
     const knownCodes = [
       'ECONNRESET',
       'ECONNREFUSED',
@@ -377,13 +404,14 @@ export class EnhancedErrorHandler {
       'EPERM',
     ];
 
-    return knownCodes.includes((error as any).code);
+    const errorCode = extractErrorCode(error);
+    return errorCode !== undefined && knownCodes.includes(errorCode);
   }
 
   /**
    * Check if error should trigger a health alert
    */
-  private shouldTriggerAlert(error: Error): boolean {
+  private shouldTriggerAlert(error: Readonly<Error>): boolean {
     if (isBaseError(error)) {
       return (
         !error.isOperational ||
@@ -399,8 +427,8 @@ export class EnhancedErrorHandler {
    * Trigger health monitoring alert
    */
   private async triggerHealthAlert(
-    error: Error,
-    context: ErrorContext
+    error: Readonly<Error>,
+    context: Readonly<ErrorContext>
   ): Promise<void> {
     try {
       const severity =
@@ -410,7 +438,7 @@ export class EnhancedErrorHandler {
         id: `error_${context.correlationId}_${Date.now()}`,
         type: 'error_rate',
         severity,
-        message: `Error in ${context.operation || context.url}: ${error.message}`,
+        message: `Error in ${context.operation ?? context.url}: ${error.message}`,
         timestamp: new Date(),
         correlationId: context.correlationId,
         metadata: {
@@ -420,12 +448,16 @@ export class EnhancedErrorHandler {
           method: context.method,
         },
       });
-    } catch (alertError) {
+    } catch (alertError: unknown) {
+      const alertFailure =
+        alertError instanceof Error
+          ? alertError
+          : new Error('Unknown alert error');
       logger.error(
         'Failed to trigger health alert',
         context.correlationId,
         {},
-        alertError as Error
+        alertFailure
       );
     }
   }
@@ -433,7 +465,10 @@ export class EnhancedErrorHandler {
   /**
    * Adjust service level based on error patterns
    */
-  private adjustServiceLevel(error: Error, context: ErrorContext): void {
+  private adjustServiceLevel(
+    error: Readonly<Error>,
+    context: Readonly<ErrorContext>
+  ): void {
     try {
       // Auto-adjust based on circuit breaker states
       gracefulDegradationManager.autoAdjustServiceLevel(context.correlationId);
@@ -445,12 +480,16 @@ export class EnhancedErrorHandler {
           context.correlationId
         );
       }
-    } catch (adjustError) {
+    } catch (adjustError: unknown) {
+      const serviceFailure =
+        adjustError instanceof Error
+          ? adjustError
+          : new Error('Unknown service adjustment error');
       logger.error(
         'Failed to adjust service level',
         context.correlationId,
         {},
-        adjustError as Error
+        serviceFailure
       );
     }
   }
@@ -486,13 +525,81 @@ export async function withErrorBoundary<T>(
   try {
     return await operation();
   } catch (error) {
+    const boundaryError =
+      error instanceof Error
+        ? error
+        : new Error('Unknown error in operation boundary');
     logger.error(
-      `Error boundary caught error in ${operationName || 'unknown operation'}`,
+      `Error boundary caught error in ${operationName ?? 'unknown operation'}`,
       correlationId,
       { operation: operationName },
-      error as Error
+      boundaryError
     );
 
-    throw error;
+    throw boundaryError;
   }
+}
+
+function normalizeHeaderValue(
+  value: string | readonly string[] | undefined
+): string | undefined {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (Array.isArray(value) && typeof value[0] === 'string') {
+    return value[0];
+  }
+
+  return undefined;
+}
+
+function extractRoutePath(req: Readonly<Request>): string | undefined {
+  const candidateRoute = (req as { route?: unknown }).route;
+
+  if (hasRoutePath(candidateRoute) && typeof candidateRoute.path === 'string') {
+    return candidateRoute.path;
+  }
+
+  return undefined;
+}
+
+function resolveClientIp(req: Readonly<Request>): string | undefined {
+  if (typeof req.ip === 'string' && req.ip.length > 0) {
+    return req.ip;
+  }
+
+  const socketAddress = req.socket.remoteAddress;
+  return typeof socketAddress === 'string' && socketAddress.length > 0
+    ? socketAddress
+    : undefined;
+}
+
+function extractErrorCode(error: unknown): string | undefined {
+  if (!hasErrorCode(error)) {
+    return undefined;
+  }
+
+  const candidate = error.code;
+  return typeof candidate === 'string' ? candidate : undefined;
+}
+
+function resolveCorrelationId(correlationId: string): string {
+  return correlationId.trim().length > 0 ? correlationId : 'unknown';
+}
+
+function hasRoutePath(value: unknown): value is { readonly path?: unknown } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    Object.prototype.hasOwnProperty.call(value, 'path')
+  );
+}
+
+function hasErrorCode(value: unknown): value is { readonly code?: unknown } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    Object.prototype.hasOwnProperty.call(value, 'code')
+  );
 }
