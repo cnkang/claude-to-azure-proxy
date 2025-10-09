@@ -39,9 +39,8 @@ const STATIC_MODELS_RESPONSE: ClaudeModelsResponse = {
  * Returns static model information compatible with Claude API format
  * Model name is gpt-5-codex but response format follows Claude API standards
  */
-export const modelsHandler = (req: Request, res: Response): void => {
-  const correlationId = (req as unknown as RequestWithCorrelationId)
-    .correlationId;
+export const modelsHandler = (req: RequestWithCorrelationId, res: Response): void => {
+  const { correlationId } = req;
 
   try {
     logger.info('Models endpoint accessed', correlationId, {

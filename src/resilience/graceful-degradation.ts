@@ -399,6 +399,6 @@ export function checkFeatureAvailability(feature: string) {
       });
     }
 
-    next();
+    return next();
   };
 }

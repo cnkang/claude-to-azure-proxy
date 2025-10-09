@@ -199,7 +199,7 @@ const createErrorLogEntry = (error: Error): ErrorLogEntry => {
     errorEntry.code = error.errorCode;
     errorEntry.statusCode = error.statusCode;
     errorEntry.isOperational = error.isOperational;
-    errorEntry.context = sanitizeRecord(error.context);
+    errorEntry.context = sanitizeRecord(error.context as unknown as Record<string, unknown>);
   }
 
   // Only include stack trace in development

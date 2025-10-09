@@ -69,8 +69,8 @@ const getMemoryUsage = (): HealthCheckResult['memory'] => {
 
 // Health check handler
 export const healthCheckHandler = (config: ServerConfig) => {
-  return async (req: Request, res: Response): Promise<void> => {
-    const { correlationId } = req as unknown as RequestWithCorrelationId;
+  return async (req: RequestWithCorrelationId, res: Response): Promise<void> => {
+    const { correlationId } = req;
     const startTime = Date.now();
 
     try {

@@ -435,13 +435,12 @@ export class EnhancedErrorHandler {
         isBaseError(error) && !error.isOperational ? 'critical' : 'high';
 
       await healthMonitor.triggerAlert({
-        id: `error_${context.correlationId}_${Date.now()}`,
-        type: 'error_rate',
+        name: 'error_rate',
         severity,
-        message: `Error in ${context.operation ?? context.url}: ${error.message}`,
-        timestamp: new Date(),
-        correlationId: context.correlationId,
-        metadata: {
+        details: {
+          message: `Error in ${context.operation ?? context.url}: ${error.message}`,
+          timestamp: new Date(),
+          correlationId: context.correlationId,
           errorType: error.name,
           operation: context.operation,
           url: context.url,

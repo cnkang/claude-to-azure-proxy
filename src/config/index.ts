@@ -185,7 +185,7 @@ function createConfig(): Readonly<Config> {
 
   // Validate against schema
   const validationResult: ValidationResult<Config> =
-    configSchema.validate<Config>(envVars, {
+    configSchema.validate(envVars, {
       abortEarly: false, // Collect all validation errors
       allowUnknown: false, // Reject unknown environment variables
       stripUnknown: false,

@@ -395,7 +395,7 @@ export function transformClaudeToAzureRequest(
 
   if ((claudeRequest.stop_sequences?.length ?? 0) > 0) {
     (optionalParams as { stop: readonly string[] }).stop =
-      claudeRequest.stop_sequences;
+      claudeRequest.stop_sequences!;
   }
 
   if (claudeRequest.stream !== undefined) {
