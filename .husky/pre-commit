@@ -1,4 +1,55 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
+echo "🔍 Running pre-commit checks..."
+
+# Run type checking first (fast fail)
+echo "📝 Type checking..."
+pnpm run type-check
+if [ $? -ne 0 ]; then
+  echo "❌ Type check failed. Please fix TypeScript errors before committing."
+  exit 1
+fi
+
+# Run lint-staged for file-specific checks
+echo "🧹 Running lint-staged..."
 npx lint-staged
+if [ $? -ne 0 ]; then
+  echo "❌ Linting failed. Please fix linting errors before committing."
+  exit 1
+fi
+
+# Run tests to ensure nothing is broken
+echo "🧪 Running tests..."
+pnpm run test
+if [ $? -ne 0 ]; then
+  echo "❌ Tests failed. Please fix failing tests before committing."
+  exit 1
+fi
+
+# Check for security issues in dependencies
+echo "🔒 Checking for security vulnerabilities..."
+pnpm audit --audit-level moderate
+if [ $? -ne 0 ]; then
+  echo "⚠️  Security vulnerabilities found. Consider running 'pnpm audit fix' or review the issues."
+  echo "🤔 Do you want to continue? (y/N)"
+  read -r response
+  if [ "$response" != "y" ] && [ "$response" != "Y" ]; then
+    echo "❌ Commit aborted due to security concerns."
+    exit 1
+  fi
+fi
+
+# Check for TODO/FIXME comments in staged files
+echo "📋 Checking for TODO/FIXME comments..."
+staged_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|js)$')
+if [ -n "$staged_files" ]; then
+  todo_count=$(echo "$staged_files" | xargs grep -l "TODO\|FIXME" 2>/dev/null | wc -l)
+  if [ "$todo_count" -gt 0 ]; then
+    echo "⚠️  Found TODO/FIXME comments in staged files:"
+    echo "$staged_files" | xargs grep -n "TODO\|FIXME" 2>/dev/null || true
+    echo "💡 Consider addressing these before committing."
+  fi
+fi
+
+echo "✅ All pre-commit checks passed!"

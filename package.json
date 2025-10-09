@@ -37,7 +37,11 @@
     "docs:generate": "npx typedoc --options typedoc.json",
     "docs:serve": "npx http-server docs/api -p 3001 -o",
     "sast:eslint": "npx eslint --config eslint.config.ts src/ tests/ --format json -o security-reports/eslint-results.json",
-    "sast:all": "pnpm run sast:eslint && pnpm run quality:security"
+    "sast:all": "pnpm run sast:eslint && pnpm run quality:security",
+    "pre-commit:check": "pnpm run type-check && pnpm run lint && pnpm run test && pnpm run format:check",
+    "pre-commit:fix": "pnpm run lint:fix && pnpm run format",
+    "validate": "pnpm run type-check && pnpm run lint && pnpm run test",
+    "prepare": "husky install"
   },
   "packageManager": "pnpm@10.18.1",
   "keywords": [
@@ -101,6 +105,12 @@
     ],
     "*.{dockerfile,Dockerfile}": [
       "prettier --write --parser dockerfile"
+    ],
+    "src/**/*.ts": [
+      "pnpm run type-check"
+    ],
+    "tests/**/*.ts": [
+      "pnpm run type-check"
     ]
   },
   "pnpm": {

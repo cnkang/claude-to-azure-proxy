@@ -1,0 +1,25 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Get the current branch name
+branch_name=$(git symbolic-ref --short HEAD 2>/dev/null)
+
+# Skip if we're on main/master branch or if it's a merge/rebase
+if [ "$branch_name" = "main" ] || [ "$branch_name" = "master" ] || [ -n "$2" ]; then
+  exit 0
+fi
+
+# Extract ticket number from branch name (e.g., feature/PROJ-123-description -> PROJ-123)
+ticket=$(echo "$branch_name" | grep -oE '[A-Z]+-[0-9]+' | head -1)
+
+# If we found a ticket number, prepend it to the commit message
+if [ -n "$ticket" ]; then
+  # Read current commit message
+  current_message=$(cat "$1")
+  
+  # Check if ticket is already in the message
+  if ! echo "$current_message" | grep -q "$ticket"; then
+    # Prepend ticket number to commit message
+    echo "[$ticket] $current_message" > "$1"
+  fi
+fi
