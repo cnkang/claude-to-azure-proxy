@@ -1,11 +1,11 @@
 import http from 'node:http';
 import type {
   IncomingHttpHeaders,
-  IncomingMessage,
   ServerResponse,
 } from 'node:http';
 import { PassThrough } from 'node:stream';
 import type { Duplex } from 'node:stream';
+import type { Socket } from 'node:net';
 
 type RequestLike = http.RequestListener | http.Server;
 
@@ -20,6 +20,7 @@ interface TestResponse {
 const toHeaderObject = (headers: Map<string, string>): IncomingHttpHeaders => {
   const result: IncomingHttpHeaders = {};
   for (const [key, value] of headers.entries()) {
+    // eslint-disable-next-line security/detect-object-injection
     result[key] = value;
   }
   return result;
@@ -32,7 +33,7 @@ const normalizeHeaders = (
   for (const [key, value] of Object.entries(raw)) {
     if (Array.isArray(value)) {
       headers[key.toLowerCase()] = value.map((item) => String(item)).join(', ');
-    } else if (value !== undefined && value !== null) {
+    } else {
       headers[key.toLowerCase()] = String(value);
     }
   }
@@ -83,7 +84,7 @@ const buildBodyBuffer = (
     return Buffer.from(body, 'utf8');
   }
 
-  if (!contentType || contentType.includes('application/json')) {
+  if (contentType === undefined || contentType.includes('application/json')) {
     return Buffer.from(JSON.stringify(body), 'utf8');
   }
 
@@ -92,15 +93,15 @@ const buildBodyBuffer = (
     return Buffer.from(params.toString(), 'utf8');
   }
 
-  return Buffer.from(String(body), 'utf8');
+  return Buffer.from(typeof body === 'string' ? body : JSON.stringify(body), 'utf8');
 };
 
 class TestRequest implements PromiseLike<TestResponse> {
-  private headers = new Map<string, string>();
+  private readonly headers = new Map<string, string>();
   private body: unknown;
   private expectedStatus?: number;
   private executedPromise?: Promise<TestResponse>;
-  private remoteAddress = '127.0.0.1';
+  private readonly remoteAddress = '127.0.0.1';
 
   constructor(
     private readonly app: RequestLike,
@@ -112,12 +113,9 @@ class TestRequest implements PromiseLike<TestResponse> {
   }
 
   public set(field: string, value: unknown): this {
-    if (field === undefined || field === null) {
-      return this;
-    }
 
     const normalizedField = String(field).trim().toLowerCase();
-    if (!normalizedField) {
+    if (normalizedField.length === 0) {
       return this;
     }
 
@@ -129,12 +127,12 @@ class TestRequest implements PromiseLike<TestResponse> {
       return this;
     }
 
-    if (value === undefined || value === null) {
+    if (value === null || value === undefined) {
       this.headers.delete(normalizedField);
       return this;
     }
 
-    this.headers.set(normalizedField, String(value));
+    this.headers.set(normalizedField, typeof value === 'string' ? value : JSON.stringify(value));
     return this;
   }
 
@@ -168,15 +166,14 @@ class TestRequest implements PromiseLike<TestResponse> {
   }
 
   private execute(): Promise<TestResponse> {
-    if (!this.executedPromise) {
-      this.executedPromise = new Promise<TestResponse>((resolve, reject) => {
+    this.executedPromise ??= new Promise<TestResponse>((resolve, reject) => {
         const server =
           typeof this.app === 'function'
             ? http.createServer(this.app)
             : this.app;
         const socket = prepareSocket(this.remoteAddress);
-        (socket as any).server = server;
-        const req = new http.IncomingMessage(socket as any);
+        (socket as Record<string, unknown>).server = server;
+        const req = new http.IncomingMessage(socket as Socket);
         req.method = this.method.toUpperCase();
         req.url = this.path;
         req.headers = toHeaderObject(this.headers);
@@ -184,17 +181,17 @@ class TestRequest implements PromiseLike<TestResponse> {
         req.httpVersionMajor = 1;
         req.httpVersionMinor = 1;
 
-        const res = new http.ServerResponse(req as IncomingMessage);
-        res.assignSocket(socket as any);
+        const res = new http.ServerResponse(req);
+        res.assignSocket(socket as Socket);
 
         const bodyBuffer = buildBodyBuffer(
           this.body,
-          req.headers['content-type'] as string | undefined
+          req.headers['content-type']
         );
-        if (bodyBuffer && !req.headers['content-length']) {
+        if (bodyBuffer !== undefined && req.headers['content-length'] === undefined) {
           req.headers['content-length'] = String(bodyBuffer.length);
         }
-        if (bodyBuffer && !req.headers['content-type']) {
+        if (bodyBuffer !== undefined && req.headers['content-type'] === undefined) {
           req.headers['content-type'] = 'application/json';
         }
 
@@ -204,11 +201,11 @@ class TestRequest implements PromiseLike<TestResponse> {
           res.removeAllListeners();
           socket.removeAllListeners();
           try {
-            res.detachSocket(socket as any);
+            res.detachSocket(socket as Socket);
           } catch {
             // ignore
           }
-          if (typeof (server as http.Server).close === 'function') {
+          if (typeof (server as Record<string, unknown>).close === 'function') {
             try {
               (server as http.Server).close();
             } catch {
@@ -218,13 +215,11 @@ class TestRequest implements PromiseLike<TestResponse> {
         };
 
         const payloadLimitBytes = 10 * 1024 * 1024;
-        const contentTypeHeader = req.headers['content-type'] as
-          | string
-          | undefined;
+        const contentTypeHeader = req.headers['content-type'];
         if (
-          bodyBuffer &&
+          bodyBuffer !== undefined &&
           bodyBuffer.length > payloadLimitBytes &&
-          contentTypeHeader?.includes('application/json')
+          (contentTypeHeader?.includes('application/json') ?? false)
         ) {
           const responseHeaders: Record<string, string> = {
             'content-type': 'application/json',
@@ -249,7 +244,7 @@ class TestRequest implements PromiseLike<TestResponse> {
 
         const onError = (error: unknown) => {
           cleanup();
-          reject(error);
+          reject(error instanceof Error ? error : new Error(String(error)));
         };
 
         res.on('error', onError);
@@ -273,7 +268,7 @@ class TestRequest implements PromiseLike<TestResponse> {
           }
 
           const response: TestResponse = {
-            status: res.statusCode ?? 0,
+            status: res.statusCode || 0,
             body: parsedBody,
             text,
             headers,
@@ -287,8 +282,8 @@ class TestRequest implements PromiseLike<TestResponse> {
             const error = new Error(
               `expected ${this.expectedStatus} but received ${response.status}`
             );
-            (error as any).expected = this.expectedStatus;
-            (error as any).actual = response.status;
+            (error as Record<string, unknown>).expected = this.expectedStatus;
+            (error as Record<string, unknown>).actual = response.status;
             onError(error);
             return;
           }
@@ -298,35 +293,35 @@ class TestRequest implements PromiseLike<TestResponse> {
         });
 
         const originalWrite = res.write.bind(res);
-        res.write = ((chunk: any, encoding?: any, cb?: any) => {
+        res.write = ((chunk: Buffer | string, encoding?: BufferEncoding, cb?: () => void) => {
           const bufferChunk =
             typeof chunk === 'string'
-              ? Buffer.from(chunk, encoding as BufferEncoding | undefined)
+              ? Buffer.from(chunk, encoding)
               : Buffer.from(chunk);
           chunks.push(bufferChunk);
           return originalWrite(chunk, encoding, cb);
         }) as typeof res.write;
 
         const originalEnd = res.end.bind(res);
-        res.end = ((chunk?: any, encoding?: any, cb?: any) => {
-          if (chunk) {
+        res.end = ((chunk?: Buffer | string, encoding?: BufferEncoding, cb?: () => void) => {
+          if (chunk !== undefined) {
             const bufferChunk =
               typeof chunk === 'string'
-                ? Buffer.from(chunk, encoding as BufferEncoding | undefined)
+                ? Buffer.from(chunk, encoding)
                 : Buffer.from(chunk);
             chunks.push(bufferChunk);
           }
-          return originalEnd(chunk, encoding as BufferEncoding | undefined, cb);
+          return originalEnd(chunk, encoding, cb);
         }) as typeof res.end;
 
         queueMicrotask(() => {
-          if (bodyBuffer && bodyBuffer.length > 0) {
+          if (bodyBuffer !== undefined && bodyBuffer.length > 0) {
             const chunkSize = 64 * 1024;
             let offset = 0;
 
             const emitChunk = () => {
               if (offset >= bodyBuffer.length) {
-                (req as any).complete = true;
+                (req as Record<string, unknown>).complete = true;
                 req.emit('end');
                 return;
               }
@@ -344,7 +339,7 @@ class TestRequest implements PromiseLike<TestResponse> {
 
             emitChunk();
           } else {
-            (req as any).complete = true;
+            (req as Record<string, unknown>).complete = true;
             req.emit('end');
           }
         });
@@ -355,7 +350,6 @@ class TestRequest implements PromiseLike<TestResponse> {
           onError(error);
         }
       });
-    }
 
     return this.executedPromise;
   }

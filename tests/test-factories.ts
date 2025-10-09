@@ -4,13 +4,13 @@
  */
 
 import type {
-  ClaudeCompletionRequest,
   AzureOpenAIResponse,
   AzureOpenAIError,
   AzureOpenAIStreamResponse,
   ClaudeCompletionResponse,
   ClaudeError,
 } from '../src/types/index.js';
+import type { ClaudeCompletionRequest } from '../src/utils/request-transformer.js';
 
 export interface TestDataOptions {
   readonly seed?: number;
@@ -40,10 +40,13 @@ export class ClaudeRequestFactory {
         'End of large prompt.',
     };
 
+    const promptText = size === 'small' ? prompts.small : size === 'medium' ? prompts.medium : prompts.large;
+    const maxTokens = size === 'small' ? 50 : size === 'medium' ? 100 : 500;
+    
     const baseRequest: ClaudeCompletionRequest = {
       model: 'claude-3-5-sonnet-20241022',
-      prompt: prompts[size],
-      max_tokens: size === 'small' ? 50 : size === 'medium' ? 100 : 500,
+      prompt: promptText,
+      max_tokens: maxTokens,
     };
 
     if (includeOptional) {
@@ -71,36 +74,55 @@ export class ClaudeRequestFactory {
 
   static createInvalid(
     type: 'missing_field' | 'invalid_type' | 'out_of_range' | 'malicious'
-  ): any {
+  ): Record<string, unknown> {
     const base = ClaudeRequestFactory.create();
 
     switch (type) {
-      case 'missing_field':
-        const { prompt, ...withoutPrompt } = base;
-        return withoutPrompt;
+      case 'missing_field': {
+        const result: Record<string, unknown> = {
+          model: base.model,
+          max_tokens: base.max_tokens,
+        };
+        if (base.temperature !== undefined) {
+          result.temperature = base.temperature;
+        }
+        if (base.top_p !== undefined) {
+          result.top_p = base.top_p;
+        }
+        if (base.top_k !== undefined) {
+          result.top_k = base.top_k;
+        }
+        if (base.stop_sequences !== undefined) {
+          result.stop_sequences = base.stop_sequences;
+        }
+        if (base.stream !== undefined) {
+          result.stream = base.stream;
+        }
+        return result;
+      }
 
       case 'invalid_type':
         return {
           ...base,
           max_tokens: 'invalid_number',
-        };
+        } as Record<string, unknown>;
 
       case 'out_of_range':
         return {
           ...base,
           max_tokens: 200000, // Exceeds limit
           temperature: 3.0, // Exceeds limit
-        };
+        } as Record<string, unknown>;
 
       case 'malicious':
         return {
           ...base,
           prompt: '<script>alert("xss")</script>',
           model: 'claude{{user.secret}}',
-        };
+        } as Record<string, unknown>;
 
       default:
-        return base;
+        return base as Record<string, unknown>;
     }
   }
 
@@ -162,6 +184,8 @@ export class AzureResponseFactory {
         `This is a large response ${seed} `.repeat(200) + 'End of response.',
     };
 
+    const contentText = size === 'small' ? contents.small : size === 'medium' ? contents.medium : contents.large;
+    
     const baseResponse: AzureOpenAIResponse = {
       id: `chatcmpl-${seed}`,
       object: 'chat.completion',
@@ -172,7 +196,7 @@ export class AzureResponseFactory {
           index: 0,
           message: {
             role: 'assistant',
-            content: contents[size],
+            content: contentText,
           },
           finish_reason: 'stop',
         },
@@ -254,25 +278,37 @@ export class AzureResponseFactory {
 
   static createMalformed(
     type: 'missing_id' | 'invalid_object' | 'empty_choices' | 'invalid_choice'
-  ): any {
+  ): Record<string, unknown> {
     const base = AzureResponseFactory.create();
 
     switch (type) {
-      case 'missing_id':
-        const { id, ...withoutId } = base;
-        return withoutId;
+      case 'missing_id': {
+        const result: Record<string, unknown> = {
+          object: base.object,
+          created: base.created,
+          model: base.model,
+          choices: base.choices,
+        };
+        if (base.usage !== undefined) {
+          result.usage = base.usage;
+        }
+        if (base.system_fingerprint !== undefined) {
+          result.system_fingerprint = base.system_fingerprint;
+        }
+        return result;
+      }
 
       case 'invalid_object':
         return {
           ...base,
           object: 'invalid_object',
-        };
+        } as Record<string, unknown>;
 
       case 'empty_choices':
         return {
           ...base,
           choices: [],
-        };
+        } as Record<string, unknown>;
 
       case 'invalid_choice':
         return {
@@ -284,10 +320,10 @@ export class AzureResponseFactory {
               finish_reason: 'invalid',
             },
           ],
-        };
+        } as Record<string, unknown>;
 
       default:
-        return base;
+        return base as Record<string, unknown>;
     }
   }
 }
@@ -300,7 +336,7 @@ export class AzureErrorFactory {
     type: string = 'invalid_request_error',
     message?: string
   ): AzureOpenAIError {
-    const messages = {
+    const messages: Record<string, string> = {
       invalid_request_error: 'The request is invalid',
       authentication_error: 'Invalid API key',
       permission_error: 'Permission denied',
@@ -310,16 +346,18 @@ export class AzureErrorFactory {
       overloaded_error: 'Service overloaded',
     };
 
+    // eslint-disable-next-line security/detect-object-injection
+    const defaultMessage = messages[type] ?? 'Unknown error';
     return {
       error: {
-        message: message || messages[type] || 'Unknown error',
+        message: message ?? defaultMessage,
         type,
         code: `${type}_code`,
       },
     };
   }
 
-  static createBatch(types: string[]): AzureOpenAIError[] {
+  static createBatch(types: readonly string[]): AzureOpenAIError[] {
     return types.map((type) => AzureErrorFactory.create(type));
   }
 
@@ -367,7 +405,7 @@ export class AzureStreamResponseFactory {
     };
   }
 
-  static createSequence(contents: string[]): AzureOpenAIStreamResponse[] {
+  static createSequence(contents: readonly string[]): AzureOpenAIStreamResponse[] {
     const responses = contents.map((content, i) =>
       AzureStreamResponseFactory.create({ content, seed: i })
     );
@@ -403,10 +441,12 @@ export class ClaudeResponseFactory {
       large: `This is a large Claude response ${seed} `.repeat(100) + 'End.',
     };
 
+    const completionText = size === 'small' ? completions.small : size === 'medium' ? completions.medium : completions.large;
+    
     const baseResponse: ClaudeCompletionResponse = {
       id: `claude-${seed}`,
       type: 'completion',
-      completion: completions[size],
+      completion: completionText,
       model: 'claude-3-5-sonnet-20241022',
       stop_reason: 'stop_sequence',
     };
@@ -432,7 +472,7 @@ export class ClaudeResponseFactory {
       type: 'error',
       error: {
         type,
-        message: message || `Claude error: ${type}`,
+        message: message ?? `Claude error: ${type}`,
       },
     };
   }
@@ -447,6 +487,7 @@ export class MaliciousDataFactory {
       '<script>alert("xss")</script>',
       '<img src=x onerror=alert(1)>',
       '<svg onload=alert(1)>',
+      // eslint-disable-next-line no-script-url
       'javascript:alert(1)',
       '<iframe src="javascript:alert(1)"></iframe>',
       '<body onload=alert(1)>',
@@ -503,7 +544,7 @@ export class MaliciousDataFactory {
     ];
   }
 
-  static createMaliciousObject(): any {
+  static createMaliciousObject(): Record<string, unknown> {
     return {
       xss: '<script>alert("xss")</script>',
       injection: '{{user.secret}}',
@@ -519,6 +560,7 @@ export class MaliciousDataFactory {
       array: [
         'Safe item',
         '<script>alert("array xss")</script>',
+        // eslint-disable-next-line no-script-url
         { nested: 'javascript:alert(1)' },
       ],
     };
@@ -562,22 +604,27 @@ export class PerformanceDataFactory {
     };
   }
 
-  static createDeepObject(depth: number): any {
+  static createDeepObject(depth: number): Record<string, unknown> | string {
     if (depth === 0) {
       return 'Deep content with <script>alert("deep")</script>';
     }
 
-    return {
-      [`level${depth}`]: PerformanceDataFactory.createDeepObject(depth - 1),
+    const levelKey = `level${depth}`;
+    const result: Record<string, unknown> = {
       safe: `Safe content at level ${depth}`,
     };
+    // eslint-disable-next-line security/detect-object-injection
+    result[levelKey] = PerformanceDataFactory.createDeepObject(depth - 1);
+    return result;
   }
 
-  static createWideObject(width: number): any {
-    const obj: any = {};
+  static createWideObject(width: number): Record<string, unknown> {
+    const obj: Record<string, unknown> = {};
 
     for (let i = 0; i < width; i++) {
-      obj[`field${i}`] =
+      const fieldKey = `field${i}`;
+      // eslint-disable-next-line security/detect-object-injection
+      obj[fieldKey] =
         i % 10 === 0 ? '<script>alert("wide")</script>' : `Safe content ${i}`;
     }
 
@@ -599,16 +646,16 @@ export class AuthTestDataFactory {
     ];
   }
 
-  static getInvalidApiKeys(): string[] {
+  static getInvalidApiKeys(): unknown[] {
     return [
       '',
       'short',
       'a'.repeat(10), // Too short
-      null as any,
-      undefined as any,
-      123 as any,
-      {} as any,
-      [] as any,
+      null,
+      undefined,
+      123,
+      {},
+      [],
     ];
   }
 
@@ -657,7 +704,7 @@ export class TestDataUtils {
     return Math.random() * (max - min) + min;
   }
 
-  static randomChoice<T>(array: T[]): T {
+  static randomChoice<T>(array: readonly T[]): T {
     return array[Math.floor(Math.random() * array.length)];
   }
 
