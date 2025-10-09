@@ -1,12 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import { json, urlencoded } from 'express';
-import type {
-  ServerConfig,
-  RequestWithCorrelationId,
-  ErrorResponse,
-} from './types/index.js';
-import loadedConfig from './config/index.js';
+import type { Request, Response } from 'express';
+import type { ServerConfig, RequestWithCorrelationId } from './types/index.js';
+import loadedConfig, { sanitizedConfig } from './config/index.js';
 import type { Config } from './config/index.js';
 import {
   helmetConfig,
@@ -29,10 +26,7 @@ import {
   completionsHandler,
 } from './routes/completions.js';
 import { getHealthMonitor } from './monitoring/health-monitor.js';
-import {
-  gracefulDegradationManager,
-  checkFeatureAvailability,
-} from './resilience/graceful-degradation.js';
+import { checkFeatureAvailability } from './resilience/graceful-degradation.js';
 
 /**
  * @fileoverview Main application entry point for the Claude-to-Azure OpenAI Proxy Server.
@@ -116,7 +110,7 @@ class ProxyServer {
    * HTTP server instance, null until server is started.
    * @private
    */
-  private server: any = null;
+  private server: import('http').Server | null = null;
 
   /**
    * Creates a new ProxyServer instance with the provided configuration.
@@ -223,7 +217,7 @@ class ProxyServer {
     this.app.get('/health', healthCheckHandler(this.config));
 
     // Root endpoint
-    this.app.get('/', (req, res) => {
+    this.app.get('/', (req: Readonly<Request>, res: Readonly<Response>) => {
       const correlationId = (req as unknown as RequestWithCorrelationId)
         .correlationId;
       logger.info('Root endpoint accessed', correlationId);
@@ -250,7 +244,7 @@ class ProxyServer {
       completionsRateLimit,
       completionsHandler(this.config)
     );
-    
+
     // Chat completions endpoint (modern Claude API compatibility)
     this.app.post(
       '/v1/chat/completions',
@@ -328,30 +322,41 @@ class ProxyServer {
   public async start(): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
-        this.server = this.app.listen(this.config.port, '0.0.0.0', () => {
-          logger.info('Server started successfully', '', {
-            port: this.config.port,
-            nodeEnv: this.config.nodeEnv,
-            azureEndpoint: this.config.azureOpenAI.endpoint,
-            model: this.config.azureOpenAI.model,
-          });
+        const serverInstance = this.app.listen(
+          this.config.port,
+          '0.0.0.0',
+          () => {
+            logger.info('Server started successfully', '', {
+              port: this.config.port,
+              nodeEnv: this.config.nodeEnv,
+              azureEndpoint: this.config.azureOpenAI.endpoint,
+              model: this.config.azureOpenAI.model,
+            });
 
-          // Start health monitoring
-          this.setupHealthMonitoring();
+            // Start health monitoring
+            this.setupHealthMonitoring();
 
-          resolve();
-        });
+            resolve();
+          }
+        );
+
+        this.server = serverInstance;
 
         // Handle server errors
-        this.server.on('error', (error: Error) => {
+        serverInstance.on('error', (error: Readonly<Error>) => {
           logger.error('Server error', '', { error: error.message });
           reject(error);
         });
       } catch (error) {
+        const failure =
+          error instanceof Error
+            ? error
+            : new Error('Failed to start server due to unknown error');
+
         logger.error('Failed to start server', '', {
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: failure.message,
         });
-        reject(error);
+        reject(failure);
       }
     });
   }
@@ -378,32 +383,35 @@ class ProxyServer {
       name: 'memory',
       timeout: 5000,
       critical: true,
-      check: async () => {
+      check: (): Promise<{
+        status: string;
+        responseTime: number;
+        message: string;
+        details?: Record<string, unknown>;
+      }> => {
         const memoryUsage = process.memoryUsage();
         const memoryUsagePercent = memoryUsage.heapUsed / memoryUsage.heapTotal;
 
+        let status: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
+        let message = `Memory usage: ${(memoryUsagePercent * 100).toFixed(1)}%`;
+        let details: Record<string, unknown> = { memoryUsage };
+
         if (memoryUsagePercent > 0.9) {
-          return {
-            status: 'unhealthy',
-            responseTime: 0,
-            message: `High memory usage: ${(memoryUsagePercent * 100).toFixed(1)}%`,
-            details: { memoryUsage, threshold: 0.9 },
-          };
+          status = 'unhealthy';
+          message = `High memory usage: ${(memoryUsagePercent * 100).toFixed(1)}%`;
+          details = { memoryUsage, threshold: 0.9 };
         } else if (memoryUsagePercent > 0.8) {
-          return {
-            status: 'degraded',
-            responseTime: 0,
-            message: `Elevated memory usage: ${(memoryUsagePercent * 100).toFixed(1)}%`,
-            details: { memoryUsage, threshold: 0.8 },
-          };
+          status = 'degraded';
+          message = `Elevated memory usage: ${(memoryUsagePercent * 100).toFixed(1)}%`;
+          details = { memoryUsage, threshold: 0.8 };
         }
 
-        return {
-          status: 'healthy',
+        return Promise.resolve({
+          status,
           responseTime: 0,
-          message: `Memory usage: ${(memoryUsagePercent * 100).toFixed(1)}%`,
-          details: { memoryUsage },
-        };
+          message,
+          details,
+        });
       },
     });
 
@@ -435,25 +443,27 @@ class ProxyServer {
    */
   public async stop(): Promise<void> {
     return new Promise((resolve) => {
-      if (this.server) {
-        logger.info('Shutting down server gracefully');
-
-        // Stop health monitoring
-        getHealthMonitor().stopMonitoring();
-
-        this.server.close(() => {
-          logger.info('Server shutdown complete');
-          resolve();
-        });
-
-        // Force shutdown after 10 seconds
-        setTimeout(() => {
-          logger.warn('Forcing server shutdown');
-          process.exit(1);
-        }, 10000);
-      } else {
+      const serverInstance = this.server;
+      if (serverInstance === null) {
         resolve();
+        return;
       }
+
+      logger.info('Shutting down server gracefully');
+
+      // Stop health monitoring
+      getHealthMonitor().stopMonitoring();
+
+      serverInstance.close(() => {
+        logger.info('Server shutdown complete');
+        resolve();
+      });
+
+      // Force shutdown after 10 seconds
+      setTimeout(() => {
+        logger.warn('Forcing server shutdown');
+        process.exit(1);
+      }, 10000);
     });
   }
 }
@@ -474,11 +484,25 @@ const setupGracefulShutdown = (server: ProxyServer): void => {
     }
   };
 
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => {
+    shutdown('SIGTERM').catch((error: unknown) => {
+      logger.error('Error during shutdown', '', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      process.exit(1);
+    });
+  });
+  process.on('SIGINT', () => {
+    shutdown('SIGINT').catch((error: unknown) => {
+      logger.error('Error during shutdown', '', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      process.exit(1);
+    });
+  });
 
   // Handle uncaught exceptions
-  process.on('uncaughtException', (error: Error) => {
+  process.on('uncaughtException', (error: Readonly<Error>) => {
     logger.error('Uncaught exception', '', {
       error: error.message,
       stack: error.stack,
@@ -496,7 +520,7 @@ const setupGracefulShutdown = (server: ProxyServer): void => {
 };
 
 // Convert loaded config to ServerConfig format
-const createServerConfig = (config: Config): ServerConfig => ({
+const createServerConfig = (config: Readonly<Config>): ServerConfig => ({
   port: config.PORT,
   nodeEnv: config.NODE_ENV,
   proxyApiKey: config.PROXY_API_KEY,
@@ -512,6 +536,9 @@ const main = async (): Promise<void> => {
   try {
     // Load and validate configuration
     const config = createServerConfig(loadedConfig);
+    logger.info('Configuration loaded successfully', '', {
+      config: sanitizedConfig,
+    });
 
     // Create and start server
     const server = new ProxyServer(config);
@@ -532,7 +559,14 @@ const main = async (): Promise<void> => {
 // Start the application
 if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch((error) => {
-    console.error('Fatal error:', error);
+    const fatalError =
+      error instanceof Error ? error : new Error('Unknown fatal error');
+    logger.error(
+      'Fatal error during startup',
+      '',
+      { error: fatalError.message },
+      fatalError
+    );
     process.exit(1);
   });
 }

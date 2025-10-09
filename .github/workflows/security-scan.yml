@@ -65,16 +65,23 @@ jobs:
           head: HEAD
           extra_args: --debug --only-verified
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+
       - name: Check for dependency vulnerabilities
         run: |
           if [ -f "package.json" ]; then
-            echo "🔍 Checking for npm audit issues..."
-            # Use pnpm audit if available, fallback to npm
-            if command -v pnpm &> /dev/null; then
-              pnpm audit --audit-level moderate || echo "⚠️ Found dependency vulnerabilities"
-            elif command -v npm &> /dev/null; then
-              npm audit --audit-level moderate || echo "⚠️ Found dependency vulnerabilities"
-            fi
+            echo "🔍 Checking for dependency vulnerabilities..."
+            pnpm install
+            pnpm audit --audit-level moderate || echo "⚠️ Found dependency vulnerabilities"
           fi
 
       - name: Security summary

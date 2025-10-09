@@ -22,13 +22,13 @@
     "docker:security": "./scripts/security-scan.sh",
     "docker:clean": "docker system prune -f",
     "security:env": "./scripts/security-check-env.sh",
-    "security:all": "npm run security:env && npm run docker:security",
+    "security:all": "pnpm run security:env && pnpm run docker:security",
     "quality:complexity": "npx ts-complex --threshold 10 src/",
-    "quality:audit": "npm audit --audit-level moderate",
-    "quality:audit:fix": "npm audit fix",
+    "quality:audit": "pnpm audit --audit-level moderate",
+    "quality:audit:fix": "pnpm audit fix",
     "quality:type-coverage": "npx type-coverage --at-least 95 --strict",
     "quality:docs": "npx typedoc --options typedoc.json",
-    "quality:all": "npm run quality:complexity && npm run quality:audit && npm run quality:type-coverage",
+    "quality:all": "pnpm run quality:complexity && pnpm run quality:audit && pnpm run quality:type-coverage",
     "quality:security": "./scripts/security-audit.sh",
     "monitoring:profile": "node --prof dist/index.js",
     "monitoring:analyze": "node --prof-process isolate-*.log > profile.txt",
@@ -37,7 +37,7 @@
     "docs:generate": "npx typedoc --options typedoc.json",
     "docs:serve": "npx http-server docs/api -p 3001 -o",
     "sast:eslint": "npx eslint --config eslint.config.ts src/ tests/ --format json -o security-reports/eslint-results.json",
-    "sast:all": "npm run sast:eslint && npm run quality:security"
+    "sast:all": "pnpm run sast:eslint && pnpm run quality:security"
   },
   "packageManager": "pnpm@10.18.1",
   "keywords": [
