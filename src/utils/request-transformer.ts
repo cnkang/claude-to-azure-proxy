@@ -31,7 +31,9 @@ export interface ClaudeChatCompletionRequest {
 }
 
 // Union type for both request formats
-export type ClaudeRequest = ClaudeCompletionRequest | ClaudeChatCompletionRequest;
+export type ClaudeRequest =
+  | ClaudeCompletionRequest
+  | ClaudeChatCompletionRequest;
 
 // Azure OpenAI Request Types
 export interface AzureOpenAIMessage {
@@ -209,42 +211,122 @@ function sanitizePrompt(prompt: string): string {
   return sanitized;
 }
 
+type UnknownRecord = Record<string, unknown>;
+
+const isRecord = (value: unknown): value is UnknownRecord => {
+  return typeof value === 'object' && value !== null;
+};
+
+const isClaudeCompletionPayload = (
+  value: unknown
+): value is ClaudeCompletionRequest => {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.prompt === 'string' && typeof value.max_tokens === 'number'
+  );
+};
+
+const isClaudeChatCompletionPayload = (
+  value: unknown
+): value is ClaudeChatCompletionRequest => {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    Array.isArray(value.messages) &&
+    value.messages.every(
+      (message) =>
+        isRecord(message) &&
+        typeof message.role === 'string' &&
+        typeof message.content === 'string'
+    ) &&
+    typeof value.max_tokens === 'number'
+  );
+};
+
+const assertClaudeCompletionRequest = (
+  value: unknown
+): ClaudeCompletionRequest => {
+  if (!isClaudeCompletionPayload(value)) {
+    throw new ValidationError('Invalid completion request structure');
+  }
+
+  return value;
+};
+
+const assertClaudeChatCompletionRequest = (
+  value: unknown
+): ClaudeChatCompletionRequest => {
+  if (!isClaudeChatCompletionPayload(value)) {
+    throw new ValidationError('Invalid chat completion request structure');
+  }
+
+  return value;
+};
+
 // Validation Function
 export function validateClaudeRequest(request: unknown): ClaudeRequest {
   // Try to determine the request format
-  const hasMessages = request && typeof request === 'object' && 'messages' in request;
-  const hasPrompt = request && typeof request === 'object' && 'prompt' in request;
+  const requestRecord = isRecord(request) ? request : undefined;
+  const requestWithMessages = requestRecord as
+    | (UnknownRecord & { messages?: unknown })
+    | undefined;
+  const requestWithPrompt = requestRecord as
+    | (UnknownRecord & { prompt?: unknown })
+    | undefined;
 
-  let validationResult;
+  const hasMessages = Array.isArray(requestWithMessages?.messages);
+  const hasPrompt = typeof requestWithPrompt?.prompt === 'string';
+
+  let validationResult:
+    | Joi.ValidationResult<ClaudeChatCompletionRequest>
+    | Joi.ValidationResult<ClaudeCompletionRequest>;
   let requestType: 'completion' | 'chat';
 
   if (hasMessages && !hasPrompt) {
     // Chat completions format
-    validationResult = claudeChatCompletionSchema.validate(request);
+    validationResult = claudeChatCompletionSchema.validate(
+      request
+    ) as Joi.ValidationResult<ClaudeChatCompletionRequest>;
     requestType = 'chat';
   } else if (hasPrompt && !hasMessages) {
     // Legacy completions format
-    validationResult = claudeCompletionSchema.validate(request);
+    validationResult = claudeCompletionSchema.validate(
+      request
+    ) as Joi.ValidationResult<ClaudeCompletionRequest>;
     requestType = 'completion';
   } else {
-    throw new ValidationError('Request must have either "prompt" or "messages" field, but not both');
+    throw new ValidationError(
+      'Request must have either "prompt" or "messages" field, but not both'
+    );
   }
 
-  const { error, value } = validationResult;
+  const validationError = validationResult.error;
 
-  if (error) {
-    const details = error.details.map((detail) => ({
-      field: detail.path.join('.'),
-      message: detail.message,
-      value: detail.context?.value,
-    }));
+  if (validationError) {
+    const details = validationError.details.map((detail) => {
+      const context = detail.context as Record<string, unknown> | undefined;
+      const contextValue = context !== undefined ? context.value : undefined;
+
+      return {
+        field: detail.path.join('.'),
+        message: detail.message,
+        value: contextValue,
+      };
+    });
 
     throw new ValidationError('Request validation failed', details);
   }
 
   // Additional security validation and sanitization
   if (requestType === 'completion') {
-    const validatedRequest = value as ClaudeCompletionRequest;
+    const validatedRequest = assertClaudeCompletionRequest(
+      validationResult.value
+    );
     const sanitizedPrompt = sanitizePrompt(validatedRequest.prompt);
 
     return {
@@ -252,7 +334,9 @@ export function validateClaudeRequest(request: unknown): ClaudeRequest {
       prompt: sanitizedPrompt,
     };
   } else {
-    const validatedRequest = value as ClaudeChatCompletionRequest;
+    const validatedRequest = assertClaudeChatCompletionRequest(
+      validationResult.value
+    );
     const sanitizedMessages = validatedRequest.messages.map((message) => ({
       ...message,
       content: sanitizePrompt(message.content),
@@ -309,7 +393,7 @@ export function transformClaudeToAzureRequest(
     (optionalParams as { top_p: number }).top_p = claudeRequest.top_p;
   }
 
-  if (claudeRequest.stop_sequences && claudeRequest.stop_sequences.length > 0) {
+  if ((claudeRequest.stop_sequences?.length ?? 0) > 0) {
     (optionalParams as { stop: readonly string[] }).stop =
       claudeRequest.stop_sequences;
   }
@@ -326,7 +410,7 @@ export function createAzureHeaders(
   apiKey: string,
   requestId?: string
 ): AzureOpenAIHeaders {
-  if (!apiKey || typeof apiKey !== 'string' || apiKey.length < 10) {
+  if (apiKey.trim().length < 10) {
     throw new SecurityError('Invalid Azure OpenAI API key');
   }
 
@@ -334,7 +418,7 @@ export function createAzureHeaders(
     'Content-Type': 'application/json',
     'api-key': apiKey,
     'User-Agent': 'claude-to-azure-proxy/1.0.0',
-    'X-Request-ID': requestId || uuidv4(),
+    'X-Request-ID': requestId ?? uuidv4(),
   };
 }
 

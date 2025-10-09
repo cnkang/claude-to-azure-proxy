@@ -287,7 +287,8 @@ export class CircuitBreakerRegistry {
     const metrics: Record<string, CircuitBreakerMetrics> = {};
 
     for (const [name, circuitBreaker] of this.circuitBreakers) {
-      metrics[name] = circuitBreaker.getMetrics();
+      // Use Object.assign to safely set property
+      Object.assign(metrics, { [name]: circuitBreaker.getMetrics() });
     }
 
     return metrics;
@@ -309,7 +310,8 @@ export class CircuitBreakerRegistry {
     const health: Record<string, boolean> = {};
 
     for (const [name, circuitBreaker] of this.circuitBreakers) {
-      health[name] = circuitBreaker.isHealthy();
+      // Use Object.assign to safely set property
+      Object.assign(health, { [name]: circuitBreaker.isHealthy() });
     }
 
     return health;

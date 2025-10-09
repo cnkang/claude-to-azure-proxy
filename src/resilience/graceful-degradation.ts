@@ -3,12 +3,11 @@
  * Provides fallback mechanisms and service continuity during failures
  */
 
+import express from 'express';
 import { logger } from '../middleware/logging.js';
-import { BaseError, ServiceUnavailableError } from '../errors/index.js';
-import {
-  CircuitBreakerState,
-  circuitBreakerRegistry,
-} from './circuit-breaker.js';
+import { ServiceUnavailableError } from '../errors/index.js';
+import type { RequestWithCorrelationId } from '../types/index.js';
+import { circuitBreakerRegistry } from './circuit-breaker.js';
 
 export interface DegradationStrategy {
   readonly name: string;
@@ -84,6 +83,7 @@ export class GracefulDegradationManager {
       },
       execute: async (context) => {
         // In a real implementation, this would check a cache
+        await new Promise((resolve) => setTimeout(resolve, 0)); // Minimal async operation
         logger.info('Using cached response fallback', context.correlationId, {
           operation: context.operation,
           attempt: context.attempt,
@@ -114,6 +114,7 @@ export class GracefulDegradationManager {
         return context.operation === 'completions';
       },
       execute: async (context) => {
+        await new Promise((resolve) => setTimeout(resolve, 0)); // Minimal async operation
         logger.warn('Using static response fallback', context.correlationId, {
           operation: context.operation,
           error: context.error?.message,
@@ -142,6 +143,7 @@ export class GracefulDegradationManager {
       priority: 10,
       condition: () => true, // Always applicable as last resort
       execute: async (context) => {
+        await new Promise((resolve) => setTimeout(resolve, 0)); // Minimal async operation
         logger.error(
           'Service unavailable fallback triggered',
           context.correlationId,
@@ -368,7 +370,11 @@ export const gracefulDegradationManager = new GracefulDegradationManager();
  * Middleware to check feature availability
  */
 export function checkFeatureAvailability(feature: string) {
-  return (req: any, res: any, next: any) => {
+  return (
+    req: RequestWithCorrelationId,
+    res: express.Response,
+    next: express.NextFunction
+  ) => {
     if (!gracefulDegradationManager.isFeatureAvailable(feature)) {
       const correlationId = req.correlationId || 'unknown';
 

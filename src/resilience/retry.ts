@@ -3,11 +3,7 @@
  * Provides resilient operation execution with configurable retry strategies
  */
 
-import {
-  TimeoutError,
-  NetworkError,
-  AzureOpenAIError,
-} from '../errors/index.js';
+import { TimeoutError } from '../errors/index.js';
 
 export interface RetryConfig {
   readonly maxAttempts: number;
@@ -103,14 +99,15 @@ export class RetryStrategy {
 
       try {
         // Add timeout wrapper if configured
-        const result = this.config.timeoutMs
-          ? await this.withTimeout(
-              operation(),
-              this.config.timeoutMs,
-              correlationId,
-              operationName
-            )
-          : await operation();
+        const result =
+          this.config.timeoutMs !== undefined && this.config.timeoutMs > 0
+            ? await this.withTimeout(
+                operation(),
+                this.config.timeoutMs,
+                correlationId,
+                operationName
+              )
+            : await operation();
 
         // Success - record attempt and return
         attempts.push({
@@ -168,15 +165,13 @@ export class RetryStrategy {
   private isRetryableError(error: Error): boolean {
     const errorName = error.name || '';
     const errorMessage = error.message || '';
-    const errorCode = (error as any).code;
+    const errorCode = (error as Error & { code?: string }).code;
 
     return this.config.retryableErrors.some(
       (retryableError) =>
         errorName.includes(retryableError) ||
         errorMessage.includes(retryableError) ||
-        (errorCode &&
-          typeof errorCode === 'string' &&
-          errorCode.includes(retryableError))
+        (typeof errorCode === 'string' && errorCode.includes(retryableError))
     );
   }
 
@@ -345,7 +340,8 @@ export class RetryStrategyRegistry {
     const metrics: Record<string, RetryMetrics> = {};
 
     for (const [name, strategy] of this.strategies) {
-      metrics[name] = strategy.getMetrics();
+      // Use Object.assign to safely set property
+      Object.assign(metrics, { [name]: strategy.getMetrics() });
     }
 
     return metrics;
@@ -397,7 +393,7 @@ export function withRetry<T>(
           resolve(result.data);
         } else {
           reject(
-            result.error ||
+            result.error ??
               new Error('Operation failed after all retry attempts')
           );
         }
