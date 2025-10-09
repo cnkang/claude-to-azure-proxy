@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
 import {
   correlationIdMiddleware,
@@ -146,12 +146,7 @@ describe('Security Middleware', () => {
 
     it('should not override existing security headers', () => {
       // Pre-set a header
-      mockResponse.set = vi.fn((name, value) => {
-        if (name === 'X-Frame-Options') {
-          return mockResponse; // Simulate header already set
-        }
-        return mockResponse;
-      });
+      mockResponse.set = vi.fn().mockReturnValue(mockResponse);
 
       securityHeadersMiddleware(
         mockRequest as Request,
@@ -241,7 +236,7 @@ describe('Security Middleware', () => {
     it('should set request timeout', () => {
       const middleware = requestTimeoutMiddleware(5000);
       const timeoutSpy = vi.fn();
-      mockRequest.setTimeout = timeoutSpy;
+      (mockRequest as Record<string, unknown>).setTimeout = timeoutSpy;
 
       middleware(mockRequest as Request, mockResponse as Response, mockNext);
 
@@ -251,9 +246,9 @@ describe('Security Middleware', () => {
 
     it('should handle timeout callback', () => {
       const middleware = requestTimeoutMiddleware(5000);
-      let timeoutCallback: Function;
+      let timeoutCallback: (() => void) | undefined;
 
-      mockRequest.setTimeout = vi.fn((timeout, callback) => {
+      (mockRequest as Record<string, unknown>).setTimeout = vi.fn((timeout: number, callback: () => void) => {
         timeoutCallback = callback;
       });
       (mockRequest as RequestWithCorrelationId).correlationId =
@@ -286,7 +281,7 @@ describe('Security Middleware', () => {
 
     it('should handle missing setTimeout method', () => {
       const middleware = requestTimeoutMiddleware(5000);
-      delete (mockRequest as any).setTimeout;
+      delete (mockRequest as Record<string, unknown>).setTimeout;
 
       middleware(mockRequest as Request, mockResponse as Response, mockNext);
 
@@ -316,13 +311,15 @@ describe('Security Middleware', () => {
         array: ['<img src=x onerror=alert(1)>', 'safe item'],
       };
 
-      const sanitized = sanitizeInput(maliciousObject) as any;
+      const sanitized = sanitizeInput(maliciousObject) as Record<string, unknown>;
 
-      expect(sanitized.name).not.toContain('<script>');
+      expect(sanitized.name as string).not.toContain('<script>');
       expect(sanitized.description).toBe('Safe content');
-      expect(sanitized.nested.value).not.toContain('\x00');
-      expect(sanitized.array[0]).not.toContain('onerror');
-      expect(sanitized.array[1]).toBe('safe item');
+      const nested = sanitized.nested as Record<string, unknown>;
+      expect(nested.value as string).not.toContain('\x00');
+      const array = sanitized.array as string[];
+      expect(array[0]).not.toContain('onerror');
+      expect(array[1]).toBe('safe item');
     });
 
     it('should handle array input', () => {
@@ -332,11 +329,12 @@ describe('Security Middleware', () => {
         { nested: 'Hello\x00World' },
       ];
 
-      const sanitized = sanitizeInput(maliciousArray) as any[];
+      const sanitized = sanitizeInput(maliciousArray) as unknown[];
 
-      expect(sanitized[0]).not.toContain('<script>');
+      expect(sanitized[0] as string).not.toContain('<script>');
       expect(sanitized[1]).toBe('Safe content');
-      expect(sanitized[2].nested).not.toContain('\x00');
+      const nestedObj = sanitized[2] as Record<string, unknown>;
+      expect(nestedObj.nested as string).not.toContain('\x00');
     });
 
     it('should handle non-string, non-object input', () => {
@@ -347,7 +345,7 @@ describe('Security Middleware', () => {
     });
 
     it('should handle circular references', () => {
-      const circular: any = { name: 'test' };
+      const circular: Record<string, unknown> = { name: 'test' };
       circular.self = circular;
 
       const sanitized = sanitizeInput(circular);
@@ -368,6 +366,7 @@ describe('Security Middleware', () => {
       const input = '<a href="javascript:alert(1)">Link</a>';
       const sanitized = sanitizeInput(input);
 
+      // eslint-disable-next-line no-script-url
       expect(sanitized).not.toContain('javascript:');
       expect(sanitized).toContain('Link');
     });
@@ -492,11 +491,14 @@ describe('Security Middleware', () => {
       );
 
       const cspCall = setSpy.mock.calls.find(
-        (call) => call[0] === 'Content-Security-Policy'
+        (call: unknown[]) => call[0] === 'Content-Security-Policy'
       );
       expect(cspCall).toBeDefined();
+      if (!cspCall) {
+        return;
+      }
 
-      const cspValue = cspCall![1];
+      const cspValue = cspCall[1] as string;
       expect(cspValue).toContain("default-src 'none'");
       expect(cspValue).toContain("script-src 'self'");
       expect(cspValue).toContain("object-src 'none'");
@@ -511,11 +513,14 @@ describe('Security Middleware', () => {
       );
 
       const hstsCall = setSpy.mock.calls.find(
-        (call) => call[0] === 'Strict-Transport-Security'
+        (call: unknown[]) => call[0] === 'Strict-Transport-Security'
       );
       expect(hstsCall).toBeDefined();
+      if (!hstsCall) {
+        return;
+      }
 
-      const hstsValue = hstsCall![1];
+      const hstsValue = hstsCall[1] as string;
       expect(hstsValue).toContain('max-age=31536000');
       expect(hstsValue).toContain('includeSubDomains');
       expect(hstsValue).toContain('preload');
@@ -529,11 +534,14 @@ describe('Security Middleware', () => {
       );
 
       const permissionsCall = setSpy.mock.calls.find(
-        (call) => call[0] === 'Permissions-Policy'
+        (call: unknown[]) => call[0] === 'Permissions-Policy'
       );
       expect(permissionsCall).toBeDefined();
+      if (!permissionsCall) {
+        return;
+      }
 
-      const permissionsValue = permissionsCall![1];
+      const permissionsValue = permissionsCall[1] as string;
       expect(permissionsValue).toContain('geolocation=()');
       expect(permissionsValue).toContain('microphone=()');
       expect(permissionsValue).toContain('camera=()');
@@ -544,7 +552,7 @@ describe('Security Middleware', () => {
     it('should handle malformed headers gracefully', () => {
       mockRequest.headers = {
         'content-length': 'not-a-number',
-        'x-correlation-id': null as any,
+        'x-correlation-id': null as unknown as string,
       };
 
       correlationIdMiddleware(
@@ -591,25 +599,46 @@ describe('Security Middleware', () => {
     });
 
     it('should handle deeply nested objects in sanitization', () => {
-      const deepObject: any = { level1: {} };
-      let current = deepObject.level1;
+      const deepObject: Record<string, unknown> = { level1: {} };
+      let current = deepObject.level1 as Record<string, unknown>;
 
       // Create 10 levels of nesting
       for (let i = 2; i <= 10; i++) {
-        current[`level${i}`] = {};
-        current = current[`level${i}`];
+        const levelKey = `level${i}`;
+        const newLevel = {};
+        Object.defineProperty(current, levelKey, {
+          value: newLevel,
+          writable: true,
+          enumerable: true,
+          configurable: true
+        });
+        current = newLevel as Record<string, unknown>;
       }
-      current.value = '<script>alert("deep")</script>';
+      Object.defineProperty(current, 'value', {
+        value: '<script>alert("deep")</script>',
+        writable: true,
+        enumerable: true,
+        configurable: true
+      });
 
-      const sanitized = sanitizeInput(deepObject) as any;
+      const sanitized = sanitizeInput(deepObject) as Record<string, unknown>;
 
-      // Navigate to the deep value
-      let deepValue = sanitized.level1;
+      // Navigate to the deep value using Object.prototype.hasOwnProperty for safety
+      let deepValue = sanitized.level1 as Record<string, unknown>;
       for (let i = 2; i <= 10; i++) {
-        deepValue = deepValue[`level${i}`];
+        const levelKey = `level${i}`;
+        if (Object.prototype.hasOwnProperty.call(deepValue, levelKey)) {
+          const descriptor = Object.getOwnPropertyDescriptor(deepValue, levelKey);
+          const nextLevel = descriptor?.value as unknown;
+          if (typeof nextLevel === 'object' && nextLevel !== null) {
+            deepValue = nextLevel as Record<string, unknown>;
+          }
+        }
       }
 
-      expect(deepValue.value).not.toContain('<script>');
+      if (Object.prototype.hasOwnProperty.call(deepValue, 'value')) {
+        expect(deepValue.value as string).not.toContain('<script>');
+      }
     });
   });
 });

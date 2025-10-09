@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { Request, Response, NextFunction } from 'express';
-import { timingSafeEqual } from 'crypto';
+import { Request, Response } from 'express';
 import {
   authenticationMiddleware,
   secureAuthenticationMiddleware,
@@ -8,6 +7,7 @@ import {
   AuthenticationMethod,
 } from '../src/middleware/authentication.js';
 import type { AuthenticationRequest } from '../src/types/index.js';
+import type { MockRequest, MockResponse, MockNextFunction } from './types.js';
 
 // Mock the config module
 vi.mock('../src/config/index.js', () => ({
@@ -27,9 +27,9 @@ vi.mock('../src/middleware/logging.js', () => ({
 }));
 
 describe('Authentication Middleware', () => {
-  let mockRequest: Partial<Request>;
-  let mockResponse: Partial<Response>;
-  let mockNext: NextFunction;
+  let mockRequest: MockRequest;
+  let mockResponse: MockResponse;
+  let mockNext: MockNextFunction;
   let jsonSpy: ReturnType<typeof vi.fn>;
   let statusSpy: ReturnType<typeof vi.fn>;
 
@@ -51,13 +51,12 @@ describe('Authentication Middleware', () => {
     mockResponse = {
       status: statusSpy,
       json: jsonSpy,
-    };
+    } as MockResponse;
 
     mockNext = vi.fn();
 
     // Add correlation ID to request
-    (mockRequest as AuthenticationRequest).correlationId =
-      'test-correlation-id';
+    mockRequest.correlationId = 'test-correlation-id';
   });
 
   afterEach(() => {
@@ -79,10 +78,10 @@ describe('Authentication Middleware', () => {
       expect(mockNext).toHaveBeenCalledOnce();
       expect(statusSpy).not.toHaveBeenCalled();
       expect(jsonSpy).not.toHaveBeenCalled();
-      expect((mockRequest as AuthenticationRequest).authResult).toBe(
+      expect(mockRequest.authResult).toBe(
         AuthenticationResult.SUCCESS
       );
-      expect((mockRequest as AuthenticationRequest).authMethod).toBe(
+      expect(mockRequest.authMethod).toBe(
         AuthenticationMethod.BEARER_TOKEN
       );
     });
@@ -105,10 +104,10 @@ describe('Authentication Middleware', () => {
           type: 'authentication_failed',
           message: 'Invalid credentials provided.',
           correlationId: 'test-correlation-id',
-          timestamp: expect.any(String),
+          timestamp: expect.stringMatching(/.*/u) as string,
         },
       });
-      expect((mockRequest as AuthenticationRequest).authResult).toBe(
+      expect(mockRequest.authResult).toBe(
         AuthenticationResult.INVALID_CREDENTIALS
       );
     });
@@ -132,7 +131,7 @@ describe('Authentication Middleware', () => {
           message:
             'Authentication required. Provide credentials via Authorization Bearer token or x-api-key header.',
           correlationId: 'test-correlation-id',
-          timestamp: expect.any(String),
+          timestamp: expect.stringMatching(/.*/u) as string,
         },
       });
     });
@@ -149,7 +148,7 @@ describe('Authentication Middleware', () => {
       );
 
       expect(mockNext).toHaveBeenCalledOnce();
-      expect((mockRequest as AuthenticationRequest).authResult).toBe(
+      expect(mockRequest.authResult).toBe(
         AuthenticationResult.SUCCESS
       );
     });
@@ -170,10 +169,10 @@ describe('Authentication Middleware', () => {
       expect(mockNext).toHaveBeenCalledOnce();
       expect(statusSpy).not.toHaveBeenCalled();
       expect(jsonSpy).not.toHaveBeenCalled();
-      expect((mockRequest as AuthenticationRequest).authResult).toBe(
+      expect(mockRequest.authResult).toBe(
         AuthenticationResult.SUCCESS
       );
-      expect((mockRequest as AuthenticationRequest).authMethod).toBe(
+      expect(mockRequest.authMethod).toBe(
         AuthenticationMethod.API_KEY_HEADER
       );
     });
@@ -196,10 +195,10 @@ describe('Authentication Middleware', () => {
           type: 'authentication_failed',
           message: 'Invalid credentials provided.',
           correlationId: 'test-correlation-id',
-          timestamp: expect.any(String),
+          timestamp: expect.stringMatching(/.*/u) as string,
         },
       });
-      expect((mockRequest as AuthenticationRequest).authResult).toBe(
+      expect(mockRequest.authResult).toBe(
         AuthenticationResult.INVALID_CREDENTIALS
       );
     });
@@ -217,7 +216,7 @@ describe('Authentication Middleware', () => {
 
       expect(mockNext).not.toHaveBeenCalled();
       expect(statusSpy).toHaveBeenCalledWith(401);
-      expect((mockRequest as AuthenticationRequest).authResult).toBe(
+      expect(mockRequest.authResult).toBe(
         AuthenticationResult.MISSING_CREDENTIALS
       );
     });
@@ -241,10 +240,10 @@ describe('Authentication Middleware', () => {
           message:
             'Authentication required. Provide credentials via Authorization Bearer token or x-api-key header.',
           correlationId: 'test-correlation-id',
-          timestamp: expect.any(String),
+          timestamp: expect.stringMatching(/.*/u) as string,
         },
       });
-      expect((mockRequest as AuthenticationRequest).authResult).toBe(
+      expect(mockRequest.authResult).toBe(
         AuthenticationResult.MISSING_CREDENTIALS
       );
     });
@@ -262,7 +261,7 @@ describe('Authentication Middleware', () => {
 
       expect(mockNext).not.toHaveBeenCalled();
       expect(statusSpy).toHaveBeenCalledWith(401);
-      expect((mockRequest as AuthenticationRequest).authResult).toBe(
+      expect(mockRequest.authResult).toBe(
         AuthenticationResult.MISSING_CREDENTIALS
       );
     });
@@ -282,7 +281,7 @@ describe('Authentication Middleware', () => {
       );
 
       expect(mockNext).toHaveBeenCalledOnce();
-      expect((mockRequest as AuthenticationRequest).authMethod).toBe(
+      expect(mockRequest.authMethod).toBe(
         AuthenticationMethod.BEARER_TOKEN
       );
     });
@@ -299,13 +298,13 @@ describe('Authentication Middleware', () => {
       );
 
       expect(mockNext).toHaveBeenCalledOnce();
-      expect((mockRequest as AuthenticationRequest).authResult).toBe(
+      expect(mockRequest.authResult).toBe(
         AuthenticationResult.SUCCESS
       );
     });
 
     it('should handle missing correlation ID gracefully', () => {
-      delete (mockRequest as AuthenticationRequest).correlationId;
+      mockRequest.correlationId = undefined;
       mockRequest.headers = {
         'x-api-key': 'invalid-key',
       };
@@ -322,7 +321,7 @@ describe('Authentication Middleware', () => {
           type: 'authentication_failed',
           message: 'Invalid credentials provided.',
           correlationId: 'unknown',
-          timestamp: expect.any(String),
+          timestamp: expect.stringMatching(/.*/u) as string,
         },
       });
     });
@@ -342,7 +341,7 @@ describe('Authentication Middleware', () => {
       );
 
       expect(mockNext).toHaveBeenCalledOnce();
-      expect((mockRequest as AuthenticationRequest).authResult).toBe(
+      expect(mockRequest.authResult).toBe(
         AuthenticationResult.SUCCESS
       );
     });
@@ -360,7 +359,7 @@ describe('Authentication Middleware', () => {
 
       // Should reject different length credentials
       expect(statusSpy).toHaveBeenCalledWith(401);
-      expect((mockRequest as AuthenticationRequest).authResult).toBe(
+      expect(mockRequest.authResult).toBe(
         AuthenticationResult.INVALID_CREDENTIALS
       );
     });
@@ -370,7 +369,7 @@ describe('Authentication Middleware', () => {
     it('should handle crypto errors gracefully', () => {
       // Test error handling by providing malformed credentials that could cause issues
       mockRequest.headers = {
-        'x-api-key': null as any, // This could potentially cause issues in Buffer.from
+        'x-api-key': null as unknown as string, // This could potentially cause issues in Buffer.from
       };
 
       authenticationMiddleware(
@@ -380,17 +379,18 @@ describe('Authentication Middleware', () => {
       );
 
       expect(statusSpy).toHaveBeenCalledWith(401);
-      expect((mockRequest as AuthenticationRequest).authResult).toBe(
+      expect(mockRequest.authResult).toBe(
         AuthenticationResult.MISSING_CREDENTIALS
       );
     });
 
     it('should handle unexpected errors during authentication', () => {
       // Mock Buffer.from to throw an error
-      const originalBufferFrom = Buffer.from;
-      Buffer.from = vi.fn().mockImplementation(() => {
+      const originalBufferFrom = Buffer.from.bind(Buffer);
+      const mockBufferFrom = vi.fn().mockImplementation(() => {
         throw new Error('Buffer error');
       });
+      Buffer.from = mockBufferFrom;
 
       mockRequest.headers = {
         'x-api-key': 'test-key',
@@ -408,7 +408,7 @@ describe('Authentication Middleware', () => {
           type: 'authentication_failed',
           message: 'Invalid credentials provided.',
           correlationId: 'test-correlation-id',
-          timestamp: expect.any(String),
+          timestamp: expect.stringMatching(/.*/u) as string,
         },
       });
 

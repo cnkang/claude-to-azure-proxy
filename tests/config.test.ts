@@ -1,17 +1,17 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import type { Config } from '../src/config/index.js';
+
 
 describe('Configuration Module', () => {
   let originalEnv: NodeJS.ProcessEnv;
   let originalExit: typeof process.exit;
-  let exitSpy: any;
+  let exitSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     // Save original environment
     originalEnv = { ...process.env };
 
     // Mock process.exit to prevent tests from actually exiting
-    originalExit = process.exit;
+    originalExit = process.exit.bind(process);
     exitSpy = vi.fn();
     process.exit = exitSpy;
 
@@ -45,9 +45,10 @@ describe('Configuration Module', () => {
       process.env.PORT = '3000';
       process.env.NODE_ENV = 'development';
 
-      const { default: config } = await import(
+      const configModule = await import(
         '../src/config/index.js?t=' + Date.now()
-      );
+      ) as { default: Record<string, unknown> };
+      const config = configModule.default;
 
       expect(config.PROXY_API_KEY).toBe('a'.repeat(32));
       expect(config.AZURE_OPENAI_ENDPOINT).toBe(
@@ -66,9 +67,10 @@ describe('Configuration Module', () => {
       process.env.AZURE_OPENAI_API_KEY = 'b'.repeat(32);
       process.env.AZURE_OPENAI_MODEL = 'gpt-4';
 
-      const { default: config } = await import(
+      const configModule = await import(
         '../src/config/index.js?t=' + Date.now()
-      );
+      ) as { default: Record<string, unknown> };
+      const config = configModule.default;
 
       expect(config.PORT).toBe(8080); // Default value
       expect(config.NODE_ENV).toBe('production'); // Default value
@@ -81,15 +83,17 @@ describe('Configuration Module', () => {
       process.env.AZURE_OPENAI_API_KEY = 'b'.repeat(32);
       process.env.AZURE_OPENAI_MODEL = 'gpt-4';
 
-      const { default: config } = await import(
+      const configModule = await import(
         '../src/config/index.js?t=' + Date.now()
-      );
+      ) as { default: Record<string, unknown> };
+      const config = configModule.default;
 
       expect(Object.isFrozen(config)).toBe(true);
 
       // Attempting to modify should throw in strict mode (which TypeScript enables)
       expect(() => {
-        config.PORT = 9999;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+        (config as any).PORT = 9999;
       }).toThrow();
 
       // Value should remain unchanged
@@ -214,9 +218,10 @@ describe('Configuration Module', () => {
       process.env.AZURE_OPENAI_MODEL = 'gpt-4';
       process.env.PORT = '3000'; // String input
 
-      const { default: config } = await import(
+      const configModule = await import(
         '../src/config/index.js?t=' + Date.now()
-      );
+      ) as { default: Record<string, unknown> };
+      const config = configModule.default;
 
       expect(typeof config.PORT).toBe('number');
       expect(config.PORT).toBe(3000);
