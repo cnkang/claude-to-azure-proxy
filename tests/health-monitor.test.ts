@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { HealthMonitor } from '../src/monitoring/health-monitor.js';
-import type { HealthCheckResult } from '../src/types/index.js';
+import type { ServerConfig } from '../src/types/index.js';
 
 // Mock axios for Azure OpenAI health checks
 vi.mock('axios');
@@ -340,8 +340,8 @@ describe('Health Monitor', () => {
 
   describe('Configuration Validation', () => {
     it('should handle missing Azure OpenAI config', async () => {
-      const incompleteConfig = {};
-      const monitor = new HealthMonitor(incompleteConfig as any);
+      const incompleteConfig = {} as Partial<ServerConfig>;
+      const monitor = new HealthMonitor(incompleteConfig as ServerConfig);
 
       const result = await monitor.getHealthStatus();
 

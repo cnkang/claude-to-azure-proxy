@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   RetryStrategy,
   RetryStrategyRegistry,
@@ -329,7 +329,7 @@ describe('Retry Strategy', () => {
     });
 
     it('should detect retryable errors by code', async () => {
-      const error = new Error('Connection reset') as any;
+      const error = new Error('Connection reset') as Error & { code: string };
       error.code = 'ECONNRESET';
       const operation = vi.fn().mockRejectedValue(error);
 

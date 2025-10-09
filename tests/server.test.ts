@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 import type { ServerConfig } from '../src/types/index.js';
@@ -41,7 +41,7 @@ describe('Express Server Configuration', () => {
   it('should respond to test endpoint', async () => {
     const response = await request(app).get('/test').expect(200);
 
-    expect(response.body.message).toBe('test endpoint');
+    expect((response.body as { message: string }).message).toBe('test endpoint');
   });
 
   it('should validate required config properties', () => {

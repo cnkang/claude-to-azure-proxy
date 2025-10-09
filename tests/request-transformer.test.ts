@@ -9,7 +9,7 @@ import {
   ValidationError,
   SecurityError,
   type ClaudeCompletionRequest,
-  type AzureOpenAIRequest,
+
 } from '../src/utils/request-transformer.js';
 
 describe('Request Transformer', () => {
@@ -271,7 +271,7 @@ describe('Request Transformer', () => {
       expect(result.headers).toBeDefined();
       expect(result.requestId).toBeDefined();
 
-      const azureReq = result.azureRequest as AzureOpenAIRequest;
+      const azureReq = result.azureRequest;
       expect(azureReq.model).toBe(azureModel);
       expect(azureReq.messages[0].content).toBe(validClaudeRequest.prompt);
       expect(azureReq.max_tokens).toBe(validClaudeRequest.max_tokens);
@@ -391,7 +391,7 @@ describe('Request Transformer', () => {
       };
 
       const result = transformRequest(unicodeRequest, azureModel, azureApiKey);
-      const azureReq = result.azureRequest as AzureOpenAIRequest;
+      const azureReq = result.azureRequest;
       expect(azureReq.messages[0].content).toBe('Hello 世界 🌍 émojis');
     });
 
@@ -430,7 +430,7 @@ describe('Request Transformer', () => {
         azureModel,
         azureApiKey
       );
-      const azureReq = result.azureRequest as AzureOpenAIRequest;
+      const azureReq = result.azureRequest;
       expect(azureReq.max_tokens).toBe(131072);
     });
 

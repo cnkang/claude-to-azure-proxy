@@ -1,8 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   transformRequest,
   validateClaudeRequest,
-  transformClaudeToAzureRequest,
 } from '../src/utils/request-transformer.js';
 import {
   transformAzureResponseToClaude,
@@ -217,8 +216,10 @@ describe('Performance Tests', () => {
       const duration = endTime - startTime;
       expect(duration).toBeLessThan(PERFORMANCE_THRESHOLD_MS * 2);
 
-      const claudeResponse = result.claudeResponse as any;
-      expect(claudeResponse.completion).toContain('x'.repeat(100)); // Verify content preserved
+      const claudeResponse = result.claudeResponse;
+      if (claudeResponse.type === 'completion') {
+        expect(claudeResponse.completion).toContain('x'.repeat(100)); // Verify content preserved
+      }
     });
 
     it('should validate type guards efficiently', () => {

@@ -1,8 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import type { MockedFunction } from 'vitest';
+import express from 'express';
 import {
   GracefulDegradationManager,
   gracefulDegradationManager,
   checkFeatureAvailability,
+  type DegradationContext,
 } from '../src/resilience/graceful-degradation.js';
 import { ServiceUnavailableError } from '../src/errors/index.js';
 import { circuitBreakerRegistry } from '../src/resilience/circuit-breaker.js';
@@ -101,13 +104,15 @@ describe('Graceful Degradation Manager', () => {
       const customStrategy = {
         name: 'custom_test',
         priority: 1,
-        condition: (context: any) => context.operation === 'test',
-        execute: async (context: any) => ({
-          success: true,
-          data: 'custom_result',
-          fallbackUsed: 'custom_test',
-          degraded: true,
-        }),
+        condition: (context: DegradationContext) => context.operation === 'test',
+        execute: () => {
+          return Promise.resolve({
+            success: true,
+            data: 'custom_result',
+            fallbackUsed: 'custom_test',
+            degraded: true,
+          });
+        },
       };
 
       manager.registerStrategy(customStrategy);
@@ -171,6 +176,7 @@ describe('Graceful Degradation Manager', () => {
         priority: 1,
         condition: () => true,
         execute: async () => {
+          await Promise.resolve(); // Add await to satisfy linter
           executionOrder.push('high_priority');
           return {
             success: true,
@@ -186,6 +192,7 @@ describe('Graceful Degradation Manager', () => {
         priority: 5,
         condition: () => true,
         execute: async () => {
+          await Promise.resolve(); // Add await to satisfy linter
           executionOrder.push('low_priority');
           return {
             success: true,
@@ -216,6 +223,7 @@ describe('Graceful Degradation Manager', () => {
         priority: 1,
         condition: () => true,
         execute: async () => {
+          await Promise.resolve(); // Add await to satisfy linter
           executionOrder.push('failing_strategy');
           throw new Error('Strategy failed');
         },
@@ -226,6 +234,7 @@ describe('Graceful Degradation Manager', () => {
         priority: 2,
         condition: () => true,
         execute: async () => {
+          await Promise.resolve(); // Add await to satisfy linter
           executionOrder.push('working_strategy');
           return {
             success: true,
@@ -250,13 +259,15 @@ describe('Graceful Degradation Manager', () => {
   });
 
   describe('Auto-Adjustment Based on Circuit Breakers', () => {
+    let mockGetHealthStatus: MockedFunction<typeof circuitBreakerRegistry.getHealthStatus>;
+
     beforeEach(() => {
       // Mock circuit breaker registry
-      vi.spyOn(circuitBreakerRegistry, 'getHealthStatus');
+      mockGetHealthStatus = vi.spyOn(circuitBreakerRegistry, 'getHealthStatus') as MockedFunction<typeof circuitBreakerRegistry.getHealthStatus>;
     });
 
     it('should degrade when more than 50% circuit breakers are unhealthy', () => {
-      (circuitBreakerRegistry.getHealthStatus as any).mockReturnValue({
+      mockGetHealthStatus.mockReturnValue({
         service1: false,
         service2: false,
         service3: true,
@@ -272,7 +283,7 @@ describe('Graceful Degradation Manager', () => {
       manager.degradeServiceLevel('Initial degradation', 'test-correlation-id');
       expect(manager.getCurrentServiceLevel().name).toBe('degraded');
 
-      (circuitBreakerRegistry.getHealthStatus as any).mockReturnValue({
+      mockGetHealthStatus.mockReturnValue({
         service1: false,
         service2: false,
         service3: false,
@@ -291,7 +302,7 @@ describe('Graceful Degradation Manager', () => {
       manager.degradeServiceLevel('Test degradation', 'test-correlation-id');
       expect(manager.getCurrentServiceLevel().name).toBe('degraded');
 
-      (circuitBreakerRegistry.getHealthStatus as any).mockReturnValue({
+      mockGetHealthStatus.mockReturnValue({
         service1: true,
         service2: true,
         service3: true,
@@ -303,7 +314,7 @@ describe('Graceful Degradation Manager', () => {
     });
 
     it('should not adjust when no circuit breakers exist', () => {
-      (circuitBreakerRegistry.getHealthStatus as any).mockReturnValue({});
+      mockGetHealthStatus.mockReturnValue({});
 
       manager.autoAdjustServiceLevel('test-correlation-id');
 
@@ -364,9 +375,9 @@ describe('Global Graceful Degradation Manager', () => {
 });
 
 describe('Feature Availability Middleware', () => {
-  let mockReq: any;
-  let mockRes: any;
-  let mockNext: any;
+  let mockReq: Partial<express.Request>;
+  let mockRes: Partial<express.Response>;
+  let mockNext: express.NextFunction;
 
   beforeEach(() => {
     mockReq = {
@@ -435,8 +446,8 @@ describe('Feature Availability Middleware', () => {
       expect.objectContaining({
         error: expect.objectContaining({
           correlationId: 'unknown',
-        }),
-      })
+        }) as Record<string, unknown>,
+      }) as Record<string, unknown>
     );
 
     // Reset for other tests
@@ -445,12 +456,14 @@ describe('Feature Availability Middleware', () => {
 });
 
 describe('Integration with Circuit Breakers', () => {
+  let mockGetHealthStatus: MockedFunction<typeof circuitBreakerRegistry.getHealthStatus>;
+
   beforeEach(() => {
-    vi.spyOn(circuitBreakerRegistry, 'getHealthStatus');
+    mockGetHealthStatus = vi.spyOn(circuitBreakerRegistry, 'getHealthStatus') as MockedFunction<typeof circuitBreakerRegistry.getHealthStatus>;
   });
 
   it('should integrate with circuit breaker health status', () => {
-    (circuitBreakerRegistry.getHealthStatus as any).mockReturnValue({
+    mockGetHealthStatus.mockReturnValue({
       'azure-openai': false,
       'health-check': false,
       metrics: true,
@@ -468,7 +481,7 @@ describe('Integration with Circuit Breakers', () => {
   });
 
   it('should handle empty circuit breaker registry', () => {
-    (circuitBreakerRegistry.getHealthStatus as any).mockReturnValue({});
+    mockGetHealthStatus.mockReturnValue({});
 
     const initialLevel =
       gracefulDegradationManager.getCurrentServiceLevel().name;

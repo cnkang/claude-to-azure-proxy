@@ -2,6 +2,22 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 
+// Type for test response body
+interface TestResponseBody {
+  error?: {
+    type: string;
+    message: string;
+    correlationId?: string;
+  };
+  object?: string;
+  data?: Array<{
+    id: string;
+    object: string;
+    created: number;
+    owned_by: string;
+  }>;
+}
+
 /**
  * Test suite for /v1/models endpoint
  */
@@ -48,8 +64,9 @@ describe('Models Endpoint', () => {
       const response = await request(app).get('/v1/models').expect(401);
 
       expect(response.body).toHaveProperty('error');
-      expect(response.body.error.type).toBe('authentication_required');
-      expect(response.body.error.message).toContain('Authentication required');
+      const body = response.body as TestResponseBody;
+      expect(body.error?.type).toBe('authentication_required');
+      expect(body.error?.message).toContain('Authentication required');
     });
 
     it('should return 401 when invalid Bearer token is provided', async () => {
@@ -59,8 +76,9 @@ describe('Models Endpoint', () => {
         .expect(401);
 
       expect(response.body).toHaveProperty('error');
-      expect(response.body.error.type).toBe('authentication_failed');
-      expect(response.body.error.message).toBe('Invalid credentials provided.');
+      const body = response.body as TestResponseBody;
+      expect(body.error?.type).toBe('authentication_failed');
+      expect(body.error?.message).toBe('Invalid credentials provided.');
     });
 
     it('should return 401 when invalid x-api-key is provided', async () => {
@@ -70,8 +88,9 @@ describe('Models Endpoint', () => {
         .expect(401);
 
       expect(response.body).toHaveProperty('error');
-      expect(response.body.error.type).toBe('authentication_failed');
-      expect(response.body.error.message).toBe('Invalid credentials provided.');
+      const body = response.body as TestResponseBody;
+      expect(body.error?.type).toBe('authentication_failed');
+      expect(body.error?.message).toBe('Invalid credentials provided.');
     });
   });
 
@@ -83,13 +102,14 @@ describe('Models Endpoint', () => {
         .expect(200);
 
       // Verify response structure matches Claude API format
-      expect(response.body).toHaveProperty('object', 'list');
-      expect(response.body).toHaveProperty('data');
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
+      const body = response.body as TestResponseBody;
+      expect(body).toHaveProperty('object', 'list');
+      expect(body).toHaveProperty('data');
+      expect(Array.isArray(body.data)).toBe(true);
+      expect(body.data?.length).toBeGreaterThan(0);
 
       // Verify each model has required properties
-      response.body.data.forEach((model: any) => {
+      body.data?.forEach((model) => {
         expect(model).toHaveProperty('id');
         expect(model).toHaveProperty('object', 'model');
         expect(model).toHaveProperty('created');
@@ -107,10 +127,11 @@ describe('Models Endpoint', () => {
         .expect(200);
 
       // Verify response structure matches Claude API format
-      expect(response.body).toHaveProperty('object', 'list');
-      expect(response.body).toHaveProperty('data');
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
+      const body = response.body as TestResponseBody;
+      expect(body).toHaveProperty('object', 'list');
+      expect(body).toHaveProperty('data');
+      expect(Array.isArray(body.data)).toBe(true);
+      expect(body.data?.length).toBeGreaterThan(0);
     });
 
     it('should return expected model (gpt-5-codex)', async () => {
@@ -119,13 +140,14 @@ describe('Models Endpoint', () => {
         .set('Authorization', `Bearer ${validApiKey}`)
         .expect(200);
 
-      const modelIds = response.body.data.map((model: any) => model.id);
+      const body = response.body as TestResponseBody;
+      const modelIds = body.data?.map((model) => model.id) ?? [];
 
       // Verify expected model ID is present
       expect(modelIds).toContain('gpt-5-codex');
 
       // Verify model is owned by openai
-      response.body.data.forEach((model: any) => {
+      body.data?.forEach((model) => {
         expect(model.owned_by).toBe('openai');
       });
     });
@@ -156,16 +178,17 @@ describe('Models Endpoint', () => {
       // Verify top-level structure
       expect(response.body).toEqual({
         object: 'list',
-        data: expect.any(Array),
+        data: expect.any(Array) as unknown[],
       });
 
       // Verify each model structure
-      response.body.data.forEach((model: any) => {
+      const body = response.body as TestResponseBody;
+      body.data?.forEach((model) => {
         expect(model).toEqual({
-          id: expect.any(String),
+          id: expect.any(String) as string,
           object: 'model',
-          created: expect.any(Number),
-          owned_by: expect.any(String),
+          created: expect.any(Number) as number,
+          owned_by: expect.any(String) as string,
         });
       });
     });

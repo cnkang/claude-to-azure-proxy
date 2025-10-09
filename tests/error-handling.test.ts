@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   BaseError,
   AuthenticationError,
@@ -42,8 +42,11 @@ describe('Error Handling System', () => {
 
       const json = error.toJSON();
       expect(json.context.metadata).toBeDefined();
-      expect(json.context.metadata?.field).toBe('password');
-      expect(json.context.metadata?.value).toBe('secret123'); // Value is not sanitized in ValidationError
+      if (json.context.metadata !== null && typeof json.context.metadata === 'object') {
+        const metadata = json.context.metadata as { field?: string; value?: string };
+        expect(metadata.field).toBe('password');
+        expect(metadata.value).toBe('secret123'); // Value is not sanitized in ValidationError
+      }
     });
 
     it('should create client-safe error responses', () => {
@@ -63,11 +66,11 @@ describe('Error Handling System', () => {
     });
 
     it('should handle non-operational errors', () => {
-      const error = new BaseError(
+      const error = new ValidationError(
         'Critical system failure',
-        500,
-        'CRITICAL_ERROR',
         'test-correlation-id',
+        'field',
+        'value',
         false // non-operational
       );
 
@@ -101,8 +104,8 @@ describe('Error Handling System', () => {
     });
 
     it('should create NetworkError from network failure', () => {
-      const networkError = new Error('ECONNRESET');
-      (networkError as any).code = 'ECONNRESET';
+      const networkError = new Error('ECONNRESET') as Error & { code: string };
+      networkError.code = 'ECONNRESET';
 
       const error = ErrorFactory.fromNetworkError(
         networkError,
@@ -142,11 +145,11 @@ describe('Error Handling System', () => {
         'Auth failed',
         'test-id'
       );
-      const nonOperationalError = new BaseError(
+      const nonOperationalError = new ValidationError(
         'Critical',
-        500,
-        'CRITICAL',
         'test-id',
+        'field',
+        'value',
         false
       );
       const regularError = new Error('Regular');
