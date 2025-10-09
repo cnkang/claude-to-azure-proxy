@@ -596,7 +596,7 @@ describe('Response Transformer', () => {
           200,
           mockCorrelationId
         );
-        const {claudeResponse} = result;
+        const { claudeResponse } = result;
         expect(claudeResponse).toBeDefined();
         if (claudeResponse.type !== 'completion') {
           throw new Error('Expected completion response');

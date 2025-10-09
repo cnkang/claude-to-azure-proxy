@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-
 describe('Configuration Module', () => {
   let originalEnv: NodeJS.ProcessEnv;
   let originalExit: typeof process.exit;
@@ -45,9 +44,9 @@ describe('Configuration Module', () => {
       process.env.PORT = '3000';
       process.env.NODE_ENV = 'development';
 
-      const configModule = await import(
+      const configModule = (await import(
         '../src/config/index.js?t=' + Date.now()
-      ) as { default: Record<string, unknown> };
+      )) as { default: Record<string, unknown> };
       const config = configModule.default;
 
       expect(config.PROXY_API_KEY).toBe('a'.repeat(32));
@@ -67,9 +66,9 @@ describe('Configuration Module', () => {
       process.env.AZURE_OPENAI_API_KEY = 'b'.repeat(32);
       process.env.AZURE_OPENAI_MODEL = 'gpt-4';
 
-      const configModule = await import(
+      const configModule = (await import(
         '../src/config/index.js?t=' + Date.now()
-      ) as { default: Record<string, unknown> };
+      )) as { default: Record<string, unknown> };
       const config = configModule.default;
 
       expect(config.PORT).toBe(8080); // Default value
@@ -83,9 +82,9 @@ describe('Configuration Module', () => {
       process.env.AZURE_OPENAI_API_KEY = 'b'.repeat(32);
       process.env.AZURE_OPENAI_MODEL = 'gpt-4';
 
-      const configModule = await import(
+      const configModule = (await import(
         '../src/config/index.js?t=' + Date.now()
-      ) as { default: Record<string, unknown> };
+      )) as { default: Record<string, unknown> };
       const config = configModule.default;
 
       expect(Object.isFrozen(config)).toBe(true);
@@ -218,9 +217,9 @@ describe('Configuration Module', () => {
       process.env.AZURE_OPENAI_MODEL = 'gpt-4';
       process.env.PORT = '3000'; // String input
 
-      const configModule = await import(
+      const configModule = (await import(
         '../src/config/index.js?t=' + Date.now()
-      ) as { default: Record<string, unknown> };
+      )) as { default: Record<string, unknown> };
       const config = configModule.default;
 
       expect(typeof config.PORT).toBe('number');

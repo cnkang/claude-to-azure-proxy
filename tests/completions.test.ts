@@ -152,7 +152,9 @@ describe('Completions Endpoint', () => {
 
       expect(response.status).toBe(400);
       expect(response.body).toHaveProperty('error');
-      expect(((response.body as TestResponseBody).error!).type).toBe('invalid_request_error');
+      expect((response.body as TestResponseBody).error!.type).toBe(
+        'invalid_request_error'
+      );
     });
 
     it('should return 400 for invalid max_tokens', async () => {
@@ -167,7 +169,9 @@ describe('Completions Endpoint', () => {
 
       expect(response.status).toBe(400);
       expect(response.body).toHaveProperty('error');
-      expect(((response.body as TestResponseBody).error!).type).toBe('invalid_request_error');
+      expect((response.body as TestResponseBody).error!.type).toBe(
+        'invalid_request_error'
+      );
     });
 
     it('should return 400 for invalid temperature', async () => {
@@ -183,7 +187,9 @@ describe('Completions Endpoint', () => {
 
       expect(response.status).toBe(400);
       expect(response.body).toHaveProperty('error');
-      expect(((response.body as TestResponseBody).error!).type).toBe('invalid_request_error');
+      expect((response.body as TestResponseBody).error!.type).toBe(
+        'invalid_request_error'
+      );
     });
 
     it('should return 400 for empty prompt', async () => {
@@ -198,7 +204,9 @@ describe('Completions Endpoint', () => {
 
       expect(response.status).toBe(400);
       expect(response.body).toHaveProperty('error');
-      expect(((response.body as TestResponseBody).error!).type).toBe('invalid_request_error');
+      expect((response.body as TestResponseBody).error!.type).toBe(
+        'invalid_request_error'
+      );
     });
   });
 
@@ -215,8 +223,10 @@ describe('Completions Endpoint', () => {
 
       expect(response.status).toBe(400);
       expect(response.body).toHaveProperty('error');
-      expect(((response.body as TestResponseBody).error!).type).toBe('invalid_request_error');
-      expect(((response.body as TestResponseBody).error!).message).toContain(
+      expect((response.body as TestResponseBody).error!.type).toBe(
+        'invalid_request_error'
+      );
+      expect((response.body as TestResponseBody).error!.message).toContain(
         'invalid or potentially harmful content'
       );
     });
@@ -259,7 +269,7 @@ describe('Completions Endpoint', () => {
         });
 
       expect(response.status).toBe(200);
-      expect(((response.body as TestResponseBody).type!)).toBe('completion');
+      expect((response.body as TestResponseBody).type).toBe('completion');
     });
   });
 
@@ -297,8 +307,8 @@ describe('Completions Endpoint', () => {
       // Correlation ID might be in different header formats
       const hasCorrelationId = Boolean(
         response.headers['x-correlation-id'] ||
-        response.headers['correlation-id'] ||
-        ((response.body as TestResponseBody).correlationId!)
+          response.headers['correlation-id'] ||
+          (response.body as TestResponseBody).correlationId!
       );
       expect(hasCorrelationId).toBeDefined();
     });

@@ -11,9 +11,7 @@ describe('Chat Completions Support', () => {
     it('should validate a correct chat completion request', () => {
       const chatRequest: ClaudeChatCompletionRequest = {
         model: 'claude-3-5-sonnet-20241022',
-        messages: [
-          { role: 'user', content: 'Hello, world!' }
-        ],
+        messages: [{ role: 'user', content: 'Hello, world!' }],
         max_tokens: 100,
       };
 
@@ -29,7 +27,7 @@ describe('Chat Completions Support', () => {
           { role: 'system', content: 'You are a helpful assistant.' },
           { role: 'user', content: 'Hello!' },
           { role: 'assistant', content: 'Hi there! How can I help you?' },
-          { role: 'user', content: 'What is 2+2?' }
+          { role: 'user', content: 'What is 2+2?' },
         ],
         max_tokens: 100,
       };
@@ -65,9 +63,7 @@ describe('Chat Completions Support', () => {
     it('should reject messages with invalid roles', () => {
       const chatRequest = {
         model: 'claude-3-5-sonnet-20241022',
-        messages: [
-          { role: 'invalid', content: 'Hello' }
-        ],
+        messages: [{ role: 'invalid', content: 'Hello' }],
         max_tokens: 100,
       };
 
@@ -77,14 +73,14 @@ describe('Chat Completions Support', () => {
     it('should sanitize message content', () => {
       const chatRequest: ClaudeChatCompletionRequest = {
         model: 'claude-3-5-sonnet-20241022',
-        messages: [
-          { role: 'user', content: 'Hello\x00\x01world!' }
-        ],
+        messages: [{ role: 'user', content: 'Hello\x00\x01world!' }],
         max_tokens: 100,
       };
 
       const result = validateClaudeRequest(chatRequest);
-      expect('messages' in result && result.messages[0].content).toBe('Helloworld!');
+      expect('messages' in result && result.messages[0].content).toBe(
+        'Helloworld!'
+      );
     });
   });
 
@@ -92,9 +88,7 @@ describe('Chat Completions Support', () => {
     it('should transform chat completion request to Azure format', () => {
       const chatRequest: ClaudeChatCompletionRequest = {
         model: 'claude-3-5-sonnet-20241022',
-        messages: [
-          { role: 'user', content: 'Hello, world!' }
-        ],
+        messages: [{ role: 'user', content: 'Hello, world!' }],
         max_tokens: 100,
         temperature: 0.7,
       };
@@ -105,7 +99,7 @@ describe('Chat Completions Support', () => {
       expect(result.messages).toHaveLength(1);
       expect(result.messages[0]).toEqual({
         role: 'user',
-        content: 'Hello, world!'
+        content: 'Hello, world!',
       });
       expect(result.max_tokens).toBe(100);
       expect(result.temperature).toBe(0.7);
@@ -119,7 +113,7 @@ describe('Chat Completions Support', () => {
           { role: 'system', content: 'You are helpful.' },
           { role: 'user', content: 'Hello!' },
           { role: 'assistant', content: 'Hi!' },
-          { role: 'user', content: 'How are you?' }
+          { role: 'user', content: 'How are you?' },
         ],
         max_tokens: 100,
       };
@@ -127,10 +121,16 @@ describe('Chat Completions Support', () => {
       const result = transformClaudeToAzureRequest(chatRequest, 'gpt-4');
 
       expect(result.messages).toHaveLength(4);
-      expect(result.messages[0]).toEqual({ role: 'system', content: 'You are helpful.' });
+      expect(result.messages[0]).toEqual({
+        role: 'system',
+        content: 'You are helpful.',
+      });
       expect(result.messages[1]).toEqual({ role: 'user', content: 'Hello!' });
       expect(result.messages[2]).toEqual({ role: 'assistant', content: 'Hi!' });
-      expect(result.messages[3]).toEqual({ role: 'user', content: 'How are you?' });
+      expect(result.messages[3]).toEqual({
+        role: 'user',
+        content: 'How are you?',
+      });
     });
 
     it('should handle optional parameters in chat format', () => {
@@ -166,7 +166,7 @@ describe('Chat Completions Support', () => {
       expect(result.messages).toHaveLength(1);
       expect(result.messages[0]).toEqual({
         role: 'user',
-        content: 'Hello, world!'
+        content: 'Hello, world!',
       });
     });
 
@@ -185,7 +185,10 @@ describe('Chat Completions Support', () => {
         temperature: 0.7,
       };
 
-      const legacyResult = transformClaudeToAzureRequest(legacyRequest, 'gpt-4');
+      const legacyResult = transformClaudeToAzureRequest(
+        legacyRequest,
+        'gpt-4'
+      );
       const chatResult = transformClaudeToAzureRequest(chatRequest, 'gpt-4');
 
       // Should have same structure except for user ID
@@ -221,8 +224,8 @@ describe('Chat Completions Support', () => {
   describe('Edge Cases', () => {
     it('should handle very long conversations', () => {
       const messages = Array.from({ length: 50 }, (_, i) => ({
-        role: i % 2 === 0 ? 'user' as const : 'assistant' as const,
-        content: `Message ${i + 1}`
+        role: i % 2 === 0 ? ('user' as const) : ('assistant' as const),
+        content: `Message ${i + 1}`,
       }));
 
       const chatRequest: ClaudeChatCompletionRequest = {
@@ -237,8 +240,8 @@ describe('Chat Completions Support', () => {
 
     it('should reject conversations that are too long', () => {
       const messages = Array.from({ length: 101 }, (_, i) => ({
-        role: i % 2 === 0 ? 'user' as const : 'assistant' as const,
-        content: `Message ${i + 1}`
+        role: i % 2 === 0 ? ('user' as const) : ('assistant' as const),
+        content: `Message ${i + 1}`,
       }));
 
       const chatRequest = {
@@ -254,7 +257,7 @@ describe('Chat Completions Support', () => {
       const chatRequest: ClaudeChatCompletionRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { role: 'user', content: 'Hello 世界 🌍 café naïve résumé ∑∫∆√π' }
+          { role: 'user', content: 'Hello 世界 🌍 café naïve résumé ∑∫∆√π' },
         ],
         max_tokens: 100,
       };
@@ -262,8 +265,12 @@ describe('Chat Completions Support', () => {
       const result = validateClaudeRequest(chatRequest);
       const azureResult = transformClaudeToAzureRequest(result, 'gpt-4');
 
-      expect('messages' in result && result.messages[0].content).toBe('Hello 世界 🌍 café naïve résumé ∑∫∆√π');
-      expect(azureResult.messages[0].content).toBe('Hello 世界 🌍 café naïve résumé ∑∫∆√π');
+      expect('messages' in result && result.messages[0].content).toBe(
+        'Hello 世界 🌍 café naïve résumé ∑∫∆√π'
+      );
+      expect(azureResult.messages[0].content).toBe(
+        'Hello 世界 🌍 café naïve résumé ∑∫∆√π'
+      );
     });
   });
 });

@@ -42,8 +42,14 @@ describe('Error Handling System', () => {
 
       const json = error.toJSON();
       expect(json.context.metadata).toBeDefined();
-      if (json.context.metadata !== null && typeof json.context.metadata === 'object') {
-        const metadata = json.context.metadata as { field?: string; value?: string };
+      if (
+        json.context.metadata !== null &&
+        typeof json.context.metadata === 'object'
+      ) {
+        const metadata = json.context.metadata as {
+          field?: string;
+          value?: string;
+        };
         expect(metadata.field).toBe('password');
         expect(metadata.value).toBe('secret123'); // Value is not sanitized in ValidationError
       }

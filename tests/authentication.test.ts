@@ -78,12 +78,8 @@ describe('Authentication Middleware', () => {
       expect(mockNext).toHaveBeenCalledOnce();
       expect(statusSpy).not.toHaveBeenCalled();
       expect(jsonSpy).not.toHaveBeenCalled();
-      expect(mockRequest.authResult).toBe(
-        AuthenticationResult.SUCCESS
-      );
-      expect(mockRequest.authMethod).toBe(
-        AuthenticationMethod.BEARER_TOKEN
-      );
+      expect(mockRequest.authResult).toBe(AuthenticationResult.SUCCESS);
+      expect(mockRequest.authMethod).toBe(AuthenticationMethod.BEARER_TOKEN);
     });
 
     it('should reject invalid Bearer token', () => {
@@ -148,9 +144,7 @@ describe('Authentication Middleware', () => {
       );
 
       expect(mockNext).toHaveBeenCalledOnce();
-      expect(mockRequest.authResult).toBe(
-        AuthenticationResult.SUCCESS
-      );
+      expect(mockRequest.authResult).toBe(AuthenticationResult.SUCCESS);
     });
   });
 
@@ -169,12 +163,8 @@ describe('Authentication Middleware', () => {
       expect(mockNext).toHaveBeenCalledOnce();
       expect(statusSpy).not.toHaveBeenCalled();
       expect(jsonSpy).not.toHaveBeenCalled();
-      expect(mockRequest.authResult).toBe(
-        AuthenticationResult.SUCCESS
-      );
-      expect(mockRequest.authMethod).toBe(
-        AuthenticationMethod.API_KEY_HEADER
-      );
+      expect(mockRequest.authResult).toBe(AuthenticationResult.SUCCESS);
+      expect(mockRequest.authMethod).toBe(AuthenticationMethod.API_KEY_HEADER);
     });
 
     it('should reject invalid x-api-key header', () => {
@@ -281,9 +271,7 @@ describe('Authentication Middleware', () => {
       );
 
       expect(mockNext).toHaveBeenCalledOnce();
-      expect(mockRequest.authMethod).toBe(
-        AuthenticationMethod.BEARER_TOKEN
-      );
+      expect(mockRequest.authMethod).toBe(AuthenticationMethod.BEARER_TOKEN);
     });
 
     it('should handle whitespace in credentials', () => {
@@ -298,9 +286,7 @@ describe('Authentication Middleware', () => {
       );
 
       expect(mockNext).toHaveBeenCalledOnce();
-      expect(mockRequest.authResult).toBe(
-        AuthenticationResult.SUCCESS
-      );
+      expect(mockRequest.authResult).toBe(AuthenticationResult.SUCCESS);
     });
 
     it('should handle missing correlation ID gracefully', () => {
@@ -341,9 +327,7 @@ describe('Authentication Middleware', () => {
       );
 
       expect(mockNext).toHaveBeenCalledOnce();
-      expect(mockRequest.authResult).toBe(
-        AuthenticationResult.SUCCESS
-      );
+      expect(mockRequest.authResult).toBe(AuthenticationResult.SUCCESS);
     });
 
     it('should handle different length credentials securely', () => {

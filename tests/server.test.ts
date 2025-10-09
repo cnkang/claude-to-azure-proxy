@@ -41,7 +41,9 @@ describe('Express Server Configuration', () => {
   it('should respond to test endpoint', async () => {
     const response = await request(app).get('/test').expect(200);
 
-    expect((response.body as { message: string }).message).toBe('test endpoint');
+    expect((response.body as { message: string }).message).toBe(
+      'test endpoint'
+    );
   });
 
   it('should validate required config properties', () => {

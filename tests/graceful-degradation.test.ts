@@ -104,7 +104,8 @@ describe('Graceful Degradation Manager', () => {
       const customStrategy = {
         name: 'custom_test',
         priority: 1,
-        condition: (context: DegradationContext) => context.operation === 'test',
+        condition: (context: DegradationContext) =>
+          context.operation === 'test',
         execute: () => {
           return Promise.resolve({
             success: true,
@@ -259,11 +260,16 @@ describe('Graceful Degradation Manager', () => {
   });
 
   describe('Auto-Adjustment Based on Circuit Breakers', () => {
-    let mockGetHealthStatus: MockedFunction<typeof circuitBreakerRegistry.getHealthStatus>;
+    let mockGetHealthStatus: MockedFunction<
+      typeof circuitBreakerRegistry.getHealthStatus
+    >;
 
     beforeEach(() => {
       // Mock circuit breaker registry
-      mockGetHealthStatus = vi.spyOn(circuitBreakerRegistry, 'getHealthStatus') as MockedFunction<typeof circuitBreakerRegistry.getHealthStatus>;
+      mockGetHealthStatus = vi.spyOn(
+        circuitBreakerRegistry,
+        'getHealthStatus'
+      ) as MockedFunction<typeof circuitBreakerRegistry.getHealthStatus>;
     });
 
     it('should degrade when more than 50% circuit breakers are unhealthy', () => {
@@ -456,10 +462,15 @@ describe('Feature Availability Middleware', () => {
 });
 
 describe('Integration with Circuit Breakers', () => {
-  let mockGetHealthStatus: MockedFunction<typeof circuitBreakerRegistry.getHealthStatus>;
+  let mockGetHealthStatus: MockedFunction<
+    typeof circuitBreakerRegistry.getHealthStatus
+  >;
 
   beforeEach(() => {
-    mockGetHealthStatus = vi.spyOn(circuitBreakerRegistry, 'getHealthStatus') as MockedFunction<typeof circuitBreakerRegistry.getHealthStatus>;
+    mockGetHealthStatus = vi.spyOn(
+      circuitBreakerRegistry,
+      'getHealthStatus'
+    ) as MockedFunction<typeof circuitBreakerRegistry.getHealthStatus>;
   });
 
   it('should integrate with circuit breaker health status', () => {

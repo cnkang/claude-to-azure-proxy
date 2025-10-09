@@ -23,7 +23,9 @@ export interface MockResponse {
   json: MockedFunction<(body?: unknown) => MockResponse>;
   send: MockedFunction<(body?: unknown) => MockResponse>;
   end: MockedFunction<() => MockResponse>;
-  setHeader: MockedFunction<(name: string, value: string | string[]) => MockResponse>;
+  setHeader: MockedFunction<
+    (name: string, value: string | string[]) => MockResponse
+  >;
 }
 
 export type MockNextFunction = MockedFunction<NextFunction>;
@@ -81,7 +83,7 @@ export const expectNumber = expect.any(Number) as number;
 export const expectBoolean = expect.any(Boolean) as boolean;
 export const expectObject = expect.any(Object) as object;
 export const expectArray = expect.any(Array) as Array<unknown>;
-export const expectFunction = expect.any(Function) as () => void
+export const expectFunction = expect.any(Function) as () => void;
 
 // Helper function to create properly typed mock response
 export function createMockResponse(): MockResponse {
@@ -96,7 +98,9 @@ export function createMockResponse(): MockResponse {
 }
 
 // Helper function to create properly typed mock request
-export function createMockRequest(overrides: Partial<MockRequest> = {}): MockRequest {
+export function createMockRequest(
+  overrides: Partial<MockRequest> = {}
+): MockRequest {
   return {
     headers: {},
     body: {},

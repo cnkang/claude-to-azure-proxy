@@ -248,9 +248,11 @@ describe('Security Middleware', () => {
       const middleware = requestTimeoutMiddleware(5000);
       let timeoutCallback: (() => void) | undefined;
 
-      (mockRequest as Record<string, unknown>).setTimeout = vi.fn((timeout: number, callback: () => void) => {
-        timeoutCallback = callback;
-      });
+      (mockRequest as Record<string, unknown>).setTimeout = vi.fn(
+        (timeout: number, callback: () => void) => {
+          timeoutCallback = callback;
+        }
+      );
       (mockRequest as RequestWithCorrelationId).correlationId =
         'test-correlation-id';
 
@@ -311,7 +313,10 @@ describe('Security Middleware', () => {
         array: ['<img src=x onerror=alert(1)>', 'safe item'],
       };
 
-      const sanitized = sanitizeInput(maliciousObject) as Record<string, unknown>;
+      const sanitized = sanitizeInput(maliciousObject) as Record<
+        string,
+        unknown
+      >;
 
       expect(sanitized.name as string).not.toContain('<script>');
       expect(sanitized.description).toBe('Safe content');
@@ -610,7 +615,7 @@ describe('Security Middleware', () => {
           value: newLevel,
           writable: true,
           enumerable: true,
-          configurable: true
+          configurable: true,
         });
         current = newLevel as Record<string, unknown>;
       }
@@ -618,7 +623,7 @@ describe('Security Middleware', () => {
         value: '<script>alert("deep")</script>',
         writable: true,
         enumerable: true,
-        configurable: true
+        configurable: true,
       });
 
       const sanitized = sanitizeInput(deepObject) as Record<string, unknown>;
@@ -628,7 +633,10 @@ describe('Security Middleware', () => {
       for (let i = 2; i <= 10; i++) {
         const levelKey = `level${i}`;
         if (Object.prototype.hasOwnProperty.call(deepValue, levelKey)) {
-          const descriptor = Object.getOwnPropertyDescriptor(deepValue, levelKey);
+          const descriptor = Object.getOwnPropertyDescriptor(
+            deepValue,
+            levelKey
+          );
           const nextLevel = descriptor?.value as unknown;
           if (typeof nextLevel === 'object' && nextLevel !== null) {
             deepValue = nextLevel as Record<string, unknown>;

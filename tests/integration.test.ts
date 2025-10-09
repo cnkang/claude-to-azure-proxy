@@ -1,11 +1,4 @@
-import {
-  describe,
-  it,
-  expect,
-  beforeAll,
-  beforeEach,
-  vi,
-} from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 import { json } from 'express';
@@ -55,7 +48,15 @@ vi.mock('../src/resilience/index.js', async () => {
 // Mock rate limiting middleware
 vi.mock('express-rate-limit', () => {
   return {
-    default: vi.fn(() => (req: express.Request, res: express.Response, next: express.NextFunction) => next()),
+    default: vi.fn(
+      () =>
+        (
+          req: express.Request,
+          res: express.Response,
+          next: express.NextFunction
+        ) =>
+          next()
+    ),
   };
 });
 
@@ -151,7 +152,9 @@ describe('Integration Tests', () => {
 
     // Reset graceful degradation mock to default success
     const mockExecuteGracefulDegradation = vi.mocked(
-      gracefulDegradationManager.executeGracefulDegradation.bind(gracefulDegradationManager)
+      gracefulDegradationManager.executeGracefulDegradation.bind(
+        gracefulDegradationManager
+      )
     );
     mockExecuteGracefulDegradation.mockResolvedValue({
       success: true,
@@ -205,7 +208,11 @@ describe('Integration Tests', () => {
       // Verify Azure OpenAI was called correctly
       expect(mockAxiosInstance.post).toHaveBeenCalledOnce();
       const mockPost = mockAxiosInstance.post as ReturnType<typeof vi.fn>;
-      const callArgs = mockPost.mock.calls[0] as [string, Record<string, unknown>, Record<string, unknown>];
+      const callArgs = mockPost.mock.calls[0] as [
+        string,
+        Record<string, unknown>,
+        Record<string, unknown>,
+      ];
       const [url, data, config] = callArgs;
       expect(url).toBe(
         'https://test.openai.azure.com/openai/v1/chat/completions'
@@ -238,7 +245,10 @@ describe('Integration Tests', () => {
 
       // Verify all parameters were passed to Azure OpenAI
       const mockPost = mockAxiosInstance.post as ReturnType<typeof vi.fn>;
-      const callArgs = mockPost.mock.calls[0] as [string, Record<string, unknown>];
+      const callArgs = mockPost.mock.calls[0] as [
+        string,
+        Record<string, unknown>,
+      ];
       const [, data] = callArgs;
       expect(data.temperature).toBe(claudeRequest.temperature);
       expect(data.top_p).toBe(claudeRequest.top_p);
@@ -259,7 +269,10 @@ describe('Integration Tests', () => {
 
       // Verify minimal parameters were passed
       const mockPost2 = mockAxiosInstance.post as ReturnType<typeof vi.fn>;
-      const callArgs2 = mockPost2.mock.calls[0] as [string, Record<string, unknown>];
+      const callArgs2 = mockPost2.mock.calls[0] as [
+        string,
+        Record<string, unknown>,
+      ];
       const [, data] = callArgs2;
       expect(data.model).toBe('gpt-5-codex');
       expect(data.max_tokens).toBe(claudeRequest.max_tokens);
@@ -275,7 +288,9 @@ describe('Integration Tests', () => {
 
       // Mock graceful degradation to return error response instead of throwing
       vi.mocked(
-        gracefulDegradationManager.executeGracefulDegradation.bind(gracefulDegradationManager)
+        gracefulDegradationManager.executeGracefulDegradation.bind(
+          gracefulDegradationManager
+        )
       ).mockResolvedValueOnce({
         success: false,
         error: azureError,
@@ -283,7 +298,9 @@ describe('Integration Tests', () => {
         degraded: false,
       });
 
-      (mockAxiosInstance.post as ReturnType<typeof vi.fn>).mockRejectedValueOnce({
+      (
+        mockAxiosInstance.post as ReturnType<typeof vi.fn>
+      ).mockRejectedValueOnce({
         response: {
           status: 401,
           data: azureError,
@@ -308,7 +325,9 @@ describe('Integration Tests', () => {
 
       // Mock graceful degradation to return error response instead of throwing
       vi.mocked(
-        gracefulDegradationManager.executeGracefulDegradation.bind(gracefulDegradationManager)
+        gracefulDegradationManager.executeGracefulDegradation.bind(
+          gracefulDegradationManager
+        )
       ).mockResolvedValueOnce({
         success: false,
         error: azureError,
@@ -316,7 +335,9 @@ describe('Integration Tests', () => {
         degraded: false,
       });
 
-      (mockAxiosInstance.post as ReturnType<typeof vi.fn>).mockRejectedValueOnce({
+      (
+        mockAxiosInstance.post as ReturnType<typeof vi.fn>
+      ).mockRejectedValueOnce({
         response: {
           status: 429,
           data: azureError,
@@ -340,10 +361,14 @@ describe('Integration Tests', () => {
 
       // Mock graceful degradation to fail
       vi.mocked(
-        gracefulDegradationManager.executeGracefulDegradation.bind(gracefulDegradationManager)
+        gracefulDegradationManager.executeGracefulDegradation.bind(
+          gracefulDegradationManager
+        )
       ).mockRejectedValueOnce(new Error('Network error'));
 
-      (mockAxiosInstance.post as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('ECONNREFUSED'));
+      (mockAxiosInstance.post as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('ECONNREFUSED')
+      );
 
       const response = await request(app)
         .post('/v1/completions')
@@ -401,7 +426,9 @@ describe('Integration Tests', () => {
 
       // Mock graceful degradation to return error response instead of throwing
       vi.mocked(
-        gracefulDegradationManager.executeGracefulDegradation.bind(gracefulDegradationManager)
+        gracefulDegradationManager.executeGracefulDegradation.bind(
+          gracefulDegradationManager
+        )
       ).mockResolvedValueOnce({
         success: false,
         error: azureError,
@@ -409,7 +436,9 @@ describe('Integration Tests', () => {
         degraded: false,
       });
 
-      (mockAxiosInstance.post as ReturnType<typeof vi.fn>).mockRejectedValueOnce({
+      (
+        mockAxiosInstance.post as ReturnType<typeof vi.fn>
+      ).mockRejectedValueOnce({
         response: {
           status: 400,
           data: azureError,
@@ -587,13 +616,18 @@ describe('Integration Tests', () => {
       expect(response.body).toHaveProperty('uptime');
       expect(response.body).toHaveProperty('memory');
       expect(response.body).toHaveProperty('azureOpenAI');
-      const azureOpenAI12 = responseBody12.azureOpenAI as Record<string, unknown>;
+      const azureOpenAI12 = responseBody12.azureOpenAI as Record<
+        string,
+        unknown
+      >;
       expect(azureOpenAI12.status).toBe('connected');
     });
 
     it('should return unhealthy status when Azure OpenAI is down', async () => {
       // Mock health monitor to return unhealthy status
-      vi.mocked(mockHealthMonitor.getHealthStatus.bind(mockHealthMonitor)).mockResolvedValueOnce({
+      vi.mocked(
+        mockHealthMonitor.getHealthStatus.bind(mockHealthMonitor)
+      ).mockResolvedValueOnce({
         status: 'unhealthy',
         timestamp: new Date().toISOString(),
         uptime: 1000,
@@ -601,13 +635,18 @@ describe('Integration Tests', () => {
         azureOpenAI: { status: 'disconnected' },
       });
 
-      (mockAxiosInstance.get as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Connection failed'));
+      (mockAxiosInstance.get as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('Connection failed')
+      );
 
       const response = await request(app).get('/health').expect(503);
 
       const responseBody13 = response.body as Record<string, unknown>;
       expect(responseBody13.status).toBe('unhealthy');
-      const azureOpenAI13 = responseBody13.azureOpenAI as Record<string, unknown>;
+      const azureOpenAI13 = responseBody13.azureOpenAI as Record<
+        string,
+        unknown
+      >;
       expect(azureOpenAI13.status).toBe('disconnected');
     });
   });
@@ -640,7 +679,9 @@ describe('Integration Tests', () => {
       const claudeRequest = ClaudeRequestFactory.create();
 
       // First request - success
-      (mockAxiosInstance.post as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      (
+        mockAxiosInstance.post as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce({
         status: 200,
         data: AzureResponseFactory.create(),
       });
@@ -652,14 +693,18 @@ describe('Integration Tests', () => {
       expect(response1.status).toBe(200);
 
       // Second request - failure with graceful degradation returning error
-      (mockAxiosInstance.post as ReturnType<typeof vi.fn>).mockRejectedValueOnce({
+      (
+        mockAxiosInstance.post as ReturnType<typeof vi.fn>
+      ).mockRejectedValueOnce({
         response: {
           status: 429,
           data: AzureErrorFactory.create('rate_limit_error'),
         },
       });
       vi.mocked(
-        gracefulDegradationManager.executeGracefulDegradation.bind(gracefulDegradationManager)
+        gracefulDegradationManager.executeGracefulDegradation.bind(
+          gracefulDegradationManager
+        )
       ).mockResolvedValueOnce({
         success: false,
         error: AzureErrorFactory.create('rate_limit_error'),
@@ -674,7 +719,9 @@ describe('Integration Tests', () => {
       expect(response2.status).toBe(429);
 
       // Third request - success again
-      (mockAxiosInstance.post as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      (
+        mockAxiosInstance.post as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce({
         status: 200,
         data: AzureResponseFactory.create(),
       });
@@ -699,7 +746,9 @@ describe('Integration Tests', () => {
         const claudeRequest = ClaudeRequestFactory.create(testCase);
         const azureResponse = AzureResponseFactory.create(testCase);
 
-        (mockAxiosInstance.post as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        (
+          mockAxiosInstance.post as ReturnType<typeof vi.fn>
+        ).mockResolvedValueOnce({
           status: 200,
           data: azureResponse,
         });
@@ -735,7 +784,9 @@ describe('Integration Tests', () => {
           reason as 'stop' | 'length' | 'content_filter'
         );
 
-        (mockAxiosInstance.post as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        (
+          mockAxiosInstance.post as ReturnType<typeof vi.fn>
+        ).mockResolvedValueOnce({
           status: 200,
           data: azureResponse,
         });
@@ -768,7 +819,10 @@ describe('Integration Tests', () => {
 
       // Verify Unicode was preserved in Azure request
       const mockPost3 = mockAxiosInstance.post as ReturnType<typeof vi.fn>;
-      const callArgs3 = mockPost3.mock.calls[0] as [string, Record<string, unknown>];
+      const callArgs3 = mockPost3.mock.calls[0] as [
+        string,
+        Record<string, unknown>,
+      ];
       const [, data] = callArgs3;
       const messages = data.messages as Array<{ content: string }>;
       expect(messages[0].content).toBe(unicodeRequest.prompt);

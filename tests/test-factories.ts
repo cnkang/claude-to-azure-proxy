@@ -40,9 +40,14 @@ export class ClaudeRequestFactory {
         'End of large prompt.',
     };
 
-    const promptText = size === 'small' ? prompts.small : size === 'medium' ? prompts.medium : prompts.large;
+    const promptText =
+      size === 'small'
+        ? prompts.small
+        : size === 'medium'
+          ? prompts.medium
+          : prompts.large;
     const maxTokens = size === 'small' ? 50 : size === 'medium' ? 100 : 500;
-    
+
     const baseRequest: ClaudeCompletionRequest = {
       model: 'claude-3-5-sonnet-20241022',
       prompt: promptText,
@@ -184,8 +189,13 @@ export class AzureResponseFactory {
         `This is a large response ${seed} `.repeat(200) + 'End of response.',
     };
 
-    const contentText = size === 'small' ? contents.small : size === 'medium' ? contents.medium : contents.large;
-    
+    const contentText =
+      size === 'small'
+        ? contents.small
+        : size === 'medium'
+          ? contents.medium
+          : contents.large;
+
     const baseResponse: AzureOpenAIResponse = {
       id: `chatcmpl-${seed}`,
       object: 'chat.completion',
@@ -405,7 +415,9 @@ export class AzureStreamResponseFactory {
     };
   }
 
-  static createSequence(contents: readonly string[]): AzureOpenAIStreamResponse[] {
+  static createSequence(
+    contents: readonly string[]
+  ): AzureOpenAIStreamResponse[] {
     const responses = contents.map((content, i) =>
       AzureStreamResponseFactory.create({ content, seed: i })
     );
@@ -441,8 +453,13 @@ export class ClaudeResponseFactory {
       large: `This is a large Claude response ${seed} `.repeat(100) + 'End.',
     };
 
-    const completionText = size === 'small' ? completions.small : size === 'medium' ? completions.medium : completions.large;
-    
+    const completionText =
+      size === 'small'
+        ? completions.small
+        : size === 'medium'
+          ? completions.medium
+          : completions.large;
+
     const baseResponse: ClaudeCompletionResponse = {
       id: `claude-${seed}`,
       type: 'completion',

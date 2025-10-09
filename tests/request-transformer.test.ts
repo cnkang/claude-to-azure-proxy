@@ -9,7 +9,6 @@ import {
   ValidationError,
   SecurityError,
   type ClaudeCompletionRequest,
-
 } from '../src/utils/request-transformer.js';
 
 describe('Request Transformer', () => {

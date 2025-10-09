@@ -1,8 +1,5 @@
 import http from 'node:http';
-import type {
-  IncomingHttpHeaders,
-  ServerResponse,
-} from 'node:http';
+import type { IncomingHttpHeaders, ServerResponse } from 'node:http';
 import { PassThrough } from 'node:stream';
 import type { Duplex } from 'node:stream';
 import type { Socket } from 'node:net';
@@ -93,7 +90,10 @@ const buildBodyBuffer = (
     return Buffer.from(params.toString(), 'utf8');
   }
 
-  return Buffer.from(typeof body === 'string' ? body : JSON.stringify(body), 'utf8');
+  return Buffer.from(
+    typeof body === 'string' ? body : JSON.stringify(body),
+    'utf8'
+  );
 };
 
 class TestRequest implements PromiseLike<TestResponse> {
@@ -113,7 +113,6 @@ class TestRequest implements PromiseLike<TestResponse> {
   }
 
   public set(field: string, value: unknown): this {
-
     const normalizedField = String(field).trim().toLowerCase();
     if (normalizedField.length === 0) {
       return this;
@@ -132,7 +131,10 @@ class TestRequest implements PromiseLike<TestResponse> {
       return this;
     }
 
-    this.headers.set(normalizedField, typeof value === 'string' ? value : JSON.stringify(value));
+    this.headers.set(
+      normalizedField,
+      typeof value === 'string' ? value : JSON.stringify(value)
+    );
     return this;
   }
 
@@ -167,189 +169,198 @@ class TestRequest implements PromiseLike<TestResponse> {
 
   private execute(): Promise<TestResponse> {
     this.executedPromise ??= new Promise<TestResponse>((resolve, reject) => {
-        const server =
-          typeof this.app === 'function'
-            ? http.createServer(this.app)
-            : this.app;
-        const socket = prepareSocket(this.remoteAddress);
-        (socket as Record<string, unknown>).server = server;
-        const req = new http.IncomingMessage(socket as Socket);
-        req.method = this.method.toUpperCase();
-        req.url = this.path;
-        req.headers = toHeaderObject(this.headers);
-        req.httpVersion = '1.1';
-        req.httpVersionMajor = 1;
-        req.httpVersionMinor = 1;
+      const server =
+        typeof this.app === 'function' ? http.createServer(this.app) : this.app;
+      const socket = prepareSocket(this.remoteAddress);
+      (socket as Record<string, unknown>).server = server;
+      const req = new http.IncomingMessage(socket as Socket);
+      req.method = this.method.toUpperCase();
+      req.url = this.path;
+      req.headers = toHeaderObject(this.headers);
+      req.httpVersion = '1.1';
+      req.httpVersionMajor = 1;
+      req.httpVersionMinor = 1;
 
-        const res = new http.ServerResponse(req);
-        res.assignSocket(socket as Socket);
+      const res = new http.ServerResponse(req);
+      res.assignSocket(socket as Socket);
 
-        const bodyBuffer = buildBodyBuffer(
-          this.body,
-          req.headers['content-type']
-        );
-        if (bodyBuffer !== undefined && req.headers['content-length'] === undefined) {
-          req.headers['content-length'] = String(bodyBuffer.length);
+      const bodyBuffer = buildBodyBuffer(
+        this.body,
+        req.headers['content-type']
+      );
+      if (
+        bodyBuffer !== undefined &&
+        req.headers['content-length'] === undefined
+      ) {
+        req.headers['content-length'] = String(bodyBuffer.length);
+      }
+      if (
+        bodyBuffer !== undefined &&
+        req.headers['content-type'] === undefined
+      ) {
+        req.headers['content-type'] = 'application/json';
+      }
+
+      const chunks: Buffer[] = [];
+
+      const cleanup = () => {
+        res.removeAllListeners();
+        socket.removeAllListeners();
+        try {
+          res.detachSocket(socket as Socket);
+        } catch {
+          // ignore
         }
-        if (bodyBuffer !== undefined && req.headers['content-type'] === undefined) {
-          req.headers['content-type'] = 'application/json';
-        }
-
-        const chunks: Buffer[] = [];
-
-        const cleanup = () => {
-          res.removeAllListeners();
-          socket.removeAllListeners();
+        if (typeof (server as Record<string, unknown>).close === 'function') {
           try {
-            res.detachSocket(socket as Socket);
+            (server as http.Server).close();
           } catch {
             // ignore
           }
-          if (typeof (server as Record<string, unknown>).close === 'function') {
-            try {
-              (server as http.Server).close();
-            } catch {
-              // ignore
-            }
-          }
+        }
+      };
+
+      const payloadLimitBytes = 10 * 1024 * 1024;
+      const contentTypeHeader = req.headers['content-type'];
+      if (
+        bodyBuffer !== undefined &&
+        bodyBuffer.length > payloadLimitBytes &&
+        (contentTypeHeader?.includes('application/json') ?? false)
+      ) {
+        const responseHeaders: Record<string, string> = {
+          'content-type': 'application/json',
+        };
+        const responseBody = {
+          error: {
+            type: 'payload_too_large',
+            message: 'Request payload exceeds the maximum allowed size',
+          },
         };
 
-        const payloadLimitBytes = 10 * 1024 * 1024;
-        const contentTypeHeader = req.headers['content-type'];
-        if (
-          bodyBuffer !== undefined &&
-          bodyBuffer.length > payloadLimitBytes &&
-          (contentTypeHeader?.includes('application/json') ?? false)
-        ) {
-          const responseHeaders: Record<string, string> = {
-            'content-type': 'application/json',
-          };
-          const responseBody = {
-            error: {
-              type: 'payload_too_large',
-              message: 'Request payload exceeds the maximum allowed size',
-            },
-          };
+        cleanup();
+        resolve({
+          status: 413,
+          body: responseBody,
+          text: JSON.stringify(responseBody),
+          headers: responseHeaders,
+          get: (field: string) => responseHeaders[field.toLowerCase()],
+        });
+        return;
+      }
 
-          cleanup();
-          resolve({
-            status: 413,
-            body: responseBody,
-            text: JSON.stringify(responseBody),
-            headers: responseHeaders,
-            get: (field: string) => responseHeaders[field.toLowerCase()],
-          });
+      const onError = (error: unknown) => {
+        cleanup();
+        reject(error instanceof Error ? error : new Error(String(error)));
+      };
+
+      res.on('error', onError);
+      socket.on('error', onError);
+
+      res.on('finish', () => {
+        const headers = normalizeHeaders(res.getHeaders());
+        const buffer = Buffer.concat(chunks);
+        const text = buffer.toString('utf8');
+        let parsedBody: unknown = text;
+
+        const contentType = headers['content-type'] ?? '';
+        if (buffer.length === 0) {
+          parsedBody = {};
+        } else if (contentType.includes('application/json')) {
+          try {
+            parsedBody = JSON.parse(text);
+          } catch {
+            parsedBody = text;
+          }
+        }
+
+        const response: TestResponse = {
+          status: res.statusCode || 0,
+          body: parsedBody,
+          text,
+          headers,
+          get: (field: string) => headers[field.toLowerCase()],
+        };
+
+        if (
+          this.expectedStatus !== undefined &&
+          response.status !== this.expectedStatus
+        ) {
+          const error = new Error(
+            `expected ${this.expectedStatus} but received ${response.status}`
+          );
+          (error as Record<string, unknown>).expected = this.expectedStatus;
+          (error as Record<string, unknown>).actual = response.status;
+          onError(error);
           return;
         }
 
-        const onError = (error: unknown) => {
-          cleanup();
-          reject(error instanceof Error ? error : new Error(String(error)));
-        };
+        cleanup();
+        resolve(response);
+      });
 
-        res.on('error', onError);
-        socket.on('error', onError);
+      const originalWrite = res.write.bind(res);
+      res.write = ((
+        chunk: Buffer | string,
+        encoding?: BufferEncoding,
+        cb?: () => void
+      ) => {
+        const bufferChunk =
+          typeof chunk === 'string'
+            ? Buffer.from(chunk, encoding)
+            : Buffer.from(chunk);
+        chunks.push(bufferChunk);
+        return originalWrite(chunk, encoding, cb);
+      }) as typeof res.write;
 
-        res.on('finish', () => {
-          const headers = normalizeHeaders(res.getHeaders());
-          const buffer = Buffer.concat(chunks);
-          const text = buffer.toString('utf8');
-          let parsedBody: unknown = text;
-
-          const contentType = headers['content-type'] ?? '';
-          if (buffer.length === 0) {
-            parsedBody = {};
-          } else if (contentType.includes('application/json')) {
-            try {
-              parsedBody = JSON.parse(text);
-            } catch {
-              parsedBody = text;
-            }
-          }
-
-          const response: TestResponse = {
-            status: res.statusCode || 0,
-            body: parsedBody,
-            text,
-            headers,
-            get: (field: string) => headers[field.toLowerCase()],
-          };
-
-          if (
-            this.expectedStatus !== undefined &&
-            response.status !== this.expectedStatus
-          ) {
-            const error = new Error(
-              `expected ${this.expectedStatus} but received ${response.status}`
-            );
-            (error as Record<string, unknown>).expected = this.expectedStatus;
-            (error as Record<string, unknown>).actual = response.status;
-            onError(error);
-            return;
-          }
-
-          cleanup();
-          resolve(response);
-        });
-
-        const originalWrite = res.write.bind(res);
-        res.write = ((chunk: Buffer | string, encoding?: BufferEncoding, cb?: () => void) => {
+      const originalEnd = res.end.bind(res);
+      res.end = ((
+        chunk?: Buffer | string,
+        encoding?: BufferEncoding,
+        cb?: () => void
+      ) => {
+        if (chunk !== undefined) {
           const bufferChunk =
             typeof chunk === 'string'
               ? Buffer.from(chunk, encoding)
               : Buffer.from(chunk);
           chunks.push(bufferChunk);
-          return originalWrite(chunk, encoding, cb);
-        }) as typeof res.write;
+        }
+        return originalEnd(chunk, encoding, cb);
+      }) as typeof res.end;
 
-        const originalEnd = res.end.bind(res);
-        res.end = ((chunk?: Buffer | string, encoding?: BufferEncoding, cb?: () => void) => {
-          if (chunk !== undefined) {
-            const bufferChunk =
-              typeof chunk === 'string'
-                ? Buffer.from(chunk, encoding)
-                : Buffer.from(chunk);
-            chunks.push(bufferChunk);
-          }
-          return originalEnd(chunk, encoding, cb);
-        }) as typeof res.end;
+      queueMicrotask(() => {
+        if (bodyBuffer !== undefined && bodyBuffer.length > 0) {
+          const chunkSize = 64 * 1024;
+          let offset = 0;
 
-        queueMicrotask(() => {
-          if (bodyBuffer !== undefined && bodyBuffer.length > 0) {
-            const chunkSize = 64 * 1024;
-            let offset = 0;
+          const emitChunk = () => {
+            if (offset >= bodyBuffer.length) {
+              (req as Record<string, unknown>).complete = true;
+              req.emit('end');
+              return;
+            }
 
-            const emitChunk = () => {
-              if (offset >= bodyBuffer.length) {
-                (req as Record<string, unknown>).complete = true;
-                req.emit('end');
-                return;
-              }
+            const nextOffset = Math.min(offset + chunkSize, bodyBuffer.length);
+            const chunk = bodyBuffer.subarray(offset, nextOffset);
+            offset = nextOffset;
+            req.emit('data', chunk);
 
-              const nextOffset = Math.min(
-                offset + chunkSize,
-                bodyBuffer.length
-              );
-              const chunk = bodyBuffer.subarray(offset, nextOffset);
-              offset = nextOffset;
-              req.emit('data', chunk);
+            setImmediate(emitChunk);
+          };
 
-              setImmediate(emitChunk);
-            };
-
-            emitChunk();
-          } else {
-            (req as Record<string, unknown>).complete = true;
-            req.emit('end');
-          }
-        });
-
-        try {
-          (server as http.Server).emit('request', req, res);
-        } catch (error) {
-          onError(error);
+          emitChunk();
+        } else {
+          (req as Record<string, unknown>).complete = true;
+          req.emit('end');
         }
       });
+
+      try {
+        (server as http.Server).emit('request', req, res);
+      } catch (error) {
+        onError(error);
+      }
+    });
 
     return this.executedPromise;
   }
