@@ -128,7 +128,7 @@ The repository includes an `apprunner.yaml` configuration file for easy deployme
 
 **Option 1: Using pnpm (recommended)**
 ```yaml
-# apprunner.yaml (already included in repository)
+# apprunner.yaml (updated configuration)
 version: 1.0
 runtime: nodejs22
 build:
@@ -136,8 +136,9 @@ build:
     build:
       - corepack enable
       - corepack prepare pnpm@10.18.1 --activate
-      - pnpm install --frozen-lockfile --prod --ignore-scripts
+      - pnpm install --frozen-lockfile --ignore-scripts
       - pnpm run build
+      - pnpm prune --prod
 run:
   runtime-version: 22
   command: node dist/index.js
@@ -154,8 +155,9 @@ runtime: nodejs22
 build:
   commands:
     build:
-      - npm ci --production --ignore-scripts
+      - npm ci --ignore-scripts
       - npm run build
+      - npm prune --production
 run:
   runtime-version: 22
   command: node dist/index.js
@@ -215,6 +217,10 @@ If you encounter build issues with pnpm:
 
 2. **Common build errors and solutions:**
    
+   **Error: `tsc: command not found`**
+   - **Cause**: Using `--prod` flag excludes devDependencies (TypeScript compiler)
+   - **Solution**: Install all dependencies, build, then prune (fixed in updated config)
+   
    **Error: `corepack: command not found`**
    - Solution: Use the npm configuration instead
    
@@ -224,10 +230,18 @@ If you encounter build issues with pnpm:
    **Error: `husky: command not found`**
    - Solution: Ensure `--ignore-scripts` flag is used in install commands
 
-3. **Manual build command configuration:**
+3. **Updated build process (fixed configuration):**
+   ```bash
+   # The updated apprunner.yaml now uses this process:
+   # 1. Install all dependencies: pnpm install --frozen-lockfile --ignore-scripts
+   # 2. Build TypeScript: pnpm run build
+   # 3. Clean devDependencies: pnpm prune --prod
+   ```
+
+4. **Manual build command configuration:**
    ```bash
    # If apprunner.yaml doesn't work, configure manually in AWS Console:
-   # Build command: npm ci --production --ignore-scripts && npm run build
+   # Build command: npm ci --ignore-scripts && npm run build && npm prune --production
    # Start command: node dist/index.js
    ```
 

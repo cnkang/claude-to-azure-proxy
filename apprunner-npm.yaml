@@ -3,21 +3,16 @@ runtime: nodejs22
 build:
   commands:
     build:
-      # Install pnpm using corepack (built into Node.js 22)
-      - corepack enable
-      - corepack prepare pnpm@10.18.1 --activate
-      # Install all dependencies (including devDependencies for build)
-      - pnpm install --frozen-lockfile --ignore-scripts
+      # Install dependencies (including devDependencies for build)
+      - npm ci --ignore-scripts
       # Build the TypeScript application
-      - pnpm run build
+      - npm run build
       # Clean up devDependencies to reduce image size
-      - pnpm prune --prod
+      - npm prune --production
   env:
     # Build-time environment variables
     - name: NODE_ENV
       value: production
-    - name: PNPM_HOME
-      value: /root/.local/share/pnpm
 run:
   runtime-version: 22
   command: node dist/index.js
