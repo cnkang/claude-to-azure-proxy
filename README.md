@@ -129,6 +129,39 @@ This high-performance proxy server enables seamless integration between Claude C
    curl http://localhost:8080/health
    ```
 
+### 🛠️ Development Setup
+
+For contributors and developers, we use comprehensive pre-commit hooks to ensure code quality:
+
+```bash
+# Setup pre-commit hooks (automatic on pnpm install)
+pnpm run prepare
+
+# Or use the setup script for detailed configuration
+./scripts/setup-hooks.sh
+```
+
+**Pre-commit hooks include:**
+- ✅ TypeScript compilation check
+- 🧹 ESLint with auto-fix
+- 🎨 Prettier code formatting
+- 🧪 Test suite execution
+- 🔒 Security vulnerability audit
+- 📝 Conventional commit message validation
+
+**Available development commands:**
+```bash
+pnpm run type-check      # TypeScript compilation check
+pnpm run lint           # ESLint checking
+pnpm run lint:fix       # Auto-fix ESLint issues
+pnpm run test           # Run test suite
+pnpm run test:coverage  # Run tests with coverage
+pnpm run format         # Format code with Prettier
+pnpm run validate       # Run all quality checks
+```
+
+📚 **See [Pre-commit Hooks Documentation](docs/PRE_COMMIT_HOOKS.md) for detailed information.**
+
 ### Usage Example
 
 Once running, configure your Claude Code CLI to use the proxy:
