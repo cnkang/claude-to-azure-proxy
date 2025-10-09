@@ -1,17 +1,17 @@
-# GitHub Actions 工作流程
+# GitHub Actions Workflows
 
-本项目使用优化的 GitHub Actions 工作流程，消除了重复操作并提高了效率。
+This project uses optimized GitHub Actions workflows that eliminate redundant operations and improve efficiency.
 
-## 工作流程概览
+## Workflow Overview
 
 ### 1. CI/CD Pipeline (`.github/workflows/ci-cd.yml`)
 
-**触发条件：**
-- Push 到 `main` 或 `develop` 分支
-- Pull Request 到 `main` 分支
-- 每周日凌晨 2 点定时运行
+**Trigger Conditions:**
+- Push to `main` or `develop` branches
+- Pull Request to `main` branch
+- Scheduled run every Sunday at 2 AM UTC
 
-**Jobs 结构：**
+**Job Structure:**
 
 ```mermaid
 graph TD
@@ -23,152 +23,152 @@ graph TD
     E --> F
 ```
 
-#### Job 详情：
+#### Job Details:
 
 **`code-quality`**
-- Node.js 环境设置和依赖安装
-- ESLint 代码检查
-- TypeScript 类型检查
-- 单元测试和覆盖率报告
-- 上传覆盖率到 Codecov
+- Node.js environment setup and dependency installation
+- ESLint code linting
+- TypeScript type checking
+- Unit tests and coverage reporting
+- Upload coverage to Codecov
 
 **`env-security`**
-- 检查 `.env` 文件安全配置
-- 验证 `.gitignore` 和 `.dockerignore`
-- 确保敏感文件不被提交
+- Check `.env` file security configuration
+- Validate `.gitignore` and `.dockerignore`
+- Ensure sensitive files are not committed
 
 **`dockerfile-lint`**
-- 使用 Hadolint 检查 Dockerfile 语法
-- 验证 Docker 最佳实践
+- Use Hadolint to check Dockerfile syntax
+- Validate Docker best practices
 
 **`build-and-scan`**
-- 构建多架构 Docker 镜像 (amd64/arm64)
-- 使用 Trivy 进行漏洞扫描
-- 推送镜像到 GitHub Container Registry
-- 上传安全扫描结果到 GitHub Security
+- Build multi-architecture Docker images (amd64/arm64)
+- Vulnerability scanning with Trivy
+- Push images to GitHub Container Registry
+- Upload security scan results to GitHub Security
 
 **`container-tests`**
-- 验证容器以非 root 用户运行
-- 测试健康检查端点
-- 检查镜像大小和层数优化
-- 测试容器启动时间
+- Verify container runs as non-root user
+- Test health check endpoints
+- Check image size and layer optimization
+- Test container startup time
 
-**`deployment-check`** (仅在 main 分支)
-- 验证 `apprunner.yaml` 配置
-- 检查部署文档完整性
-- 提供部署就绪状态报告
+**`deployment-check`** (main branch only)
+- Validate `apprunner.yaml` configuration
+- Check deployment documentation completeness
+- Provide deployment readiness report
 
 ### 2. Security Scan (`.github/workflows/security-scan.yml`)
 
-**触发条件：**
-- 每日凌晨 3 点定时运行
-- 手动触发
+**Trigger Conditions:**
+- Scheduled run daily at 3 AM UTC
+- Manual trigger
 
-**功能：**
-- 全面的容器漏洞扫描
-- 代码库密钥检测 (TruffleHog)
-- 依赖项安全审计
-- 定期安全状态报告
+**Features:**
+- Comprehensive container vulnerability scanning
+- Repository secret detection (TruffleHog)
+- Dependency security audit
+- Regular security status reporting
 
-## 优化改进
+## Optimization Improvements
 
-### 消除的重复操作
+### Eliminated Redundant Operations
 
-1. **Docker 构建优化**
-   - 旧版本：构建两次（扫描 + 推送）
-   - 新版本：一次构建，多次使用
+1. **Docker Build Optimization**
+   - Old version: Build twice (scan + push)
+   - New version: Build once, use multiple times
 
-2. **Trivy 扫描优化**
-   - 旧版本：两次独立扫描
-   - 新版本：一次扫描，两种输出格式
+2. **Trivy Scan Optimization**
+   - Old version: Two independent scans
+   - New version: One scan, two output formats
 
-3. **Job 依赖优化**
-   - 并行执行独立检查
-   - 串行执行依赖任务
-   - 失败快速反馈
+3. **Job Dependency Optimization**
+   - Parallel execution of independent checks
+   - Serial execution of dependent tasks
+   - Fast failure feedback
 
-### 新增功能
+### New Features
 
-1. **代码质量检查**
-   - TypeScript 类型检查
-   - 测试覆盖率报告
-   - 代码复杂度分析
+1. **Code Quality Checks**
+   - TypeScript type checking
+   - Test coverage reporting
+   - Code complexity analysis
 
-2. **容器测试增强**
-   - 启动时间测试
-   - 镜像效率分析
-   - 多架构支持
+2. **Enhanced Container Testing**
+   - Startup time testing
+   - Image efficiency analysis
+   - Multi-architecture support
 
-3. **部署就绪检查**
-   - App Runner 配置验证
-   - 文档完整性检查
-   - 部署状态报告
+3. **Deployment Readiness Checks**
+   - App Runner configuration validation
+   - Documentation completeness check
+   - Deployment status reporting
 
-4. **安全扫描分离**
-   - 独立的定期安全扫描
-   - 密钥泄露检测
-   - 依赖项漏洞监控
+4. **Separated Security Scanning**
+   - Independent periodic security scans
+   - Secret leak detection
+   - Dependency vulnerability monitoring
 
-## 使用指南
+## Usage Guide
 
-### 本地开发
+### Local Development
 
 ```bash
-# 运行所有质量检查
+# Run all quality checks
 pnpm run quality:all
 
-# 运行安全检查
+# Run security checks
 pnpm run security:all
 
-# 类型检查
+# Type checking
 pnpm run type-check
 
-# 测试覆盖率
+# Test coverage
 pnpm run test:coverage
 ```
 
-### CI/CD 状态检查
+### CI/CD Status Checks
 
-- **绿色 ✅**: 所有检查通过，可以部署
-- **黄色 ⚠️**: 有警告但不阻塞部署
-- **红色 ❌**: 有错误，需要修复后才能部署
+- **Green ✅**: All checks passed, ready to deploy
+- **Yellow ⚠️**: Warnings present but deployment not blocked
+- **Red ❌**: Errors present, must fix before deployment
 
-### 安全报告
+### Security Reports
 
-- 查看 **Security** 标签页获取详细的安全扫描结果
-- Trivy 扫描结果会自动上传到 GitHub Security
-- 密钥扫描结果会在 Actions 日志中显示
+- Check the **Security** tab for detailed security scan results
+- Trivy scan results are automatically uploaded to GitHub Security
+- Secret scan results are displayed in Actions logs
 
-## 故障排除
+## Troubleshooting
 
-### 常见问题
+### Common Issues
 
-1. **pnpm 安装失败**
-   - 检查 `package.json` 中的 `packageManager` 字段
-   - 确保使用正确的 pnpm 版本
+1. **pnpm Installation Failure**
+   - Check the `packageManager` field in `package.json`
+   - Ensure correct pnpm version is used
 
-2. **Docker 构建失败**
-   - 检查 Dockerfile 语法
-   - 验证多架构构建支持
+2. **Docker Build Failure**
+   - Check Dockerfile syntax
+   - Verify multi-architecture build support
 
-3. **测试失败**
-   - 检查测试环境配置
-   - 确保所有依赖项已安装
+3. **Test Failures**
+   - Check test environment configuration
+   - Ensure all dependencies are installed
 
-4. **安全扫描警告**
-   - 查看 Security 标签页的详细报告
-   - 更新有漏洞的依赖项
+4. **Security Scan Warnings**
+   - Review detailed reports in Security tab
+   - Update vulnerable dependencies
 
-### 性能优化
+### Performance Optimization
 
-- 使用 GitHub Actions 缓存加速构建
-- 并行执行独立任务
-- 智能跳过不必要的步骤
-- 多架构构建优化
+- Use GitHub Actions cache to accelerate builds
+- Parallel execution of independent tasks
+- Smart skipping of unnecessary steps
+- Multi-architecture build optimization
 
-## 监控和维护
+## Monitoring and Maintenance
 
-- 定期检查 Actions 运行状态
-- 监控安全扫描结果
-- 更新依赖项和 Actions 版本
-- 优化构建时间和资源使用
+- Regularly check Actions execution status
+- Monitor security scan results
+- Update dependencies and Actions versions
+- Optimize build time and resource usage
