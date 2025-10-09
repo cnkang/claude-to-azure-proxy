@@ -21,6 +21,11 @@
  */
 
 import Joi from 'joi';
+import type {
+  ValidationError,
+  ValidationErrorItem,
+  ValidationResult,
+} from 'joi';
 import { config as dotenvConfig } from 'dotenv';
 
 // Load environment variables from .env file
@@ -179,21 +184,35 @@ function createConfig(): Readonly<Config> {
   };
 
   // Validate against schema
-  const { error, value } = configSchema.validate(envVars, {
-    abortEarly: false, // Collect all validation errors
-    allowUnknown: false, // Reject unknown environment variables
-    stripUnknown: false,
-  });
+  const validationResult: ValidationResult<Config> =
+    configSchema.validate<Config>(envVars, {
+      abortEarly: false, // Collect all validation errors
+      allowUnknown: false, // Reject unknown environment variables
+      stripUnknown: false,
+    });
+
+  const validationError: ValidationError | undefined = validationResult.error;
+  const validatedValueRaw: unknown = validationResult.value;
 
   // Implement fail-fast principle with detailed error messages
-  if (error) {
-    const errorMessages = error.details.map((detail) => {
+  if (validationError) {
+    const errorDetails: readonly ValidationErrorItem[] =
+      validationError.details;
+    const errorMessages: string[] = [];
+    for (const detail of errorDetails) {
       const key = detail.path[0];
       const message = detail.message;
       const context = detail.context;
+      const hasContextValue =
+        context?.value !== undefined && context.value !== null;
 
-      return `${key}: ${message}${context?.value ? ` (received: "${context.value}")` : ''}`;
-    });
+      const receivedValue = hasContextValue
+        ? JSON.stringify(context.value)
+        : undefined;
+
+      const formattedMessage = `${key}: ${message}${receivedValue !== undefined ? ` (received: ${receivedValue})` : ''}`;
+      errorMessages.push(formattedMessage);
+    }
 
     const errorMessage = [
       'Configuration validation failed:',
@@ -213,8 +232,68 @@ function createConfig(): Readonly<Config> {
     throw new Error(errorMessage);
   }
 
-  // Create sanitized config for logging (without sensitive values)
-  const sanitizedConfig = {
+  if (validatedValueRaw === undefined) {
+    throw new Error('Configuration validation produced no value');
+  }
+
+  assertIsConfig(validatedValueRaw);
+  const validatedValue: Config = validatedValueRaw;
+
+  // Freeze configuration to prevent runtime modifications
+  return Object.freeze(validatedValue);
+}
+
+export interface SanitizedConfig {
+  readonly AZURE_OPENAI_ENDPOINT: string;
+  readonly AZURE_OPENAI_MODEL: string;
+  readonly PORT: number;
+  readonly NODE_ENV: 'development' | 'production' | 'test';
+  readonly PROXY_API_KEY: '[REDACTED]';
+  readonly AZURE_OPENAI_API_KEY: '[REDACTED]';
+}
+
+function assertIsConfig(value: unknown): asserts value is Config {
+  if (typeof value !== 'object' || value === null) {
+    throw new Error('Configuration value is not an object');
+  }
+
+  const candidate = value as { [K in keyof Config]?: unknown };
+
+  if (typeof candidate.PROXY_API_KEY !== 'string') {
+    throw new Error(
+      'Configuration key PROXY_API_KEY is missing or not a string'
+    );
+  }
+
+  if (typeof candidate.AZURE_OPENAI_ENDPOINT !== 'string') {
+    throw new Error(
+      'Configuration key AZURE_OPENAI_ENDPOINT is missing or not a string'
+    );
+  }
+
+  if (typeof candidate.AZURE_OPENAI_API_KEY !== 'string') {
+    throw new Error(
+      'Configuration key AZURE_OPENAI_API_KEY is missing or not a string'
+    );
+  }
+
+  if (typeof candidate.AZURE_OPENAI_MODEL !== 'string') {
+    throw new Error(
+      'Configuration key AZURE_OPENAI_MODEL is missing or not a string'
+    );
+  }
+
+  if (typeof candidate.PORT !== 'number') {
+    throw new Error('Configuration key PORT is missing or not a number');
+  }
+
+  if (typeof candidate.NODE_ENV !== 'string') {
+    throw new Error('Configuration key NODE_ENV is missing or not a string');
+  }
+}
+
+function sanitizeConfig(value: Readonly<Config>): SanitizedConfig {
+  return {
     AZURE_OPENAI_ENDPOINT: value.AZURE_OPENAI_ENDPOINT,
     AZURE_OPENAI_MODEL: value.AZURE_OPENAI_MODEL,
     PORT: value.PORT,
@@ -222,29 +301,29 @@ function createConfig(): Readonly<Config> {
     PROXY_API_KEY: '[REDACTED]',
     AZURE_OPENAI_API_KEY: '[REDACTED]',
   };
-
-  // Log configuration (without sensitive values) for debugging
-  console.log(
-    'Configuration loaded successfully:',
-    JSON.stringify(sanitizedConfig, null, 2)
-  );
-
-  // Freeze configuration to prevent runtime modifications
-  return Object.freeze(value);
 }
 
 /**
  * Validated and frozen configuration object
  * Implements fail-fast principle - will throw on module load if configuration is invalid
  */
-let config: Readonly<Config>;
+const configurationBootstrap: {
+  config: Readonly<Config>;
+  sanitized: SanitizedConfig;
+} = (() => {
+  try {
+    const validatedConfig = createConfig();
+    return {
+      config: validatedConfig,
+      sanitized: sanitizeConfig(validatedConfig),
+    };
+  } catch (error) {
+    process.stderr.write('FATAL: Configuration validation failed\n');
+    process.stderr.write(`${(error as Error).message}\n`);
+    process.exit(1);
+  }
+})();
 
-try {
-  config = createConfig();
-} catch (error) {
-  console.error('FATAL: Configuration validation failed');
-  console.error((error as Error).message);
-  process.exit(1);
-}
+export const sanitizedConfig = configurationBootstrap.sanitized;
 
-export default config;
+export default configurationBootstrap.config;

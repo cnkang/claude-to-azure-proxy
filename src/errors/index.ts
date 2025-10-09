@@ -48,7 +48,7 @@ export abstract class BaseError extends Error {
     };
 
     // Capture stack trace
-    if (Error.captureStackTrace) {
+    if (typeof Error.captureStackTrace === 'function') {
       Error.captureStackTrace(this, this.constructor);
     }
   }
@@ -59,10 +59,11 @@ export abstract class BaseError extends Error {
   private sanitizeMetadata(
     metadata?: Record<string, unknown>
   ): Record<string, unknown> | undefined {
-    if (!metadata) return undefined;
+    if (metadata === undefined) {
+      return undefined;
+    }
 
-    const sanitized = { ...metadata };
-    const sensitiveKeys = [
+    const sensitiveKeyFragments: readonly string[] = [
       'password',
       'token',
       'key',
@@ -71,17 +72,25 @@ export abstract class BaseError extends Error {
       'apikey',
     ];
 
-    for (const [key, value] of Object.entries(sanitized)) {
-      const lowerKey = key.toLowerCase();
-      if (sensitiveKeys.some((sensitive) => lowerKey.includes(sensitive))) {
-        sanitized[key] = '[REDACTED]';
-      } else if (typeof value === 'string' && value.length > 1000) {
-        // Truncate very long strings
-        sanitized[key] = value.substring(0, 1000) + '...[TRUNCATED]';
-      }
-    }
+    const sanitizedEntries = Object.entries(metadata).map(
+      (entry): [string, unknown] => {
+        const [key, value] = entry;
+        const lowerKey = key.toLowerCase();
+        if (
+          sensitiveKeyFragments.some((fragment) => lowerKey.includes(fragment))
+        ) {
+          return [key, '[REDACTED]'];
+        }
 
-    return sanitized;
+        if (typeof value === 'string' && value.length > 1000) {
+          return [key, `${value.substring(0, 1000)}...[TRUNCATED]`];
+        }
+
+        return [key, value];
+      }
+    );
+
+    return Object.fromEntries(sanitizedEntries);
   }
 
   /**
@@ -385,13 +394,12 @@ export function isBaseError(error: unknown): error is BaseError {
  */
 export class ErrorFactory {
   public static fromAzureOpenAIError(
-    azureError: any,
+    azureError: unknown,
     correlationId: string,
     operation?: string
   ): AzureOpenAIError {
-    const message = azureError?.error?.message || 'Unknown Azure OpenAI error';
-    const type = azureError?.error?.type || 'unknown_error';
-    const code = azureError?.error?.code;
+    const { message, type, code } =
+      ErrorFactory.parseAzureOpenAIErrorPayload(azureError);
 
     // Map Azure error types to appropriate status codes
     let statusCode = 500;
@@ -427,6 +435,49 @@ export class ErrorFactory {
       code,
       operation
     );
+  }
+
+  private static parseAzureOpenAIErrorPayload(azureError: unknown): {
+    message: string;
+    type: string;
+    code?: string;
+  } {
+    if (!ErrorFactory.isRecord(azureError)) {
+      return {
+        message: 'Unknown Azure OpenAI error',
+        type: 'unknown_error',
+      };
+    }
+
+    const errorSection = (azureError as { error?: unknown }).error;
+    if (!ErrorFactory.isRecord(errorSection)) {
+      return {
+        message: 'Unknown Azure OpenAI error',
+        type: 'unknown_error',
+      };
+    }
+
+    const message =
+      typeof errorSection.message === 'string'
+        ? errorSection.message
+        : 'Unknown Azure OpenAI error';
+    const type =
+      typeof errorSection.type === 'string'
+        ? errorSection.type
+        : 'unknown_error';
+    const codeValue = errorSection.code;
+    const code =
+      typeof codeValue === 'string'
+        ? codeValue
+        : typeof codeValue === 'number'
+          ? String(codeValue)
+          : undefined;
+
+    return { message, type, code };
+  }
+
+  private static isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
   }
 
   public static fromNetworkError(
