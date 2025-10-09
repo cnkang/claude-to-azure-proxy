@@ -13,6 +13,7 @@
     "test:coverage": "vitest --coverage",
     "lint": "eslint --config eslint.config.ts src/ tests/",
     "lint:fix": "eslint --config eslint.config.ts src/ tests/ --fix",
+    "type-check": "tsc --noEmit",
     "format": "prettier --write src/ tests/",
     "format:check": "prettier --check src/ tests/",
 

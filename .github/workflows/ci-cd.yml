@@ -1,0 +1,342 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run security scan weekly on Sundays at 2 AM UTC
+    - cron: "0 2 * * 0"
+
+env:
+  IMAGE_NAME: claude-to-azure-proxy
+  REGISTRY: ghcr.io
+
+jobs:
+  # Code quality and security checks
+  code-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run linting
+        run: pnpm run lint
+
+      - name: Run type checking
+        run: pnpm run type-check
+
+      - name: Run tests
+        run: pnpm run test:coverage
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+
+  # Environment security check
+  env-security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check .env file security
+        run: |
+          chmod +x scripts/security-check-env.sh
+          ./scripts/security-check-env.sh
+
+  # Dockerfile linting
+  dockerfile-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          failure-threshold: warning
+
+  # Build and security scan
+  build-and-scan:
+    runs-on: ubuntu-latest
+    needs: [code-quality, env-security, dockerfile-lint]
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      image-tags: ${{ steps.meta.outputs.tags }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=Claude to Azure OpenAI Proxy
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ github.repository }}:${{ github.sha }}
+          format: "sarif"
+          output: "trivy-results.sarif"
+          severity: "CRITICAL,HIGH,MEDIUM"
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: "trivy-results.sarif"
+
+      - name: Run Trivy vulnerability scanner (summary)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ github.repository }}:${{ github.sha }}
+          format: "table"
+          severity: "CRITICAL,HIGH"
+
+  # Container security and functionality tests
+  container-tests:
+    runs-on: ubuntu-latest
+    needs: build-and-scan
+    if: always() && needs.build-and-scan.result == 'success'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull image for testing
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            docker pull ${{ env.REGISTRY }}/${{ github.repository }}:${{ github.sha }}
+            docker tag ${{ env.REGISTRY }}/${{ github.repository }}:${{ github.sha }} test-image:latest
+          else
+            # For PR, build locally for testing
+            docker build -t test-image:latest .
+          fi
+
+      - name: Verify non-root user
+        run: |
+          USER_ID=$(docker run --rm test-image:latest id -u)
+          if [ "$USER_ID" = "0" ]; then
+            echo "❌ Container runs as root user"
+            exit 1
+          else
+            echo "✅ Container runs as non-root user (UID: $USER_ID)"
+          fi
+
+      - name: Test health check endpoint
+        run: |
+          # Start container
+          CONTAINER_ID=$(docker run -d -p 8080:8080 \
+            -e PROXY_API_KEY=test-proxy-api-key-32-characters-long \
+            -e AZURE_OPENAI_ENDPOINT=https://test.openai.azure.com \
+            -e AZURE_OPENAI_API_KEY=test-azure-openai-api-key-32-characters \
+            -e AZURE_OPENAI_MODEL=test-model \
+            test-image:latest)
+
+          # Wait for container to start
+          sleep 15
+
+          # Check health endpoint
+          if curl -f --silent --max-time 10 http://localhost:8080/health > /dev/null; then
+            echo "✅ Health check passed"
+          else
+            echo "❌ Health check failed"
+            echo "Container logs:"
+            docker logs $CONTAINER_ID
+            exit 1
+          fi
+
+          # Cleanup
+          docker stop $CONTAINER_ID
+          docker rm $CONTAINER_ID
+
+      - name: Check image size and efficiency
+        run: |
+          IMAGE_SIZE=$(docker image inspect test-image:latest --format='{{.Size}}')
+          IMAGE_SIZE_MB=$((IMAGE_SIZE / 1024 / 1024))
+          echo "📏 Image size: ${IMAGE_SIZE_MB} MB"
+
+          # Check layer count
+          LAYER_COUNT=$(docker history test-image:latest --format "{{.ID}}" | wc -l)
+          echo "📚 Layer count: ${LAYER_COUNT}"
+
+          if [ $IMAGE_SIZE_MB -gt 500 ]; then
+            echo "⚠️ Image is larger than 500MB. Consider optimizing."
+          else
+            echo "✅ Image size is reasonable"
+          fi
+
+          if [ $LAYER_COUNT -gt 20 ]; then
+            echo "⚠️ Image has many layers (${LAYER_COUNT}). Consider optimizing Dockerfile."
+          else
+            echo "✅ Layer count is reasonable"
+          fi
+
+      - name: Test container startup time
+        run: |
+          echo "⏱️ Testing container startup time..."
+          START_TIME=$(date +%s)
+          
+          CONTAINER_ID=$(docker run -d -p 8081:8080 \
+            -e PROXY_API_KEY=test-proxy-api-key-32-characters-long \
+            -e AZURE_OPENAI_ENDPOINT=https://test.openai.azure.com \
+            -e AZURE_OPENAI_API_KEY=test-azure-openai-api-key-32-characters \
+            -e AZURE_OPENAI_MODEL=test-model \
+            test-image:latest)
+
+          # Wait for health check to pass
+          TIMEOUT=30
+          while [ $TIMEOUT -gt 0 ]; do
+            if curl -f --silent --max-time 2 http://localhost:8081/health > /dev/null 2>&1; then
+              END_TIME=$(date +%s)
+              STARTUP_TIME=$((END_TIME - START_TIME))
+              echo "✅ Container started in ${STARTUP_TIME} seconds"
+              break
+            fi
+            sleep 1
+            TIMEOUT=$((TIMEOUT - 1))
+          done
+
+          if [ $TIMEOUT -eq 0 ]; then
+            echo "❌ Container failed to start within 30 seconds"
+            docker logs $CONTAINER_ID
+            exit 1
+          fi
+
+          # Cleanup
+          docker stop $CONTAINER_ID
+          docker rm $CONTAINER_ID
+
+  # Deployment readiness check
+  deployment-check:
+    runs-on: ubuntu-latest
+    needs: [build-and-scan, container-tests]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate App Runner configuration
+        run: |
+          echo "🔍 Validating apprunner.yaml configuration..."
+          
+          # Check if apprunner.yaml exists
+          if [ ! -f "apprunner.yaml" ]; then
+            echo "❌ apprunner.yaml not found"
+            exit 1
+          fi
+          
+          # Basic YAML syntax check
+          if command -v python3 &> /dev/null; then
+            python3 -c "import yaml; yaml.safe_load(open('apprunner.yaml'))" || {
+              echo "❌ Invalid YAML syntax in apprunner.yaml"
+              exit 1
+            }
+            echo "✅ apprunner.yaml syntax is valid"
+          fi
+          
+          # Check required fields
+          if grep -q "version: 1.0" apprunner.yaml && \
+             grep -q "runtime: nodejs22" apprunner.yaml && \
+             grep -q "pnpm run build" apprunner.yaml && \
+             grep -q "node dist/index.js" apprunner.yaml; then
+            echo "✅ Required App Runner configuration fields present"
+          else
+            echo "❌ Missing required App Runner configuration fields"
+            exit 1
+          fi
+
+      - name: Check deployment documentation
+        run: |
+          echo "📚 Checking deployment documentation..."
+          
+          if [ -f "docs/DEPLOYMENT.md" ]; then
+            echo "✅ Deployment documentation exists"
+            
+            # Check for App Runner section
+            if grep -q "App Runner" docs/DEPLOYMENT.md; then
+              echo "✅ App Runner deployment instructions found"
+            else
+              echo "⚠️ App Runner deployment instructions not found in documentation"
+            fi
+          else
+            echo "⚠️ Deployment documentation not found"
+          fi
+
+      - name: Summary
+        run: |
+          echo "🎉 Deployment readiness check completed!"
+          echo ""
+          echo "📋 Ready for deployment:"
+          echo "  ✅ Docker image built and scanned"
+          echo "  ✅ Container security verified"
+          echo "  ✅ Health checks passing"
+          echo "  ✅ App Runner configuration valid"
+          echo ""
+          echo "🚀 Deploy using:"
+          echo "  aws apprunner create-service --source-configuration file://apprunner.yaml"
