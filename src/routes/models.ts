@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import type { RequestWithCorrelationId } from '../types/index.js';
 import { logger } from '../middleware/logging.js';
 
