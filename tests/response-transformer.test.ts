@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   transformAzureResponseToClaude,
   transformAzureStreamResponseToClaude,
@@ -487,8 +487,6 @@ describe('Response Transformer', () => {
     });
 
     it('should handle errors from transformation function gracefully', () => {
-      const handler = createDefensiveResponseHandler(mockCorrelationId);
-
       // Create a response with size limit violation
       const strictLimits: ResponseSizeLimits = {
         maxResponseSize: 10, // Very small limit
@@ -588,7 +586,7 @@ describe('Response Transformer', () => {
                 role: 'assistant',
                 content: 'Test',
               },
-              finish_reason: azure as any,
+              finish_reason: azure as 'stop' | 'length' | 'content_filter',
             },
           ],
         };
@@ -598,8 +596,11 @@ describe('Response Transformer', () => {
           200,
           mockCorrelationId
         );
-        const claudeResponse =
-          result.claudeResponse as ClaudeCompletionResponse;
+        const {claudeResponse} = result;
+        expect(claudeResponse).toBeDefined();
+        if (claudeResponse.type !== 'completion') {
+          throw new Error('Expected completion response');
+        }
 
         expect(claudeResponse.stop_reason).toBe(claude);
       });
