@@ -214,7 +214,7 @@ class ProxyServer {
    */
   private setupRoutes(): void {
     // Health check endpoint for AWS App Runner
-    this.app.get('/health', healthCheckHandler(this.config));
+    this.app.get('/health', healthCheckHandler(this.config) as express.RequestHandler);
 
     // Root endpoint
     this.app.get('/', (req: Readonly<Request>, res: Readonly<Response>) => {
@@ -234,13 +234,13 @@ class ProxyServer {
     this.app.get(
       '/v1/models',
       secureAuthenticationMiddleware,
-      checkFeatureAvailability('models'),
+      checkFeatureAvailability('models') as express.RequestHandler,
       modelsHandler
     );
     this.app.post(
       '/v1/completions',
       secureAuthenticationMiddleware,
-      checkFeatureAvailability('completions'),
+      checkFeatureAvailability('completions') as express.RequestHandler,
       completionsRateLimit,
       completionsHandler(this.config)
     );
@@ -249,7 +249,7 @@ class ProxyServer {
     this.app.post(
       '/v1/chat/completions',
       secureAuthenticationMiddleware,
-      checkFeatureAvailability('completions'),
+      checkFeatureAvailability('completions') as express.RequestHandler,
       completionsRateLimit,
       completionsHandler(this.config)
     );

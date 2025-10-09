@@ -505,10 +505,10 @@ export const enhancedErrorHandler = errorHandler.handleError;
 /**
  * Async error wrapper for route handlers
  */
-export function asyncErrorHandler(
-  handler: (req: Request, res: Response, next: NextFunction) => Promise<void>
+export function asyncErrorHandler<T extends Request = Request>(
+  handler: (req: T, res: Response, next: NextFunction) => Promise<void>
 ) {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return (req: T, res: Response, next: NextFunction): void => {
     Promise.resolve(handler(req, res, next)).catch(next);
   };
 }

@@ -214,7 +214,7 @@ async function makeAzureRequestWithResilience(
  * Main completions handler with comprehensive error handling and monitoring
  */
 export const completionsHandler = (config: ServerConfig) => {
-  return asyncErrorHandler(
+  return asyncErrorHandler<RequestWithCorrelationId>(
     async (req: RequestWithCorrelationId, res: Response): Promise<void> => {
       const { correlationId } = req;
       const metrics: RequestMetrics = {
