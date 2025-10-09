@@ -136,7 +136,7 @@ export class InMemoryMetricCollector implements MetricCollector {
     });
 
     // Log performance metrics for monitoring
-    logger.debug('Performance metric recorded', metric.correlationId || '', {
+    logger.debug('Performance metric recorded', metric.correlationId ?? '', {
       metric: metric.name,
       duration: metric.duration,
       success: metric.success,
@@ -230,15 +230,17 @@ export class InMemoryMetricCollector implements MetricCollector {
    * @throws {Error} If metric is invalid
    */
   private validateMetric(metric: Partial<MetricDataPoint>): void {
-    if (!metric.name || typeof metric.name !== 'string') {
+    if (typeof metric.name !== 'string' || metric.name === '') {
       throw new Error('Metric name is required and must be a string');
     }
 
-    if (metric.value === undefined || metric.value === null) {
+    if (metric.value === undefined) {
       throw new Error('Metric value is required');
     }
 
-    if (typeof metric.value !== 'number' && typeof metric.value !== 'string') {
+    // TypeScript now knows metric.value is defined
+    const { value } = metric;
+    if (typeof value !== 'number' && typeof value !== 'string') {
       throw new Error('Metric value must be a number or string');
     }
   }

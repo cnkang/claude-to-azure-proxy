@@ -85,7 +85,19 @@ export interface EventLoopProfile {
   readonly activeHandles: number;
   /** Active requests count */
   readonly activeRequests: number;
+  /** Summary of active handles */
+  readonly handlesSummary: readonly ActiveHandleSummary[];
+  /** Summary of active requests */
+  readonly requestsSummary: readonly ActiveRequestSummary[];
 }
+
+export type ActiveHandleSummary = {
+  readonly type: string;
+};
+
+export type ActiveRequestSummary = {
+  readonly type: string;
+};
 
 /**
  * Garbage collection profile interface.
@@ -182,6 +194,7 @@ export class PerformanceProfiler {
   private memoryMonitorInterval?: NodeJS.Timeout;
   private readonly maxSamples: number;
   private readonly sampleInterval: number;
+  private lastEventLoopUtilization = performance.eventLoopUtilization();
 
   /**
    * Creates a new performance profiler.
@@ -261,8 +274,10 @@ export class PerformanceProfiler {
       },
       eventLoop: {
         lag: eventLoopLag,
-        activeHandles: (process as any)._getActiveHandles().length,
-        activeRequests: (process as any)._getActiveRequests().length,
+        activeHandles: getActiveHandlesCount(),
+        activeRequests: getActiveRequestsCount(),
+        handlesSummary: getActiveHandlesSummary(),
+        requestsSummary: getActiveRequestsSummary(),
       },
       gc: [...this.gcProfiles],
       marks: this.getPerformanceMarks(),
@@ -386,10 +401,13 @@ export class PerformanceProfiler {
       this.gcObserver = new PerformanceObserver((list) => {
         const entries = list.getEntries();
         for (const entry of entries) {
+          const gcEntry = entry as PerformanceEntry & {
+            readonly kind?: number;
+          };
           const gcProfile: GCProfile = {
-            kind: (entry as any).kind || 0,
-            duration: entry.duration * 1000000, // Convert to nanoseconds
-            timestamp: entry.startTime,
+            kind: gcEntry.kind ?? 0,
+            duration: gcEntry.duration * 1_000_000, // Convert to nanoseconds
+            timestamp: gcEntry.startTime,
           };
 
           this.gcProfiles.push(gcProfile);
@@ -457,16 +475,17 @@ export class PerformanceProfiler {
    * @returns Event loop lag in milliseconds
    */
   private measureEventLoopLag(): number {
-    const start = process.hrtime.bigint();
-    return new Promise<number>((resolve) => {
-      setImmediate(() => {
-        const lag = Number(process.hrtime.bigint() - start) / 1000000;
-        resolve(lag);
-      });
-    }) as any; // Simplified for synchronous usage
+    const delta = performance.eventLoopUtilization(
+      this.lastEventLoopUtilization
+    );
+    this.lastEventLoopUtilization = performance.eventLoopUtilization();
 
-    // Simplified synchronous approximation
-    return 0;
+    const activeMs = delta.active / 1000;
+    if (!Number.isFinite(activeMs) || activeMs < 0) {
+      return 0;
+    }
+
+    return activeMs;
   }
 
   /**
@@ -480,23 +499,30 @@ export class PerformanceProfiler {
       return 0;
     }
 
-    const n = this.memorySamples.length;
+    let index = 0;
     let sumX = 0;
     let sumY = 0;
     let sumXY = 0;
     let sumXX = 0;
 
-    for (let i = 0; i < n; i++) {
-      const x = i;
-      const y = this.memorySamples[i]!.heapUsed;
+    for (const sample of this.memorySamples) {
+      const x = index;
+      const y = sample.heapUsed;
 
       sumX += x;
       sumY += y;
       sumXY += x * y;
       sumXX += x * x;
+      index += 1;
     }
 
-    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+    const sampleCount = index;
+    const denominator = sampleCount * sumXX - sumX * sumX;
+    if (denominator === 0) {
+      return 0;
+    }
+
+    const slope = (sampleCount * sumXY - sumX * sumY) / denominator;
     return slope;
   }
 
@@ -605,3 +631,66 @@ export function startMemoryLeakDetection(
 
   return () => clearInterval(interval);
 }
+const isObject = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null;
+};
+
+const getActiveHandles = (): readonly unknown[] => {
+  const getHandles = process._getActiveHandles as (() => unknown) | undefined;
+
+  if (typeof getHandles !== 'function') {
+    return [];
+  }
+
+  const result = getHandles.call(process);
+  if (!Array.isArray(result)) {
+    return [];
+  }
+
+  return result as readonly unknown[];
+};
+
+const getActiveRequests = (): readonly unknown[] => {
+  const getRequests = process._getActiveRequests as (() => unknown) | undefined;
+
+  if (typeof getRequests !== 'function') {
+    return [];
+  }
+
+  const result = getRequests.call(process);
+  if (!Array.isArray(result)) {
+    return [];
+  }
+
+  return result as readonly unknown[];
+};
+
+const getActiveHandlesCount = (): number => {
+  return getActiveHandles().length;
+};
+
+const getActiveRequestsCount = (): number => {
+  return getActiveRequests().length;
+};
+
+const getActiveHandlesSummary = (): readonly ActiveHandleSummary[] => {
+  return getActiveHandles().map((handle) => ({
+    type:
+      isObject(handle) &&
+      typeof (handle as { constructor?: { name?: string } }).constructor
+        ?.name === 'string'
+        ? (handle as { constructor: { name: string } }).constructor.name
+        : typeof handle,
+  }));
+};
+
+const getActiveRequestsSummary = (): readonly ActiveRequestSummary[] => {
+  return getActiveRequests().map((request) => ({
+    type:
+      isObject(request) &&
+      typeof (request as { constructor?: { name?: string } }).constructor
+        ?.name === 'string'
+        ? (request as { constructor: { name: string } }).constructor.name
+        : typeof request,
+  }));
+};

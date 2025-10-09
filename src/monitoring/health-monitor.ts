@@ -5,43 +5,52 @@
 
 import type { AxiosInstance, AxiosStatic } from 'axios';
 import type { HealthCheckResult, ServerConfig } from '../types/index.js';
+import { logger } from '../middleware/logging.js';
 
-export interface HealthStatus {
-  status: 'healthy' | 'unhealthy';
-  timestamp: string;
-  uptime: number;
-  memory: {
-    used: number;
-    total: number;
-    percentage: number;
-  };
-  azureOpenAI?: {
-    status: 'connected' | 'disconnected';
-    responseTime?: number;
-  };
+type HealthStatus = HealthCheckResult;
+
+export interface RegisteredHealthCheck {
+  readonly name: string;
+  readonly timeout: number;
+  readonly critical: boolean;
+  readonly check: () => Promise<RegisteredHealthCheckResult>;
+}
+
+export interface RegisteredHealthCheckResult {
+  readonly status: string;
+  readonly responseTime: number;
+  readonly message: string;
+  readonly details?: Record<string, unknown>;
+}
+
+export interface HealthAlert {
+  readonly name: string;
+  readonly severity: 'low' | 'medium' | 'high' | 'critical';
+  readonly details?: Record<string, unknown>;
 }
 
 export class HealthMonitor {
-  private config: ServerConfig;
-  private startTime: number;
+  private readonly config: ServerConfig;
+  private readonly startTime: number;
   private axiosInstance?: AxiosInstance;
   private lastHealthCheck?: HealthStatus;
-  private cacheTimeout: number;
+  private readonly cacheTimeout: number;
   private lastCheckTime: number = 0;
   private readonly hasAzureConfig: boolean;
-  private readonly azureEndpoint?: string;
-  private readonly azureApiKey?: string;
+  private readonly azureEndpoint: string;
+  private readonly azureApiKey: string;
   private azureInitAttempted = false;
-  private healthChecks: Map<string, any> = new Map();
+  private readonly healthChecks: Map<string, RegisteredHealthCheck> = new Map();
   private monitoringInterval?: NodeJS.Timeout;
 
   constructor(config: ServerConfig, cacheTimeoutMs: number = 30000) {
     this.config = config;
     this.startTime = Date.now();
     this.cacheTimeout = cacheTimeoutMs;
-    this.azureEndpoint = config.azureOpenAI?.endpoint;
-    this.azureApiKey = config.azureOpenAI?.apiKey;
-    this.hasAzureConfig = Boolean(this.azureEndpoint && this.azureApiKey);
+    this.azureEndpoint = config.azureOpenAI.endpoint.trim();
+    this.azureApiKey = config.azureOpenAI.apiKey.trim();
+    this.hasAzureConfig =
+      this.azureEndpoint.length > 0 && this.azureApiKey.length > 0;
   }
 
   async getHealthStatus(): Promise<HealthStatus> {
@@ -59,7 +68,7 @@ export class HealthMonitor {
     // Lazily initialize Azure OpenAI client when needed
     await this.initializeAzureClient();
 
-    let azureOpenAIStatus: HealthStatus['azureOpenAI'];
+    let azureOpenAIStatus: HealthStatus['azureOpenAI'] = undefined;
     if (this.hasAzureConfig) {
       azureOpenAIStatus = this.axiosInstance
         ? await this.checkAzureOpenAI()
@@ -82,15 +91,18 @@ export class HealthMonitor {
     return healthStatus;
   }
 
-  private getMemoryUsage() {
+  private getMemoryUsage(): HealthStatus['memory'] {
     const memUsage = process.memoryUsage();
-    const totalMemory = memUsage.heapTotal || memUsage.rss;
+    const heapTotal = memUsage.heapTotal;
+    const totalMemory = heapTotal > 0 ? heapTotal : memUsage.rss;
     const usedMemory = memUsage.heapUsed;
+    const percentage =
+      totalMemory > 0 ? Math.round((usedMemory / totalMemory) * 100) : 0;
 
     return {
       used: usedMemory,
       total: totalMemory,
-      percentage: Math.round((usedMemory / totalMemory) * 100),
+      percentage,
     };
   }
 
@@ -113,6 +125,10 @@ export class HealthMonitor {
         responseTime,
       };
     } catch (error) {
+      logger.warn('Azure OpenAI health check request failed', '', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
       return {
         status: 'disconnected',
       };
@@ -154,7 +170,7 @@ export class HealthMonitor {
         throw new Error('Axios create factory is unavailable');
       }
 
-      const endpointUrl = new URL(this.azureEndpoint!);
+      const endpointUrl = new URL(this.azureEndpoint);
       if (endpointUrl.protocol !== 'https:') {
         throw new Error('Azure OpenAI endpoint must use HTTPS');
       }
@@ -162,19 +178,22 @@ export class HealthMonitor {
       this.axiosInstance = factory({
         baseURL: endpointUrl.toString(),
         headers: {
-          'api-key': this.azureApiKey!,
+          'api-key': this.azureApiKey,
           'Content-Type': 'application/json',
         },
       });
-    } catch {
+    } catch (error) {
       this.axiosInstance = undefined;
+      logger.warn('Failed to initialize Azure health client', '', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
     }
   }
 
   /**
    * Register a health check function
    */
-  registerHealthCheck(check: any): void {
+  registerHealthCheck(check: RegisteredHealthCheck): void {
     this.healthChecks.set(check.name, check);
   }
 
@@ -186,8 +205,12 @@ export class HealthMonitor {
       clearInterval(this.monitoringInterval);
     }
 
-    this.monitoringInterval = setInterval(async () => {
-      await this.getHealthStatus();
+    this.monitoringInterval = setInterval(() => {
+      this.getHealthStatus().catch((error: unknown) => {
+        logger.warn('Scheduled health check failed', '', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      });
     }, intervalMs);
   }
 
@@ -205,15 +228,20 @@ export class HealthMonitor {
    * Check health with correlation ID
    */
   async checkHealth(correlationId: string): Promise<HealthStatus> {
+    logger.debug('Health status requested', correlationId, {
+      cached: this.lastHealthCheck !== undefined,
+    });
     return this.getHealthStatus();
   }
 
   /**
    * Trigger an alert (placeholder implementation)
    */
-  async triggerAlert(alert: any): Promise<void> {
-    // Placeholder implementation
-    console.warn('Health alert triggered:', alert);
+  triggerAlert(alert: HealthAlert): Promise<void> {
+    logger.warn('Health alert triggered', '', {
+      alert,
+    });
+    return Promise.resolve();
   }
 }
 
@@ -234,7 +262,7 @@ export const getHealthMonitor = (config?: ServerConfig): HealthMonitor => {
 
 // For backward compatibility
 export const healthMonitor = {
-  registerHealthCheck: (check: any) =>
+  registerHealthCheck: (check: RegisteredHealthCheck) =>
     getHealthMonitor().registerHealthCheck(check),
   startMonitoring: (intervalMs: number) =>
     getHealthMonitor().startMonitoring(intervalMs),
@@ -242,5 +270,5 @@ export const healthMonitor = {
   checkHealth: (correlationId: string) =>
     getHealthMonitor().checkHealth(correlationId),
   getHealthStatus: () => getHealthMonitor().getHealthStatus(),
-  triggerAlert: (alert: any) => getHealthMonitor().triggerAlert(alert),
+  triggerAlert: (alert: HealthAlert) => getHealthMonitor().triggerAlert(alert),
 };
