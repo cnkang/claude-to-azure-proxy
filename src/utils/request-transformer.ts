@@ -13,6 +13,26 @@ export interface ClaudeCompletionRequest {
   readonly stream?: boolean;
 }
 
+// Claude Chat Completions Request Types (modern format)
+export interface ClaudeChatMessage {
+  readonly role: 'user' | 'assistant' | 'system';
+  readonly content: string;
+}
+
+export interface ClaudeChatCompletionRequest {
+  readonly model: string;
+  readonly messages: readonly ClaudeChatMessage[];
+  readonly max_tokens: number;
+  readonly temperature?: number;
+  readonly top_p?: number;
+  readonly top_k?: number;
+  readonly stop_sequences?: readonly string[];
+  readonly stream?: boolean;
+}
+
+// Union type for both request formats
+export type ClaudeRequest = ClaudeCompletionRequest | ClaudeChatCompletionRequest;
+
 // Azure OpenAI Request Types
 export interface AzureOpenAIMessage {
   readonly role: 'user' | 'assistant' | 'system';
@@ -39,7 +59,7 @@ export interface AzureOpenAIHeaders {
 }
 
 // Validation Schemas
-const claudeRequestSchema = Joi.object({
+const baseRequestSchema = {
   model: Joi.string()
     .required()
     .min(1)
@@ -49,15 +69,6 @@ const claudeRequestSchema = Joi.object({
       'string.pattern.base': 'Model name contains invalid characters',
       'string.min': 'Model name must not be empty',
       'string.max': 'Model name too long',
-    }),
-
-  prompt: Joi.string()
-    .required()
-    .min(1)
-    .max(8 * 1024 * 1024) // 8MB limit for prompt content
-    .messages({
-      'string.min': 'Prompt must not be empty',
-      'string.max': 'Prompt exceeds maximum length',
     }),
 
   max_tokens: Joi.number()
@@ -99,6 +110,47 @@ const claudeRequestSchema = Joi.object({
     }),
 
   stream: Joi.boolean().optional(),
+};
+
+// Legacy completions format schema
+const claudeCompletionSchema = Joi.object({
+  ...baseRequestSchema,
+  prompt: Joi.string()
+    .required()
+    .min(1)
+    .max(8 * 1024 * 1024) // 8MB limit for prompt content
+    .messages({
+      'string.min': 'Prompt must not be empty',
+      'string.max': 'Prompt exceeds maximum length',
+    }),
+})
+  .required()
+  .options({ stripUnknown: true, abortEarly: false });
+
+// Modern chat completions format schema
+const claudeChatCompletionSchema = Joi.object({
+  ...baseRequestSchema,
+  messages: Joi.array()
+    .items(
+      Joi.object({
+        role: Joi.string().valid('user', 'assistant', 'system').required(),
+        content: Joi.string()
+          .required()
+          .min(1)
+          .max(8 * 1024 * 1024) // 8MB limit per message
+          .messages({
+            'string.min': 'Message content must not be empty',
+            'string.max': 'Message content exceeds maximum length',
+          }),
+      })
+    )
+    .required()
+    .min(1)
+    .max(100) // Reasonable limit on conversation length
+    .messages({
+      'array.min': 'At least one message is required',
+      'array.max': 'Too many messages in conversation',
+    }),
 })
   .required()
   .options({ stripUnknown: true, abortEarly: false });
@@ -158,10 +210,27 @@ function sanitizePrompt(prompt: string): string {
 }
 
 // Validation Function
-export function validateClaudeRequest(
-  request: unknown
-): ClaudeCompletionRequest {
-  const { error, value } = claudeRequestSchema.validate(request);
+export function validateClaudeRequest(request: unknown): ClaudeRequest {
+  // Try to determine the request format
+  const hasMessages = request && typeof request === 'object' && 'messages' in request;
+  const hasPrompt = request && typeof request === 'object' && 'prompt' in request;
+
+  let validationResult;
+  let requestType: 'completion' | 'chat';
+
+  if (hasMessages && !hasPrompt) {
+    // Chat completions format
+    validationResult = claudeChatCompletionSchema.validate(request);
+    requestType = 'chat';
+  } else if (hasPrompt && !hasMessages) {
+    // Legacy completions format
+    validationResult = claudeCompletionSchema.validate(request);
+    requestType = 'completion';
+  } else {
+    throw new ValidationError('Request must have either "prompt" or "messages" field, but not both');
+  }
+
+  const { error, value } = validationResult;
 
   if (error) {
     const details = error.details.map((detail) => ({
@@ -173,30 +242,52 @@ export function validateClaudeRequest(
     throw new ValidationError('Request validation failed', details);
   }
 
-  // Additional security validation
-  const validatedRequest = value as ClaudeCompletionRequest;
+  // Additional security validation and sanitization
+  if (requestType === 'completion') {
+    const validatedRequest = value as ClaudeCompletionRequest;
+    const sanitizedPrompt = sanitizePrompt(validatedRequest.prompt);
 
-  // Sanitize prompt
-  const sanitizedPrompt = sanitizePrompt(validatedRequest.prompt);
+    return {
+      ...validatedRequest,
+      prompt: sanitizedPrompt,
+    };
+  } else {
+    const validatedRequest = value as ClaudeChatCompletionRequest;
+    const sanitizedMessages = validatedRequest.messages.map((message) => ({
+      ...message,
+      content: sanitizePrompt(message.content),
+    }));
 
-  return {
-    ...validatedRequest,
-    prompt: sanitizedPrompt,
-  };
+    return {
+      ...validatedRequest,
+      messages: sanitizedMessages,
+    };
+  }
 }
 
 // Request Transformation
 export function transformClaudeToAzureRequest(
-  claudeRequest: ClaudeCompletionRequest,
+  claudeRequest: ClaudeRequest,
   azureModel: string
 ): AzureOpenAIRequest {
-  // Convert prompt to messages format
-  const messages: AzureOpenAIMessage[] = [
-    {
-      role: 'user',
-      content: claudeRequest.prompt,
-    },
-  ];
+  let messages: AzureOpenAIMessage[];
+
+  // Handle both request formats
+  if ('prompt' in claudeRequest) {
+    // Legacy completions format - convert prompt to messages
+    messages = [
+      {
+        role: 'user',
+        content: claudeRequest.prompt,
+      },
+    ];
+  } else {
+    // Modern chat completions format - use messages directly
+    messages = claudeRequest.messages.map((message) => ({
+      role: message.role,
+      content: message.content,
+    }));
+  }
 
   // Map parameters
   const azureRequest: AzureOpenAIRequest = {

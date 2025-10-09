@@ -250,6 +250,15 @@ class ProxyServer {
       completionsRateLimit,
       completionsHandler(this.config)
     );
+    
+    // Chat completions endpoint (modern Claude API compatibility)
+    this.app.post(
+      '/v1/chat/completions',
+      secureAuthenticationMiddleware,
+      checkFeatureAvailability('completions'),
+      completionsRateLimit,
+      completionsHandler(this.config)
+    );
 
     // Catch-all for undefined routes - temporarily disabled for Express 5.x compatibility
     // this.app.all('*', (req, res) => {
