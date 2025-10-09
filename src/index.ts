@@ -214,7 +214,7 @@ class ProxyServer {
    */
   private setupRoutes(): void {
     // Health check endpoint for AWS App Runner
-    this.app.get('/health', healthCheckHandler(this.config) as express.RequestHandler);
+    this.app.get('/health', healthCheckHandler(this.config) as unknown as express.RequestHandler);
 
     // Root endpoint
     this.app.get('/', (req: Readonly<Request>, res: Readonly<Response>) => {
@@ -235,14 +235,14 @@ class ProxyServer {
       '/v1/models',
       secureAuthenticationMiddleware,
       checkFeatureAvailability('models') as express.RequestHandler,
-      modelsHandler
+      modelsHandler as unknown as express.RequestHandler
     );
     this.app.post(
       '/v1/completions',
       secureAuthenticationMiddleware,
       checkFeatureAvailability('completions') as express.RequestHandler,
       completionsRateLimit,
-      completionsHandler(this.config)
+      completionsHandler(this.config) as unknown as express.RequestHandler
     );
 
     // Chat completions endpoint (modern Claude API compatibility)
@@ -251,7 +251,7 @@ class ProxyServer {
       secureAuthenticationMiddleware,
       checkFeatureAvailability('completions') as express.RequestHandler,
       completionsRateLimit,
-      completionsHandler(this.config)
+      completionsHandler(this.config) as unknown as express.RequestHandler
     );
 
     // Catch-all for undefined routes - temporarily disabled for Express 5.x compatibility
