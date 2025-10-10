@@ -27,6 +27,10 @@ const checkAzureOpenAI = async (
   try {
     const startTime = Date.now();
 
+    if (!config.azureOpenAI) {
+      throw new Error('Azure OpenAI configuration is missing');
+    }
+
     // Simple connectivity check to Azure OpenAI models endpoint
     const response = await axios.get(
       `${config.azureOpenAI.endpoint}/openai/v1/models`,

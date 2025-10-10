@@ -237,6 +237,10 @@ export const completionsHandler = (config: ServerConfig) => {
         const transformStart = Date.now();
 
         try {
+          if (!config.azureOpenAI) {
+            throw new Error('Azure OpenAI configuration is missing');
+          }
+          
           transformationResult = transformRequest(
             req.body,
             config.azureOpenAI.model,

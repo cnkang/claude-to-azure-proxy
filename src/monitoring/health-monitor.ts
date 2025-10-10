@@ -47,10 +47,19 @@ export class HealthMonitor {
     this.config = config;
     this.startTime = Date.now();
     this.cacheTimeout = cacheTimeoutMs;
-    this.azureEndpoint = config.azureOpenAI.endpoint.trim();
-    this.azureApiKey = config.azureOpenAI.apiKey.trim();
-    this.hasAzureConfig =
-      this.azureEndpoint.length > 0 && this.azureApiKey.length > 0;
+    
+    // Handle Azure OpenAI config
+    const azureConfig = config.azureOpenAI;
+    if (azureConfig) {
+      this.azureEndpoint = azureConfig.endpoint.trim();
+      this.azureApiKey = azureConfig.apiKey.trim();
+      this.hasAzureConfig =
+        this.azureEndpoint.length > 0 && this.azureApiKey.length > 0;
+    } else {
+      this.azureEndpoint = '';
+      this.azureApiKey = '';
+      this.hasAzureConfig = false;
+    }
   }
 
   async getHealthStatus(): Promise<HealthStatus> {
