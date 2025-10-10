@@ -329,8 +329,8 @@ class ProxyServer {
             logger.info('Server started successfully', '', {
               port: this.config.port,
               nodeEnv: this.config.nodeEnv,
-              azureEndpoint: this.config.azureOpenAI.endpoint,
-              model: this.config.azureOpenAI.model,
+              azureEndpoint: this.config.azureOpenAI?.endpoint ?? 'not-configured',
+              model: this.config.azureOpenAI?.model ?? 'not-configured',
             });
 
             // Start health monitoring

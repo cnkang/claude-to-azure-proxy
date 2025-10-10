@@ -308,8 +308,8 @@ function sanitizeConfig(value: Readonly<Config>): SanitizedConfig {
  * Implements fail-fast principle - will throw on module load if configuration is invalid
  */
 const configurationBootstrap: {
-  config: Readonly<Config>;
-  sanitized: SanitizedConfig;
+  config: Readonly<Config> | null;
+  sanitized: SanitizedConfig | null;
 } = (() => {
   try {
     const validatedConfig = createConfig();
@@ -321,9 +321,11 @@ const configurationBootstrap: {
     process.stderr.write('FATAL: Configuration validation failed\n');
     process.stderr.write(`${(error as Error).message}\n`);
     process.exit(1);
+    // This return will never be reached, but TypeScript needs it
+    return { config: null, sanitized: null };
   }
 })();
 
-export const sanitizedConfig = configurationBootstrap.sanitized;
+export const sanitizedConfig = configurationBootstrap.sanitized!;
 
-export default configurationBootstrap.config;
+export default configurationBootstrap.config!;
