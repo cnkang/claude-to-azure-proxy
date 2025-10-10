@@ -5,7 +5,7 @@ export interface ServerConfig {
   readonly port: number;
   readonly nodeEnv: 'development' | 'production' | 'test';
   readonly proxyApiKey: string;
-  readonly azureOpenAI: {
+  readonly azureOpenAI?: {
     readonly endpoint: string;
     readonly apiKey: string;
     readonly model: string;
@@ -170,6 +170,7 @@ export interface ClaudeStreamResponse {
   readonly completion: string;
   readonly model: string;
   readonly stop_reason: 'stop_sequence' | 'max_tokens' | null;
+  readonly log_id?: string;
 }
 
 export interface ClaudeError {
