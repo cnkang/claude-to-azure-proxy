@@ -418,11 +418,14 @@ export const sanitizeInput = (
 const sanitizeStringInput = (value: string): string => {
   let sanitized = value.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
   sanitized = sanitized.replace(/<script[\s\S]*?<\/script>/gi, '');
+  // Remove img tags with onerror handlers
   sanitized = sanitized.replace(
     /<img[^>]*onerror\s*=\s*['"][^'"]*['"][^>]*>/gi,
     '<img>'
   );
-  sanitized = sanitized.replace(/\son[a-z]+\s*=\s*['"][^'"]*['"]/gi, '');
+  // Remove any on* event handlers (more comprehensive)
+  sanitized = sanitized.replace(/\s*on[a-z]+\s*=\s*['"][^'"]*['"]/gi, '');
+  sanitized = sanitized.replace(/\s*on[a-z]+\s*=\s*[^'"\s>]+/gi, '');
   sanitized = sanitized.replace(/javascript:\s*/gi, '');
   sanitized = sanitized.replace(/data:text\/html;base64,[^"']*/gi, '');
   return sanitized;

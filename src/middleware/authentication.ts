@@ -122,7 +122,7 @@ function extractCredentials(
   const authHeader = req.headers.authorization;
   if (typeof authHeader === 'string') {
     const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i);
-    if (bearerMatch?.[1] !== undefined) {
+    if (bearerMatch?.[1] !== undefined && bearerMatch[1].trim().length > 0) {
       return {
         credentials: bearerMatch[1].trim(),
         method: AuthenticationMethod.BEARER_TOKEN,
@@ -132,7 +132,7 @@ function extractCredentials(
 
   // Check for x-api-key header
   const apiKeyHeader = normalizeHeaderValue(req.headers['x-api-key']);
-  if (typeof apiKeyHeader === 'string') {
+  if (typeof apiKeyHeader === 'string' && apiKeyHeader.trim().length > 0) {
     return {
       credentials: apiKeyHeader.trim(),
       method: AuthenticationMethod.API_KEY_HEADER,
@@ -330,6 +330,6 @@ function normalizeHeaderValue(
   return undefined;
 }
 
-function resolveCorrelationId(correlationId: string): string {
-  return correlationId.trim().length > 0 ? correlationId : 'unknown';
+function resolveCorrelationId(correlationId: string | undefined): string {
+  return correlationId !== undefined && correlationId.trim().length > 0 ? correlationId : 'unknown';
 }
