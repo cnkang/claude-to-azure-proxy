@@ -16,6 +16,8 @@ build:
     # Build-time environment variables
     - name: NODE_ENV
       value: production
+    - name: CI
+      value: "true"
     - name: PNPM_HOME
       value: /root/.local/share/pnpm
 run:
