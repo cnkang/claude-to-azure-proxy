@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/unbound-method */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import request from 'supertest';
 import express from 'express';
@@ -151,11 +153,7 @@ describe('Integration Tests', () => {
     });
 
     // Reset graceful degradation mock to default success
-    const mockExecuteGracefulDegradation = vi.mocked(
-      gracefulDegradationManager.executeGracefulDegradation.bind(
-        gracefulDegradationManager
-      )
-    );
+    const mockExecuteGracefulDegradation = vi.mocked(gracefulDegradationManager.executeGracefulDegradation);
     mockExecuteGracefulDegradation.mockResolvedValue({
       success: true,
       data: {
@@ -163,6 +161,7 @@ describe('Integration Tests', () => {
         completion: 'Test response',
         id: 'test-id',
         model: 'claude-3-5-sonnet-20241022',
+        stop_reason: 'stop_sequence',
       },
       fallbackUsed: null,
       degraded: false,
@@ -287,11 +286,8 @@ describe('Integration Tests', () => {
       const azureError = AzureErrorFactory.create('authentication_error');
 
       // Mock graceful degradation to return error response instead of throwing
-      vi.mocked(
-        gracefulDegradationManager.executeGracefulDegradation.bind(
-          gracefulDegradationManager
-        )
-      ).mockResolvedValueOnce({
+      const mockExecuteGracefulDegradation = vi.mocked(gracefulDegradationManager.executeGracefulDegradation);
+      mockExecuteGracefulDegradation.mockResolvedValueOnce({
         success: false,
         error: azureError,
         fallbackUsed: null,
@@ -324,11 +320,8 @@ describe('Integration Tests', () => {
       const azureError = AzureErrorFactory.create('rate_limit_error');
 
       // Mock graceful degradation to return error response instead of throwing
-      vi.mocked(
-        gracefulDegradationManager.executeGracefulDegradation.bind(
-          gracefulDegradationManager
-        )
-      ).mockResolvedValueOnce({
+      const mockExecuteGracefulDegradation = vi.mocked(gracefulDegradationManager.executeGracefulDegradation);
+      mockExecuteGracefulDegradation.mockResolvedValueOnce({
         success: false,
         error: azureError,
         fallbackUsed: null,
@@ -360,11 +353,8 @@ describe('Integration Tests', () => {
       const claudeRequest = ClaudeRequestFactory.create();
 
       // Mock graceful degradation to fail
-      vi.mocked(
-        gracefulDegradationManager.executeGracefulDegradation.bind(
-          gracefulDegradationManager
-        )
-      ).mockRejectedValueOnce(new Error('Network error'));
+      const mockExecuteGracefulDegradation = vi.mocked(gracefulDegradationManager.executeGracefulDegradation);
+      mockExecuteGracefulDegradation.mockRejectedValueOnce(new Error('Network error'));
 
       (mockAxiosInstance.post as ReturnType<typeof vi.fn>).mockRejectedValue(
         new Error('ECONNREFUSED')
@@ -425,11 +415,8 @@ describe('Integration Tests', () => {
       const azureError = AzureErrorFactory.createWithSensitiveData();
 
       // Mock graceful degradation to return error response instead of throwing
-      vi.mocked(
-        gracefulDegradationManager.executeGracefulDegradation.bind(
-          gracefulDegradationManager
-        )
-      ).mockResolvedValueOnce({
+      const mockExecuteGracefulDegradation = vi.mocked(gracefulDegradationManager.executeGracefulDegradation);
+      mockExecuteGracefulDegradation.mockResolvedValueOnce({
         success: false,
         error: azureError,
         fallbackUsed: null,
@@ -625,9 +612,8 @@ describe('Integration Tests', () => {
 
     it('should return unhealthy status when Azure OpenAI is down', async () => {
       // Mock health monitor to return unhealthy status
-      vi.mocked(
-        mockHealthMonitor.getHealthStatus.bind(mockHealthMonitor)
-      ).mockResolvedValueOnce({
+      const mockGetHealthStatus = vi.mocked(mockHealthMonitor.getHealthStatus);
+      mockGetHealthStatus.mockResolvedValueOnce({
         status: 'unhealthy',
         timestamp: new Date().toISOString(),
         uptime: 1000,
@@ -641,7 +627,7 @@ describe('Integration Tests', () => {
 
       const response = await request(app).get('/health').expect(503);
 
-      const responseBody13 = response.body as Record<string, unknown>;
+      const responseBody13: Record<string, unknown> = response.body;
       expect(responseBody13.status).toBe('unhealthy');
       const azureOpenAI13 = responseBody13.azureOpenAI as Record<
         string,
@@ -701,11 +687,8 @@ describe('Integration Tests', () => {
           data: AzureErrorFactory.create('rate_limit_error'),
         },
       });
-      vi.mocked(
-        gracefulDegradationManager.executeGracefulDegradation.bind(
-          gracefulDegradationManager
-        )
-      ).mockResolvedValueOnce({
+      const mockExecuteGracefulDegradation = vi.mocked(gracefulDegradationManager.executeGracefulDegradation);
+      mockExecuteGracefulDegradation.mockResolvedValueOnce({
         success: false,
         error: AzureErrorFactory.create('rate_limit_error'),
         fallbackUsed: null,
