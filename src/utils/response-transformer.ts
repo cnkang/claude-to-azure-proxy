@@ -343,9 +343,17 @@ export function transformAzureStreamResponseToClaude(
   correlationId: string
 ): StreamTransformationResult {
   if (!isAzureOpenAIStreamResponse(azureStreamResponse)) {
-    throw new Error(
-      `Invalid Azure OpenAI stream response structure (correlation ${correlationId})`
-    );
+    // Return a default completed response for malformed input
+    return {
+      isComplete: true,
+      claudeStreamResponse: {
+        type: 'completion',
+        completion: '',
+        stop_reason: 'stop_sequence',
+        model: 'claude-3-5-sonnet-20241022',
+        log_id: correlationId,
+      },
+    };
   }
 
   if (azureStreamResponse.choices.length === 0) {

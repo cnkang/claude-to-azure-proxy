@@ -410,7 +410,7 @@ export function createAzureHeaders(
   apiKey: string,
   requestId?: string
 ): AzureOpenAIHeaders {
-  if (apiKey.trim().length < 10) {
+  if (!apiKey || typeof apiKey !== 'string' || apiKey.trim().length < 10) {
     throw new SecurityError('Invalid Azure OpenAI API key');
   }
 

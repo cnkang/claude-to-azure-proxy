@@ -178,9 +178,10 @@ export class ValidationError extends BaseError {
     correlationId: string,
     field?: string,
     value?: unknown,
+    isOperational: boolean = true,
     operation?: string
   ) {
-    super(message, 400, 'VALIDATION_ERROR', correlationId, true, operation, {
+    super(message, 400, 'VALIDATION_ERROR', correlationId, isOperational, operation, {
       field,
       value,
     });
