@@ -125,10 +125,25 @@ jobs:
           cache-to: type=gha,mode=max
           outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=Claude to Azure OpenAI Proxy
 
-      - name: Run Trivy vulnerability scanner
+      - name: Build local image for PR scanning
+        if: github.event_name == 'pull_request'
+        run: |
+          docker build -t local-scan-image:latest .
+
+      - name: Run Trivy vulnerability scanner (pushed image)
         uses: aquasecurity/trivy-action@0.28.0
+        if: github.event_name != 'pull_request'
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ github.repository }}:${{ github.sha }}
+          image-ref: ${{ env.REGISTRY }}/${{ github.repository }}@${{ steps.build.outputs.digest }}
+          format: "sarif"
+          output: "trivy-results.sarif"
+          severity: "CRITICAL,HIGH,MEDIUM"
+
+      - name: Run Trivy vulnerability scanner (local image for PR)
+        uses: aquasecurity/trivy-action@0.28.0
+        if: github.event_name == 'pull_request'
+        with:
+          image-ref: local-scan-image:latest
           format: "sarif"
           output: "trivy-results.sarif"
           severity: "CRITICAL,HIGH,MEDIUM"
@@ -139,10 +154,19 @@ jobs:
         with:
           sarif_file: "trivy-results.sarif"
 
-      - name: Run Trivy vulnerability scanner (summary)
+      - name: Run Trivy vulnerability scanner summary (pushed image)
         uses: aquasecurity/trivy-action@0.28.0
+        if: github.event_name != 'pull_request'
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ github.repository }}:${{ github.sha }}
+          image-ref: ${{ env.REGISTRY }}/${{ github.repository }}@${{ steps.build.outputs.digest }}
+          format: "table"
+          severity: "CRITICAL,HIGH"
+
+      - name: Run Trivy vulnerability scanner summary (local image for PR)
+        uses: aquasecurity/trivy-action@0.28.0
+        if: github.event_name == 'pull_request'
+        with:
+          image-ref: local-scan-image:latest
           format: "table"
           severity: "CRITICAL,HIGH"
 
@@ -170,8 +194,9 @@ jobs:
       - name: Pull image for testing
         run: |
           if [ "${{ github.event_name }}" != "pull_request" ]; then
-            docker pull ${{ env.REGISTRY }}/${{ github.repository }}:${{ github.sha }}
-            docker tag ${{ env.REGISTRY }}/${{ github.repository }}:${{ github.sha }} test-image:latest
+            # Use the digest from the build step for reliable image reference
+            docker pull ${{ env.REGISTRY }}/${{ github.repository }}@${{ needs.build-and-scan.outputs.image-digest }}
+            docker tag ${{ env.REGISTRY }}/${{ github.repository }}@${{ needs.build-and-scan.outputs.image-digest }} test-image:latest
           else
             # For PR, build locally for testing
             docker build -t test-image:latest .
