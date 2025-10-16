@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 export interface ClaudeCompletionRequest {
   readonly model: string;
   readonly prompt: string;
-  readonly max_tokens: number;
+  readonly max_tokens?: number; // Optional - Azure OpenAI will use model defaults if not specified
   readonly temperature?: number;
   readonly top_p?: number;
   readonly top_k?: number;
@@ -13,16 +13,22 @@ export interface ClaudeCompletionRequest {
   readonly stream?: boolean;
 }
 
+// Claude content block for rich content
+export interface ClaudeContentBlock {
+  readonly type: 'text';
+  readonly text: string;
+}
+
 // Claude Chat Completions Request Types (modern format)
 export interface ClaudeChatMessage {
   readonly role: 'user' | 'assistant' | 'system';
-  readonly content: string;
+  readonly content: string | readonly ClaudeContentBlock[];
 }
 
 export interface ClaudeChatCompletionRequest {
   readonly model: string;
   readonly messages: readonly ClaudeChatMessage[];
-  readonly max_tokens: number;
+  readonly max_tokens?: number; // Optional - Azure OpenAI will use model defaults if not specified
   readonly temperature?: number;
   readonly top_p?: number;
   readonly top_k?: number;
@@ -44,7 +50,7 @@ export interface AzureOpenAIMessage {
 export interface AzureOpenAIRequest {
   readonly model: string;
   readonly messages: readonly AzureOpenAIMessage[];
-  readonly max_tokens: number;
+  readonly max_completion_tokens?: number; // Optional for Chat Completions API
   readonly temperature?: number;
   readonly top_p?: number;
   readonly stop?: readonly string[];
@@ -75,7 +81,7 @@ const baseRequestSchema = {
 
   max_tokens: Joi.number()
     .integer()
-    .required()
+    .optional() // Make it optional - Azure OpenAI will use model defaults if not specified
     .min(1)
     .max(131072) // 128K tokens for GPT-5-Codex
     .messages({
@@ -129,6 +135,19 @@ const claudeCompletionSchema = Joi.object({
   .required()
   .options({ stripUnknown: true, abortEarly: false });
 
+// Content block schema for Claude API format
+const contentBlockSchema = Joi.object({
+  type: Joi.string().valid('text').required(),
+  text: Joi.string()
+    .required()
+    .min(1)
+    .max(8 * 1024 * 1024) // 8MB limit per text block
+    .messages({
+      'string.min': 'Text content must not be empty',
+      'string.max': 'Text content exceeds maximum length',
+    }),
+});
+
 // Modern chat completions format schema
 const claudeChatCompletionSchema = Joi.object({
   ...baseRequestSchema,
@@ -136,14 +155,27 @@ const claudeChatCompletionSchema = Joi.object({
     .items(
       Joi.object({
         role: Joi.string().valid('user', 'assistant', 'system').required(),
-        content: Joi.string()
-          .required()
-          .min(1)
-          .max(8 * 1024 * 1024) // 8MB limit per message
-          .messages({
-            'string.min': 'Message content must not be empty',
-            'string.max': 'Message content exceeds maximum length',
-          }),
+        content: Joi.alternatives()
+          .try(
+            // String format (simple text)
+            Joi.string()
+              .min(1)
+              .max(8 * 1024 * 1024) // 8MB limit per message
+              .messages({
+                'string.min': 'Message content must not be empty',
+                'string.max': 'Message content exceeds maximum length',
+              }),
+            // Array format (content blocks)
+            Joi.array()
+              .items(contentBlockSchema)
+              .min(1)
+              .max(20) // Reasonable limit on content blocks
+              .messages({
+                'array.min': 'At least one content block is required',
+                'array.max': 'Too many content blocks in message',
+              })
+          )
+          .required(),
       })
     )
     .required()
@@ -190,6 +222,18 @@ function sanitizeString(input: string): string {
   return input.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
 }
 
+// Content conversion helper
+function convertContentToString(
+  content: string | readonly ClaudeContentBlock[]
+): string {
+  if (typeof content === 'string') {
+    return content;
+  }
+
+  // Convert content blocks to a single string
+  return content.map((block) => block.text).join('\n');
+}
+
 function sanitizePrompt(prompt: string): string {
   const sanitized = sanitizeString(prompt);
 
@@ -225,7 +269,8 @@ const isClaudeCompletionPayload = (
   }
 
   return (
-    typeof value.prompt === 'string' && typeof value.max_tokens === 'number'
+    typeof value.prompt === 'string' &&
+    (value.max_tokens === undefined || typeof value.max_tokens === 'number')
   );
 };
 
@@ -242,9 +287,16 @@ const isClaudeChatCompletionPayload = (
       (message) =>
         isRecord(message) &&
         typeof message.role === 'string' &&
-        typeof message.content === 'string'
+        (typeof message.content === 'string' ||
+          (Array.isArray(message.content) &&
+            message.content.every(
+              (block) =>
+                isRecord(block) &&
+                block.type === 'text' &&
+                typeof block.text === 'string'
+            )))
     ) &&
-    typeof value.max_tokens === 'number'
+    (value.max_tokens === undefined || typeof value.max_tokens === 'number')
   );
 };
 
@@ -337,10 +389,24 @@ export function validateClaudeRequest(request: unknown): ClaudeRequest {
     const validatedRequest = assertClaudeChatCompletionRequest(
       validationResult.value
     );
-    const sanitizedMessages = validatedRequest.messages.map((message) => ({
-      ...message,
-      content: sanitizePrompt(message.content),
-    }));
+    const sanitizedMessages = validatedRequest.messages.map((message) => {
+      if (typeof message.content === 'string') {
+        return {
+          ...message,
+          content: sanitizePrompt(message.content),
+        };
+      } else {
+        // Handle content blocks
+        const sanitizedBlocks = message.content.map((block) => ({
+          ...block,
+          text: sanitizePrompt(block.text),
+        }));
+        return {
+          ...message,
+          content: sanitizedBlocks,
+        };
+      }
+    });
 
     return {
       ...validatedRequest,
@@ -369,7 +435,7 @@ export function transformClaudeToAzureRequest(
     // Modern chat completions format - use messages directly
     messages = claudeRequest.messages.map((message) => ({
       role: message.role,
-      content: message.content,
+      content: convertContentToString(message.content),
     }));
   }
 
@@ -377,12 +443,18 @@ export function transformClaudeToAzureRequest(
   const azureRequest: AzureOpenAIRequest = {
     model: azureModel,
     messages,
-    max_tokens: claudeRequest.max_tokens,
     user: uuidv4(), // Add user ID for tracking
   };
 
   // Optional parameters - using object spread to maintain type safety
   const optionalParams: Partial<AzureOpenAIRequest> = {};
+
+  // Only include max_completion_tokens if max_tokens was specified in the original request
+  if (claudeRequest.max_tokens !== undefined) {
+    (
+      optionalParams as { max_completion_tokens: number }
+    ).max_completion_tokens = claudeRequest.max_tokens;
+  }
 
   if (claudeRequest.temperature !== undefined) {
     (optionalParams as { temperature: number }).temperature =

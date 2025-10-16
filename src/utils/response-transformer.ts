@@ -1,18 +1,19 @@
 import type {
-  AzureOpenAIResponse,
-  AzureOpenAIStreamResponse,
-  AzureOpenAIError,
-  ClaudeCompletionResponse,
-  ClaudeStreamResponse,
+  OpenAIResponse,
+  OpenAIStreamChunk,
+  OpenAIError,
+  ClaudeResponse,
+  ClaudeStreamChunk,
   ClaudeError,
   ResponseTransformationResult,
   StreamTransformationResult,
   ResponseValidationError,
   ResponseSizeLimits,
-  AzureOpenAIResponseTypeGuard,
-  AzureOpenAIStreamResponseTypeGuard,
-  AzureOpenAIErrorTypeGuard,
+  OpenAIResponseTypeGuard,
+  OpenAIStreamResponseTypeGuard,
+  OpenAIErrorTypeGuard,
 } from '../types/index.js';
+import { ValidationError } from '../errors/index.js';
 
 const DEFAULT_RESPONSE_LIMITS: ResponseSizeLimits = {
   maxResponseSize: 10 * 1024 * 1024, // 10MB
@@ -48,12 +49,13 @@ const sanitizeContent = (content: string | null): string => {
 
 const isValidFinishReason = (
   value: unknown
-): value is 'stop' | 'length' | 'content_filter' | null => {
+): value is 'stop' | 'length' | 'content_filter' | 'tool_calls' | null => {
   return (
     value === null ||
     value === 'stop' ||
     value === 'length' ||
-    value === 'content_filter'
+    value === 'content_filter' ||
+    value === 'tool_calls'
   );
 };
 
@@ -112,9 +114,9 @@ const isValidStreamChoice = (choice: unknown): boolean => {
   );
 };
 
-export const isAzureOpenAIResponse: AzureOpenAIResponseTypeGuard = (
+export const isAzureOpenAIResponse: OpenAIResponseTypeGuard = (
   value: unknown
-): value is AzureOpenAIResponse => {
+): value is OpenAIResponse => {
   if (!isRecord(value)) {
     return false;
   }
@@ -138,9 +140,9 @@ export const isAzureOpenAIResponse: AzureOpenAIResponseTypeGuard = (
   return choices.every(isValidChoice);
 };
 
-export const isAzureOpenAIStreamResponse: AzureOpenAIStreamResponseTypeGuard = (
+export const isAzureOpenAIStreamResponse: OpenAIStreamResponseTypeGuard = (
   value: unknown
-): value is AzureOpenAIStreamResponse => {
+): value is OpenAIStreamChunk => {
   if (!isRecord(value)) {
     return false;
   }
@@ -164,9 +166,9 @@ export const isAzureOpenAIStreamResponse: AzureOpenAIStreamResponseTypeGuard = (
   return choices.every(isValidStreamChoice);
 };
 
-export const isAzureOpenAIError: AzureOpenAIErrorTypeGuard = (
+export const isAzureOpenAIError: OpenAIErrorTypeGuard = (
   value: unknown
-): value is AzureOpenAIError => {
+): value is OpenAIError => {
   if (!isRecord(value)) {
     return false;
   }
@@ -183,15 +185,17 @@ export const isAzureOpenAIError: AzureOpenAIErrorTypeGuard = (
 };
 
 const mapFinishReason = (
-  finishReason: 'stop' | 'length' | 'content_filter' | null
-): 'stop_sequence' | 'max_tokens' | null => {
+  finishReason: 'stop' | 'length' | 'content_filter' | 'tool_calls' | null
+): 'end_turn' | 'max_tokens' | 'tool_use' | null => {
   switch (finishReason) {
     case 'stop':
-      return 'stop_sequence';
+      return 'end_turn';
     case 'length':
       return 'max_tokens';
     case 'content_filter':
-      return 'stop_sequence';
+      return 'end_turn';
+    case 'tool_calls':
+      return 'tool_use';
     default:
       return null;
   }
@@ -205,8 +209,13 @@ const validateResponseSize = (
   const serialized = JSON.stringify(response);
 
   if (serialized.length > limits.maxResponseSize) {
-    throw new Error(
-      `Response size ${serialized.length} exceeds limit ${limits.maxResponseSize} (correlation: ${correlationId})`
+    throw new ValidationError(
+      `Response size ${serialized.length} exceeds limit ${limits.maxResponseSize}`,
+      correlationId,
+      'response_size',
+      serialized.length,
+      true,
+      'response_validation'
     );
   }
 
@@ -215,19 +224,29 @@ const validateResponseSize = (
   }
 
   if (response.choices.length > limits.maxChoicesCount) {
-    throw new Error(
-      `Choices count ${response.choices.length} exceeds limit ${limits.maxChoicesCount}`
+    throw new ValidationError(
+      `Choices count ${response.choices.length} exceeds limit ${limits.maxChoicesCount}`,
+      correlationId,
+      'choices_count',
+      response.choices.length,
+      true,
+      'response_validation'
     );
   }
 
   for (const choice of response.choices) {
-    const content = choice.message.content;
+    const content = choice.message?.content;
     if (
       typeof content === 'string' &&
       content.length > limits.maxCompletionLength
     ) {
-      throw new Error(
-        `Completion length ${content.length} exceeds limit ${limits.maxCompletionLength}`
+      throw new ValidationError(
+        `Completion length ${content.length} exceeds limit ${limits.maxCompletionLength}`,
+        correlationId,
+        'completion_length',
+        content.length,
+        true,
+        'response_validation'
       );
     }
   }
@@ -251,6 +270,97 @@ class ResponseValidationException
   }
 }
 
+export function transformAzureResponseToOpenAI(
+  azureResponse: unknown,
+  statusCode: number,
+  correlationId: string,
+  limits: ResponseSizeLimits = DEFAULT_RESPONSE_LIMITS
+): {
+  openAIResponse: OpenAIResponse | OpenAIError;
+  statusCode: number;
+  headers: Record<string, string>;
+} {
+  try {
+    validateResponseSize(azureResponse, limits, correlationId);
+
+    if (isAzureOpenAIError(azureResponse)) {
+      const openAIError: OpenAIError = {
+        error: {
+          message: sanitizeContent(azureResponse.error.message),
+          type: azureResponse.error.type,
+          code: azureResponse.error.code,
+        },
+      };
+
+      return {
+        openAIResponse: openAIError,
+        statusCode,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Correlation-ID': correlationId,
+        },
+      };
+    }
+
+    if (!isAzureOpenAIResponse(azureResponse)) {
+      throw new ValidationError(
+        'Invalid Azure OpenAI response structure',
+        correlationId,
+        'response_structure',
+        azureResponse,
+        true,
+        'azure_response_validation'
+      );
+    }
+
+    // For OpenAI format, we can return the Azure response directly since it's already in OpenAI format
+    const openAIResponse: OpenAIResponse = {
+      id: azureResponse.id,
+      object: azureResponse.object,
+      created: azureResponse.created,
+      model: azureResponse.model,
+      choices: azureResponse.choices.map((choice) => ({
+        index: choice.index,
+        message: choice.message,
+        finish_reason: choice.finish_reason,
+      })),
+      usage: azureResponse.usage,
+      system_fingerprint: azureResponse.system_fingerprint,
+    };
+
+    return {
+      openAIResponse,
+      statusCode: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Correlation-ID': correlationId,
+      },
+    };
+  } catch (error) {
+    const failure =
+      error instanceof Error
+        ? error
+        : new Error('Unknown transformation error');
+
+    const openAIError: OpenAIError = {
+      error: {
+        message: 'Failed to process response',
+        type: 'api_error',
+      },
+    };
+
+    return {
+      openAIResponse: openAIError,
+      statusCode: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Correlation-ID': correlationId,
+        'X-Transformation-Error': sanitizeString(failure.message),
+      },
+    };
+  }
+}
+
 export function transformAzureResponseToClaude(
   azureResponse: unknown,
   statusCode: number,
@@ -261,10 +371,31 @@ export function transformAzureResponseToClaude(
     validateResponseSize(azureResponse, limits, correlationId);
 
     if (isAzureOpenAIError(azureResponse)) {
+      const errorType = azureResponse.error.type;
+      let claudeErrorType:
+        | 'invalid_request_error'
+        | 'authentication_error'
+        | 'rate_limit_error'
+        | 'api_error';
+
+      switch (errorType) {
+        case 'invalid_request_error':
+          claudeErrorType = 'invalid_request_error';
+          break;
+        case 'authentication_error':
+          claudeErrorType = 'authentication_error';
+          break;
+        case 'rate_limit_error':
+          claudeErrorType = 'rate_limit_error';
+          break;
+        default:
+          claudeErrorType = 'api_error';
+      }
+
       const claudeError: ClaudeError = {
         type: 'error',
         error: {
-          type: azureResponse.error.type,
+          type: claudeErrorType,
           message: sanitizeContent(azureResponse.error.message),
         },
       };
@@ -280,28 +411,41 @@ export function transformAzureResponseToClaude(
     }
 
     if (!isAzureOpenAIResponse(azureResponse)) {
-      throw new Error('Invalid Azure OpenAI response structure');
+      throw new ValidationError(
+        'Invalid Azure OpenAI response structure',
+        correlationId,
+        'response_structure',
+        azureResponse,
+        true,
+        'azure_response_validation'
+      );
     }
 
     if (azureResponse.choices.length === 0) {
-      throw new Error('No choices found in Azure OpenAI response');
+      throw new ValidationError(
+        'No choices found in Azure OpenAI response',
+        correlationId,
+        'choices_empty',
+        azureResponse.choices,
+        true,
+        'azure_response_validation'
+      );
     }
 
     const firstChoice = azureResponse.choices[0];
-    const completion = sanitizeContent(firstChoice.message.content);
+    const completion = sanitizeContent(firstChoice.message?.content ?? null);
 
-    const claudeResponse: ClaudeCompletionResponse = {
+    const claudeResponse: ClaudeResponse = {
       id: azureResponse.id,
-      type: 'completion',
-      completion,
+      type: 'message',
+      role: 'assistant',
+      content: [{ type: 'text', text: completion }],
       model: 'claude-3-5-sonnet-20241022',
       stop_reason: mapFinishReason(firstChoice.finish_reason),
-      usage: azureResponse.usage
-        ? {
-            input_tokens: azureResponse.usage.prompt_tokens,
-            output_tokens: azureResponse.usage.completion_tokens,
-          }
-        : undefined,
+      usage: {
+        input_tokens: azureResponse.usage?.prompt_tokens ?? 0,
+        output_tokens: azureResponse.usage?.completion_tokens ?? 0,
+      },
     };
 
     return {
@@ -321,7 +465,7 @@ export function transformAzureResponseToClaude(
     const claudeError: ClaudeError = {
       type: 'error',
       error: {
-        type: 'internal_error',
+        type: 'api_error',
         message: 'Failed to process response',
       },
     };
@@ -347,43 +491,55 @@ export function transformAzureStreamResponseToClaude(
     return {
       isComplete: true,
       claudeStreamResponse: {
-        type: 'completion',
-        completion: '',
-        stop_reason: 'stop_sequence',
-        model: 'claude-3-5-sonnet-20241022',
-        log_id: correlationId,
+        type: 'message_stop',
       },
     };
   }
 
   if (azureStreamResponse.choices.length === 0) {
-    throw new Error(
-      `No choices found in Azure OpenAI stream response (correlation ${correlationId})`
+    throw new ValidationError(
+      'No choices found in Azure OpenAI stream response',
+      correlationId,
+      'stream_choices_empty',
+      azureStreamResponse.choices,
+      true,
+      'azure_stream_validation'
     );
   }
 
   const firstChoice = azureStreamResponse.choices[0];
 
-  const content = sanitizeContent(firstChoice.delta.content ?? null);
+  const content = sanitizeContent(firstChoice.delta?.content ?? null);
   const isComplete = firstChoice.finish_reason !== null;
 
-  const claudeStreamResponse: ClaudeStreamResponse = {
-    type: 'completion',
-    completion: content,
-    model: 'claude-3-5-sonnet-20241022',
-    stop_reason: mapFinishReason(firstChoice.finish_reason),
+  if (isComplete) {
+    const claudeStreamResponse: ClaudeStreamChunk = {
+      type: 'message_stop',
+    };
+    return {
+      claudeStreamResponse,
+      isComplete: true,
+    };
+  }
+
+  const claudeStreamResponse: ClaudeStreamChunk = {
+    type: 'content_block_delta',
+    delta: {
+      type: 'text_delta',
+      text: content,
+    },
   };
 
   return {
     claudeStreamResponse,
-    isComplete,
+    isComplete: false,
   };
 }
 
 export function validateResponseIntegrity(
   response: unknown,
   correlationId: string
-): response is AzureOpenAIResponse | AzureOpenAIError {
+): response is OpenAIResponse | OpenAIError {
   if (!isRecord(response)) {
     throw new ResponseValidationException(
       'Response is not an object',
@@ -447,7 +603,7 @@ export function createDefensiveResponseHandler(
       const fallbackError: ClaudeError = {
         type: 'error',
         error: {
-          type: 'service_unavailable',
+          type: 'api_error',
           message:
             'The service is temporarily unavailable. Please try again later.',
         },
@@ -466,7 +622,101 @@ export function createDefensiveResponseHandler(
   };
 }
 
-export function extractErrorInfo(azureError: AzureOpenAIError): {
+export function transformAzureResponseByFormat(
+  azureResponse: unknown,
+  statusCode: number,
+  correlationId: string,
+  responseFormat: 'claude' | 'openai',
+  limits: ResponseSizeLimits = DEFAULT_RESPONSE_LIMITS
+): {
+  response: ClaudeResponse | ClaudeError | OpenAIResponse | OpenAIError;
+  statusCode: number;
+  headers: Record<string, string>;
+  format: 'claude' | 'openai';
+} {
+  if (responseFormat === 'openai') {
+    const result = transformAzureResponseToOpenAI(
+      azureResponse,
+      statusCode,
+      correlationId,
+      limits
+    );
+    return {
+      response: result.openAIResponse,
+      statusCode: result.statusCode,
+      headers: result.headers,
+      format: 'openai',
+    };
+  } else {
+    const result = transformAzureResponseToClaude(
+      azureResponse,
+      statusCode,
+      correlationId,
+      limits
+    );
+    return {
+      response: result.claudeResponse,
+      statusCode: result.statusCode,
+      headers: result.headers,
+      format: 'claude',
+    };
+  }
+}
+
+export function createErrorResponseByFormat(
+  errorType:
+    | 'invalid_request_error'
+    | 'authentication_error'
+    | 'rate_limit_error'
+    | 'api_error',
+  message: string,
+  statusCode: number,
+  correlationId: string,
+  responseFormat: 'claude' | 'openai'
+): {
+  response: ClaudeError | OpenAIError;
+  statusCode: number;
+  headers: Record<string, string>;
+  format: 'claude' | 'openai';
+} {
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-Correlation-ID': correlationId,
+  };
+
+  if (responseFormat === 'openai') {
+    const openAIError: OpenAIError = {
+      error: {
+        message: sanitizeContent(message),
+        type: errorType,
+      },
+    };
+
+    return {
+      response: openAIError,
+      statusCode,
+      headers,
+      format: 'openai',
+    };
+  } else {
+    const claudeError: ClaudeError = {
+      type: 'error',
+      error: {
+        type: errorType,
+        message: sanitizeContent(message),
+      },
+    };
+
+    return {
+      response: claudeError,
+      statusCode,
+      headers,
+      format: 'claude',
+    };
+  }
+}
+
+export function extractErrorInfo(azureError: OpenAIError): {
   type: string;
   message: string;
   statusCode: number;
