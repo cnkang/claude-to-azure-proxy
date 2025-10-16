@@ -12,6 +12,75 @@ export interface ErrorContext {
 }
 
 /**
+ * Sanitizes error messages to prevent sensitive information leakage
+ */
+export function sanitizeErrorMessage(message: string): string {
+  if (message.length === 0) {
+    return message;
+  }
+
+  let sanitized = message;
+
+  const labelValuePatterns: ReadonlyArray<{
+    readonly pattern: RegExp;
+    readonly shouldRedact?: (value: string) => boolean;
+    readonly replacement?: string;
+  }> = [
+    {
+      pattern: /(api[_-]?key[s]?(?:[:=]\s*|\s+))([A-Za-z0-9_-]{8,})/gi,
+      shouldRedact: (value: string): boolean => /\d/.test(value),
+    },
+    {
+      pattern: /(token[s]?(?:[:=]\s*|\s+))([A-Za-z0-9._-]{8,})/gi,
+      shouldRedact: (value: string): boolean => /\d/.test(value),
+    },
+    {
+      pattern: /(bearer\s+)([A-Za-z0-9._-]{8,})/gi,
+      replacement: '[TOKEN_REDACTED]'
+    },
+    {
+      pattern: /(password[s]?(?:[:=]\s*|\s+))([^\s]{4,})/gi,
+    },
+    {
+      pattern: /(secret[s]?(?:[:=]\s*|\s+))([^\s]{4,})/gi,
+    },
+  ];
+
+  for (const { pattern, shouldRedact, replacement } of labelValuePatterns) {
+    sanitized = sanitized.replace(
+      pattern,
+      (match: string, prefix: string, value: string): string => {
+        if (shouldRedact === undefined || shouldRedact(value)) {
+          const token = replacement ?? '[REDACTED]';
+          return `${prefix}${token}`;
+        }
+
+        return match;
+      }
+    );
+  }
+
+  const standalonePatterns: ReadonlyArray<[RegExp, string]> = [
+    // Standalone key formats
+    [/(sk-[A-Za-z0-9_-]{16,})/gi, '[REDACTED]'],
+    // Azure-specific endpoints
+    [/(https?:\/\/[^\s]*\.openai\.azure\.com[^\s]*)/gi, '[REDACTED]'],
+    // Generic URLs
+    [/(https?:\/\/[^\s]+)/gi, '[REDACTED]'],
+    // Email addresses
+    [/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/gi, '[EMAIL_REDACTED]'],
+    // Long opaque tokens
+    [/\b[A-Za-z0-9]{20,}\b/g, '[REDACTED]'],
+  ];
+
+  for (const [pattern, replacement] of standalonePatterns) {
+    sanitized = sanitized.replace(pattern, replacement);
+  }
+
+  return sanitized;
+}
+
+/**
  * Base error class for all application errors
  */
 export abstract class BaseError extends Error {
@@ -29,7 +98,8 @@ export abstract class BaseError extends Error {
     operation?: string,
     metadata?: Record<string, unknown>
   ) {
-    super(message);
+    // Sanitize the message before calling super
+    super(sanitizeErrorMessage(message));
 
     // Maintain proper prototype chain
     Object.setPrototypeOf(this, new.target.prototype);
@@ -181,10 +251,18 @@ export class ValidationError extends BaseError {
     isOperational: boolean = true,
     operation?: string
   ) {
-    super(message, 400, 'VALIDATION_ERROR', correlationId, isOperational, operation, {
-      field,
-      value,
-    });
+    super(
+      message,
+      400,
+      'VALIDATION_ERROR',
+      correlationId,
+      isOperational,
+      operation,
+      {
+        field,
+        value,
+      }
+    );
     this.field = field;
     this.value = value;
   }
@@ -506,4 +584,67 @@ export class ErrorFactory {
       operation
     );
   }
+}
+
+/**
+ * Creates a standardized error response for client consumption
+ */
+export function createErrorResponse(
+  error: BaseError,
+  includeStack: boolean = false
+): Record<string, unknown> {
+  const response = error.toClientError();
+  
+  if (includeStack && process.env.NODE_ENV === 'development') {
+    return {
+      ...response,
+      stack: error.stack,
+    };
+  }
+  
+  return response;
+}
+
+/**
+ * Determines if an error should be logged as an error or warning
+ */
+export function getErrorLogLevel(error: BaseError): 'error' | 'warn' {
+  // Non-operational errors are always logged as errors
+  if (!error.isOperational) {
+    return 'error';
+  }
+  
+  // Client errors (4xx) are warnings, server errors (5xx) are errors
+  return error.statusCode >= 500 ? 'error' : 'warn';
+}
+
+/**
+ * Creates correlation ID for error tracking
+ */
+export function createCorrelationId(): string {
+  return `err-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+}
+
+/**
+ * Type guard to check if an error has a correlation ID
+ */
+export function hasCorrelationId(error: unknown): error is { context: { correlationId: string } } {
+  if (typeof error !== 'object' || error === null) {
+    return false;
+  }
+  
+  if (!('context' in error)) {
+    return false;
+  }
+  
+  const errorWithContext = error as { context: unknown };
+  if (typeof errorWithContext.context !== 'object' || errorWithContext.context === null) {
+    return false;
+  }
+  
+  const context = errorWithContext.context as Record<string, unknown>;
+  return (
+    'correlationId' in context &&
+    typeof context.correlationId === 'string'
+  );
 }
