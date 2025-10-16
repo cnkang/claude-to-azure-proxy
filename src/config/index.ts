@@ -27,9 +27,16 @@ import type {
   ValidationResult,
 } from 'joi';
 import { config as dotenvConfig } from 'dotenv';
+import { ConfigurationError } from '../errors/index.js';
 
-// Load environment variables from .env file
-dotenvConfig();
+const shouldLoadDotenv =
+  process.env.NODE_ENV !== 'test' &&
+  process.env.VITEST === undefined &&
+  process.env.VITEST_WORKER_ID === undefined;
+
+if (shouldLoadDotenv) {
+  dotenvConfig();
+}
 
 /**
  * Configuration interface defining the structure of validated configuration.
@@ -97,6 +104,50 @@ export interface Config {
   AZURE_OPENAI_MODEL: string;
 
   /**
+   * Azure OpenAI API version for v1 Responses API (optional).
+   *
+   * The API version to use for Azure OpenAI v1 Responses API calls.
+   * Only required for preview features. GA v1 API doesn't require api-version.
+   *
+   * @default undefined (not required for GA v1 API)
+   * @example "preview" for preview features
+   */
+  AZURE_OPENAI_API_VERSION?: string;
+
+  /**
+   * Request timeout in milliseconds for Azure OpenAI API calls.
+   *
+   * Maximum time to wait for Azure OpenAI API responses before timing out.
+   * Should be set based on expected response times and reasoning complexity.
+   *
+   * @default 60000
+   * @example 60000
+   */
+  AZURE_OPENAI_TIMEOUT: number;
+
+  /**
+   * Maximum number of retry attempts for failed Azure OpenAI API calls.
+   *
+   * Number of times to retry failed requests before giving up.
+   * Uses exponential backoff with jitter for retry delays.
+   *
+   * @default 3
+   * @example 3
+   */
+  AZURE_OPENAI_MAX_RETRIES: number;
+
+  /**
+   * Default reasoning effort level for requests.
+   *
+   * The default reasoning effort to use when not specified in requests.
+   * Can be overridden by intelligent analysis or client specifications.
+   *
+   * @default "medium"
+   * @example "minimal" | "low" | "medium" | "high"
+   */
+  DEFAULT_REASONING_EFFORT: 'minimal' | 'low' | 'medium' | 'high';
+
+  /**
    * Server port number for HTTP connections.
    *
    * The port on which the proxy server will listen for incoming requests.
@@ -152,6 +203,37 @@ const configSchema = Joi.object<Config>({
     .required()
     .description('Azure OpenAI model deployment name'),
 
+  // Optional Azure OpenAI API version (only needed for preview features)
+  AZURE_OPENAI_API_VERSION: Joi.string()
+    .min(1)
+    .max(50)
+    .optional()
+    .description(
+      'Azure OpenAI API version for v1 Responses API (optional, only for preview features)'
+    ),
+
+  // Optional timeout with default value and range validation
+  AZURE_OPENAI_TIMEOUT: Joi.number()
+    .integer()
+    .min(5000)
+    .max(300000)
+    .default(60000)
+    .description('Request timeout in milliseconds (default: 60000)'),
+
+  // Optional max retries with default value and range validation
+  AZURE_OPENAI_MAX_RETRIES: Joi.number()
+    .integer()
+    .min(0)
+    .max(10)
+    .default(3)
+    .description('Maximum retry attempts (default: 3)'),
+
+  // Optional default reasoning effort with validation
+  DEFAULT_REASONING_EFFORT: Joi.string()
+    .valid('minimal', 'low', 'medium', 'high')
+    .default('medium')
+    .description('Default reasoning effort level'),
+
   // Optional port with default value and range validation
   PORT: Joi.number()
     .integer()
@@ -179,17 +261,23 @@ function createConfig(): Readonly<Config> {
     AZURE_OPENAI_ENDPOINT: process.env.AZURE_OPENAI_ENDPOINT,
     AZURE_OPENAI_API_KEY: process.env.AZURE_OPENAI_API_KEY,
     AZURE_OPENAI_MODEL: process.env.AZURE_OPENAI_MODEL,
+    AZURE_OPENAI_API_VERSION: process.env.AZURE_OPENAI_API_VERSION,
+    AZURE_OPENAI_TIMEOUT: process.env.AZURE_OPENAI_TIMEOUT,
+    AZURE_OPENAI_MAX_RETRIES: process.env.AZURE_OPENAI_MAX_RETRIES,
+    DEFAULT_REASONING_EFFORT: process.env.DEFAULT_REASONING_EFFORT,
     PORT: process.env.PORT,
     NODE_ENV: process.env.NODE_ENV,
   };
 
   // Validate against schema
-  const validationResult: ValidationResult<Config> =
-    configSchema.validate(envVars, {
+  const validationResult: ValidationResult<Config> = configSchema.validate(
+    envVars,
+    {
       abortEarly: false, // Collect all validation errors
       allowUnknown: false, // Reject unknown environment variables
       stripUnknown: false,
-    });
+    }
+  );
 
   const validationError: ValidationError | undefined = validationResult.error;
   const validatedValueRaw: unknown = validationResult.value;
@@ -200,9 +288,8 @@ function createConfig(): Readonly<Config> {
       validationError.details;
     const errorMessages: string[] = [];
     for (const detail of errorDetails) {
-      const key = detail.path[0];
-      const message = detail.message;
-      const context = detail.context;
+      const { path, message, context } = detail;
+      const key = path[0];
       const hasContextValue =
         context?.value !== undefined && context.value !== null;
 
@@ -225,15 +312,27 @@ function createConfig(): Readonly<Config> {
       '  - AZURE_OPENAI_MODEL: Azure OpenAI model deployment name (alphanumeric, hyphens, underscores)',
       '',
       'Optional environment variables:',
+      '  - AZURE_OPENAI_API_VERSION: API version (optional, only for preview features)',
+      '  - AZURE_OPENAI_TIMEOUT: Request timeout in ms (5000-300000, default: 60000)',
+      '  - AZURE_OPENAI_MAX_RETRIES: Max retry attempts (0-10, default: 3)',
+      '  - DEFAULT_REASONING_EFFORT: Default reasoning effort (minimal|low|medium|high, default: medium)',
       '  - PORT: Server port number (1024-65535, default: 8080)',
       '  - NODE_ENV: Node.js environment (development|production|test, default: production)',
     ].join('\n');
 
-    throw new Error(errorMessage);
+    throw new ConfigurationError(
+      errorMessage,
+      'config-validation',
+      'configuration_validation'
+    );
   }
 
   if (validatedValueRaw === undefined) {
-    throw new Error('Configuration validation produced no value');
+    throw new ConfigurationError(
+      'Configuration validation produced no value',
+      'config-validation',
+      'configuration_validation'
+    );
   }
 
   assertIsConfig(validatedValueRaw);
@@ -246,6 +345,10 @@ function createConfig(): Readonly<Config> {
 export interface SanitizedConfig {
   readonly AZURE_OPENAI_ENDPOINT: string;
   readonly AZURE_OPENAI_MODEL: string;
+  readonly AZURE_OPENAI_API_VERSION?: string;
+  readonly AZURE_OPENAI_TIMEOUT: number;
+  readonly AZURE_OPENAI_MAX_RETRIES: number;
+  readonly DEFAULT_REASONING_EFFORT: 'minimal' | 'low' | 'medium' | 'high';
   readonly PORT: number;
   readonly NODE_ENV: 'development' | 'production' | 'test';
   readonly PROXY_API_KEY: '[REDACTED]';
@@ -254,41 +357,88 @@ export interface SanitizedConfig {
 
 function assertIsConfig(value: unknown): asserts value is Config {
   if (typeof value !== 'object' || value === null) {
-    throw new Error('Configuration value is not an object');
+    throw new ConfigurationError(
+      'Configuration value is not an object',
+      'config-validation',
+      'configuration_validation'
+    );
   }
 
   const candidate = value as { [K in keyof Config]?: unknown };
 
   if (typeof candidate.PROXY_API_KEY !== 'string') {
-    throw new Error(
-      'Configuration key PROXY_API_KEY is missing or not a string'
+    throw new ConfigurationError(
+      'Configuration key PROXY_API_KEY is missing or not a string',
+      'config-validation',
+      'configuration_validation'
     );
   }
 
   if (typeof candidate.AZURE_OPENAI_ENDPOINT !== 'string') {
-    throw new Error(
-      'Configuration key AZURE_OPENAI_ENDPOINT is missing or not a string'
+    throw new ConfigurationError(
+      'Configuration key AZURE_OPENAI_ENDPOINT is missing or not a string',
+      'config-validation',
+      'configuration_validation'
     );
   }
 
   if (typeof candidate.AZURE_OPENAI_API_KEY !== 'string') {
-    throw new Error(
-      'Configuration key AZURE_OPENAI_API_KEY is missing or not a string'
+    throw new ConfigurationError(
+      'Configuration key AZURE_OPENAI_API_KEY is missing or not a string',
+      'config-validation',
+      'configuration_validation'
     );
   }
 
   if (typeof candidate.AZURE_OPENAI_MODEL !== 'string') {
-    throw new Error(
-      'Configuration key AZURE_OPENAI_MODEL is missing or not a string'
+    throw new ConfigurationError(
+      'Configuration key AZURE_OPENAI_MODEL is missing or not a string',
+      'config-validation',
+      'configuration_validation'
     );
   }
 
   if (typeof candidate.PORT !== 'number') {
-    throw new Error('Configuration key PORT is missing or not a number');
+    throw new ConfigurationError(
+      'Configuration key PORT is missing or not a number',
+      'config-validation',
+      'configuration_validation'
+    );
   }
 
   if (typeof candidate.NODE_ENV !== 'string') {
-    throw new Error('Configuration key NODE_ENV is missing or not a string');
+    throw new ConfigurationError(
+      'Configuration key NODE_ENV is missing or not a string',
+      'config-validation',
+      'configuration_validation'
+    );
+  }
+
+  if (
+    candidate.AZURE_OPENAI_API_VERSION !== undefined &&
+    typeof candidate.AZURE_OPENAI_API_VERSION !== 'string'
+  ) {
+    throw new Error(
+      'Configuration key AZURE_OPENAI_API_VERSION must be a string when provided'
+    );
+  }
+
+  if (typeof candidate.AZURE_OPENAI_TIMEOUT !== 'number') {
+    throw new Error(
+      'Configuration key AZURE_OPENAI_TIMEOUT is missing or not a number'
+    );
+  }
+
+  if (typeof candidate.AZURE_OPENAI_MAX_RETRIES !== 'number') {
+    throw new Error(
+      'Configuration key AZURE_OPENAI_MAX_RETRIES is missing or not a number'
+    );
+  }
+
+  if (typeof candidate.DEFAULT_REASONING_EFFORT !== 'string') {
+    throw new Error(
+      'Configuration key DEFAULT_REASONING_EFFORT is missing or not a string'
+    );
   }
 }
 
@@ -296,6 +446,10 @@ function sanitizeConfig(value: Readonly<Config>): SanitizedConfig {
   return {
     AZURE_OPENAI_ENDPOINT: value.AZURE_OPENAI_ENDPOINT,
     AZURE_OPENAI_MODEL: value.AZURE_OPENAI_MODEL,
+    AZURE_OPENAI_API_VERSION: value.AZURE_OPENAI_API_VERSION,
+    AZURE_OPENAI_TIMEOUT: value.AZURE_OPENAI_TIMEOUT,
+    AZURE_OPENAI_MAX_RETRIES: value.AZURE_OPENAI_MAX_RETRIES,
+    DEFAULT_REASONING_EFFORT: value.DEFAULT_REASONING_EFFORT,
     PORT: value.PORT,
     NODE_ENV: value.NODE_ENV,
     PROXY_API_KEY: '[REDACTED]',
@@ -327,5 +481,135 @@ const configurationBootstrap: {
 })();
 
 export const sanitizedConfig = configurationBootstrap.sanitized!;
+
+/**
+ * Creates an AzureOpenAIConfig from the validated configuration.
+ *
+ * @param config - Validated configuration object
+ * @returns Azure OpenAI client configuration
+ */
+export function createAzureOpenAIConfig(
+  config: Readonly<Config>
+): import('../types/index.js').AzureOpenAIConfig {
+  // Ensure endpoint ends with /openai/v1/
+  let baseURL = config.AZURE_OPENAI_ENDPOINT;
+  if (!baseURL.endsWith('/')) {
+    baseURL += '/';
+  }
+  if (!baseURL.endsWith('openai/v1/')) {
+    baseURL += 'openai/v1/';
+  }
+
+  return {
+    baseURL,
+    apiKey: config.AZURE_OPENAI_API_KEY,
+    ...(config.AZURE_OPENAI_API_VERSION !== undefined && {
+      apiVersion: config.AZURE_OPENAI_API_VERSION,
+    }),
+    deployment: config.AZURE_OPENAI_MODEL,
+    timeout: config.AZURE_OPENAI_TIMEOUT,
+    maxRetries: config.AZURE_OPENAI_MAX_RETRIES,
+  };
+}
+
+/**
+ * Type guard to validate if a value is a valid Config object
+ */
+export function isValidConfig(value: unknown): value is Config {
+  try {
+    assertIsConfig(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Validates environment variable value with proper type checking
+ */
+export function validateEnvironmentVariable(
+  name: string,
+  value: string | undefined,
+  required: boolean = true
+): string | undefined {
+  if (required && (value === undefined || value === '')) {
+    throw new Error(`Required environment variable ${name} is missing or empty`);
+  }
+  
+  if (value === undefined || value === '') {
+    return undefined;
+  }
+  
+  return value.trim();
+}
+
+/**
+ * Validates numeric environment variable with range checking
+ */
+export function validateNumericEnvironmentVariable(
+  name: string,
+  value: string | undefined,
+  min?: number,
+  max?: number,
+  defaultValue?: number
+): number {
+  if (value === undefined || value === '') {
+    if (defaultValue !== undefined) {
+      return defaultValue;
+    }
+    throw new Error(`Required numeric environment variable ${name} is missing`);
+  }
+  
+  const numericValue = Number(value);
+  if (Number.isNaN(numericValue)) {
+    throw new Error(`Environment variable ${name} must be a valid number, got: ${value}`);
+  }
+  
+  if (min !== undefined && numericValue < min) {
+    throw new Error(`Environment variable ${name} must be >= ${min}, got: ${numericValue}`);
+  }
+  
+  if (max !== undefined && numericValue > max) {
+    throw new Error(`Environment variable ${name} must be <= ${max}, got: ${numericValue}`);
+  }
+  
+  return numericValue;
+}
+
+/**
+ * Creates a configuration validation summary for debugging
+ */
+export function getConfigurationSummary(): Record<string, unknown> {
+  const { config } = configurationBootstrap;
+  if (config === null) {
+    return { error: 'Configuration not loaded' };
+  }
+  
+  const {
+    NODE_ENV,
+    PORT,
+    PROXY_API_KEY,
+    AZURE_OPENAI_ENDPOINT,
+    AZURE_OPENAI_API_KEY,
+    AZURE_OPENAI_MODEL,
+    AZURE_OPENAI_API_VERSION,
+    AZURE_OPENAI_TIMEOUT,
+    AZURE_OPENAI_MAX_RETRIES,
+    DEFAULT_REASONING_EFFORT,
+  } = config;
+  
+  return {
+    nodeEnv: NODE_ENV,
+    port: PORT,
+    hasProxyApiKey: Boolean(PROXY_API_KEY),
+    hasAzureEndpoint: Boolean(AZURE_OPENAI_ENDPOINT),
+    hasAzureApiKey: Boolean(AZURE_OPENAI_API_KEY),
+    azureModel: AZURE_OPENAI_MODEL,
+    azureApiVersion: AZURE_OPENAI_API_VERSION,
+    timeout: AZURE_OPENAI_TIMEOUT,
+    maxRetries: AZURE_OPENAI_MAX_RETRIES,
+    defaultReasoningEffort: DEFAULT_REASONING_EFFORT,
+  };
+}
 
 export default configurationBootstrap.config!;
