@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  claude-proxy:
+    # Docker memory limits
+    mem_limit: 512m
+    mem_reservation: 256m
+    memswap_limit: 512m
+    
+    # Node.js memory optimization
+    environment:
+      # Limit heap size to 384MB (75% of container limit)
+      # Reduce semi-space size for better memory efficiency
+      - NODE_OPTIONS=--max-old-space-size=384 --max-semi-space-size=64
+      
+    # Extended healthcheck timeouts for better reliability
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:' + (process.env.PORT || 8080) + '/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 60s

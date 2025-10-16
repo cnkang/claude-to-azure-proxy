@@ -87,7 +87,8 @@ const checkAzureOpenAI = async (
 // Get memory usage information
 const getMemoryUsage = (): HealthCheckResult['memory'] => {
   const memUsage = process.memoryUsage();
-  const totalMemory = memUsage.heapTotal;
+  // Use RSS (Resident Set Size) as total memory for more accurate percentage
+  const totalMemory = memUsage.rss;
   const usedMemory = memUsage.heapUsed;
 
   return {
@@ -125,20 +126,20 @@ export const healthCheckHandler = (config: Readonly<ServerConfig>) => {
       }
 
       // Determine overall health status
-      const isHealthy = memory.percentage < 90; // Consider unhealthy if memory usage > 90%
+      // Consider unhealthy if memory usage > 85% or Azure OpenAI is disconnected
+      const isHealthy = memory.percentage < 85 && 
+                       (azureOpenAIStatus?.status === 'connected' || azureOpenAIStatus?.status === undefined);
 
       // Get resilience metrics
       const circuitBreakerMetrics = circuitBreakerRegistry.getAllMetrics();
       const retryMetrics = retryStrategyRegistry.getAllMetrics();
       const serviceLevel = gracefulDegradationManager.getCurrentServiceLevel();
-      const systemHealth = await healthMonitor.checkHealth(correlationId);
 
       const healthResult: HealthCheckResult & {
         resilience?: {
           circuitBreakers: typeof circuitBreakerMetrics;
           retryStrategies: typeof retryMetrics;
           serviceLevel: typeof serviceLevel;
-          systemHealth: typeof systemHealth;
         };
       } = {
         status: isHealthy ? 'healthy' : 'unhealthy',
@@ -150,7 +151,6 @@ export const healthCheckHandler = (config: Readonly<ServerConfig>) => {
           circuitBreakers: circuitBreakerMetrics,
           retryStrategies: retryMetrics,
           serviceLevel,
-          systemHealth,
         },
       };
 
