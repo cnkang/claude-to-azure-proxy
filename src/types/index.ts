@@ -21,7 +21,7 @@ export interface ServerConfig {
 export interface AzureOpenAIConfig {
   readonly baseURL: string; // https://RESOURCE-NAME.openai.azure.com/openai/v1/
   readonly apiKey: string;
-  readonly apiVersion?: string; // Optional: "preview" for preview features, not needed for GA v1 API
+  readonly apiVersion?: string; // Optional: "preview" for legacy API, empty/undefined for GA v1 API
   readonly deployment: string; // GPT-5-Codex deployment name
   readonly timeout: number;
   readonly maxRetries: number;

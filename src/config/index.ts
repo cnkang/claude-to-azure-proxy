@@ -104,13 +104,14 @@ export interface Config {
   AZURE_OPENAI_MODEL: string;
 
   /**
-   * Azure OpenAI API version for v1 Responses API (optional).
+   * Azure OpenAI API version for Responses API (optional).
    *
-   * The API version to use for Azure OpenAI v1 Responses API calls.
-   * Only required for preview features. GA v1 API doesn't require api-version.
+   * The API version to use for Azure OpenAI Responses API calls.
+   * - For v1 GA API (recommended): Leave undefined or empty
+   * - For legacy preview API: Set to "preview"
    *
-   * @default undefined (not required for GA v1 API)
-   * @example "preview" for preview features
+   * @default undefined (uses GA v1 API)
+   * @example "preview" for legacy preview API
    */
   AZURE_OPENAI_API_VERSION?: string;
 
@@ -203,13 +204,14 @@ const configSchema = Joi.object<Config>({
     .required()
     .description('Azure OpenAI model deployment name'),
 
-  // Optional Azure OpenAI API version (only needed for preview features)
+  // Optional Azure OpenAI API version (for legacy preview API)
   AZURE_OPENAI_API_VERSION: Joi.string()
     .min(1)
     .max(50)
     .optional()
+    .allow('')
     .description(
-      'Azure OpenAI API version for v1 Responses API (optional, only for preview features)'
+      'Azure OpenAI API version (optional: "preview" for legacy API, empty for GA v1 API)'
     ),
 
   // Optional timeout with default value and range validation
@@ -261,7 +263,10 @@ function createConfig(): Readonly<Config> {
     AZURE_OPENAI_ENDPOINT: process.env.AZURE_OPENAI_ENDPOINT,
     AZURE_OPENAI_API_KEY: process.env.AZURE_OPENAI_API_KEY,
     AZURE_OPENAI_MODEL: process.env.AZURE_OPENAI_MODEL,
-    AZURE_OPENAI_API_VERSION: process.env.AZURE_OPENAI_API_VERSION,
+    // Convert empty string to undefined for optional API version
+    AZURE_OPENAI_API_VERSION: process.env.AZURE_OPENAI_API_VERSION === '' 
+      ? undefined 
+      : process.env.AZURE_OPENAI_API_VERSION,
     AZURE_OPENAI_TIMEOUT: process.env.AZURE_OPENAI_TIMEOUT,
     AZURE_OPENAI_MAX_RETRIES: process.env.AZURE_OPENAI_MAX_RETRIES,
     DEFAULT_REASONING_EFFORT: process.env.DEFAULT_REASONING_EFFORT,
@@ -312,7 +317,7 @@ function createConfig(): Readonly<Config> {
       '  - AZURE_OPENAI_MODEL: Azure OpenAI model deployment name (alphanumeric, hyphens, underscores)',
       '',
       'Optional environment variables:',
-      '  - AZURE_OPENAI_API_VERSION: API version (optional, only for preview features)',
+      '  - AZURE_OPENAI_API_VERSION: API version (optional: "preview" for legacy API, empty for GA)',
       '  - AZURE_OPENAI_TIMEOUT: Request timeout in ms (5000-300000, default: 60000)',
       '  - AZURE_OPENAI_MAX_RETRIES: Max retry attempts (0-10, default: 3)',
       '  - DEFAULT_REASONING_EFFORT: Default reasoning effort (minimal|low|medium|high, default: medium)',
