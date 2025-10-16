@@ -38,6 +38,19 @@ export interface RetryMetrics {
   readonly averageDurationMs: number;
 }
 
+export interface RetryManagerConfig extends Partial<RetryConfig> {
+  /**
+   * Friendly name for metrics and logging.
+   */
+  readonly name?: string;
+
+  /**
+   * Absolute jitter value in milliseconds to apply between attempts.
+   * When provided, overrides jitterFactor if one is not explicitly supplied.
+   */
+  readonly jitterMs?: number;
+}
+
 /**
  * Retry strategy implementation with exponential backoff and jitter
  */
@@ -287,6 +300,52 @@ export class RetryStrategy {
    */
   public getConfig(): RetryConfig {
     return { ...this.config };
+  }
+}
+
+export class RetryManager {
+  private readonly strategy: RetryStrategy;
+
+  constructor(config: RetryManagerConfig = {}) {
+    const { name = 'retry-manager', jitterMs, ...strategyOverrides } = config;
+
+    let strategyConfig: Partial<RetryConfig> = strategyOverrides;
+
+    if (jitterMs !== undefined && strategyOverrides.jitterFactor === undefined) {
+      const baseDelayMs = strategyOverrides.baseDelayMs ?? 1000;
+      const denominator = baseDelayMs > 0 ? baseDelayMs : 1;
+      strategyConfig = {
+        ...strategyOverrides,
+        jitterFactor: Math.max(jitterMs / denominator, 0),
+      };
+    }
+
+    this.strategy = new RetryStrategy(name, strategyConfig);
+  }
+
+  public async executeWithRetry<T>(
+    operation: () => Promise<T>,
+    correlationId: string,
+    operationName?: string
+  ): Promise<T> {
+    const result = await this.strategy.execute(operation, correlationId, operationName);
+
+    if (result.success) {
+      return result.data as T;
+    }
+
+    const error =
+      result.error ??
+      new Error('Retry operation failed after all attempts without error details');
+    throw error;
+  }
+
+  public getMetrics(): RetryMetrics {
+    return this.strategy.getMetrics();
+  }
+
+  public resetMetrics(): void {
+    this.strategy.resetMetrics();
   }
 }
 

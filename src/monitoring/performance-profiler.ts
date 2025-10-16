@@ -636,7 +636,9 @@ const isObject = (value: unknown): value is Record<string, unknown> => {
 };
 
 const getActiveHandles = (): readonly unknown[] => {
-  const getHandles = (process as unknown as { _getActiveHandles?: () => unknown })._getActiveHandles;
+  const getHandles = (
+    process as unknown as { _getActiveHandles?: () => unknown }
+  )._getActiveHandles;
 
   if (typeof getHandles !== 'function') {
     return [];
@@ -651,7 +653,9 @@ const getActiveHandles = (): readonly unknown[] => {
 };
 
 const getActiveRequests = (): readonly unknown[] => {
-  const getRequests = (process as unknown as { _getActiveRequests?: () => unknown })._getActiveRequests;
+  const getRequests = (
+    process as unknown as { _getActiveRequests?: () => unknown }
+  )._getActiveRequests;
 
   if (typeof getRequests !== 'function') {
     return [];

@@ -6,6 +6,7 @@
 import type { AxiosInstance, AxiosStatic } from 'axios';
 import type { HealthCheckResult, ServerConfig } from '../types/index.js';
 import { logger } from '../middleware/logging.js';
+import { ConfigurationError } from '../errors/index.js';
 
 type HealthStatus = HealthCheckResult;
 
@@ -47,10 +48,10 @@ export class HealthMonitor {
     this.config = config;
     this.startTime = Date.now();
     this.cacheTimeout = cacheTimeoutMs;
-    
+
     // Handle Azure OpenAI config
     const azureConfig = config.azureOpenAI;
-    if (azureConfig) {
+    if (typeof azureConfig?.endpoint === 'string' && azureConfig.endpoint.length > 0) {
       this.azureEndpoint = azureConfig.endpoint.trim();
       this.azureApiKey = azureConfig.apiKey.trim();
       this.hasAzureConfig =
@@ -176,12 +177,20 @@ export class HealthMonitor {
           : undefined;
 
       if (!factory) {
-        throw new Error('Axios create factory is unavailable');
+        throw new ConfigurationError(
+          'Axios create factory is unavailable',
+          'health-monitor-init',
+          'health_monitor_initialization'
+        );
       }
 
       const endpointUrl = new URL(this.azureEndpoint);
       if (endpointUrl.protocol !== 'https:') {
-        throw new Error('Azure OpenAI endpoint must use HTTPS');
+        throw new ConfigurationError(
+          'Azure OpenAI endpoint must use HTTPS',
+          'health-monitor-init',
+          'health_monitor_initialization'
+        );
       }
 
       this.axiosInstance = factory({
@@ -262,8 +271,10 @@ export const getHealthMonitor = (config?: ServerConfig): HealthMonitor => {
     healthMonitorInstance = new HealthMonitor(config);
   }
   if (!healthMonitorInstance) {
-    throw new Error(
-      'Health monitor not initialized. Call getHealthMonitor with config first.'
+    throw new ConfigurationError(
+      'Health monitor not initialized. Call getHealthMonitor with config first.',
+      'health-monitor-access',
+      'health_monitor_access'
     );
   }
   return healthMonitorInstance;

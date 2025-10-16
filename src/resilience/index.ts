@@ -17,10 +17,12 @@ export {
 // Retry logic exports
 export {
   RetryStrategy,
+  RetryManager,
   RetryStrategyRegistry,
   retryStrategyRegistry,
   withRetry,
   type RetryConfig,
+  type RetryManagerConfig,
   type RetryAttempt,
   type RetryResult,
   type RetryMetrics,
