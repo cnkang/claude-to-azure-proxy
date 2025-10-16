@@ -29,9 +29,24 @@ export {
   errorLoggingMiddleware,
 } from './logging.js';
 
+// Format detection middleware
+export {
+  formatDetectionMiddleware,
+  hasFormatDetection,
+} from './format-detection.js';
+
+// Reasoning effort middleware
+export {
+  reasoningEffortMiddleware,
+  hasReasoningAnalysis,
+} from './reasoning-effort.js';
+
 // Type exports
 export type {
   AuthenticationRequest,
   AuthenticationError,
   AuthenticationResponse,
 } from '../types/index.js';
+
+export type { RequestWithFormat } from './format-detection.js';
+export type { RequestWithReasoningAnalysis } from './reasoning-effort.js';

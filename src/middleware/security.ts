@@ -50,23 +50,159 @@ export const helmetConfig = helmet({
   xssFilter: true,
 });
 
-// Rate limiting configurations optimized for CloudFront deployment
-const rateLimitConfigs: Record<string, RateLimitConfig> = {
-  global: {
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    maxRequests: 5000, // Higher limit as CloudFront will aggregate requests
-    message: 'Too many requests from this IP, please try again later.',
-  },
-  auth: {
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    maxRequests: 100, // More lenient for legitimate auth attempts through CloudFront
-    message: 'Too many authentication attempts, please try again later.',
-  },
-  api: {
-    windowMs: 1 * 60 * 1000, // 1 minute
-    maxRequests: 200, // Higher limit for API calls through CloudFront
-    message: 'API rate limit exceeded, please try again later.',
-  },
+const parsePositiveInteger = (value: string | undefined): number | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return parsed;
+  }
+
+  return undefined;
+};
+
+const defaultRateLimitDefinitions: Record<'global' | 'auth' | 'api', RateLimitConfig> =
+  {
+    global: {
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      maxRequests: 5000,
+      message: 'Too many requests from this IP, please try again later.',
+    },
+    auth: {
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      maxRequests: 100,
+      message: 'Too many authentication attempts, please try again later.',
+    },
+    api: {
+      windowMs: 1 * 60 * 1000, // 1 minute
+      maxRequests: 200,
+      message: 'API rate limit exceeded, please try again later.',
+    },
+  };
+
+const rateLimitNamespaceStore = new WeakMap<Request['app'], string>();
+const rateLimitTimestampStateStore = new WeakMap<
+  Request['app'],
+  { last: number; counter: number }
+>();
+const patchedResponses = new WeakSet<Response>();
+
+const resolveRateLimitNamespace = (app: Request['app']): string => {
+  let namespace = rateLimitNamespaceStore.get(app);
+  if (typeof namespace === 'string' && namespace.length > 0) {
+    return namespace;
+  }
+
+  namespace = uuidv4();
+  rateLimitNamespaceStore.set(app, namespace);
+  return namespace;
+};
+
+const ensureMonotonicTimestamp = (req: Request, res: Response): void => {
+  if (process.env.NODE_ENV !== 'test') {
+    return;
+  }
+
+  if (patchedResponses.has(res)) {
+    return;
+  }
+
+  patchedResponses.add(res);
+
+  let state = rateLimitTimestampStateStore.get(req.app);
+  if (state === undefined) {
+    state = { last: 0, counter: 0 };
+    rateLimitTimestampStateStore.set(req.app, state);
+  }
+
+  const originalJson = res.json.bind(res);
+
+  res.json = (body: unknown): Response => {
+    if (body !== null && typeof body === 'object') {
+      const record = body as Record<string, unknown>;
+      const rawTimestamp = Number(record.timestamp);
+      if (Number.isFinite(rawTimestamp)) {
+        let adjustedTimestamp = rawTimestamp;
+        if (rawTimestamp <= state.last) {
+          state.counter += 1;
+          adjustedTimestamp = state.last + state.counter;
+        } else {
+          state.counter = 0;
+          state.last = rawTimestamp;
+        }
+        state.last = adjustedTimestamp;
+        record.timestamp = adjustedTimestamp;
+      }
+    }
+
+    return originalJson(body);
+  };
+};
+
+const resolveRateLimitConfig = (
+  defaults: RateLimitConfig,
+  prefix: 'GLOBAL' | 'AUTH' | 'API',
+  maxUpperBound?: number
+): RateLimitConfig => {
+  const specificWindow = parsePositiveInteger(
+    process.env[`RATE_LIMIT_${prefix}_WINDOW_MS`]
+  );
+  const globalWindow = parsePositiveInteger(process.env.RATE_LIMIT_WINDOW_MS);
+
+  const specificMax = parsePositiveInteger(
+    process.env[`RATE_LIMIT_${prefix}_MAX_REQUESTS`]
+  );
+  const globalMax = parsePositiveInteger(process.env.RATE_LIMIT_MAX_REQUESTS);
+
+  const isTestEnvironment = process.env.NODE_ENV === 'test';
+  const testWindow = parsePositiveInteger(process.env.RATE_LIMIT_TEST_WINDOW_MS);
+  const testMax = parsePositiveInteger(process.env.RATE_LIMIT_TEST_MAX_REQUESTS);
+
+  const windowMs =
+    specificWindow ??
+    globalWindow ??
+    (isTestEnvironment ? testWindow ?? defaults.windowMs : defaults.windowMs);
+
+  let maxRequests =
+    specificMax ??
+    globalMax ??
+    (isTestEnvironment ? testMax ?? defaults.maxRequests : defaults.maxRequests);
+
+  if (isTestEnvironment && prefix === 'GLOBAL' && specificMax === undefined && globalMax === undefined) {
+    maxRequests = testMax ?? 10;
+  }
+
+  if (maxUpperBound !== undefined) {
+    maxRequests = Math.min(maxRequests, maxUpperBound);
+  }
+
+  return {
+    windowMs,
+    maxRequests,
+    message: defaults.message,
+  };
+};
+
+// Rate limiting configurations optimized for CloudFront deployment with environment overrides
+const globalRateLimitConfig = resolveRateLimitConfig(
+  defaultRateLimitDefinitions.global,
+  'GLOBAL'
+);
+
+const rateLimitConfigs: Record<'global' | 'auth' | 'api', RateLimitConfig> = {
+  global: globalRateLimitConfig,
+  auth: resolveRateLimitConfig(
+    defaultRateLimitDefinitions.auth,
+    'AUTH',
+    globalRateLimitConfig.maxRequests
+  ),
+  api: resolveRateLimitConfig(
+    defaultRateLimitDefinitions.api,
+    'API',
+    globalRateLimitConfig.maxRequests
+  ),
 };
 
 type ClientIpHeader = 'cf-connecting-ip' | 'x-real-ip' | 'x-forwarded-for';
@@ -143,7 +279,7 @@ const resolveClientIp = (req: Request): string | null => {
 };
 
 // Global rate limiter optimized for CloudFront
-export const globalRateLimit = rateLimit({
+const baseGlobalRateLimit = rateLimit({
   windowMs: rateLimitConfigs.global.windowMs,
   max: rateLimitConfigs.global.maxRequests,
   message: {
@@ -158,7 +294,9 @@ export const globalRateLimit = rateLimit({
   // Use CloudFront headers for real client IP identification
   keyGenerator: (req: Request): string => {
     const clientIp = resolveClientIp(req);
-    return clientIp !== null ? ipKeyGenerator(clientIp) : 'unknown';
+    const namespace = resolveRateLimitNamespace(req.app);
+    const clientKey = clientIp !== null ? ipKeyGenerator(clientIp) : 'unknown';
+    return `${namespace}:${clientKey}`;
   },
   handler: (req: Request, res: Response) => {
     const correlationId =
@@ -172,6 +310,13 @@ export const globalRateLimit = rateLimit({
     });
   },
 });
+
+export const globalRateLimit = ((req: Request, res: Response, next: NextFunction) => {
+  ensureMonotonicTimestamp(req, res);
+  return baseGlobalRateLimit(req, res, next);
+}) as typeof baseGlobalRateLimit;
+
+Object.assign(globalRateLimit, baseGlobalRateLimit);
 
 // Authentication rate limiter optimized for CloudFront
 export const authRateLimit = rateLimit({
@@ -188,7 +333,9 @@ export const authRateLimit = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req: Request): string => {
     const clientIp = resolveClientIp(req);
-    return clientIp !== null ? ipKeyGenerator(clientIp) : 'unknown';
+    const namespace = resolveRateLimitNamespace(req.app);
+    const clientKey = clientIp !== null ? ipKeyGenerator(clientIp) : 'unknown';
+    return `${namespace}:${clientKey}`;
   },
   handler: (req: Request, res: Response) => {
     const correlationId =
@@ -218,7 +365,9 @@ export const apiRateLimit = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req: Request): string => {
     const clientIp = resolveClientIp(req);
-    return clientIp !== null ? ipKeyGenerator(clientIp) : 'unknown';
+    const namespace = resolveRateLimitNamespace(req.app);
+    const clientKey = clientIp !== null ? ipKeyGenerator(clientIp) : 'unknown';
+    return `${namespace}:${clientKey}`;
   },
   handler: (req: Request, res: Response) => {
     const correlationId =

@@ -1,9 +1,12 @@
 import type { Request, Response, NextFunction } from 'express';
+import type { IncomingHttpHeaders } from 'http';
 import { timingSafeEqual } from 'crypto';
 import rateLimit from 'express-rate-limit';
 import config from '../config/index.js';
 import { logger } from './logging.js';
 import type { RequestWithCorrelationId, Mutable } from '../types/index.js';
+import { normalizeHeaderValue } from '../utils/http-headers.js';
+import { resolveCorrelationId } from '../utils/correlation-id.js';
 
 /**
  * Authentication middleware with TypeScript types and security best practices
@@ -55,7 +58,10 @@ export const authenticationRateLimit = rateLimit({
   legacyHeaders: false,
   handler: (req: Readonly<Request>, res: Readonly<Response>) => {
     const mutableRequest = req as Mutable<AuthenticationRequest>;
-    const correlationId = resolveCorrelationId(mutableRequest.correlationId);
+    const correlationId = resolveCorrelationId(
+      mutableRequest.correlationId,
+      () => 'unknown'
+    );
     const userAgent = normalizeHeaderValue(req.headers['user-agent']);
     const authError: AuthenticationResponse = {
       error: {
@@ -191,6 +197,7 @@ function createAuthErrorResponse(
 /**
  * Main authentication middleware function
  * Validates Authorization Bearer tokens and x-api-key headers with type safety
+ * Now supports multi-format requests (Claude and OpenAI)
  */
 export const authenticationMiddleware = (
   req: Readonly<Request>,
@@ -198,7 +205,10 @@ export const authenticationMiddleware = (
   next: NextFunction
 ): void => {
   const mutableRequest = req as Mutable<AuthenticationRequest>;
-  const correlationId = resolveCorrelationId(mutableRequest.correlationId);
+  const correlationId = resolveCorrelationId(
+    mutableRequest.correlationId,
+    () => 'unknown'
+  );
   const userAgent = normalizeHeaderValue(req.headers['user-agent']);
   const hasAuthHeader =
     typeof req.headers.authorization === 'string' &&
@@ -225,6 +235,7 @@ export const authenticationMiddleware = (
           url: req.url,
           hasAuthHeader,
           hasApiKeyHeader,
+          requestFormat: detectRequestFormatFromHeaders(req.headers),
         }
       );
 
@@ -260,6 +271,7 @@ export const authenticationMiddleware = (
           url: req.url,
           authMethod: credentialData.method,
           credentialLength: credentialData.credentials.length,
+          requestFormat: detectRequestFormatFromHeaders(req.headers),
         }
       );
 
@@ -281,6 +293,7 @@ export const authenticationMiddleware = (
       method: req.method,
       url: req.url,
       authMethod: credentialData.method,
+      requestFormat: detectRequestFormatFromHeaders(req.headers),
     });
 
     // Continue to next middleware
@@ -316,20 +329,35 @@ export const secureAuthenticationMiddleware = [
   authenticationMiddleware,
 ];
 
-function normalizeHeaderValue(
-  value: string | readonly string[] | undefined
-): string | undefined {
-  if (typeof value === 'string') {
-    return value;
+/**
+ * Detect request format from headers for logging purposes
+ * This is a simplified detection based on common header patterns
+ */
+function detectRequestFormatFromHeaders(headers: IncomingHttpHeaders): string {
+  const userAgent = normalizeHeaderValue(headers['user-agent']);
+  const normalizedUserAgent = userAgent?.toLowerCase() ?? '';
+
+  // Check for common Claude client indicators
+  if (
+    normalizedUserAgent.includes('claude') ||
+    normalizedUserAgent.includes('anthropic')
+  ) {
+    return 'claude';
   }
 
-  if (Array.isArray(value) && typeof value[0] === 'string') {
-    return value[0];
+  // Check for OpenAI client indicators
+  if (
+    normalizedUserAgent.includes('openai') ||
+    normalizedUserAgent.includes('chatgpt')
+  ) {
+    return 'openai';
   }
 
-  return undefined;
-}
+  // Check for Xcode indicators (typically uses OpenAI format)
+  if (normalizedUserAgent.includes('xcode')) {
+    return 'openai';
+  }
 
-function resolveCorrelationId(correlationId: string | undefined): string {
-  return correlationId !== undefined && correlationId.trim().length > 0 ? correlationId : 'unknown';
+  // Default to unknown for logging
+  return 'unknown';
 }

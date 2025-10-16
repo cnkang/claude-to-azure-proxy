@@ -21,6 +21,8 @@ import type {
   RequestWithCorrelationId,
   ErrorResponse,
 } from '../types/index.js';
+import { normalizeHeaderValue } from '../utils/http-headers.js';
+import { resolveCorrelationId } from '../utils/correlation-id.js';
 
 export interface ErrorHandlerConfig {
   readonly exposeStackTrace: boolean;
@@ -539,20 +541,6 @@ export async function withErrorBoundary<T>(
   }
 }
 
-function normalizeHeaderValue(
-  value: string | readonly string[] | undefined
-): string | undefined {
-  if (typeof value === 'string') {
-    return value;
-  }
-
-  if (Array.isArray(value) && typeof value[0] === 'string') {
-    return value[0];
-  }
-
-  return undefined;
-}
-
 function extractRoutePath(req: Readonly<Request>): string | undefined {
   const candidateRoute = (req as { route?: unknown }).route;
 
@@ -581,10 +569,6 @@ function extractErrorCode(error: unknown): string | undefined {
 
   const candidate = error.code;
   return typeof candidate === 'string' ? candidate : undefined;
-}
-
-function resolveCorrelationId(correlationId: string): string {
-  return correlationId.trim().length > 0 ? correlationId : 'unknown';
 }
 
 function hasRoutePath(value: unknown): value is { readonly path?: unknown } {

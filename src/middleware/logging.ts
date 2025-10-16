@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import type { IncomingHttpHeaders } from 'http';
 import type { RequestWithCorrelationId } from '../types/index.js';
 import { isBaseError } from '../errors/index.js';
+import { resolveCorrelationId } from '../utils/correlation-id.js';
 
 /**
  * Enhanced structured logging middleware with correlation IDs and sanitized output
@@ -81,6 +82,7 @@ const sensitiveKeys = [
   'api_key',
   'bearer',
   'auth',
+  'endpoint',
 ] as const;
 
 function sanitizeRecord(
@@ -131,14 +133,14 @@ const sanitizeString = (str: string): string => {
       // SSN
       .replace(/\b\d{3}-\d{2}-\d{4}\b/g, '[SSN_REDACTED]')
       // Bearer tokens
-      .replace(/Bearer\s+[A-Za-z0-9\-._~+/]+=*/gi, 'Bearer [TOKEN_REDACTED]')
+      .replace(/Bearer\s+[A-Za-z0-9\-._~+/]+=*/gi, 'Bearer [REDACTED]')
       // API keys
       .replace(
         /api[_-]?key[:\s=]+[A-Za-z0-9\-._~+/]+=*/gi,
-        'api_key=[KEY_REDACTED]'
+        'api_key=[REDACTED]'
       )
       // Phone numbers
-      .replace(/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, '[PHONE_REDACTED]')
+      .replace(/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, '[REDACTED]')
   );
 };
 
@@ -199,7 +201,9 @@ const createErrorLogEntry = (error: Error): ErrorLogEntry => {
     errorEntry.code = error.errorCode;
     errorEntry.statusCode = error.statusCode;
     errorEntry.isOperational = error.isOperational;
-    errorEntry.context = sanitizeRecord(error.context as unknown as Record<string, unknown>);
+    errorEntry.context = sanitizeRecord(
+      error.context as unknown as Record<string, unknown>
+    );
   }
 
   // Only include stack trace in development
@@ -362,15 +366,17 @@ export const logger = {
   },
 };
 
-// Request logging middleware
+// Request logging middleware with conversation tracking support
 export const requestLoggingMiddleware = (
   req: Request,
   res: Response,
   next: NextFunction
 ): void => {
   const startTime = Date.now();
-  const correlationId = (req as unknown as RequestWithCorrelationId)
-    .correlationId;
+  const correlationId = resolveCorrelationId(
+    (req as Partial<RequestWithCorrelationId>).correlationId,
+    () => 'unknown'
+  );
 
   const clientIp = req.ip ?? req.socket.remoteAddress ?? 'unknown';
   const userAgentHeader = extractHeaderValue(req.headers['user-agent']);
@@ -380,7 +386,18 @@ export const requestLoggingMiddleware = (
       ? parseContentLength(contentLengthHeader)
       : undefined;
 
-  const requestLog: RequestLogEntry = {
+  // Extract conversation tracking headers
+  const conversationId =
+    extractHeaderValue(req.headers['x-conversation-id']) ??
+    extractHeaderValue(req.headers['conversation-id']) ??
+    extractHeaderValue(req.headers['x-session-id']) ??
+    extractHeaderValue(req.headers['session-id']);
+
+  const requestLog: RequestLogEntry & {
+    conversationId?: string;
+    requestFormat?: string;
+    responseFormat?: string;
+  } = {
     timestamp: new Date().toISOString(),
     level: 'info',
     correlationId,
@@ -395,6 +412,7 @@ export const requestLoggingMiddleware = (
       ip: clientIp,
       contentLength: requestContentLength,
     },
+    ...(conversationId !== undefined ? { conversationId } : {}),
   };
 
   writeStdout(requestLog);
@@ -408,7 +426,21 @@ export const requestLoggingMiddleware = (
         ? parseHeaderContentLength(responseContentLengthHeader)
         : undefined;
 
-    const responseLog: RequestLogEntry = {
+    // Extract format information if available
+    const requestWithFormat = req as unknown as {
+      requestFormat?: string;
+      responseFormat?: string;
+      reasoningEffort?: string;
+      conversationComplexity?: string;
+    };
+
+    const responseLog: RequestLogEntry & {
+      conversationId?: string;
+      requestFormat?: string;
+      responseFormat?: string;
+      reasoningEffort?: string;
+      conversationComplexity?: string;
+    } = {
       timestamp: new Date().toISOString(),
       level: res.statusCode >= 400 ? 'warn' : 'info',
       correlationId,
@@ -422,6 +454,21 @@ export const requestLoggingMiddleware = (
         contentLength: responseContentLength,
         responseTime,
       },
+      ...(conversationId !== undefined ? { conversationId } : {}),
+      ...(typeof requestWithFormat.requestFormat === 'string'
+        ? { requestFormat: requestWithFormat.requestFormat }
+        : {}),
+      ...(typeof requestWithFormat.responseFormat === 'string'
+        ? { responseFormat: requestWithFormat.responseFormat }
+        : {}),
+      ...(typeof requestWithFormat.reasoningEffort === 'string'
+        ? { reasoningEffort: requestWithFormat.reasoningEffort }
+        : {}),
+      ...(typeof requestWithFormat.conversationComplexity === 'string'
+        ? {
+            conversationComplexity: requestWithFormat.conversationComplexity,
+          }
+        : {}),
     };
 
     writeStdout(responseLog);
