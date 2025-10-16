@@ -4,11 +4,10 @@
  */
 
 import type {
-  AzureOpenAIResponse,
-  AzureOpenAIError,
-  AzureOpenAIStreamResponse,
-  ClaudeCompletionResponse,
+  OpenAIResponse,
+  OpenAIError,
   ClaudeError,
+  ResponsesResponse,
 } from '../src/types/index.js';
 import type { ClaudeCompletionRequest } from '../src/utils/request-transformer.js';
 
@@ -175,7 +174,7 @@ export class ClaudeRequestFactory {
 export class AzureResponseFactory {
   private static counter = 0;
 
-  static create(options: TestDataOptions = {}): AzureOpenAIResponse {
+  static create(options: TestDataOptions = {}): OpenAIResponse {
     const {
       size = 'medium',
       includeOptional = false,
@@ -196,7 +195,7 @@ export class AzureResponseFactory {
           ? contents.medium
           : contents.large;
 
-    const baseResponse: AzureOpenAIResponse = {
+    const baseResponse: OpenAIResponse = {
       id: `chatcmpl-${seed}`,
       object: 'chat.completion',
       created: 1640995200 + seed,
@@ -231,7 +230,7 @@ export class AzureResponseFactory {
   static createBatch(
     count: number,
     options: TestDataOptions = {}
-  ): AzureOpenAIResponse[] {
+  ): OpenAIResponse[] {
     return Array.from({ length: count }, (_, i) =>
       AzureResponseFactory.create({ ...options, seed: i })
     );
@@ -239,7 +238,7 @@ export class AzureResponseFactory {
 
   static createWithFinishReason(
     reason: 'stop' | 'length' | 'content_filter'
-  ): AzureOpenAIResponse {
+  ): OpenAIResponse {
     const response = AzureResponseFactory.create();
     return {
       ...response,
@@ -252,7 +251,7 @@ export class AzureResponseFactory {
     };
   }
 
-  static createWithNullContent(): AzureOpenAIResponse {
+  static createWithNullContent(): OpenAIResponse {
     const response = AzureResponseFactory.create();
     return {
       ...response,
@@ -269,7 +268,7 @@ export class AzureResponseFactory {
     };
   }
 
-  static createWithMultipleChoices(count: number): AzureOpenAIResponse {
+  static createWithMultipleChoices(count: number): OpenAIResponse {
     const response = AzureResponseFactory.create();
     const choices = Array.from({ length: count }, (_, i) => ({
       index: i,
@@ -345,7 +344,7 @@ export class AzureErrorFactory {
   static create(
     type: string = 'invalid_request_error',
     message?: string
-  ): AzureOpenAIError {
+  ): OpenAIError {
     const messages: Record<string, string> = {
       invalid_request_error: 'The request is invalid',
       authentication_error: 'Invalid API key',
@@ -367,11 +366,11 @@ export class AzureErrorFactory {
     };
   }
 
-  static createBatch(types: readonly string[]): AzureOpenAIError[] {
+  static createBatch(types: readonly string[]): OpenAIError[] {
     return types.map((type) => AzureErrorFactory.create(type));
   }
 
-  static createWithSensitiveData(): AzureOpenAIError {
+  static createWithSensitiveData(): OpenAIError {
     return {
       error: {
         message: 'Error with email user@example.com and Bearer token123',
@@ -599,7 +598,7 @@ export class PerformanceDataFactory {
     };
   }
 
-  static createLargeResponse(sizeKB: number): AzureOpenAIResponse {
+  static createLargeResponse(sizeKB: number): OpenAIResponse {
     const contentSize = sizeKB * 1024;
     const content = 'x'.repeat(contentSize);
 
@@ -696,6 +695,54 @@ export class AuthTestDataFactory {
       { 'X-API-KEY': 'test' }, // Wrong case
       {}, // No auth headers
     ];
+  }
+}
+
+/**
+ * Factory for creating Responses API responses
+ */
+export class ResponsesResponseFactory {
+  private static counter = 0;
+
+  static create(options: {
+    content?: string;
+    includeReasoning?: boolean;
+    includeUsage?: boolean;
+  } = {}): ResponsesResponse {
+    const {
+      content = 'Test response content',
+      includeReasoning = false,
+      includeUsage = true,
+    } = options;
+
+    const responseId = `resp-${Date.now()}-${ResponsesResponseFactory.counter++}`;
+
+    const response: ResponsesResponse = {
+      id: responseId,
+      object: 'response',
+      created: Math.floor(Date.now() / 1000),
+      model: 'claude-3-5-sonnet-20241022',
+      output: content,
+      usage: includeUsage ? {
+        input_tokens: 10,
+        output_tokens: 20,
+        total_tokens: 30,
+        reasoning_tokens: includeReasoning ? 5 : undefined,
+      } : {
+        input_tokens: 0,
+        output_tokens: 0,
+        total_tokens: 0,
+      },
+    };
+
+    if (includeReasoning) {
+      (response as any).reasoning = {
+        effort: 'medium',
+        content: 'Test reasoning content',
+      };
+    }
+
+    return response;
   }
 }
 
