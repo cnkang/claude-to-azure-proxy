@@ -1,6 +1,7 @@
 # Docker Deployment Guide
 
-This guide covers building, running, and deploying the Claude-to-Azure Proxy using Docker, with a focus on security best practices and AWS App Runner compatibility.
+This guide covers building, running, and deploying the Claude-to-Azure Proxy using Docker, with a
+focus on security best practices and AWS App Runner compatibility.
 
 ## Quick Start
 
@@ -236,15 +237,17 @@ make size
 ### Common Issues
 
 1. **Container exits immediately**:
+
    ```bash
    # Check logs
    docker logs container-name
-   
+
    # Verify environment variables
    docker run --rm -it claude-to-azure-proxy env
    ```
 
 2. **Health check fails**:
+
    ```bash
    # Test health endpoint manually
    docker exec container-name wget -qO- http://localhost:8080/health
@@ -304,6 +307,7 @@ npm run security:env
 ```
 
 **Protection mechanisms:**
+
 - `.gitignore`: Prevents `.env` files from being committed to git
 - `.dockerignore`: Excludes `.env` files from Docker build context
 - `.env.example`: Provides template without sensitive data
