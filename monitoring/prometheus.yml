@@ -1,0 +1,76 @@
+# Prometheus configuration for Claude-to-Azure Proxy monitoring
+# This configuration includes monitoring for Responses API metrics
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alert_rules.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # Claude-to-Azure Proxy metrics
+  - job_name: 'claude-proxy'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 10s
+    metrics_path: '/metrics'
+    scrape_timeout: 5s
+    
+    # Relabel metrics for better organization
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'claude_proxy_(.*)'
+        target_label: __name__
+        replacement: 'proxy_${1}'
+
+  # Health check monitoring
+  - job_name: 'claude-proxy-health'
+    static_configs:
+      - targets: ['localhost:8080']
+    scrape_interval: 30s
+    metrics_path: '/health'
+    scrape_timeout: 10s
+    
+    # Convert health check to metrics
+    metric_relabel_configs:
+      - source_labels: [status]
+        regex: 'healthy'
+        target_label: health_status
+        replacement: '1'
+      - source_labels: [status]
+        regex: 'unhealthy'
+        target_label: health_status
+        replacement: '0'
+
+  # Azure OpenAI API monitoring (if accessible)
+  - job_name: 'azure-openai-health'
+    static_configs:
+      - targets: ['your-resource.openai.azure.com']
+    scrape_interval: 60s
+    metrics_path: '/health'
+    scheme: https
+    scrape_timeout: 15s
+    
+    # Optional: Add authentication if needed
+    # authorization:
+    #   type: Bearer
+    #   credentials: your-monitoring-token
+
+  # Node.js application metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['localhost:9100']
+    scrape_interval: 15s
+
+  # Docker container metrics (if using Docker)
+  - job_name: 'docker'
+    static_configs:
+      - targets: ['localhost:9323']
+    scrape_interval: 15s

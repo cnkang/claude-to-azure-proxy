@@ -1,0 +1,231 @@
+# Prometheus alert rules for Claude-to-Azure Proxy
+# These rules monitor critical metrics for the Responses API integration
+
+groups:
+  - name: claude-proxy-health
+    rules:
+      # Service availability
+      - alert: ProxyServiceDown
+        expr: up{job="claude-proxy"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: claude-proxy
+        annotations:
+          summary: "Claude-to-Azure Proxy service is down"
+          description: "The Claude-to-Azure Proxy service has been down for more than 1 minute."
+          runbook_url: "https://docs.example.com/runbooks/proxy-service-down"
+
+      # Health check failures
+      - alert: ProxyHealthCheckFailing
+        expr: proxy_health_status == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: claude-proxy
+        annotations:
+          summary: "Claude-to-Azure Proxy health check failing"
+          description: "The proxy health check has been failing for more than 2 minutes."
+          runbook_url: "https://docs.example.com/runbooks/health-check-failing"
+
+  - name: claude-proxy-performance
+    rules:
+      # High response times
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(proxy_request_duration_seconds_bucket[5m])) > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: claude-proxy
+        annotations:
+          summary: "High response times detected"
+          description: "95th percentile response time is {{ $value }}s, which is above the 10s threshold."
+          runbook_url: "https://docs.example.com/runbooks/high-response-time"
+
+      # High error rate
+      - alert: HighErrorRate
+        expr: rate(proxy_requests_total{status=~"5.."}[5m]) / rate(proxy_requests_total[5m]) > 0.05
+        for: 3m
+        labels:
+          severity: warning
+          service: claude-proxy
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }}, which is above the 5% threshold."
+          runbook_url: "https://docs.example.com/runbooks/high-error-rate"
+
+      # Memory usage
+      - alert: HighMemoryUsage
+        expr: (process_resident_memory_bytes / 1024 / 1024) > 1024
+        for: 5m
+        labels:
+          severity: warning
+          service: claude-proxy
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ $value }}MB, which is above the 1GB threshold."
+          runbook_url: "https://docs.example.com/runbooks/high-memory-usage"
+
+      # CPU usage
+      - alert: HighCPUUsage
+        expr: rate(process_cpu_seconds_total[5m]) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: claude-proxy
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is {{ $value }}%, which is above the 80% threshold."
+          runbook_url: "https://docs.example.com/runbooks/high-cpu-usage"
+
+  - name: azure-openai-integration
+    rules:
+      # Azure OpenAI API failures
+      - alert: AzureOpenAIAPIFailures
+        expr: rate(proxy_azure_openai_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+          service: azure-openai
+        annotations:
+          summary: "Azure OpenAI API failures detected"
+          description: "Azure OpenAI API failure rate is {{ $value }} requests/second."
+          runbook_url: "https://docs.example.com/runbooks/azure-openai-failures"
+
+      # High reasoning token usage
+      - alert: HighReasoningTokenUsage
+        expr: rate(proxy_reasoning_tokens_total[5m]) > 1000
+        for: 10m
+        labels:
+          severity: warning
+          service: azure-openai
+          cost_impact: high
+        annotations:
+          summary: "High reasoning token usage detected"
+          description: "Reasoning token usage is {{ $value }} tokens/second, which may impact costs."
+          runbook_url: "https://docs.example.com/runbooks/high-reasoning-token-usage"
+
+      # Reasoning effort distribution anomaly
+      - alert: ReasoningEffortAnomaly
+        expr: rate(proxy_reasoning_effort_total{effort="high"}[10m]) / rate(proxy_reasoning_effort_total[10m]) > 0.3
+        for: 15m
+        labels:
+          severity: info
+          service: azure-openai
+        annotations:
+          summary: "High reasoning effort usage detected"
+          description: "{{ $value | humanizePercentage }} of requests are using high reasoning effort."
+          runbook_url: "https://docs.example.com/runbooks/reasoning-effort-anomaly"
+
+      # Azure OpenAI timeout issues
+      - alert: AzureOpenAITimeouts
+        expr: rate(proxy_azure_openai_timeouts_total[5m]) > 0.01
+        for: 3m
+        labels:
+          severity: warning
+          service: azure-openai
+        annotations:
+          summary: "Azure OpenAI timeouts detected"
+          description: "Azure OpenAI timeout rate is {{ $value }} timeouts/second."
+          runbook_url: "https://docs.example.com/runbooks/azure-openai-timeouts"
+
+  - name: conversation-management
+    rules:
+      # High conversation memory usage
+      - alert: HighConversationMemoryUsage
+        expr: proxy_active_conversations > 1000
+        for: 5m
+        labels:
+          severity: warning
+          service: claude-proxy
+        annotations:
+          summary: "High number of active conversations"
+          description: "There are {{ $value }} active conversations, which may impact memory usage."
+          runbook_url: "https://docs.example.com/runbooks/high-conversation-count"
+
+      # Conversation cleanup failures
+      - alert: ConversationCleanupFailures
+        expr: increase(proxy_conversation_cleanup_failures_total[1h]) > 5
+        for: 0m
+        labels:
+          severity: warning
+          service: claude-proxy
+        annotations:
+          summary: "Conversation cleanup failures detected"
+          description: "{{ $value }} conversation cleanup failures in the last hour."
+          runbook_url: "https://docs.example.com/runbooks/conversation-cleanup-failures"
+
+  - name: security-monitoring
+    rules:
+      # Authentication failures
+      - alert: HighAuthenticationFailures
+        expr: rate(proxy_authentication_failures_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          service: claude-proxy
+          security: true
+        annotations:
+          summary: "High authentication failure rate"
+          description: "Authentication failure rate is {{ $value }} failures/second."
+          runbook_url: "https://docs.example.com/runbooks/high-auth-failures"
+
+      # Rate limiting triggered
+      - alert: RateLimitingTriggered
+        expr: rate(proxy_rate_limit_exceeded_total[5m]) > 0.05
+        for: 1m
+        labels:
+          severity: info
+          service: claude-proxy
+          security: true
+        annotations:
+          summary: "Rate limiting frequently triggered"
+          description: "Rate limiting is being triggered {{ $value }} times/second."
+          runbook_url: "https://docs.example.com/runbooks/rate-limiting-triggered"
+
+      # Suspicious request patterns
+      - alert: SuspiciousRequestPatterns
+        expr: rate(proxy_requests_total{user_agent=""}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: claude-proxy
+          security: true
+        annotations:
+          summary: "Suspicious request patterns detected"
+          description: "High rate of requests without user agent: {{ $value }} requests/second."
+          runbook_url: "https://docs.example.com/runbooks/suspicious-requests"
+
+  - name: format-detection
+    rules:
+      # Format detection failures
+      - alert: FormatDetectionFailures
+        expr: rate(proxy_format_detection_failures_total[5m]) > 0.01
+        for: 3m
+        labels:
+          severity: warning
+          service: claude-proxy
+        annotations:
+          summary: "Format detection failures detected"
+          description: "Format detection failure rate is {{ $value }} failures/second."
+          runbook_url: "https://docs.example.com/runbooks/format-detection-failures"
+
+      # Unusual format distribution
+      - alert: UnusualFormatDistribution
+        expr: |
+          (
+            rate(proxy_requests_total{format="claude"}[10m]) / 
+            rate(proxy_requests_total[10m])
+          ) < 0.1 or 
+          (
+            rate(proxy_requests_total{format="claude"}[10m]) / 
+            rate(proxy_requests_total[10m])
+          ) > 0.9
+        for: 15m
+        labels:
+          severity: info
+          service: claude-proxy
+        annotations:
+          summary: "Unusual request format distribution"
+          description: "Request format distribution has changed significantly."
+          runbook_url: "https://docs.example.com/runbooks/unusual-format-distribution"
