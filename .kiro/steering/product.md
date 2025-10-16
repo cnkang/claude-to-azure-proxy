@@ -6,7 +6,8 @@ inclusion: always
 
 ## Core Product: Claude-to-Azure OpenAI Proxy
 
-This is a production-ready TypeScript API proxy that translates Claude API requests to Azure OpenAI format, enabling Claude Code CLI to work with Azure OpenAI services seamlessly.
+This is a production-ready TypeScript API proxy that translates Claude API requests to Azure OpenAI
+format, enabling Claude Code CLI to work with Azure OpenAI services seamlessly.
 
 ## Development Principles
 
