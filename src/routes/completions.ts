@@ -1,17 +1,21 @@
 import { Request, Response } from 'express';
-import axios, { AxiosError, AxiosResponse } from 'axios';
 import rateLimit from 'express-rate-limit';
 import type {
   RequestWithCorrelationId,
   ServerConfig,
-  ResponseTransformationResult,
+  IncomingRequest,
+  ResponsesResponse,
+  ResponseFormat,
+  ClaudeRequest,
+  ClaudeResponse,
+  OpenAIResponse,
   ClaudeError,
+  OpenAIError,
 } from '../types/index.js';
 import { logger } from '../middleware/logging.js';
 import { asyncErrorHandler } from '../middleware/error-handler.js';
 import {
-  NetworkError,
-  TimeoutError,
+  ValidationError,
   AzureOpenAIError,
   ErrorFactory,
 } from '../errors/index.js';
@@ -20,17 +24,30 @@ import {
   retryStrategyRegistry,
   gracefulDegradationManager,
 } from '../resilience/index.js';
+import { AzureResponsesClient } from '../clients/azure-responses-client.js';
 import {
-  transformRequest,
-  RequestTransformationError,
-  ValidationError,
-  SecurityError,
-} from '../utils/request-transformer.js';
+  createUniversalRequestProcessor,
+  defaultUniversalProcessorConfig,
+} from '../utils/universal-request-processor.js';
+import { createReasoningEffortAnalyzer } from '../utils/reasoning-effort-analyzer.js';
+import { conversationManager } from '../utils/conversation-manager.js';
+
+import { createErrorResponseByFormat } from '../utils/response-transformer.js';
 import {
-  transformAzureResponseToClaude,
-  createDefensiveResponseHandler,
-  isAzureOpenAIError,
-} from '../utils/response-transformer.js';
+  detectRequestFormat,
+  getResponseFormat,
+} from '../utils/format-detection.js';
+import {
+  createResponsesStreamProcessor,
+} from '../utils/responses-streaming-handler.js';
+import {
+  transformResponsesToClaude,
+} from '../utils/responses-to-claude-transformer.js';
+import {
+  transformResponsesToOpenAI,
+} from '../utils/responses-to-openai-transformer.js';
+import { AzureErrorMapper } from '../utils/azure-error-mapper.js';
+import { ensureResponsesBaseURL } from '../utils/azure-endpoint.js';
 
 /**
  * Robust /v1/completions proxy endpoint with comprehensive security and error handling
@@ -73,38 +90,35 @@ export const completionsRateLimit = rateLimit({
   },
 });
 
-// Connection pool configuration for Azure OpenAI requests
-const axiosInstance = axios.create({
-  timeout: 60000, // 60 second timeout for completion requests
-  maxRedirects: 0, // No redirects for security
-  validateStatus: (status) => status < 600, // Don't throw on 4xx/5xx to handle errors gracefully
-  headers: {
-    'User-Agent': 'claude-to-azure-proxy/1.0.0',
-  },
-});
-
 // Request/response correlation tracking
 interface RequestMetrics {
   startTime: number;
   requestSize: number;
+  formatDetectionTime?: number;
+  reasoningAnalysisTime?: number;
   transformationTime?: number;
   azureRequestTime?: number;
   responseTransformationTime?: number;
   totalTime?: number;
 }
 
+// Initialize universal request processor
+const universalProcessor = createUniversalRequestProcessor(defaultUniversalProcessorConfig);
+
+// Initialize reasoning effort analyzer
+const reasoningAnalyzer = createReasoningEffortAnalyzer();
+
 /**
- * Make Azure OpenAI request with circuit breaker and retry logic
+ * Make Azure Responses API request with circuit breaker and retry logic
  */
-async function makeAzureRequestWithResilience(
-  url: string,
-  data: unknown,
-  headers: Record<string, string>,
+async function makeResponsesAPIRequestWithResilience(
+  client: AzureResponsesClient,
+  params: import('../types/index.js').ResponsesCreateParams,
   correlationId: string
-): Promise<AxiosResponse> {
+): Promise<ResponsesResponse> {
   // Get circuit breaker for Azure OpenAI
   const circuitBreaker = circuitBreakerRegistry.getCircuitBreaker(
-    'azure-openai',
+    'azure-responses-api',
     {
       failureThreshold: 5,
       recoveryTimeout: 60000,
@@ -113,7 +127,7 @@ async function makeAzureRequestWithResilience(
   );
 
   // Get retry strategy
-  const retryStrategy = retryStrategyRegistry.getStrategy('azure-openai', {
+  const retryStrategy = retryStrategyRegistry.getStrategy('azure-responses-api', {
     maxAttempts: 3,
     baseDelayMs: 1000,
     maxDelayMs: 10000,
@@ -127,55 +141,46 @@ async function makeAzureRequestWithResilience(
       const retryResult = await retryStrategy.execute(
         async () => {
           try {
-            logger.debug('Making Azure OpenAI request', correlationId, {
-              url: url.replace(
-                /\/[^/]+\.openai\.azure\.com/,
-                '/[REDACTED].openai.azure.com'
-              ),
+            logger.debug('Making Azure Responses API request', correlationId, {
+              model: params.model,
+              hasReasoning: Boolean(params.reasoning),
+              reasoningEffort: params.reasoning?.effort,
+              inputType: typeof params.input,
+              inputLength: Array.isArray(params.input) ? params.input.length : 
+                          typeof params.input === 'string' ? params.input.length : 0,
             });
 
-            const response = await axiosInstance.post(url, data, { headers });
+            const response = await client.createResponse(params);
 
-            logger.debug('Azure OpenAI request successful', correlationId, {
-              statusCode: response.status,
-              responseSize: JSON.stringify(response.data).length,
+            logger.debug('Azure Responses API request successful', correlationId, {
+              responseId: response.id,
+              outputCount: response.output.length,
+              totalTokens: response.usage.total_tokens,
+              reasoningTokens: response.usage.reasoning_tokens,
             });
 
             return response;
           } catch (error) {
-            // Convert axios errors to our custom error types
-            if (axios.isAxiosError(error)) {
-              const axiosError = error as AxiosError;
+            // Re-throw our custom errors as-is
+            if (error instanceof ValidationError || error instanceof AzureOpenAIError) {
+              throw error;
+            }
 
-              if (
-                axiosError.code === 'ECONNRESET' ||
-                axiosError.code === 'ECONNREFUSED' ||
-                axiosError.code === 'ENOTFOUND'
-              ) {
-                throw ErrorFactory.fromNetworkError(
-                  axiosError,
-                  correlationId,
-                  'azure-openai-request'
-                );
-              }
-
-              if (axiosError.code === 'ETIMEDOUT') {
+            // Convert other errors to our custom error types
+            if (error instanceof Error) {
+              if (error.message.includes('timeout')) {
                 throw ErrorFactory.fromTimeout(
                   30000,
                   correlationId,
-                  'azure-openai-request'
+                  'azure-responses-api-request'
                 );
               }
 
-              if (
-                axiosError.response?.data !== undefined &&
-                axiosError.response.data !== null &&
-                isAzureOpenAIError(axiosError.response.data)
-              ) {
-                throw ErrorFactory.fromAzureOpenAIError(
-                  axiosError.response.data,
+              if (error.message.includes('network') || error.message.includes('ECONNREFUSED')) {
+                throw ErrorFactory.fromNetworkError(
+                  error,
                   correlationId,
-                  'azure-openai-request'
+                  'azure-responses-api-request'
                 );
               }
             }
@@ -184,7 +189,7 @@ async function makeAzureRequestWithResilience(
           }
         },
         correlationId,
-        'azure-openai-request'
+        'azure-responses-api-request'
       );
 
       if (retryResult.success && retryResult.data !== undefined) {
@@ -197,7 +202,7 @@ async function makeAzureRequestWithResilience(
       throw retryFailureError;
     },
     correlationId,
-    'azure-openai-request'
+    'azure-responses-api-request'
   );
 
   if (circuitResult.success && circuitResult.data !== undefined) {
@@ -210,10 +215,228 @@ async function makeAzureRequestWithResilience(
   throw circuitFailureError;
 }
 
+const createJsonHeaders = (correlationId: string): Record<string, string> => ({
+  'Content-Type': 'application/json',
+  'X-Correlation-ID': correlationId,
+});
+
+const isResponsesApiResponse = (
+  value: unknown
+): value is ResponsesResponse => {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const candidate = value as { object?: unknown; output?: unknown };
+  return candidate.object === 'response' && Array.isArray(candidate.output);
+};
+
+interface FormattedSuccessResponse {
+  readonly statusCode: number;
+  readonly headers: Record<string, string>;
+  readonly body:
+    | (ClaudeResponse & { readonly correlationId: string })
+    | (OpenAIResponse & { readonly correlationId: string });
+}
+
+const buildSuccessResponse = (
+  responsesResponse: ResponsesResponse,
+  responseFormat: ResponseFormat,
+  correlationId: string
+): FormattedSuccessResponse => {
+  const headers = createJsonHeaders(correlationId);
+
+  if (responseFormat === 'claude') {
+    const claudeResponse = transformResponsesToClaude(
+      responsesResponse,
+      correlationId
+    );
+    return {
+      statusCode: 200,
+      headers,
+      body: {
+        ...claudeResponse,
+        correlationId,
+      },
+    };
+  }
+
+  const openAIResponse = transformResponsesToOpenAI(
+    responsesResponse,
+    correlationId
+  );
+
+  return {
+    statusCode: 200,
+    headers,
+    body: {
+      ...openAIResponse,
+      correlationId,
+    },
+  };
+};
+
+const buildFallbackResponse = (
+  fallbackData: unknown,
+  responseFormat: ResponseFormat,
+  correlationId: string
+): FormattedSuccessResponse => {
+  if (isResponsesApiResponse(fallbackData)) {
+    return buildSuccessResponse(fallbackData, responseFormat, correlationId);
+  }
+
+  const headers = createJsonHeaders(correlationId);
+  const fallbackObject =
+    typeof fallbackData === 'object' && fallbackData !== null
+      ? (fallbackData as Record<string, unknown>)
+      : {};
+  const fallbackId =
+    typeof fallbackObject.id === 'string'
+      ? fallbackObject.id
+      : `fallback_${Date.now()}`;
+  const fallbackModel =
+    typeof fallbackObject.model === 'string'
+      ? fallbackObject.model
+      : responseFormat === 'claude'
+        ? 'claude-3-5-sonnet-20241022'
+        : 'gpt-4';
+  const fallbackMessage =
+    typeof fallbackObject.completion === 'string'
+      ? fallbackObject.completion
+      : 'The service is temporarily unavailable. Please try again later.';
+
+  if (responseFormat === 'claude') {
+    const claudeFallback: ClaudeResponse & { readonly correlationId: string } =
+      {
+        id: fallbackId,
+        type: 'message',
+        role: 'assistant',
+        content: [
+          {
+            type: 'text',
+            text: fallbackMessage,
+          },
+        ],
+        model: fallbackModel,
+        stop_reason: 'end_turn',
+        usage: {
+          input_tokens: 0,
+          output_tokens: 0,
+        },
+        correlationId,
+      };
+
+    return {
+      statusCode: 200,
+      headers,
+      body: claudeFallback,
+    };
+  }
+
+  const openAIFallback: OpenAIResponse & { readonly correlationId: string } = {
+    id: fallbackId,
+    object: 'chat.completion',
+    created: Math.floor(Date.now() / 1000),
+    model: fallbackModel,
+    choices: [
+      {
+        index: 0,
+        message: {
+          role: 'assistant',
+          content: fallbackMessage,
+        },
+        finish_reason: 'stop',
+      },
+    ],
+    usage: {
+      prompt_tokens: 0,
+      completion_tokens: 0,
+      total_tokens: 0,
+    },
+    correlationId,
+  };
+
+  return {
+    statusCode: 200,
+    headers,
+    body: openAIFallback,
+  };
+};
+
+const mapErrorToClientResponse = (
+  error: unknown,
+  correlationId: string,
+  responseFormat: ResponseFormat
+): {
+  readonly statusCode: number;
+  readonly headers: Record<string, string>;
+  readonly body:
+    | (ClaudeError & { readonly correlationId: string; readonly timestamp: string })
+    | (OpenAIError & { readonly correlationId: string; readonly timestamp: string });
+} => {
+  const originalError = unwrapAzureError(error);
+  const mapped = AzureErrorMapper.mapError({
+    correlationId,
+    operation: 'responses-api-completions',
+    requestFormat: responseFormat,
+    originalError,
+  });
+
+  const headers = createJsonHeaders(correlationId);
+  const timestamp = new Date().toISOString();
+
+  if (responseFormat === 'claude') {
+    const body: ClaudeError & {
+      readonly correlationId: string;
+      readonly timestamp: string;
+    } = {
+      ...(mapped.clientResponse as ClaudeError),
+      correlationId,
+      timestamp,
+    };
+
+    return {
+      statusCode: mapped.error.statusCode,
+      headers,
+      body,
+    };
+  }
+
+  const body: OpenAIError & {
+    readonly correlationId: string;
+    readonly timestamp: string;
+  } = {
+    ...(mapped.clientResponse as OpenAIError),
+    correlationId,
+    timestamp,
+  };
+
+  return {
+    statusCode: mapped.error.statusCode,
+    headers,
+    body,
+  };
+};
+
+const unwrapAzureError = (error: unknown): unknown => {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'response' in error &&
+    typeof (error as { response?: unknown }).response === 'object' &&
+    (error as { response?: { data?: unknown } }).response?.data !== undefined
+  ) {
+    return (error as { response: { data: unknown } }).response.data;
+  }
+
+  return error;
+};
+
 /**
  * Main completions handler with comprehensive error handling and monitoring
+ * Now uses Azure OpenAI Responses API with intelligent reasoning effort analysis
  */
-export const completionsHandler = (config: ServerConfig) => {
+export const completionsHandler = (config: Readonly<ServerConfig>) => {
   return asyncErrorHandler<RequestWithCorrelationId>(
     async (req: RequestWithCorrelationId, res: Response): Promise<void> => {
       const { correlationId } = req;
@@ -222,316 +445,460 @@ export const completionsHandler = (config: ServerConfig) => {
         requestSize: JSON.stringify(req.body).length,
       };
 
-      // Create defensive response handler for fallback scenarios
-      const defensiveHandler = createDefensiveResponseHandler(correlationId);
-
       try {
+        // Detect request format to determine response format
+        const formatDetectionStart = Date.now();
+        const incomingRequest: IncomingRequest = {
+          headers: req.headers as Record<string, string>,
+          body: req.body,
+          path: req.path,
+          userAgent: req.headers['user-agent'],
+        };
+        
+        const requestModel =
+          typeof req.body === 'object' && req.body !== null
+            ? (req.body as { model?: unknown }).model
+            : undefined;
+
+        let requestFormat = detectRequestFormat(incomingRequest);
+        if (
+          requestFormat === 'claude' &&
+          typeof requestModel === 'string' &&
+          !requestModel.startsWith('claude-')
+        ) {
+          requestFormat = 'openai';
+        }
+
+        const responseFormat = getResponseFormat(requestFormat);
+        metrics.formatDetectionTime = Date.now() - formatDetectionStart;
+
         logger.info('Completions request started', correlationId, {
           ip: req.ip,
           userAgent: req.headers['user-agent'],
           requestSize: metrics.requestSize,
+          requestFormat,
+          responseFormat,
+          formatDetectionTime: metrics.formatDetectionTime,
         });
 
-        // Input validation and request transformation with error boundaries
-        let transformationResult;
-        const transformStart = Date.now();
+        // Validate Azure OpenAI configuration
+        if (!config.azureOpenAI) {
+          throw new ValidationError(
+            'Azure OpenAI configuration is missing',
+            correlationId,
+            'config',
+            'missing'
+          );
+        }
 
-        try {
-          if (!config.azureOpenAI) {
-            throw new Error('Azure OpenAI configuration is missing');
-          }
-          
-          transformationResult = transformRequest(
-            req.body,
-            config.azureOpenAI.model,
-            config.azureOpenAI.apiKey
+        const azureSourceConfig = config.azureOpenAI;
+        const endpointCandidate =
+          typeof azureSourceConfig.baseURL === 'string' &&
+          azureSourceConfig.baseURL.trim().length > 0
+            ? azureSourceConfig.baseURL.trim()
+            : azureSourceConfig.endpoint;
+
+        if (
+          endpointCandidate === undefined ||
+          typeof endpointCandidate !== 'string' ||
+          endpointCandidate.trim().length === 0
+        ) {
+          throw new ValidationError(
+            'Azure OpenAI endpoint is missing',
+            correlationId,
+            'config.azureOpenAI.endpoint',
+            endpointCandidate
+          );
+        }
+
+        const requiredDeployment =
+          azureSourceConfig.deployment ?? azureSourceConfig.model;
+
+        if (
+          requiredDeployment === undefined ||
+          requiredDeployment.trim().length === 0
+        ) {
+          throw new ValidationError(
+            'Azure OpenAI deployment is missing',
+            correlationId,
+            'config.azureOpenAI.deployment',
+            requiredDeployment
+          );
+        }
+
+        if (
+          typeof azureSourceConfig.apiKey !== 'string' ||
+          azureSourceConfig.apiKey.trim().length === 0
+        ) {
+          throw new ValidationError(
+            'Azure OpenAI API key is missing',
+            correlationId,
+            'config.azureOpenAI.apiKey',
+            azureSourceConfig.apiKey
+          );
+        }
+
+        const baseURL = ensureResponsesBaseURL(endpointCandidate);
+
+        const timeoutRaw = azureSourceConfig.timeout ?? 60000;
+        const timeoutMs =
+          typeof timeoutRaw === 'number' ? timeoutRaw : Number(timeoutRaw);
+        if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+          throw new ValidationError(
+            'Azure OpenAI timeout must be a positive number',
+            correlationId,
+            'config.azureOpenAI.timeout',
+            timeoutRaw
+          );
+        }
+
+        const retriesRaw = azureSourceConfig.maxRetries ?? 3;
+        const maxRetries =
+          typeof retriesRaw === 'number' ? retriesRaw : Number(retriesRaw);
+        if (!Number.isInteger(maxRetries) || maxRetries < 0) {
+          throw new ValidationError(
+            'Azure OpenAI maxRetries must be a non-negative integer',
+            correlationId,
+            'config.azureOpenAI.maxRetries',
+            retriesRaw
+          );
+        }
+
+        // Create Azure OpenAI configuration from ServerConfig
+        const apiVersionValue =
+          typeof azureSourceConfig.apiVersion === 'string' &&
+          azureSourceConfig.apiVersion.trim().length > 0
+            ? azureSourceConfig.apiVersion.trim()
+            : undefined;
+
+        const azureConfig: import('../types/index.js').AzureOpenAIConfig = {
+          baseURL,
+          apiKey: azureSourceConfig.apiKey.trim(),
+          ...(apiVersionValue !== undefined && { apiVersion: apiVersionValue }),
+          deployment: requiredDeployment.trim(),
+          timeout: timeoutMs,
+          maxRetries,
+        };
+
+        // Create Azure Responses API client
+        const responsesClient = new AzureResponsesClient(azureConfig);
+
+        // Extract conversation ID for context tracking
+        const headerConversationIdRaw =
+          req.headers['x-conversation-id'] ??
+          req.headers['conversation-id'] ??
+          req.headers['x-session-id'] ??
+          req.headers['session-id'] ??
+          req.headers['x-thread-id'] ??
+          req.headers['thread-id'];
+
+        const headerConversationId =
+          Array.isArray(headerConversationIdRaw) && headerConversationIdRaw.length > 0
+            ? headerConversationIdRaw[0]
+            : headerConversationIdRaw;
+
+        const conversationId =
+          typeof headerConversationId === 'string' && headerConversationId.trim().length > 0
+            ? headerConversationId.trim()
+            : conversationManager.extractConversationId(
+                req.headers as Record<string, string>,
+                correlationId
+              );
+
+        // Get conversation context for reasoning adjustment
+        const conversationContext = conversationManager.getConversationContext(conversationId);
+
+        // Process request with universal processor
+        const transformationStart = Date.now();
+        const processingResult = await universalProcessor.processRequest(
+          incomingRequest,
+          conversationContext
+        );
+        metrics.transformationTime = Date.now() - transformationStart;
+
+        logger.debug('Request processing completed', correlationId, {
+          requestFormat: processingResult.requestFormat,
+          responseFormat: processingResult.responseFormat,
+          conversationId: processingResult.conversationId,
+          estimatedComplexity: processingResult.estimatedComplexity,
+          reasoningEffort: processingResult.reasoningEffort,
+          transformationTime: metrics.transformationTime,
+        });
+
+        let { responsesParams } = processingResult;
+
+        // Add previous_response_id for conversation continuity
+        const previousResponseId = conversationManager.getPreviousResponseId(conversationId);
+
+        if (typeof previousResponseId === 'string' && previousResponseId.length > 0) {
+          responsesParams = {
+            ...responsesParams,
+            previous_response_id: previousResponseId,
+          };
+        }
+
+        if (processingResult.requestFormat === 'claude') {
+          const normalizedRequest =
+            processingResult.normalizedRequest as ClaudeRequest;
+          const analyzerEffort = reasoningAnalyzer.analyzeRequest(
+            normalizedRequest,
+            conversationContext
           );
 
-          metrics.transformationTime = Date.now() - transformStart;
-
-          logger.debug('Request transformation successful', correlationId, {
-            transformationTime: metrics.transformationTime,
-            requestId: transformationResult.requestId,
-          });
-        } catch (error) {
-          metrics.transformationTime = Date.now() - transformStart;
-
-          if (error instanceof ValidationError) {
-            logger.warn('Request validation failed', correlationId, {
-              error: error.message,
-              details: error.details,
-              transformationTime: metrics.transformationTime,
-            });
-
-            const claudeError: ClaudeError = {
-              type: 'error',
-              error: {
-                type: 'invalid_request_error',
-                message: error.message,
+          if (
+            analyzerEffort !== undefined &&
+            analyzerEffort !== responsesParams.reasoning?.effort
+          ) {
+            responsesParams = {
+              ...responsesParams,
+              reasoning: {
+                effort: analyzerEffort,
               },
             };
-
-            res.status(400).json(claudeError);
-            return;
           }
 
-          if (error instanceof SecurityError) {
-            logger.warn('Security validation failed', correlationId, {
-              error: error.message,
-              transformationTime: metrics.transformationTime,
-            });
-
-            const claudeError: ClaudeError = {
-              type: 'error',
-              error: {
-                type: 'invalid_request_error',
-                message:
-                  'Request contains invalid or potentially harmful content',
-              },
+          if (typeof responsesParams.input === 'string') {
+            responsesParams = {
+              ...responsesParams,
+              input: [
+                {
+                  role: 'user',
+                  content: responsesParams.input,
+                },
+              ],
             };
-
-            res.status(400).json(claudeError);
-            return;
           }
+        }
 
-          if (error instanceof RequestTransformationError) {
-            logger.error('Request transformation error', correlationId, {
-              error: error.message,
-              code: error.code,
-              transformationTime: metrics.transformationTime,
-            });
+        responsesParams = {
+          ...responsesParams,
+          model: azureConfig.deployment,
+        };
 
-            const claudeError: ClaudeError = {
-              type: 'error',
-              error: {
-                type: 'internal_error',
-                message: 'Failed to process request',
-              },
-            };
+        const finalReasoningEffort =
+          responsesParams.reasoning?.effort ?? processingResult.reasoningEffort;
 
-            res.status(500).json(claudeError);
-            return;
-          }
+        // Check if streaming is requested
+        const isStreamingRequest = responsesParams.stream === true;
 
-          // Unexpected transformation error
-          logger.error('Unexpected transformation error', correlationId, {
-            error: error instanceof Error ? error.message : 'Unknown error',
-            transformationTime: metrics.transformationTime,
-          });
-
-          const result = defensiveHandler(null, 500);
-          res
-            .status(result.statusCode)
-            .set(result.headers)
-            .json(result.claudeResponse);
+        if (isStreamingRequest) {
+          // Handle streaming request
+          await handleStreamingRequest(
+            responsesClient,
+            {
+              ...processingResult,
+              responsesParams,
+              reasoningEffort: finalReasoningEffort,
+            },
+            conversationId,
+            responseFormat,
+            correlationId,
+            req,
+            res,
+            metrics
+          );
           return;
         }
 
-        // Forward request to Azure OpenAI with circuit breaker and retry logic
-        let azureResponse: AxiosResponse;
+        // Make non-streaming request to Azure Responses API with circuit breaker and retry logic
+        let responsesAPIResponse: ResponsesResponse;
         const azureRequestStart = Date.now();
 
         try {
-          const azureUrl = `${config.azureOpenAI.endpoint}/openai/v1/chat/completions`;
-
-          azureResponse = await makeAzureRequestWithResilience(
-            azureUrl,
-            transformationResult.azureRequest,
-            transformationResult.headers as unknown as Record<string, string>,
+          responsesAPIResponse = await makeResponsesAPIRequestWithResilience(
+            responsesClient,
+            responsesParams,
             correlationId
           );
 
           metrics.azureRequestTime = Date.now() - azureRequestStart;
 
-          logger.debug('Azure OpenAI request completed', correlationId, {
-            statusCode: azureResponse.status,
+          logger.debug('Azure Responses API request completed', correlationId, {
+            responseId: responsesAPIResponse.id,
             azureRequestTime: metrics.azureRequestTime,
-            responseSize: JSON.stringify(azureResponse.data).length,
+            outputCount: responsesAPIResponse.output.length,
+            totalTokens: responsesAPIResponse.usage.total_tokens,
+            reasoningTokens: responsesAPIResponse.usage.reasoning_tokens,
           });
+
+          // Track conversation for continuity
+
+          conversationManager.trackConversation(
+            conversationId,
+            responsesAPIResponse.id,
+            {
+              totalTokensUsed: responsesAPIResponse.usage.total_tokens,
+              reasoningTokensUsed: responsesAPIResponse.usage.reasoning_tokens ?? 0,
+              averageResponseTime: metrics.azureRequestTime,
+              errorCount: 0,
+            }
+          );
         } catch (error) {
           metrics.azureRequestTime = Date.now() - azureRequestStart;
 
-          // Try graceful degradation for Azure OpenAI failures
-          try {
-            const degradationResult =
-              await gracefulDegradationManager.executeGracefulDegradation({
-                correlationId,
-                operation: 'completions',
-                error: error as Error,
-                attempt: 1,
-                metadata: { azureRequestTime: metrics.azureRequestTime },
-              });
+          // Update conversation with error
+          conversationManager.updateConversationMetrics(conversationId, {
+            errorCount: (conversationContext?.totalTokensUsed ?? 0) > 0 ? 1 : 0,
+          });
 
-            if (degradationResult.success) {
-              logger.info('Graceful degradation successful', correlationId, {
-                fallback: degradationResult.fallbackUsed,
-                degraded: degradationResult.degraded,
-              });
+          // Try graceful degradation for Azure Responses API failures
+          const axiosStatus =
+            typeof (error as { response?: { status?: number } }).response
+              ?.status === 'number'
+              ? (error as { response: { status: number } }).response.status
+              : undefined;
 
-              res.status(200).json(degradationResult.data);
-              return;
-            } else {
-              // Graceful degradation failed, return appropriate error response
-              logger.warn('Graceful degradation failed', correlationId, {
+          const derivedStatus =
+            error instanceof AzureOpenAIError
+              ? error.statusCode
+              : error instanceof ValidationError
+                ? 400
+                : axiosStatus;
+
+          const shouldAttemptDegradation =
+            derivedStatus === undefined || derivedStatus >= 500;
+
+          if (shouldAttemptDegradation) {
+            try {
+              const degradationResult =
+                await gracefulDegradationManager.executeGracefulDegradation({
+                  correlationId,
+                  operation: 'responses-api-completions',
+                  error: error as Error,
+                  attempt: 1,
+                  metadata: { azureRequestTime: metrics.azureRequestTime },
+                });
+
+              if (degradationResult.success) {
+                logger.info('Graceful degradation successful', correlationId, {
+                  fallback: degradationResult.fallbackUsed,
+                  degraded: degradationResult.degraded,
+                });
+
+                const fallbackResult = buildFallbackResponse(
+                  degradationResult.data,
+                  responseFormat,
+                  correlationId
+                );
+
+                res
+                  .status(fallbackResult.statusCode)
+                  .set(fallbackResult.headers)
+                  .json(fallbackResult.body);
+                return;
+              }
+            } catch (degradationError) {
+              logger.warn('Graceful degradation exception', correlationId, {
                 originalError:
                   error instanceof Error ? error.message : 'Unknown error',
-                degradationError: degradationResult.message,
+                degradationError:
+                  degradationError instanceof Error
+                    ? degradationError.message
+                    : 'Unknown error',
               });
-
-              // Extract status code and error data from original error
-              let statusCode = 500;
-              let errorData: unknown = degradationResult.message;
-
-              if (
-                typeof error === 'object' &&
-                error !== null &&
-                'response' in error
-              ) {
-                const axiosError = error as {
-                  response?: { status?: number; data?: unknown };
-                };
-                statusCode = axiosError.response?.status ?? 500;
-                errorData =
-                  axiosError.response?.data ?? degradationResult.message;
-              }
-
-              // Ensure we have a valid error structure for transformation
-              if (
-                errorData === null ||
-                errorData === undefined ||
-                typeof errorData !== 'object'
-              ) {
-                // Create a fallback error structure
-                errorData = {
-                  error: {
-                    type:
-                      statusCode === 401
-                        ? 'authentication_error'
-                        : statusCode === 429
-                          ? 'rate_limit_error'
-                          : statusCode === 400
-                            ? 'invalid_request_error'
-                            : 'api_error',
-                    message:
-                      error instanceof Error
-                        ? error.message
-                        : 'An error occurred while processing your request',
-                  },
-                };
-              }
-
-              // Transform Azure error to Claude format
-              const result = transformAzureResponseToClaude(
-                errorData,
-                statusCode,
-                correlationId
-              );
-              res
-                .status(result.statusCode)
-                .set(result.headers)
-                .json(result.claudeResponse);
-              return;
             }
-          } catch (degradationError) {
-            logger.warn('Graceful degradation exception', correlationId, {
-              originalError:
-                error instanceof Error ? error.message : 'Unknown error',
-              degradationError:
-                degradationError instanceof Error
-                  ? degradationError.message
-                  : 'Unknown error',
-            });
-            // Fall through to regular error handling
           }
 
           // Handle specific error types
-          if (error instanceof NetworkError) {
-            const claudeError: ClaudeError = {
-              type: 'error',
-              error: {
-                type: 'api_error',
-                message: 'Failed to connect to Azure OpenAI service',
-              },
-            };
+          if (error instanceof ValidationError) {
+            const errorResponse = createErrorResponseByFormat(
+              'invalid_request_error',
+              error.message,
+              400,
+              correlationId,
+              responseFormat
+            );
 
-            res.status(503).json(claudeError);
-            return;
-          }
-
-          if (error instanceof TimeoutError) {
-            const claudeError: ClaudeError = {
-              type: 'error',
-              error: {
-                type: 'timeout_error',
-                message: 'Request timed out',
-              },
-            };
-
-            res.status(408).json(claudeError);
+            res
+              .status(errorResponse.statusCode)
+              .set(errorResponse.headers)
+              .json(errorResponse.response);
             return;
           }
 
           if (error instanceof AzureOpenAIError) {
-            const claudeError: ClaudeError = {
-              type: 'error',
-              error: {
-                type: error.azureErrorType ?? 'api_error',
-                message: error.message,
-              },
-            };
+            let errorType:
+              | 'invalid_request_error'
+              | 'authentication_error'
+              | 'rate_limit_error'
+              | 'api_error' = 'api_error';
 
-            res.status(error.statusCode).json(claudeError);
+            if (error.azureErrorType === 'invalid_request_error') {
+              errorType = 'invalid_request_error';
+            } else if (error.azureErrorType === 'authentication_error') {
+              errorType = 'authentication_error';
+            } else if (error.azureErrorType === 'rate_limit_error') {
+              errorType = 'rate_limit_error';
+            }
+
+            const errorResponse = createErrorResponseByFormat(
+              errorType,
+              error.message,
+              error.statusCode,
+              correlationId,
+              responseFormat
+            );
+
+            res
+              .status(errorResponse.statusCode)
+              .set(errorResponse.headers)
+              .json(errorResponse.response);
             return;
           }
 
-          // Fallback to defensive handler for unexpected errors
-          logger.error('Unexpected Azure request error', correlationId, {
-            error: error instanceof Error ? error.message : 'Unknown error',
-            azureRequestTime: metrics.azureRequestTime,
-          });
+          const mappedError = mapErrorToClientResponse(
+            error,
+            correlationId,
+            responseFormat
+          );
 
-          const result = defensiveHandler(null, 503);
           res
-            .status(result.statusCode)
-            .set(result.headers)
-            .json(result.claudeResponse);
+            .status(mappedError.statusCode)
+            .set(mappedError.headers)
+            .json(mappedError.body);
           return;
         }
 
-        // Transform response with fallback mechanisms
-        let responseTransformationResult: ResponseTransformationResult;
+        // Transform Responses API response to appropriate format
         const responseTransformStart = Date.now();
+        let responseTransformationResult;
 
         try {
-          responseTransformationResult = transformAzureResponseToClaude(
-            azureResponse.data,
-            azureResponse.status,
+          responseTransformationResult = buildSuccessResponse(
+            responsesAPIResponse,
+            responseFormat,
             correlationId
           );
 
-          metrics.responseTransformationTime =
-            Date.now() - responseTransformStart;
+          metrics.responseTransformationTime = Date.now() - responseTransformStart;
 
           logger.debug('Response transformation successful', correlationId, {
             responseTransformationTime: metrics.responseTransformationTime,
+            responseFormat,
+            outputCount: responsesAPIResponse.output.length,
           });
         } catch (error) {
-          metrics.responseTransformationTime =
-            Date.now() - responseTransformStart;
+          metrics.responseTransformationTime = Date.now() - responseTransformStart;
 
-          logger.error(
-            'Response transformation failed, using defensive handler',
+          logger.error('Response transformation failed', correlationId, {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            responseTransformationTime: metrics.responseTransformationTime,
+          });
+
+          // Create fallback error response
+          const errorResponse = createErrorResponseByFormat(
+            'api_error',
+            'Failed to transform response',
+            500,
             correlationId,
-            {
-              error: error instanceof Error ? error.message : 'Unknown error',
-              responseTransformationTime: metrics.responseTransformationTime,
-            }
+            responseFormat
           );
 
-          responseTransformationResult = defensiveHandler(
-            azureResponse.data,
-            azureResponse.status
-          );
+          res
+            .status(errorResponse.statusCode)
+            .set(errorResponse.headers)
+            .json(errorResponse.response);
+          return;
         }
 
         // Calculate total processing time
@@ -542,12 +909,17 @@ export const completionsHandler = (config: ServerConfig) => {
           statusCode: responseTransformationResult.statusCode,
           totalTime: metrics.totalTime,
           requestSize: metrics.requestSize,
+          formatDetectionTime: metrics.formatDetectionTime,
           transformationTime: metrics.transformationTime,
           azureRequestTime: metrics.azureRequestTime,
           responseTransformationTime: metrics.responseTransformationTime,
-          responseSize: JSON.stringify(
-            responseTransformationResult.claudeResponse
-          ).length,
+          responseSize: JSON.stringify(responseTransformationResult.body).length,
+          responseFormat,
+          conversationId,
+          reasoningEffort: finalReasoningEffort,
+          estimatedComplexity: processingResult.estimatedComplexity,
+          totalTokens: responsesAPIResponse.usage.total_tokens,
+          reasoningTokens: responsesAPIResponse.usage.reasoning_tokens,
         });
 
         // Performance warning for slow requests
@@ -556,10 +928,13 @@ export const completionsHandler = (config: ServerConfig) => {
           logger.warn('Slow completion request detected', correlationId, {
             totalTime: metrics.totalTime,
             breakdown: {
+              formatDetection: metrics.formatDetectionTime,
               transformation: metrics.transformationTime,
               azureRequest: metrics.azureRequestTime,
               responseTransformation: metrics.responseTransformationTime,
             },
+            conversationId,
+            reasoningEffort: finalReasoningEffort,
           });
         }
 
@@ -567,7 +942,7 @@ export const completionsHandler = (config: ServerConfig) => {
         res
           .status(responseTransformationResult.statusCode)
           .set(responseTransformationResult.headers)
-          .json(responseTransformationResult.claudeResponse);
+          .json(responseTransformationResult.body);
       } catch (error) {
         // Global error handler for unexpected errors
         metrics.totalTime = Date.now() - metrics.startTime;
@@ -579,22 +954,219 @@ export const completionsHandler = (config: ServerConfig) => {
           requestSize: metrics.requestSize,
         });
 
-        // Use defensive handler for unexpected errors
-        const result = defensiveHandler(null, 500);
+        // Determine response format for error response
+        let errorResponseFormat: ResponseFormat = 'claude';
+        try {
+          const incomingRequest: IncomingRequest = {
+            headers: req.headers as Record<string, string>,
+            body: req.body,
+            path: req.path,
+            userAgent: req.headers['user-agent'],
+          };
+          const detectedFormat = detectRequestFormat(incomingRequest);
+          errorResponseFormat = getResponseFormat(detectedFormat);
+        } catch {
+          // Fallback to Claude format if detection fails
+          errorResponseFormat = 'claude';
+        }
+
+        if (error instanceof ValidationError) {
+          const errorResponse = createErrorResponseByFormat(
+            'invalid_request_error',
+            error.message,
+            400,
+            correlationId,
+            errorResponseFormat
+          );
+
+          res
+            .status(errorResponse.statusCode)
+            .set(errorResponse.headers)
+            .json(errorResponse.response);
+          return;
+        }
+
+        // Create appropriate error response
+        const mappedError = mapErrorToClientResponse(
+          error,
+          correlationId,
+          errorResponseFormat
+        );
+
         res
-          .status(result.statusCode)
-          .set(result.headers)
-          .json(result.claudeResponse);
+          .status(mappedError.statusCode)
+          .set(mappedError.headers)
+          .json(mappedError.body);
       }
     }
   );
 };
 
 /**
+ * Handle streaming requests to Azure Responses API
+ */
+async function handleStreamingRequest(
+  client: AzureResponsesClient,
+  processingResult: import('../utils/universal-request-processor.js').UniversalProcessingResult,
+  conversationId: string,
+  responseFormat: import('../types/index.js').ResponseFormat,
+  correlationId: string,
+  req: RequestWithCorrelationId,
+  res: Response,
+  metrics: RequestMetrics
+): Promise<void> {
+  const azureRequestStart = Date.now();
+
+  try {
+    logger.debug('Starting streaming request', correlationId, {
+      conversationId,
+      responseFormat,
+      reasoningEffort: processingResult.reasoningEffort,
+    });
+
+    // Set streaming headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Cache-Control');
+
+    // Create stream processor
+    const streamProcessor = createResponsesStreamProcessor(correlationId, responseFormat);
+
+    // Get streaming response from Azure Responses API
+    const streamIterable = client.createResponseStream(processingResult.responsesParams);
+
+    let chunkCount = 0;
+    let totalTokens = 0;
+    let reasoningTokens = 0;
+    let responseId = '';
+
+    // Process stream chunks
+    for await (const transformedChunk of streamProcessor.processStream(streamIterable)) {
+      chunkCount++;
+
+      // Extract response ID from first chunk for conversation tracking
+      if (chunkCount === 1) {
+        if (responseFormat === 'claude' && 'message' in transformedChunk) {
+          const claudeMessage = (transformedChunk as { message?: { id?: string } }).message;
+          const messageId = claudeMessage?.id;
+          if (typeof messageId === 'string' && messageId.length > 0) {
+            responseId = messageId;
+          }
+        } else if (responseFormat === 'openai' && 'id' in transformedChunk) {
+          responseId = (transformedChunk as { id: string }).id;
+        }
+      }
+
+      // Send chunk to client
+      if (responseFormat === 'claude' && 'type' in transformedChunk) {
+        res.write(`event: ${(transformedChunk as { type: string }).type}\n`);
+        res.write(`data: ${JSON.stringify(transformedChunk)}\n\n`);
+      } else {
+        res.write(`data: ${JSON.stringify(transformedChunk)}\n\n`);
+      }
+
+      // Extract token usage if available
+      if ('usage' in transformedChunk && transformedChunk.usage) {
+        const usage = transformedChunk.usage as {
+          total_tokens?: number;
+          input_tokens?: number;
+          output_tokens?: number;
+          reasoning_tokens?: number;
+        };
+        totalTokens = (usage.total_tokens ?? ((usage.input_tokens ?? 0) + (usage.output_tokens ?? 0))) || totalTokens;
+        reasoningTokens = usage.reasoning_tokens ?? reasoningTokens;
+      }
+    }
+
+    metrics.azureRequestTime = Date.now() - azureRequestStart;
+
+    // Track conversation for continuity
+    if (responseId.length > 0) {
+      conversationManager.trackConversation(
+        conversationId,
+        responseId,
+        {
+          totalTokensUsed: totalTokens,
+          reasoningTokensUsed: reasoningTokens,
+          averageResponseTime: metrics.azureRequestTime,
+          errorCount: 0,
+        }
+      );
+    }
+
+    // Send final event to close stream
+    if (responseFormat === 'claude') {
+      res.write('event: message_stop\n');
+      res.write('data: {}\n\n');
+    } else {
+      res.write('data: [DONE]\n\n');
+    }
+
+    res.end();
+
+    metrics.totalTime = Date.now() - metrics.startTime;
+
+    logger.info('Streaming request completed', correlationId, {
+      totalTime: metrics.totalTime,
+      azureRequestTime: metrics.azureRequestTime,
+      chunkCount,
+      totalTokens,
+      reasoningTokens,
+      conversationId,
+      responseFormat,
+    });
+
+  } catch (error) {
+    metrics.azureRequestTime = Date.now() - azureRequestStart;
+    metrics.totalTime = Date.now() - metrics.startTime;
+
+    logger.error('Streaming request failed', correlationId, {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      totalTime: metrics.totalTime,
+      azureRequestTime: metrics.azureRequestTime,
+    });
+
+    // Update conversation with error
+    conversationManager.updateConversationMetrics(conversationId, {
+      errorCount: 1,
+    });
+
+    // Send error event and close stream
+    if (!res.headersSent) {
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+    }
+
+    if (responseFormat === 'claude') {
+      res.write('event: error\n');
+      res.write(`data: ${JSON.stringify({
+        type: 'error',
+        error: {
+          type: 'api_error',
+          message: 'Streaming request failed'
+        }
+      })}\n\n`);
+    } else {
+      res.write(`data: ${JSON.stringify({
+        error: {
+          message: 'Streaming request failed',
+          type: 'api_error'
+        }
+      })}\n\n`);
+    }
+
+    res.end();
+  }
+}
+
+/**
  * Combined completions middleware with rate limiting and authentication
  * Rate limiting is applied before the main handler to prevent resource exhaustion
  */
-export const secureCompletionsHandler = (config: ServerConfig) => [
+export const secureCompletionsHandler = (config: Readonly<ServerConfig>) => [
   completionsRateLimit,
   completionsHandler(config),
 ];

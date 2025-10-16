@@ -12,6 +12,8 @@ import {
   retryStrategyRegistry,
   gracefulDegradationManager,
 } from '../resilience/index.js';
+import { ensureResponsesBaseURL } from '../utils/azure-endpoint.js';
+import { ConfigurationError } from '../errors/index.js';
 
 /**
  * Health check endpoint for AWS App Runner and monitoring
@@ -19,7 +21,7 @@ import {
 
 // Check Azure OpenAI connectivity
 const checkAzureOpenAI = async (
-  config: ServerConfig
+  config: Readonly<ServerConfig>
 ): Promise<{
   status: 'connected' | 'disconnected';
   responseTime?: number;
@@ -28,12 +30,36 @@ const checkAzureOpenAI = async (
     const startTime = Date.now();
 
     if (!config.azureOpenAI) {
-      throw new Error('Azure OpenAI configuration is missing');
+      throw new ConfigurationError(
+        'Azure OpenAI configuration is missing',
+        'health-check',
+        'health_check_configuration'
+      );
     }
+
+    const endpointCandidate =
+      typeof config.azureOpenAI.baseURL === 'string' &&
+      config.azureOpenAI.baseURL.trim().length > 0
+        ? config.azureOpenAI.baseURL
+        : config.azureOpenAI.endpoint;
+
+    if (
+      endpointCandidate === undefined ||
+      typeof endpointCandidate !== 'string' ||
+      endpointCandidate.trim().length === 0
+    ) {
+      throw new ConfigurationError(
+        'Azure OpenAI endpoint is missing',
+        'health-check',
+        'health_check_configuration'
+      );
+    }
+
+    const baseURL = ensureResponsesBaseURL(endpointCandidate);
 
     // Simple connectivity check to Azure OpenAI models endpoint
     const response = await axios.get(
-      `${config.azureOpenAI.endpoint}/openai/v1/models`,
+      `${baseURL}models`,
       {
         headers: {
           Authorization: `Bearer ${config.azureOpenAI.apiKey}`,
@@ -72,8 +98,11 @@ const getMemoryUsage = (): HealthCheckResult['memory'] => {
 };
 
 // Health check handler
-export const healthCheckHandler = (config: ServerConfig) => {
-  return async (req: RequestWithCorrelationId, res: Response): Promise<void> => {
+export const healthCheckHandler = (config: Readonly<ServerConfig>) => {
+  return async (
+    req: RequestWithCorrelationId,
+    res: Response
+  ): Promise<void> => {
     const { correlationId } = req;
     const startTime = Date.now();
 
