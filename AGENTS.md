@@ -10,6 +10,93 @@ This is a **production-ready TypeScript API proxy server** that seamlessly trans
 - **Production Ready**: Comprehensive monitoring, health checks, and resilience features
 - **Cloud Optimized**: Designed for AWS App Runner deployment with Docker support
 
+## Code Reuse and Architecture Principles
+
+### 🔄 Reuse Existing Code and Architecture
+
+**CRITICAL**: Always prioritize reusing existing code and architectural patterns over creating new implementations.
+
+**ZERO TOLERANCE FOR DUPLICATE CODE**: Before writing any new functionality, you MUST thoroughly search for existing implementations that can be reused or extended. Creating duplicate functionality is strictly prohibited.
+
+#### Mandatory Pre-Implementation Checklist:
+1. **Search existing codebase** using file search and grep for similar functionality
+2. **Check `src/utils/`** for reusable utility functions and transformers
+3. **Review `src/errors/`** for existing error handling patterns and error classes
+4. **Examine `src/middleware/`** for cross-cutting concerns and request processing
+5. **Look at `src/types/`** for existing type definitions and interfaces
+6. **Review `src/config/`** for configuration patterns and validation schemas
+7. **Check `src/clients/`** for existing API client patterns and implementations
+
+#### Strict Reuse Guidelines:
+- **Error Handling**: ALWAYS use existing error classes from `src/errors/index.ts` (ValidationError, AzureOpenAIError, ErrorFactory, etc.)
+- **Request Validation**: MUST extend existing validation patterns from request processing modules
+- **Response Transformation**: MUST build upon existing transformers and type guards
+- **Configuration**: MUST extend existing config patterns in `src/config/index.ts`
+- **API Clients**: MUST follow existing client patterns from `src/clients/azure-responses-client.ts`
+- **Middleware**: MUST reuse existing middleware patterns for authentication, logging, etc.
+- **Type Definitions**: MUST extend existing types rather than creating new ones for similar concepts
+
+#### Examples of Good Reuse:
+```typescript
+// ✅ GOOD: Reuse existing error classes
+import { ValidationError, AzureOpenAIError, ErrorFactory } from '../errors/index.js';
+throw new ValidationError('Invalid input', correlationId, 'field', value);
+
+// ✅ GOOD: Reuse existing error factory
+return ErrorFactory.fromAzureOpenAIError(error, correlationId, operation);
+
+// ✅ GOOD: Extend existing configuration patterns
+export function createAzureOpenAIConfig(config: Config): AzureOpenAIConfig {
+  // Build upon existing config structure with proper validation
+  return {
+    baseURL: ensureV1Endpoint(config.AZURE_OPENAI_ENDPOINT),
+    apiKey: config.AZURE_OPENAI_API_KEY,
+    ...(config.AZURE_OPENAI_API_VERSION && { apiVersion: config.AZURE_OPENAI_API_VERSION }),
+    deployment: config.AZURE_OPENAI_MODEL,
+    timeout: config.AZURE_OPENAI_TIMEOUT,
+    maxRetries: config.AZURE_OPENAI_MAX_RETRIES,
+  };
+}
+
+// ✅ GOOD: Reuse existing client patterns
+export class NewAPIClient {
+  private readonly client: SomeClient;
+  private readonly config: SomeConfig;
+
+  constructor(config: SomeConfig) {
+    this.validateConfig(config); // Reuse validation pattern
+    this.config = Object.freeze({ ...config }); // Reuse immutability pattern
+    // Follow existing client initialization patterns
+  }
+
+  private validateConfig(config: SomeConfig): void {
+    // Reuse existing validation patterns from AzureResponsesClient
+  }
+
+  private handleApiError(error: unknown, operation: string): Error {
+    // Reuse existing error handling patterns
+    return ErrorFactory.fromSomeAPIError(error, uuidv4(), operation);
+  }
+}
+
+// ❌ BAD: Creating duplicate error handling
+class MyCustomError extends Error { /* duplicate functionality */ }
+
+// ❌ BAD: Reimplementing existing validation
+function validateMyConfig(config: any) { /* duplicate validation logic */ }
+
+// ❌ BAD: Creating new error factory when one exists
+function createMyError(error: any) { /* duplicate error creation */ }
+```
+
+#### Benefits of Strict Code Reuse:
+1. **Consistency** - Uniform error handling, validation, and patterns across the entire codebase
+2. **Maintainability** - Single source of truth for common functionality reduces maintenance burden
+3. **Testing** - Existing code is already tested and proven, reducing testing overhead
+4. **Security** - Reuse security-hardened implementations rather than creating new attack surfaces
+5. **Performance** - Avoid duplicate implementations that increase bundle size and memory usage
+6. **Quality** - Existing code follows established patterns and quality standards
+
 ## Technology Stack & Architecture
 
 ### Core Technologies
@@ -138,6 +225,16 @@ AZURE_OPENAI_MODEL=your-model-deployment-name
 PORT=8080
 NODE_ENV=production
 ```
+
+### Optional Variables (Azure OpenAI v1 API)
+```bash
+# AZURE_OPENAI_API_VERSION=preview  # Optional: only needed for preview features
+AZURE_OPENAI_TIMEOUT=60000          # Optional: request timeout in milliseconds
+AZURE_OPENAI_MAX_RETRIES=3          # Optional: maximum retry attempts
+DEFAULT_REASONING_EFFORT=medium     # Optional: default reasoning effort level
+```
+
+**Important**: Azure OpenAI v1 API no longer requires `api-version` parameter for GA (Generally Available) features. Only specify `AZURE_OPENAI_API_VERSION` when using preview features that require it.
 
 ### Validation Rules
 - `PROXY_API_KEY`: 32-256 characters

@@ -18,13 +18,15 @@
 
 ## 🎯 Overview
 
-This high-performance proxy server enables seamless integration between Claude Code CLI and Azure OpenAI services by translating API requests and responses between formats. Built with enterprise-grade security, comprehensive monitoring, and production-ready resilience features.
+This high-performance proxy server enables seamless integration between Claude Code CLI and Azure OpenAI's v1 Responses API, leveraging GPT-5-Codex's enhanced reasoning capabilities for superior coding assistance. Built with enterprise-grade security, intelligent reasoning optimization, and production-ready resilience features.
 
 ### Why Use This Proxy?
 
-- **🔄 Seamless Integration**: Use Claude Code CLI with Azure OpenAI without code changes
+- **🧠 Enhanced Reasoning**: Leverages GPT-5-Codex's internal reasoning for complex coding tasks
+- **🔄 Multi-Format Support**: Supports both Claude and OpenAI API formats automatically
+- **🎯 Language-Aware**: Intelligent optimizations for Python, Java, TypeScript, React, Vue, and more
 - **🛡️ Enterprise Security**: Comprehensive authentication, rate limiting, and input validation
-- **📊 Production Monitoring**: Built-in metrics, health checks, and performance profiling
+- **📊 Production Monitoring**: Built-in metrics, health checks, and reasoning token tracking
 - **🚀 Cloud Ready**: Optimized for AWS App Runner with Docker support
 - **🔧 Developer Friendly**: Full TypeScript, comprehensive testing, and detailed documentation
 
@@ -32,9 +34,12 @@ This high-performance proxy server enables seamless integration between Claude C
 
 ### Core Functionality
 
-- **API Translation**: Bidirectional request/response transformation between Claude and Azure OpenAI formats
-- **Model Compatibility**: Support for GPT-4, GPT-3.5-turbo, and other Azure OpenAI models
-- **Streaming Support**: Real-time response streaming with proper format conversion
+- **Responses API Integration**: Uses Azure OpenAI v1 Responses API for enhanced reasoning capabilities
+- **Intelligent Reasoning**: Automatic reasoning effort adjustment based on task complexity and programming language
+- **Multi-Format Support**: Automatic detection and support for both Claude and OpenAI request/response formats
+- **Language Optimization**: Enhanced support for Python/Django, Java/Spring, TypeScript, React, Vue, Android, and shell scripting
+- **Conversation Management**: Improved multi-turn conversation handling with context tracking
+- **Streaming Support**: Real-time response streaming with proper format conversion for both API formats
 
 ### Security & Authentication
 
@@ -43,6 +48,7 @@ This high-performance proxy server enables seamless integration between Claude C
 - **Input Validation**: Comprehensive request sanitization and validation
 - **Security Headers**: Helmet.js integration with OWASP best practices
 - **CORS Protection**: Configurable cross-origin resource sharing
+- **Security Monitoring**: Active vulnerability tracking and mitigation (see [Security Advisories](docs/SECURITY_ADVISORIES.md))
 
 ### Monitoring & Observability
 
@@ -106,9 +112,15 @@ This high-performance proxy server enables seamless integration between Claude C
    PROXY_API_KEY=your-secure-32-character-api-key-here
    AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
    AZURE_OPENAI_API_KEY=your-azure-openai-api-key
-   AZURE_OPENAI_MODEL=gpt-4
+   AZURE_OPENAI_MODEL=gpt-5-codex  # GPT-5-Codex deployment name
 
-   # Optional Configuration
+   # Optional Responses API Configuration
+   # AZURE_OPENAI_API_VERSION=preview  # Only for preview features
+   AZURE_OPENAI_TIMEOUT=60000
+   AZURE_OPENAI_MAX_RETRIES=3
+   DEFAULT_REASONING_EFFORT=medium
+
+   # Optional Server Configuration
    PORT=8080
    NODE_ENV=production
    ```
@@ -164,17 +176,36 @@ pnpm run validate       # Run all quality checks
 
 ### Usage Example
 
-Once running, configure your Claude Code CLI to use the proxy:
+Once running, test the proxy with different API formats:
 
 ```bash
-# Test the proxy with curl
-curl -X POST http://localhost:8080/v1/completions \
+# Test with Claude format (automatic reasoning adjustment)
+curl -X POST http://localhost:8080/v1/messages \
   -H "Authorization: Bearer your-proxy-api-key" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "claude-3-5-sonnet-20241022",
-    "prompt": "Hello, world!",
-    "max_tokens": 100
+    "max_tokens": 1000,
+    "messages": [
+      {
+        "role": "user",
+        "content": "Write a Python function to implement a binary search algorithm"
+      }
+    ]
+  }'
+
+# Test with OpenAI format (same backend, different format)
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Authorization: Bearer your-proxy-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Create a React component for a todo list"
+      }
+    ]
   }'
 ```
 
@@ -234,8 +265,14 @@ The project maintains high code quality standards:
 
 ### API Documentation
 
-- **[OpenAPI Specification](docs/api-specification.yaml)** - Complete API documentation
+- **[OpenAPI Specification](docs/api-specification.yaml)** - Complete API documentation with Responses API integration
 - **[Interactive API Docs](http://localhost:8080/docs)** - Swagger UI (when running locally)
+
+### Configuration & Setup
+
+- **[Environment Configuration](docs/ENVIRONMENT.md)** - Environment variables and security setup
+- **[Responses API Configuration](docs/RESPONSES_API_CONFIGURATION.md)** - Detailed Responses API setup and optimization
+- **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Common issues and solutions
 
 ### Deployment & Operations
 
@@ -256,14 +293,29 @@ pnpm docs:serve
 
 ### Environment Variables
 
-| Variable                | Required | Default      | Description                               |
-| ----------------------- | -------- | ------------ | ----------------------------------------- |
-| `PROXY_API_KEY`         | ✅       | -            | Client authentication key (32-256 chars)  |
-| `AZURE_OPENAI_ENDPOINT` | ✅       | -            | Azure OpenAI endpoint URL (HTTPS only)    |
-| `AZURE_OPENAI_API_KEY`  | ✅       | -            | Azure OpenAI API key                      |
-| `AZURE_OPENAI_MODEL`    | ✅       | -            | Model deployment name                     |
-| `PORT`                  | ❌       | `8080`       | Server port (1024-65535)                  |
-| `NODE_ENV`              | ❌       | `production` | Environment (development/production/test) |
+| Variable                     | Required | Default      | Description                                    |
+| ---------------------------- | -------- | ------------ | ---------------------------------------------- |
+| `PROXY_API_KEY`              | ✅       | -            | Client authentication key (32-256 chars)       |
+| `AZURE_OPENAI_ENDPOINT`      | ✅       | -            | Azure OpenAI v1 endpoint URL (HTTPS only)      |
+| `AZURE_OPENAI_API_KEY`       | ✅       | -            | Azure OpenAI API key                           |
+| `AZURE_OPENAI_MODEL`         | ✅       | -            | GPT-5-Codex deployment name                    |
+| `AZURE_OPENAI_API_VERSION`   | ❌       | -            | API version (only for preview features)        |
+| `AZURE_OPENAI_TIMEOUT`       | ❌       | `60000`      | Request timeout in milliseconds                |
+| `AZURE_OPENAI_MAX_RETRIES`   | ❌       | `3`          | Maximum retry attempts                         |
+| `DEFAULT_REASONING_EFFORT`   | ❌       | `medium`     | Default reasoning level (minimal/low/medium/high) |
+| `PORT`                       | ❌       | `8080`       | Server port (1024-65535)                       |
+| `NODE_ENV`                   | ❌       | `production` | Environment (development/production/test)      |
+
+### Responses API Features
+
+The proxy leverages Azure OpenAI's v1 Responses API for enhanced capabilities:
+
+- **Intelligent Reasoning**: Automatic reasoning effort adjustment based on task complexity
+- **Language Detection**: Optimizations for Python, Java, TypeScript, React, Vue, Android, and shell scripting
+- **Framework Awareness**: Special handling for Django, Spring Boot, React hooks, Vue Composition API
+- **Conversation Tracking**: Improved multi-turn conversation management with context preservation
+- **Structured Outputs**: Support for JSON schemas and structured response formats
+- **Token Optimization**: Efficient reasoning token usage with cost tracking
 
 ### Security Configuration
 

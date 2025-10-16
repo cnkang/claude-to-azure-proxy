@@ -2,10 +2,20 @@ openapi: 3.0.3
 info:
   title: Claude-to-Azure OpenAI Proxy API
   description: |
-    API proxy server that translates Claude API requests to Azure OpenAI format.
+    API proxy server that translates Claude API requests to Azure OpenAI v1 Responses API format.
     
-    This service acts as a gateway between Claude Code CLI and Azure OpenAI,
-    providing seamless compatibility while maintaining security and performance.
+    This service acts as a gateway between Claude Code CLI and Azure OpenAI's v1 Responses API,
+    providing seamless compatibility while leveraging GPT-5-Codex's enhanced reasoning capabilities,
+    structured outputs, and improved conversation management.
+    
+    ## Key Features
+    
+    - **Responses API Integration**: Uses Azure OpenAI v1 Responses API for enhanced reasoning
+    - **Intelligent Reasoning**: Automatic reasoning effort adjustment based on task complexity
+    - **Multi-Format Support**: Supports both Claude and OpenAI request/response formats
+    - **Language-Specific Optimizations**: Enhanced support for Python, Java, TypeScript, React, Vue, and more
+    - **Conversation Management**: Improved multi-turn conversation handling with context tracking
+    - **Streaming Support**: Real-time response streaming with proper format conversion
     
     ## Authentication
     
@@ -14,6 +24,14 @@ info:
     - `x-api-key: <key>` header
     
     The authentication token/key must match the configured `PROXY_API_KEY`.
+    
+    ## Reasoning Effort
+    
+    The proxy automatically analyzes request complexity and adjusts reasoning effort:
+    - **Simple completions**: Minimal reasoning for fast responses
+    - **Complex tasks**: Enhanced reasoning for better quality
+    - **Language-specific**: Automatic adjustments for different programming languages
+    - **Framework-aware**: Special handling for Django, Spring Boot, React, Vue, etc.
     
     ## Rate Limiting
     
@@ -35,7 +53,7 @@ info:
     }
     ```
     
-  version: 1.0.0
+  version: 2.0.0
   contact:
     name: Claude-to-Azure Proxy Team
     email: support@example.com
@@ -145,13 +163,13 @@ paths:
 
   /v1/completions:
     post:
-      summary: Create Completion
+      summary: Create Completion (Legacy)
       description: |
-        Creates a completion by forwarding the request to Azure OpenAI.
+        Creates a completion by forwarding the request to Azure OpenAI v1 Responses API.
         
         This endpoint accepts Claude API format requests, transforms them
-        to Azure OpenAI format, forwards to Azure OpenAI, and transforms
-        the response back to Claude format.
+        to Azure OpenAI v1 Responses API format, forwards to Azure OpenAI, and transforms
+        the response back to Claude format. Supports intelligent reasoning effort adjustment.
       operationId: createCompletion
       tags:
         - Claude API
@@ -182,6 +200,100 @@ paths:
                 completion: "Hello! How can I help you today?"
                 model: "claude-3-5-sonnet-20241022"
                 correlationId: "550e8400-e29b-41d4-a716-446655440000"
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '429':
+          $ref: '#/components/responses/RateLimitError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableError'
+
+  /v1/messages:
+    post:
+      summary: Create Message (Claude Format)
+      description: |
+        Creates a message completion using Claude API format with Azure OpenAI v1 Responses API backend.
+        
+        This endpoint accepts Claude messages format, automatically detects task complexity,
+        applies appropriate reasoning effort, and returns responses in Claude format.
+        Supports multi-turn conversations with context tracking.
+      operationId: createMessage
+      tags:
+        - Claude API
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClaudeMessageRequest'
+            example:
+              model: "claude-3-5-sonnet-20241022"
+              max_tokens: 1000
+              messages:
+                - role: "user"
+                  content: "Write a Python function to calculate fibonacci numbers"
+      responses:
+        '200':
+          description: Message response in Claude format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaudeMessageResponse'
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/ClaudeStreamResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '429':
+          $ref: '#/components/responses/RateLimitError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableError'
+
+  /v1/chat/completions:
+    post:
+      summary: Create Chat Completion (OpenAI Format)
+      description: |
+        Creates a chat completion using OpenAI API format with Azure OpenAI v1 Responses API backend.
+        
+        This endpoint accepts OpenAI chat completions format, automatically detects task complexity,
+        applies appropriate reasoning effort, and returns responses in OpenAI format.
+        Supports streaming and multi-turn conversations.
+      operationId: createChatCompletion
+      tags:
+        - OpenAI API
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpenAIChatRequest'
+            example:
+              model: "gpt-4"
+              messages:
+                - role: "user"
+                  content: "Write a React component for a todo list"
+              max_tokens: 1000
+              temperature: 0.7
+              stream: false
+      responses:
+        '200':
+          description: Chat completion response in OpenAI format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAIChatResponse'
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/OpenAIStreamResponse'
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -384,6 +496,366 @@ components:
           format: uuid
           description: Request correlation ID for tracing
 
+    ClaudeMessageRequest:
+      type: object
+      required:
+        - model
+        - max_tokens
+        - messages
+      properties:
+        model:
+          type: string
+          description: Model identifier to use for completion
+          example: "claude-3-5-sonnet-20241022"
+        max_tokens:
+          type: integer
+          description: Maximum number of tokens to generate
+          minimum: 1
+          maximum: 8192
+          example: 1000
+        messages:
+          type: array
+          description: Array of messages in the conversation
+          items:
+            $ref: '#/components/schemas/ClaudeMessage'
+        temperature:
+          type: number
+          description: Sampling temperature (0.0 to 2.0)
+          minimum: 0.0
+          maximum: 2.0
+          example: 0.7
+        top_p:
+          type: number
+          description: Nucleus sampling parameter
+          minimum: 0.0
+          maximum: 1.0
+          example: 1.0
+        stream:
+          type: boolean
+          description: Whether to stream the response
+          example: false
+        system:
+          type: string
+          description: System message to set context
+          example: "You are a helpful coding assistant"
+
+    ClaudeMessage:
+      type: object
+      required:
+        - role
+        - content
+      properties:
+        role:
+          type: string
+          enum: [user, assistant]
+          description: The role of the message sender
+        content:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                $ref: '#/components/schemas/ClaudeContentBlock'
+          description: The content of the message
+
+    ClaudeContentBlock:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [text, image, tool_use, tool_result]
+          description: The type of content block
+        text:
+          type: string
+          description: Text content (for text blocks)
+        source:
+          type: object
+          description: Image source (for image blocks)
+          properties:
+            type:
+              type: string
+              enum: [base64]
+            media_type:
+              type: string
+              example: "image/jpeg"
+            data:
+              type: string
+              description: Base64 encoded image data
+        id:
+          type: string
+          description: Unique identifier (for tool_use blocks)
+        name:
+          type: string
+          description: Tool name (for tool_use blocks)
+        input:
+          type: object
+          description: Tool input parameters (for tool_use blocks)
+
+    ClaudeMessageResponse:
+      type: object
+      required:
+        - id
+        - type
+        - role
+        - content
+        - model
+        - usage
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the response
+          example: "msg_123456789"
+        type:
+          type: string
+          enum: [message]
+          description: Response type identifier
+        role:
+          type: string
+          enum: [assistant]
+          description: The role of the response
+        content:
+          type: array
+          description: Array of content blocks
+          items:
+            $ref: '#/components/schemas/ClaudeContentBlock'
+        model:
+          type: string
+          description: Model used for completion
+          example: "claude-3-5-sonnet-20241022"
+        usage:
+          $ref: '#/components/schemas/ClaudeUsage'
+
+    ClaudeUsage:
+      type: object
+      required:
+        - input_tokens
+        - output_tokens
+      properties:
+        input_tokens:
+          type: integer
+          description: Number of input tokens
+          example: 50
+        output_tokens:
+          type: integer
+          description: Number of output tokens
+          example: 100
+        reasoning_tokens:
+          type: integer
+          description: Number of reasoning tokens used (when reasoning is applied)
+          example: 25
+
+    ClaudeStreamResponse:
+      type: object
+      description: Server-sent event for streaming responses
+      properties:
+        event:
+          type: string
+          enum: [message_start, content_block_start, content_block_delta, content_block_stop, message_delta, message_stop]
+        data:
+          type: object
+          description: Event-specific data
+
+    OpenAIChatRequest:
+      type: object
+      required:
+        - model
+        - messages
+      properties:
+        model:
+          type: string
+          description: Model identifier to use for completion
+          example: "gpt-4"
+        messages:
+          type: array
+          description: Array of messages in the conversation
+          items:
+            $ref: '#/components/schemas/OpenAIMessage'
+        max_tokens:
+          type: integer
+          description: Maximum number of tokens to generate
+          minimum: 1
+          maximum: 8192
+          example: 1000
+        temperature:
+          type: number
+          description: Sampling temperature (0.0 to 2.0)
+          minimum: 0.0
+          maximum: 2.0
+          example: 0.7
+        top_p:
+          type: number
+          description: Nucleus sampling parameter
+          minimum: 0.0
+          maximum: 1.0
+          example: 1.0
+        stream:
+          type: boolean
+          description: Whether to stream the response
+          example: false
+        response_format:
+          type: object
+          description: Response format specification
+          properties:
+            type:
+              type: string
+              enum: [text, json_object]
+
+    OpenAIMessage:
+      type: object
+      required:
+        - role
+        - content
+      properties:
+        role:
+          type: string
+          enum: [system, user, assistant, tool]
+          description: The role of the message sender
+        content:
+          type: string
+          nullable: true
+          description: The content of the message
+        name:
+          type: string
+          description: Name of the function (for tool messages)
+        tool_calls:
+          type: array
+          description: Tool calls made by the assistant
+          items:
+            $ref: '#/components/schemas/OpenAIToolCall'
+        tool_call_id:
+          type: string
+          description: ID of the tool call (for tool messages)
+
+    OpenAIToolCall:
+      type: object
+      required:
+        - id
+        - type
+        - function
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the tool call
+        type:
+          type: string
+          enum: [function]
+          description: Type of tool call
+        function:
+          type: object
+          required:
+            - name
+            - arguments
+          properties:
+            name:
+              type: string
+              description: Name of the function to call
+            arguments:
+              type: string
+              description: JSON string of function arguments
+
+    OpenAIChatResponse:
+      type: object
+      required:
+        - id
+        - object
+        - created
+        - model
+        - choices
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the response
+          example: "chatcmpl-123456789"
+        object:
+          type: string
+          enum: [chat.completion]
+          description: Object type identifier
+        created:
+          type: integer
+          description: Unix timestamp of response creation
+          example: 1640995200
+        model:
+          type: string
+          description: Model used for completion
+          example: "gpt-4"
+        choices:
+          type: array
+          description: Array of completion choices
+          items:
+            $ref: '#/components/schemas/OpenAIChoice'
+        usage:
+          $ref: '#/components/schemas/OpenAIUsage'
+
+    OpenAIChoice:
+      type: object
+      required:
+        - index
+        - message
+        - finish_reason
+      properties:
+        index:
+          type: integer
+          description: Choice index
+          example: 0
+        message:
+          $ref: '#/components/schemas/OpenAIMessage'
+        finish_reason:
+          type: string
+          enum: [stop, length, content_filter, tool_calls]
+          nullable: true
+          description: Reason the completion finished
+
+    OpenAIUsage:
+      type: object
+      required:
+        - prompt_tokens
+        - completion_tokens
+        - total_tokens
+      properties:
+        prompt_tokens:
+          type: integer
+          description: Number of prompt tokens
+          example: 50
+        completion_tokens:
+          type: integer
+          description: Number of completion tokens
+          example: 100
+        total_tokens:
+          type: integer
+          description: Total number of tokens
+          example: 150
+        reasoning_tokens:
+          type: integer
+          description: Number of reasoning tokens used (when reasoning is applied)
+          example: 25
+
+    OpenAIStreamResponse:
+      type: object
+      description: Server-sent event for streaming responses
+      properties:
+        id:
+          type: string
+        object:
+          type: string
+          enum: [chat.completion.chunk]
+        created:
+          type: integer
+        model:
+          type: string
+        choices:
+          type: array
+          items:
+            type: object
+            properties:
+              index:
+                type: integer
+              delta:
+                $ref: '#/components/schemas/OpenAIMessage'
+              finish_reason:
+                type: string
+                nullable: true
+
     ErrorResponse:
       type: object
       required:
@@ -473,4 +945,6 @@ tags:
   - name: Service
     description: Service information endpoints
   - name: Claude API
-    description: Claude API compatible endpoints
+    description: Claude API compatible endpoints with Responses API backend
+  - name: OpenAI API
+    description: OpenAI API compatible endpoints with Responses API backend

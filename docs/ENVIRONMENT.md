@@ -29,21 +29,49 @@ This guide explains how to properly configure environment variables for the Clau
 
 ## Environment Variables
 
+## 🚀 Responses API Integration
+
+This proxy now uses Azure OpenAI's v1 Responses API to leverage GPT-5-Codex's enhanced reasoning capabilities. The Responses API provides:
+
+- **Enhanced Reasoning**: Automatic reasoning effort adjustment based on task complexity
+- **Better Context**: Improved conversation management with previous_response_id tracking
+- **Language Optimization**: Intelligent detection and optimization for different programming languages
+- **Structured Outputs**: Support for structured responses and tool usage
+
+### Reasoning Effort Configuration
+
+The proxy automatically analyzes request complexity and adjusts reasoning effort:
+
+- **`minimal`**: Fast responses for simple completions
+- **`low`**: Basic reasoning for straightforward tasks
+- **`medium`**: Balanced reasoning for most development tasks (default)
+- **`high`**: Enhanced reasoning for complex architectural and algorithmic tasks
+
+The system automatically detects:
+- Programming language context (Python, Java, TypeScript, React, Vue, etc.)
+- Framework patterns (Django, Spring Boot, React hooks, Vue Composition API)
+- Task complexity (simple completion vs. complex architecture)
+- Multi-turn conversation depth
+
 ### Required Variables
 
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `PROXY_API_KEY` | API key for authenticating requests to this proxy | `sk-proj-abc123...` |
-| `AZURE_OPENAI_ENDPOINT` | Your Azure OpenAI resource endpoint | `https://myresource.openai.azure.com` |
+| `AZURE_OPENAI_ENDPOINT` | Your Azure OpenAI resource endpoint (v1 API) | `https://myresource.openai.azure.com` |
 | `AZURE_OPENAI_API_KEY` | Azure OpenAI API key | `abc123def456...` |
-| `AZURE_OPENAI_MODEL` | Azure OpenAI model deployment name | `gpt-4` |
+| `AZURE_OPENAI_MODEL` | Azure OpenAI model deployment name (GPT-5-Codex recommended) | `gpt-5-codex` |
 
 ### Optional Variables
 
 | Variable | Description | Default | Example |
 |----------|-------------|---------|---------|
 | `PORT` | Server port | `8080` | `3000` |
-| `NODE_ENV` | Node.js environment | `development` | `production` |
+| `NODE_ENV` | Node.js environment | `production` | `development` |
+| `AZURE_OPENAI_API_VERSION` | API version (only for preview features) | `undefined` | `preview` |
+| `AZURE_OPENAI_TIMEOUT` | Request timeout in milliseconds | `60000` | `30000` |
+| `AZURE_OPENAI_MAX_RETRIES` | Maximum retry attempts | `3` | `5` |
+| `DEFAULT_REASONING_EFFORT` | Default reasoning effort level | `medium` | `high` |
 | `RATE_LIMIT_WINDOW_MS` | Rate limit window in milliseconds | `900000` | `600000` |
 | `RATE_LIMIT_MAX_REQUESTS` | Max requests per window | `100` | `50` |
 | `CORS_ORIGIN` | CORS allowed origins | `*` | `https://myapp.com` |
