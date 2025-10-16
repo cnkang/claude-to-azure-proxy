@@ -3,7 +3,10 @@ import cors from 'cors';
 import { json, urlencoded } from 'express';
 import type { Request, Response } from 'express';
 import type { ServerConfig, RequestWithCorrelationId } from './types/index.js';
-import loadedConfig, { sanitizedConfig } from './config/index.js';
+import loadedConfig, {
+  sanitizedConfig,
+  createAzureOpenAIConfig,
+} from './config/index.js';
 import type { Config } from './config/index.js';
 import {
   helmetConfig,
@@ -214,7 +217,10 @@ class ProxyServer {
    */
   private setupRoutes(): void {
     // Health check endpoint for AWS App Runner
-    this.app.get('/health', healthCheckHandler(this.config) as unknown as express.RequestHandler);
+    this.app.get(
+      '/health',
+      healthCheckHandler(this.config) as unknown as express.RequestHandler
+    );
 
     // Root endpoint
     this.app.get('/', (req: Readonly<Request>, res: Readonly<Response>) => {
@@ -248,6 +254,15 @@ class ProxyServer {
     // Chat completions endpoint (modern Claude API compatibility)
     this.app.post(
       '/v1/chat/completions',
+      secureAuthenticationMiddleware,
+      checkFeatureAvailability('completions') as express.RequestHandler,
+      completionsRateLimit,
+      completionsHandler(this.config) as unknown as express.RequestHandler
+    );
+
+    // Messages endpoint (Claude Responses API compatibility)
+    this.app.post(
+      '/v1/messages',
       secureAuthenticationMiddleware,
       checkFeatureAvailability('completions') as express.RequestHandler,
       completionsRateLimit,
@@ -329,7 +344,8 @@ class ProxyServer {
             logger.info('Server started successfully', '', {
               port: this.config.port,
               nodeEnv: this.config.nodeEnv,
-              azureEndpoint: this.config.azureOpenAI?.endpoint ?? 'not-configured',
+              azureEndpoint:
+                this.config.azureOpenAI?.endpoint ?? 'not-configured',
               model: this.config.azureOpenAI?.model ?? 'not-configured',
             });
 
@@ -527,7 +543,12 @@ const createServerConfig = (config: Readonly<Config>): ServerConfig => ({
   azureOpenAI: {
     endpoint: config.AZURE_OPENAI_ENDPOINT,
     apiKey: config.AZURE_OPENAI_API_KEY,
+    baseURL: createAzureOpenAIConfig(config).baseURL,
+    apiVersion: config.AZURE_OPENAI_API_VERSION,
     model: config.AZURE_OPENAI_MODEL,
+    deployment: config.AZURE_OPENAI_MODEL,
+    timeout: config.AZURE_OPENAI_TIMEOUT,
+    maxRetries: config.AZURE_OPENAI_MAX_RETRIES,
   },
 });
 
