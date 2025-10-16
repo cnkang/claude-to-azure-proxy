@@ -8,8 +8,8 @@ import {
 } from '../src/utils/request-transformer.js';
 import {
   transformAzureResponseToClaude,
-  isAzureOpenAIResponse,
-  isAzureOpenAIError,
+  isAzureOpenAIResponse as isOpenAIResponse,
+  isAzureOpenAIError as isOpenAIError,
 } from '../src/utils/response-transformer.js';
 import { sanitizeInput } from '../src/middleware/security.js';
 
@@ -60,7 +60,9 @@ describe('Property-Based Tests', () => {
         expect(azureRequest.messages[0].role).toBe('user');
 
         // Property: max_tokens should be preserved
-        expect(azureRequest.max_tokens).toBe(claudeRequest.max_tokens);
+        expect(azureRequest.max_completion_tokens).toBe(
+          claudeRequest.max_tokens
+        );
 
         // Property: Optional parameters should be preserved if present
         if (claudeRequest.temperature !== undefined) {
@@ -243,10 +245,11 @@ describe('Property-Based Tests', () => {
         // Property: Claude response should have required fields
         const claudeResponse = result.claudeResponse;
         expect(claudeResponse).toBeDefined();
-        if (claudeResponse.type === 'completion') {
+        if (claudeResponse.type === 'message') {
           expect(claudeResponse.id).toBe(azureResponse.id);
-          expect(claudeResponse.type).toBe('completion');
-          expect(claudeResponse.completion).toBe(
+          expect(claudeResponse.type).toBe('message');
+          expect(claudeResponse.role).toBe('assistant');
+          expect(claudeResponse.content[0].text).toBe(
             azureResponse.choices[0].message.content
           );
           expect(claudeResponse.model).toBe('claude-3-5-sonnet-20241022');
@@ -331,11 +334,11 @@ describe('Property-Based Tests', () => {
       ];
 
       validResponses.forEach((response) => {
-        expect(isAzureOpenAIResponse(response)).toBe(true);
+        expect(isOpenAIResponse(response)).toBe(true);
       });
 
       invalidResponses.forEach((response) => {
-        expect(isAzureOpenAIResponse(response)).toBe(false);
+        expect(isOpenAIResponse(response)).toBe(false);
       });
 
       const validErrors = [{ error: { message: 'test', type: 'error' } }];
@@ -348,11 +351,11 @@ describe('Property-Based Tests', () => {
       ];
 
       validErrors.forEach((error) => {
-        expect(isAzureOpenAIError(error)).toBe(true);
+        expect(isOpenAIError(error)).toBe(true);
       });
 
       invalidErrors.forEach((error) => {
-        expect(isAzureOpenAIError(error)).toBe(false);
+        expect(isOpenAIError(error)).toBe(false);
       });
     });
   });
@@ -625,7 +628,9 @@ describe('Property-Based Tests', () => {
 
       // Verify transformation preserved essential data
       expect(azureRequest.messages[0].content).toBe(originalRequest.prompt);
-      expect(azureRequest.max_tokens).toBe(originalRequest.max_tokens);
+      expect(azureRequest.max_completion_tokens).toBe(
+        originalRequest.max_tokens
+      );
       expect(azureRequest.temperature).toBe(originalRequest.temperature);
       expect(azureRequest.top_p).toBe(originalRequest.top_p);
     });

@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/unbound-method */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import request from 'supertest';
 import express from 'express';
@@ -105,6 +103,9 @@ describe('Integration Tests', () => {
 
     mockedAxios.create = vi.fn().mockReturnValue(mockAxiosInstance);
 
+    (globalThis as { __AZURE_OPENAI_AXIOS_MOCK__?: typeof mockAxiosInstance }).__AZURE_OPENAI_AXIOS_MOCK__ =
+      mockAxiosInstance;
+
     // Import modules after mocking
     const securityModule = await import('../src/middleware/security.js');
     const authModule = await import('../src/middleware/authentication.js');
@@ -153,8 +154,8 @@ describe('Integration Tests', () => {
     });
 
     // Reset graceful degradation mock to default success
-    const mockExecuteGracefulDegradation = vi.mocked(gracefulDegradationManager.executeGracefulDegradation);
-    mockExecuteGracefulDegradation.mockResolvedValue({
+    const degradationManagerMock = vi.mocked(gracefulDegradationManager);
+    degradationManagerMock.executeGracefulDegradation.mockResolvedValue({
       success: true,
       data: {
         type: 'completion',
@@ -190,8 +191,12 @@ describe('Integration Tests', () => {
 
       // Verify response structure
       expect(response.body).toHaveProperty('id');
-      expect(response.body).toHaveProperty('type', 'completion');
-      expect(response.body).toHaveProperty('completion');
+      expect(response.body).toHaveProperty('type', 'message');
+      expect(response.body).toHaveProperty('role', 'assistant');
+      expect(response.body).toHaveProperty('content');
+      expect(Array.isArray(response.body.content)).toBe(true);
+      expect(response.body.content[0]).toHaveProperty('type', 'text');
+      expect(response.body.content[0]).toHaveProperty('text');
       expect(response.body).toHaveProperty(
         'model',
         'claude-3-5-sonnet-20241022'
@@ -240,7 +245,7 @@ describe('Integration Tests', () => {
         .expect(200);
 
       const responseBody1 = response.body as Record<string, unknown>;
-      expect(responseBody1.type).toBe('completion');
+      expect(responseBody1.type).toBe('message');
 
       // Verify all parameters were passed to Azure OpenAI
       const mockPost = mockAxiosInstance.post as ReturnType<typeof vi.fn>;
@@ -264,7 +269,7 @@ describe('Integration Tests', () => {
         .expect(200);
 
       const responseBody2 = response.body as Record<string, unknown>;
-      expect(responseBody2.type).toBe('completion');
+      expect(responseBody2.type).toBe('message');
 
       // Verify minimal parameters were passed
       const mockPost2 = mockAxiosInstance.post as ReturnType<typeof vi.fn>;
@@ -274,7 +279,7 @@ describe('Integration Tests', () => {
       ];
       const [, data] = callArgs2;
       expect(data.model).toBe('gpt-5-codex');
-      expect(data.max_tokens).toBe(claudeRequest.max_tokens);
+      expect(data.max_completion_tokens).toBe(claudeRequest.max_tokens);
       expect(data.temperature).toBeUndefined();
       expect(data.top_p).toBeUndefined();
     });
@@ -286,8 +291,8 @@ describe('Integration Tests', () => {
       const azureError = AzureErrorFactory.create('authentication_error');
 
       // Mock graceful degradation to return error response instead of throwing
-      const mockExecuteGracefulDegradation = vi.mocked(gracefulDegradationManager.executeGracefulDegradation);
-      mockExecuteGracefulDegradation.mockResolvedValueOnce({
+      const degradationManagerMock = vi.mocked(gracefulDegradationManager);
+      degradationManagerMock.executeGracefulDegradation.mockResolvedValueOnce({
         success: false,
         error: azureError,
         fallbackUsed: null,
@@ -320,8 +325,8 @@ describe('Integration Tests', () => {
       const azureError = AzureErrorFactory.create('rate_limit_error');
 
       // Mock graceful degradation to return error response instead of throwing
-      const mockExecuteGracefulDegradation = vi.mocked(gracefulDegradationManager.executeGracefulDegradation);
-      mockExecuteGracefulDegradation.mockResolvedValueOnce({
+      const degradationManagerMock = vi.mocked(gracefulDegradationManager);
+      degradationManagerMock.executeGracefulDegradation.mockResolvedValueOnce({
         success: false,
         error: azureError,
         fallbackUsed: null,
@@ -353,8 +358,10 @@ describe('Integration Tests', () => {
       const claudeRequest = ClaudeRequestFactory.create();
 
       // Mock graceful degradation to fail
-      const mockExecuteGracefulDegradation = vi.mocked(gracefulDegradationManager.executeGracefulDegradation);
-      mockExecuteGracefulDegradation.mockRejectedValueOnce(new Error('Network error'));
+      const degradationManagerMock = vi.mocked(gracefulDegradationManager);
+      degradationManagerMock.executeGracefulDegradation.mockRejectedValueOnce(
+        new Error('Network error')
+      );
 
       (mockAxiosInstance.post as ReturnType<typeof vi.fn>).mockRejectedValue(
         new Error('ECONNREFUSED')
@@ -415,8 +422,8 @@ describe('Integration Tests', () => {
       const azureError = AzureErrorFactory.createWithSensitiveData();
 
       // Mock graceful degradation to return error response instead of throwing
-      const mockExecuteGracefulDegradation = vi.mocked(gracefulDegradationManager.executeGracefulDegradation);
-      mockExecuteGracefulDegradation.mockResolvedValueOnce({
+      const degradationManagerMock = vi.mocked(gracefulDegradationManager);
+      degradationManagerMock.executeGracefulDegradation.mockResolvedValueOnce({
         success: false,
         error: azureError,
         fallbackUsed: null,
@@ -551,7 +558,7 @@ describe('Integration Tests', () => {
         .expect(200);
 
       const responseBody10 = response.body as Record<string, unknown>;
-      expect(responseBody10.type).toBe('completion');
+      expect(responseBody10.type).toBe('message');
     });
   });
 
@@ -653,7 +660,7 @@ describe('Integration Tests', () => {
       responses.forEach((response) => {
         expect(response.status).toBe(200);
         const responseBody15 = response.body as Record<string, unknown>;
-        expect(responseBody15.type).toBe('completion');
+        expect(responseBody15.type).toBe('message');
       });
 
       // Verify all requests were processed
@@ -687,8 +694,8 @@ describe('Integration Tests', () => {
           data: AzureErrorFactory.create('rate_limit_error'),
         },
       });
-      const mockExecuteGracefulDegradation = vi.mocked(gracefulDegradationManager.executeGracefulDegradation);
-      mockExecuteGracefulDegradation.mockResolvedValueOnce({
+      const degradationManagerMock = vi.mocked(gracefulDegradationManager);
+      degradationManagerMock.executeGracefulDegradation.mockResolvedValueOnce({
         success: false,
         error: AzureErrorFactory.create('rate_limit_error'),
         fallbackUsed: null,
@@ -744,8 +751,10 @@ describe('Integration Tests', () => {
 
         // Verify consistent structure
         expect(response.body).toHaveProperty('id');
-        expect(response.body).toHaveProperty('type', 'completion');
-        expect(response.body).toHaveProperty('completion');
+        expect(response.body).toHaveProperty('type', 'message');
+        expect(response.body).toHaveProperty('role', 'assistant');
+        expect(response.body).toHaveProperty('content');
+        expect(Array.isArray(response.body.content)).toBe(true);
         expect(response.body).toHaveProperty(
           'model',
           'claude-3-5-sonnet-20241022'
@@ -781,7 +790,7 @@ describe('Integration Tests', () => {
           .expect(200);
 
         const responseBody16 = response.body as Record<string, unknown>;
-        expect(responseBody16.type).toBe('completion');
+        expect(responseBody16.type).toBe('message');
         expect(responseBody16.stop_reason).toBeDefined();
       }
     });
@@ -798,7 +807,7 @@ describe('Integration Tests', () => {
         .expect(200);
 
       const responseBody17 = response.body as Record<string, unknown>;
-      expect(responseBody17.type).toBe('completion');
+      expect(responseBody17.type).toBe('message');
 
       // Verify Unicode was preserved in Azure request
       const mockPost3 = mockAxiosInstance.post as ReturnType<typeof vi.fn>;
@@ -822,7 +831,7 @@ describe('Integration Tests', () => {
         .expect(200);
 
       const responseBody18 = response.body as Record<string, unknown>;
-      expect(responseBody18.type).toBe('completion');
+      expect(responseBody18.type).toBe('message');
     });
 
     it('should handle null content in Azure responses', async () => {
@@ -841,8 +850,8 @@ describe('Integration Tests', () => {
         .expect(200);
 
       const responseBody19 = response.body as Record<string, unknown>;
-      expect(responseBody19.type).toBe('completion');
-      expect(responseBody19.completion).toBe('');
+      expect(responseBody19.type).toBe('message');
+      expect(responseBody19.content[0].text).toBe('');
     });
   });
 

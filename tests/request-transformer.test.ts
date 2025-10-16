@@ -30,6 +30,95 @@ describe('Request Transformer', () => {
       expect(result).toEqual(validClaudeRequest);
     });
 
+    it('should allow max_tokens to be undefined when not provided', () => {
+      const requestWithoutMaxTokens = {
+        model: 'claude-3-5-sonnet-20241022',
+        prompt: 'Hello, world!',
+        // max_tokens intentionally omitted
+      };
+
+      const result = validateClaudeRequest(requestWithoutMaxTokens);
+      expect(result.max_tokens).toBeUndefined();
+    });
+
+    it('should validate chat completion request with string content', () => {
+      const chatRequest = {
+        model: 'claude-3-5-sonnet-20241022',
+        messages: [
+          {
+            role: 'user' as const,
+            content: 'Hello, world!',
+          },
+        ],
+        max_tokens: 100,
+      };
+
+      const result = validateClaudeRequest(chatRequest);
+      expect(result).toEqual(chatRequest);
+    });
+
+    it('should validate chat completion request with content blocks', () => {
+      const chatRequestWithBlocks = {
+        model: 'claude-3-5-sonnet-20241022',
+        messages: [
+          {
+            role: 'user' as const,
+            content: [
+              {
+                type: 'text' as const,
+                text: '你好啊',
+              },
+            ],
+          },
+        ],
+        max_tokens: 100,
+      };
+
+      const result = validateClaudeRequest(chatRequestWithBlocks);
+      expect(result).toEqual(chatRequestWithBlocks);
+    });
+
+    it('should validate chat completion request with multiple content blocks', () => {
+      const chatRequestWithMultipleBlocks = {
+        model: 'claude-3-5-sonnet-20241022',
+        messages: [
+          {
+            role: 'user' as const,
+            content: [
+              {
+                type: 'text' as const,
+                text: 'First part: ',
+              },
+              {
+                type: 'text' as const,
+                text: '你好啊',
+              },
+            ],
+          },
+        ],
+        max_tokens: 100,
+      };
+
+      const result = validateClaudeRequest(chatRequestWithMultipleBlocks);
+      expect(result).toEqual(chatRequestWithMultipleBlocks);
+    });
+
+    it('should allow max_tokens to be undefined for chat completion requests', () => {
+      const chatRequestWithoutMaxTokens = {
+        model: 'claude-3-5-sonnet-20241022',
+        messages: [
+          {
+            role: 'user' as const,
+            content: 'Hello, world!',
+          },
+        ],
+        // max_tokens intentionally omitted
+      };
+
+      const result = validateClaudeRequest(chatRequestWithoutMaxTokens);
+      expect(result.max_tokens).toBeUndefined();
+    });
+
     it('should throw ValidationError for missing required fields', () => {
       const invalidRequest = {
         model: 'claude-3-5-sonnet-20241022',
@@ -107,6 +196,85 @@ describe('Request Transformer', () => {
       );
     });
 
+    it('should throw ValidationError for empty content blocks array', () => {
+      const invalidChatRequest = {
+        model: 'claude-3-5-sonnet-20241022',
+        messages: [
+          {
+            role: 'user' as const,
+            content: [], // empty array not allowed
+          },
+        ],
+        max_tokens: 100,
+      };
+
+      expect(() => validateClaudeRequest(invalidChatRequest)).toThrow(
+        ValidationError
+      );
+    });
+
+    it('should throw ValidationError for invalid content block type', () => {
+      const invalidChatRequest = {
+        model: 'claude-3-5-sonnet-20241022',
+        messages: [
+          {
+            role: 'user' as const,
+            content: [
+              {
+                type: 'image' as 'text', // invalid type for testing
+                text: 'Hello',
+              },
+            ],
+          },
+        ],
+        max_tokens: 100,
+      };
+
+      expect(() => validateClaudeRequest(invalidChatRequest)).toThrow(
+        ValidationError
+      );
+    });
+
+    it('should throw ValidationError for content block with empty text', () => {
+      const invalidChatRequest = {
+        model: 'claude-3-5-sonnet-20241022',
+        messages: [
+          {
+            role: 'user' as const,
+            content: [
+              {
+                type: 'text' as const,
+                text: '', // empty text not allowed
+              },
+            ],
+          },
+        ],
+        max_tokens: 100,
+      };
+
+      expect(() => validateClaudeRequest(invalidChatRequest)).toThrow(
+        ValidationError
+      );
+    });
+
+    it('should throw ValidationError for request with both prompt and messages', () => {
+      const invalidRequest = {
+        model: 'claude-3-5-sonnet-20241022',
+        prompt: 'Hello',
+        messages: [
+          {
+            role: 'user' as const,
+            content: 'World',
+          },
+        ],
+        max_tokens: 100,
+      };
+
+      expect(() => validateClaudeRequest(invalidRequest)).toThrow(
+        ValidationError
+      );
+    });
+
     it('should sanitize prompt by removing control characters', () => {
       const requestWithControlChars = {
         ...validClaudeRequest,
@@ -115,6 +283,27 @@ describe('Request Transformer', () => {
 
       const result = validateClaudeRequest(requestWithControlChars);
       expect(result.prompt).toBe('Helloworld');
+    });
+
+    it('should sanitize content blocks by removing control characters', () => {
+      const chatRequestWithControlChars = {
+        model: 'claude-3-5-sonnet-20241022',
+        messages: [
+          {
+            role: 'user' as const,
+            content: [
+              {
+                type: 'text' as const,
+                text: 'Hello\x00\x01world\x7F',
+              },
+            ],
+          },
+        ],
+        max_tokens: 100,
+      };
+
+      const result = validateClaudeRequest(chatRequestWithControlChars);
+      expect(result.messages[0].content[0].text).toBe('Helloworld');
     });
 
     it('should throw SecurityError for template injection patterns', () => {
@@ -176,11 +365,100 @@ describe('Request Transformer', () => {
         role: 'user',
         content: validClaudeRequest.prompt,
       });
-      expect(result.max_tokens).toBe(validClaudeRequest.max_tokens);
+      expect(result.max_completion_tokens).toBe(validClaudeRequest.max_tokens);
       expect(result.temperature).toBe(validClaudeRequest.temperature);
       expect(result.top_p).toBe(validClaudeRequest.top_p);
       expect(result.stop).toEqual(validClaudeRequest.stop_sequences);
       expect(result.user).toBeDefined();
+    });
+
+    it('should transform chat completion request with string content', () => {
+      const chatRequest = {
+        model: 'claude-3-5-sonnet-20241022',
+        messages: [
+          {
+            role: 'user' as const,
+            content: 'Hello, world!',
+          },
+        ],
+        max_tokens: 100,
+      };
+
+      const result = transformClaudeToAzureRequest(chatRequest, azureModel);
+
+      expect(result.model).toBe(azureModel);
+      expect(result.messages).toHaveLength(1);
+      expect(result.messages[0]).toEqual({
+        role: 'user',
+        content: 'Hello, world!',
+      });
+      expect(result.max_completion_tokens).toBe(100);
+    });
+
+    it('should transform chat completion request with content blocks to string', () => {
+      const chatRequestWithBlocks = {
+        model: 'claude-3-5-sonnet-20241022',
+        messages: [
+          {
+            role: 'user' as const,
+            content: [
+              {
+                type: 'text' as const,
+                text: '你好啊',
+              },
+            ],
+          },
+        ],
+        max_tokens: 100,
+      };
+
+      const result = transformClaudeToAzureRequest(
+        chatRequestWithBlocks,
+        azureModel
+      );
+
+      expect(result.model).toBe(azureModel);
+      expect(result.messages).toHaveLength(1);
+      expect(result.messages[0]).toEqual({
+        role: 'user',
+        content: '你好啊',
+      });
+      expect(result.max_completion_tokens).toBe(100);
+    });
+
+    it('should transform multiple content blocks to concatenated string', () => {
+      const chatRequestWithMultipleBlocks = {
+        model: 'claude-3-5-sonnet-20241022',
+        messages: [
+          {
+            role: 'user' as const,
+            content: [
+              {
+                type: 'text' as const,
+                text: 'First part: ',
+              },
+              {
+                type: 'text' as const,
+                text: '你好啊',
+              },
+            ],
+          },
+        ],
+        max_tokens: 100,
+      };
+
+      const result = transformClaudeToAzureRequest(
+        chatRequestWithMultipleBlocks,
+        azureModel
+      );
+
+      expect(result.model).toBe(azureModel);
+      expect(result.messages).toHaveLength(1);
+      expect(result.messages[0]).toEqual({
+        role: 'user',
+        content: 'First part: \n你好啊',
+      });
+      expect(result.max_completion_tokens).toBe(100);
     });
 
     it('should handle minimal Claude request', () => {
@@ -194,7 +472,27 @@ describe('Request Transformer', () => {
 
       expect(result.model).toBe(azureModel);
       expect(result.messages[0].content).toBe('Hello');
-      expect(result.max_tokens).toBe(50);
+      expect(result.max_completion_tokens).toBe(50);
+      expect(result.temperature).toBeUndefined();
+      expect(result.top_p).toBeUndefined();
+      expect(result.stop).toBeUndefined();
+    });
+
+    it('should not include max_completion_tokens when max_tokens is not provided', () => {
+      const requestWithoutMaxTokens = {
+        model: 'claude-3-5-sonnet-20241022',
+        prompt: 'Hello',
+        // max_tokens intentionally omitted
+      } as ClaudeCompletionRequest;
+
+      const result = transformClaudeToAzureRequest(
+        requestWithoutMaxTokens,
+        azureModel
+      );
+
+      expect(result.model).toBe(azureModel);
+      expect(result.messages[0].content).toBe('Hello');
+      expect(result.max_completion_tokens).toBeUndefined();
       expect(result.temperature).toBeUndefined();
       expect(result.top_p).toBeUndefined();
       expect(result.stop).toBeUndefined();
@@ -273,7 +571,9 @@ describe('Request Transformer', () => {
       const azureReq = result.azureRequest;
       expect(azureReq.model).toBe(azureModel);
       expect(azureReq.messages[0].content).toBe(validClaudeRequest.prompt);
-      expect(azureReq.max_tokens).toBe(validClaudeRequest.max_tokens);
+      expect(azureReq.max_completion_tokens).toBe(
+        validClaudeRequest.max_tokens
+      );
 
       expect(result.headers['api-key']).toBe(azureApiKey);
       expect(result.headers['X-Request-ID']).toBe(result.requestId);
@@ -430,7 +730,7 @@ describe('Request Transformer', () => {
         azureApiKey
       );
       const azureReq = result.azureRequest;
-      expect(azureReq.max_tokens).toBe(131072);
+      expect(azureReq.max_completion_tokens).toBe(131072);
     });
 
     it('should handle boundary values for numeric parameters', () => {

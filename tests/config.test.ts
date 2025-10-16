@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
+vi.doUnmock('../src/config/index.js');
+
 describe('Configuration Module', () => {
   let originalEnv: NodeJS.ProcessEnv;
   let originalExit: typeof process.exit;
@@ -91,7 +93,7 @@ describe('Configuration Module', () => {
 
       // Attempting to modify should throw in strict mode (which TypeScript enables)
       expect(() => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+         
         (config as any).PORT = 9999;
       }).toThrow();
 

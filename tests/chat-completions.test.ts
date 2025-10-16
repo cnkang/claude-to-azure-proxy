@@ -101,7 +101,7 @@ describe('Chat Completions Support', () => {
         role: 'user',
         content: 'Hello, world!',
       });
-      expect(result.max_tokens).toBe(100);
+      expect(result.max_completion_tokens).toBe(100);
       expect(result.temperature).toBe(0.7);
       expect(result.user).toBeDefined();
     });

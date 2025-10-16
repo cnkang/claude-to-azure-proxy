@@ -1,19 +1,21 @@
 import { describe, it, expect } from 'vitest';
 import {
   transformAzureResponseToClaude,
+  transformAzureResponseByFormat,
+  createErrorResponseByFormat,
   transformAzureStreamResponseToClaude,
   validateResponseIntegrity,
   createDefensiveResponseHandler,
   extractErrorInfo,
-  isAzureOpenAIResponse,
-  isAzureOpenAIStreamResponse,
-  isAzureOpenAIError,
+  isAzureOpenAIResponse as isOpenAIResponse,
+  isAzureOpenAIStreamResponse as isOpenAIStreamResponse,
+  isAzureOpenAIError as isOpenAIError,
 } from '../src/utils/response-transformer.js';
 import type {
-  AzureOpenAIResponse,
-  AzureOpenAIStreamResponse,
-  AzureOpenAIError,
-  ClaudeCompletionResponse,
+  OpenAIResponse,
+  OpenAIStreamChunk,
+  OpenAIError,
+  ClaudeResponse,
   ClaudeError,
   ResponseSizeLimits,
 } from '../src/types/index.js';
@@ -22,9 +24,9 @@ describe('Response Transformer', () => {
   const mockCorrelationId = 'test-correlation-id';
 
   describe('Type Guards', () => {
-    describe('isAzureOpenAIResponse', () => {
+    describe('isOpenAIResponse', () => {
       it('should validate correct Azure OpenAI response', () => {
-        const validResponse: AzureOpenAIResponse = {
+        const validResponse: OpenAIResponse = {
           id: 'chatcmpl-123',
           object: 'chat.completion',
           created: 1640995200,
@@ -46,15 +48,15 @@ describe('Response Transformer', () => {
           },
         };
 
-        expect(isAzureOpenAIResponse(validResponse)).toBe(true);
+        expect(isOpenAIResponse(validResponse)).toBe(true);
       });
 
       it('should reject invalid response structures', () => {
-        expect(isAzureOpenAIResponse(null)).toBe(false);
-        expect(isAzureOpenAIResponse(undefined)).toBe(false);
-        expect(isAzureOpenAIResponse('string')).toBe(false);
-        expect(isAzureOpenAIResponse({})).toBe(false);
-        expect(isAzureOpenAIResponse({ id: 'test' })).toBe(false);
+        expect(isOpenAIResponse(null)).toBe(false);
+        expect(isOpenAIResponse(undefined)).toBe(false);
+        expect(isOpenAIResponse('string')).toBe(false);
+        expect(isOpenAIResponse({})).toBe(false);
+        expect(isOpenAIResponse({ id: 'test' })).toBe(false);
       });
 
       it('should reject response with invalid choices', () => {
@@ -66,13 +68,13 @@ describe('Response Transformer', () => {
           choices: [{ invalid: 'choice' }],
         };
 
-        expect(isAzureOpenAIResponse(invalidResponse)).toBe(false);
+        expect(isOpenAIResponse(invalidResponse)).toBe(false);
       });
     });
 
-    describe('isAzureOpenAIStreamResponse', () => {
+    describe('isOpenAIStreamResponse', () => {
       it('should validate correct Azure OpenAI stream response', () => {
-        const validStreamResponse: AzureOpenAIStreamResponse = {
+        const validStreamResponse: OpenAIStreamChunk = {
           id: 'chatcmpl-123',
           object: 'chat.completion.chunk',
           created: 1640995200,
@@ -89,20 +91,20 @@ describe('Response Transformer', () => {
           ],
         };
 
-        expect(isAzureOpenAIStreamResponse(validStreamResponse)).toBe(true);
+        expect(isOpenAIStreamResponse(validStreamResponse)).toBe(true);
       });
 
       it('should reject invalid stream response structures', () => {
-        expect(isAzureOpenAIStreamResponse(null)).toBe(false);
-        expect(isAzureOpenAIStreamResponse({ object: 'chat.completion' })).toBe(
+        expect(isOpenAIStreamResponse(null)).toBe(false);
+        expect(isOpenAIStreamResponse({ object: 'chat.completion' })).toBe(
           false
         );
       });
     });
 
-    describe('isAzureOpenAIError', () => {
+    describe('isOpenAIError', () => {
       it('should validate correct Azure OpenAI error response', () => {
-        const validError: AzureOpenAIError = {
+        const validError: OpenAIError = {
           error: {
             message: 'Invalid request',
             type: 'invalid_request_error',
@@ -110,20 +112,20 @@ describe('Response Transformer', () => {
           },
         };
 
-        expect(isAzureOpenAIError(validError)).toBe(true);
+        expect(isOpenAIError(validError)).toBe(true);
       });
 
       it('should reject invalid error structures', () => {
-        expect(isAzureOpenAIError(null)).toBe(false);
-        expect(isAzureOpenAIError({ error: 'string' })).toBe(false);
-        expect(isAzureOpenAIError({ error: {} })).toBe(false);
+        expect(isOpenAIError(null)).toBe(false);
+        expect(isOpenAIError({ error: 'string' })).toBe(false);
+        expect(isOpenAIError({ error: {} })).toBe(false);
       });
     });
   });
 
   describe('transformAzureResponseToClaude', () => {
     it('should transform successful Azure OpenAI response to Claude format', () => {
-      const azureResponse: AzureOpenAIResponse = {
+      const azureResponse: OpenAIResponse = {
         id: 'chatcmpl-123',
         object: 'chat.completion',
         created: 1640995200,
@@ -155,12 +157,15 @@ describe('Response Transformer', () => {
       expect(result.headers['Content-Type']).toBe('application/json');
       expect(result.headers['X-Correlation-ID']).toBe(mockCorrelationId);
 
-      const claudeResponse = result.claudeResponse as ClaudeCompletionResponse;
+      const claudeResponse = result.claudeResponse as ClaudeResponse;
       expect(claudeResponse.id).toBe('chatcmpl-123');
-      expect(claudeResponse.type).toBe('completion');
-      expect(claudeResponse.completion).toBe('Hello, world!');
+      expect(claudeResponse.type).toBe('message');
+      expect(claudeResponse.role).toBe('assistant');
+      expect(claudeResponse.content).toHaveLength(1);
+      expect(claudeResponse.content[0].type).toBe('text');
+      expect(claudeResponse.content[0].text).toBe('Hello, world!');
       expect(claudeResponse.model).toBe('claude-3-5-sonnet-20241022');
-      expect(claudeResponse.stop_reason).toBe('stop_sequence');
+      expect(claudeResponse.stop_reason).toBe('end_turn');
       expect(claudeResponse.usage).toEqual({
         input_tokens: 10,
         output_tokens: 5,
@@ -168,7 +173,7 @@ describe('Response Transformer', () => {
     });
 
     it('should transform Azure OpenAI error to Claude error format', () => {
-      const azureError: AzureOpenAIError = {
+      const azureError: OpenAIError = {
         error: {
           message: 'Invalid request parameter',
           type: 'invalid_request_error',
@@ -190,7 +195,7 @@ describe('Response Transformer', () => {
     });
 
     it('should handle null content in Azure response', () => {
-      const azureResponse: AzureOpenAIResponse = {
+      const azureResponse: OpenAIResponse = {
         id: 'chatcmpl-123',
         object: 'chat.completion',
         created: 1640995200,
@@ -213,13 +218,13 @@ describe('Response Transformer', () => {
         mockCorrelationId
       );
 
-      const claudeResponse = result.claudeResponse as ClaudeCompletionResponse;
-      expect(claudeResponse.completion).toBe('');
-      expect(claudeResponse.stop_reason).toBe('stop_sequence');
+      const claudeResponse = result.claudeResponse as ClaudeResponse;
+      expect(claudeResponse.content[0].text).toBe('');
+      expect(claudeResponse.stop_reason).toBe('end_turn');
     });
 
     it('should sanitize sensitive content', () => {
-      const azureResponse: AzureOpenAIResponse = {
+      const azureResponse: OpenAIResponse = {
         id: 'chatcmpl-123',
         object: 'chat.completion',
         created: 1640995200,
@@ -243,16 +248,16 @@ describe('Response Transformer', () => {
         mockCorrelationId
       );
 
-      const claudeResponse = result.claudeResponse as ClaudeCompletionResponse;
-      expect(claudeResponse.completion).toContain('[EMAIL_REDACTED]');
-      expect(claudeResponse.completion).toContain('[TOKEN_REDACTED]');
-      expect(claudeResponse.completion).not.toContain('user@example.com');
-      expect(claudeResponse.completion).not.toContain('abc123token');
+      const claudeResponse = result.claudeResponse as ClaudeResponse;
+      expect(claudeResponse.content[0].text).toContain('[EMAIL_REDACTED]');
+      expect(claudeResponse.content[0].text).toContain('[TOKEN_REDACTED]');
+      expect(claudeResponse.content[0].text).not.toContain('user@example.com');
+      expect(claudeResponse.content[0].text).not.toContain('abc123token');
     });
 
     it('should enforce response size limits', () => {
       const largeContent = 'x'.repeat(1000);
-      const azureResponse: AzureOpenAIResponse = {
+      const azureResponse: OpenAIResponse = {
         id: 'chatcmpl-123',
         object: 'chat.completion',
         created: 1640995200,
@@ -285,7 +290,7 @@ describe('Response Transformer', () => {
       expect(result.statusCode).toBe(500);
       const claudeError = result.claudeResponse as ClaudeError;
       expect(claudeError.type).toBe('error');
-      expect(claudeError.error.type).toBe('internal_error');
+      expect(claudeError.error.type).toBe('api_error');
     });
 
     it('should handle malformed response gracefully', () => {
@@ -300,11 +305,11 @@ describe('Response Transformer', () => {
       expect(result.statusCode).toBe(500);
       const claudeError = result.claudeResponse as ClaudeError;
       expect(claudeError.type).toBe('error');
-      expect(claudeError.error.type).toBe('internal_error');
+      expect(claudeError.error.type).toBe('api_error');
     });
 
     it('should handle response with no choices', () => {
-      const azureResponse: AzureOpenAIResponse = {
+      const azureResponse: OpenAIResponse = {
         id: 'chatcmpl-123',
         object: 'chat.completion',
         created: 1640995200,
@@ -326,7 +331,7 @@ describe('Response Transformer', () => {
 
   describe('transformAzureStreamResponseToClaude', () => {
     it('should transform Azure stream response to Claude format', () => {
-      const azureStreamResponse: AzureOpenAIStreamResponse = {
+      const azureStreamResponse: OpenAIStreamChunk = {
         id: 'chatcmpl-123',
         object: 'chat.completion.chunk',
         created: 1640995200,
@@ -349,16 +354,12 @@ describe('Response Transformer', () => {
       );
 
       expect(result.isComplete).toBe(false);
-      expect(result.claudeStreamResponse.type).toBe('completion');
-      expect(result.claudeStreamResponse.completion).toBe('Hello');
-      expect(result.claudeStreamResponse.model).toBe(
-        'claude-3-5-sonnet-20241022'
-      );
-      expect(result.claudeStreamResponse.stop_reason).toBe(null);
+      expect(result.claudeStreamResponse.type).toBe('content_block_delta');
+      expect(result.claudeStreamResponse.delta?.text).toBe('Hello');
     });
 
     it('should handle stream completion', () => {
-      const azureStreamResponse: AzureOpenAIStreamResponse = {
+      const azureStreamResponse: OpenAIStreamChunk = {
         id: 'chatcmpl-123',
         object: 'chat.completion.chunk',
         created: 1640995200,
@@ -378,7 +379,7 @@ describe('Response Transformer', () => {
       );
 
       expect(result.isComplete).toBe(true);
-      expect(result.claudeStreamResponse.stop_reason).toBe('stop_sequence');
+      expect(result.claudeStreamResponse.type).toBe('message_stop');
     });
 
     it('should handle malformed stream response gracefully', () => {
@@ -390,14 +391,13 @@ describe('Response Transformer', () => {
       );
 
       expect(result.isComplete).toBe(true);
-      expect(result.claudeStreamResponse.completion).toBe('');
-      expect(result.claudeStreamResponse.stop_reason).toBe('stop_sequence');
+      expect(result.claudeStreamResponse.type).toBe('message_stop');
     });
   });
 
   describe('validateResponseIntegrity', () => {
     it('should validate correct response structure', () => {
-      const validResponse: AzureOpenAIResponse = {
+      const validResponse: OpenAIResponse = {
         id: 'chatcmpl-123',
         object: 'chat.completion',
         created: 1640995200,
@@ -448,7 +448,7 @@ describe('Response Transformer', () => {
   describe('createDefensiveResponseHandler', () => {
     it('should handle successful transformation', () => {
       const handler = createDefensiveResponseHandler(mockCorrelationId);
-      const azureResponse: AzureOpenAIResponse = {
+      const azureResponse: OpenAIResponse = {
         id: 'chatcmpl-123',
         object: 'chat.completion',
         created: 1640995200,
@@ -468,8 +468,8 @@ describe('Response Transformer', () => {
       const result = handler(azureResponse, 200);
 
       expect(result.statusCode).toBe(200);
-      const claudeResponse = result.claudeResponse as ClaudeCompletionResponse;
-      expect(claudeResponse.type).toBe('completion');
+      const claudeResponse = result.claudeResponse as ClaudeResponse;
+      expect(claudeResponse.type).toBe('message');
     });
 
     it('should provide fallback for failed transformation', () => {
@@ -483,7 +483,7 @@ describe('Response Transformer', () => {
       expect(result.statusCode).toBe(500);
       const claudeError = result.claudeResponse as ClaudeError;
       expect(claudeError.type).toBe('error');
-      expect(claudeError.error.type).toBe('internal_error');
+      expect(claudeError.error.type).toBe('api_error');
     });
 
     it('should handle errors from transformation function gracefully', () => {
@@ -513,7 +513,7 @@ describe('Response Transformer', () => {
       expect(result.statusCode).toBe(500);
       const claudeError = result.claudeResponse as ClaudeError;
       expect(claudeError.type).toBe('error');
-      expect(claudeError.error.type).toBe('internal_error');
+      expect(claudeError.error.type).toBe('api_error');
     });
   });
 
@@ -531,7 +531,7 @@ describe('Response Transformer', () => {
       ];
 
       testCases.forEach(({ type, expectedStatus }) => {
-        const azureError: AzureOpenAIError = {
+        const azureError: OpenAIError = {
           error: {
             message: `Test ${type}`,
             type,
@@ -548,7 +548,7 @@ describe('Response Transformer', () => {
     });
 
     it('should sanitize error messages', () => {
-      const azureError: AzureOpenAIError = {
+      const azureError: OpenAIError = {
         error: {
           message: 'Error with email user@example.com and Bearer token123',
           type: 'invalid_request_error',
@@ -567,14 +567,14 @@ describe('Response Transformer', () => {
   describe('Finish Reason Mapping', () => {
     it('should map Azure finish reasons to Claude format', () => {
       const testCases = [
-        { azure: 'stop', claude: 'stop_sequence' },
+        { azure: 'stop', claude: 'end_turn' },
         { azure: 'length', claude: 'max_tokens' },
-        { azure: 'content_filter', claude: 'stop_sequence' },
+        { azure: 'content_filter', claude: 'end_turn' },
         { azure: null, claude: null },
       ];
 
       testCases.forEach(({ azure, claude }) => {
-        const azureResponse: AzureOpenAIResponse = {
+        const azureResponse: OpenAIResponse = {
           id: 'chatcmpl-123',
           object: 'chat.completion',
           created: 1640995200,
@@ -598,8 +598,8 @@ describe('Response Transformer', () => {
         );
         const { claudeResponse } = result;
         expect(claudeResponse).toBeDefined();
-        if (claudeResponse.type !== 'completion') {
-          throw new Error('Expected completion response');
+        if (claudeResponse.type !== 'message') {
+          throw new Error('Expected message response');
         }
 
         expect(claudeResponse.stop_reason).toBe(claude);
@@ -617,7 +617,7 @@ describe('Response Transformer', () => {
         API Key: api_key=secret123
       `;
 
-      const azureResponse: AzureOpenAIResponse = {
+      const azureResponse: OpenAIResponse = {
         id: 'chatcmpl-123',
         object: 'chat.completion',
         created: 1640995200,
@@ -639,19 +639,233 @@ describe('Response Transformer', () => {
         200,
         mockCorrelationId
       );
-      const claudeResponse = result.claudeResponse as ClaudeCompletionResponse;
+      const claudeResponse = result.claudeResponse as ClaudeResponse;
 
-      expect(claudeResponse.completion).toContain('[EMAIL_REDACTED]');
-      expect(claudeResponse.completion).toContain('[CARD_REDACTED]');
-      expect(claudeResponse.completion).toContain('[SSN_REDACTED]');
-      expect(claudeResponse.completion).toContain('[TOKEN_REDACTED]');
-      expect(claudeResponse.completion).toContain('[KEY_REDACTED]');
+      expect(claudeResponse.content[0].text).toContain('[EMAIL_REDACTED]');
+      expect(claudeResponse.content[0].text).toContain('[CARD_REDACTED]');
+      expect(claudeResponse.content[0].text).toContain('[SSN_REDACTED]');
+      expect(claudeResponse.content[0].text).toContain('[TOKEN_REDACTED]');
+      expect(claudeResponse.content[0].text).toContain('[KEY_REDACTED]');
 
-      expect(claudeResponse.completion).not.toContain('user@example.com');
-      expect(claudeResponse.completion).not.toContain('1234-5678-9012-3456');
-      expect(claudeResponse.completion).not.toContain('123-45-6789');
-      expect(claudeResponse.completion).not.toContain('abc123def456');
-      expect(claudeResponse.completion).not.toContain('secret123');
+      expect(claudeResponse.content[0].text).not.toContain('user@example.com');
+      expect(claudeResponse.content[0].text).not.toContain(
+        '1234-5678-9012-3456'
+      );
+      expect(claudeResponse.content[0].text).not.toContain('123-45-6789');
+      expect(claudeResponse.content[0].text).not.toContain('abc123def456');
+      expect(claudeResponse.content[0].text).not.toContain('secret123');
+    });
+  });
+
+  describe('Format-Aware Response Transformation', () => {
+    describe('transformAzureResponseByFormat', () => {
+      it('should transform to Claude format when requested', () => {
+        const azureResponse: OpenAIResponse = {
+          id: 'chatcmpl-123',
+          object: 'chat.completion',
+          created: 1640995200,
+          model: 'gpt-4',
+          choices: [
+            {
+              index: 0,
+              message: {
+                role: 'assistant',
+                content: 'Hello, world!',
+              },
+              finish_reason: 'stop',
+            },
+          ],
+          usage: {
+            prompt_tokens: 10,
+            completion_tokens: 5,
+            total_tokens: 15,
+          },
+        };
+
+        const result = transformAzureResponseByFormat(
+          azureResponse,
+          200,
+          mockCorrelationId,
+          'claude'
+        );
+
+        expect(result.format).toBe('claude');
+        expect(result.statusCode).toBe(200);
+        expect(result.response).toHaveProperty('type', 'message');
+        expect(result.response).toHaveProperty('role', 'assistant');
+        expect(result.response).toHaveProperty('content');
+        expect(Array.isArray((result.response as ClaudeResponse).content)).toBe(
+          true
+        );
+      });
+
+      it('should transform to OpenAI format when requested', () => {
+        const azureResponse: OpenAIResponse = {
+          id: 'chatcmpl-123',
+          object: 'chat.completion',
+          created: 1640995200,
+          model: 'gpt-4',
+          choices: [
+            {
+              index: 0,
+              message: {
+                role: 'assistant',
+                content: 'Hello, world!',
+              },
+              finish_reason: 'stop',
+            },
+          ],
+          usage: {
+            prompt_tokens: 10,
+            completion_tokens: 5,
+            total_tokens: 15,
+          },
+        };
+
+        const result = transformAzureResponseByFormat(
+          azureResponse,
+          200,
+          mockCorrelationId,
+          'openai'
+        );
+
+        expect(result.format).toBe('openai');
+        expect(result.statusCode).toBe(200);
+        expect(result.response).toHaveProperty('id', 'chatcmpl-123');
+        expect(result.response).toHaveProperty('object', 'chat.completion');
+        expect(result.response).toHaveProperty('choices');
+        expect(Array.isArray((result.response as OpenAIResponse).choices)).toBe(
+          true
+        );
+      });
+
+      it('should handle errors in Claude format', () => {
+        const azureError: OpenAIError = {
+          error: {
+            message: 'Invalid request',
+            type: 'invalid_request_error',
+          },
+        };
+
+        const result = transformAzureResponseByFormat(
+          azureError,
+          400,
+          mockCorrelationId,
+          'claude'
+        );
+
+        expect(result.format).toBe('claude');
+        expect(result.statusCode).toBe(400);
+        expect(result.response).toHaveProperty('type', 'error');
+        expect((result.response as ClaudeError).error).toHaveProperty(
+          'type',
+          'invalid_request_error'
+        );
+      });
+
+      it('should handle errors in OpenAI format', () => {
+        const azureError: OpenAIError = {
+          error: {
+            message: 'Invalid request',
+            type: 'invalid_request_error',
+          },
+        };
+
+        const result = transformAzureResponseByFormat(
+          azureError,
+          400,
+          mockCorrelationId,
+          'openai'
+        );
+
+        expect(result.format).toBe('openai');
+        expect(result.statusCode).toBe(400);
+        expect(result.response).toHaveProperty('error');
+        expect((result.response as OpenAIError).error).toHaveProperty(
+          'type',
+          'invalid_request_error'
+        );
+        expect(result.response).not.toHaveProperty('type'); // Should not have Claude-style root type
+      });
+    });
+
+    describe('createErrorResponseByFormat', () => {
+      it('should create Claude format error', () => {
+        const result = createErrorResponseByFormat(
+          'invalid_request_error',
+          'Test error message',
+          400,
+          mockCorrelationId,
+          'claude'
+        );
+
+        expect(result.format).toBe('claude');
+        expect(result.statusCode).toBe(400);
+        expect(result.response).toHaveProperty('type', 'error');
+        expect((result.response as ClaudeError).error).toHaveProperty(
+          'type',
+          'invalid_request_error'
+        );
+        expect((result.response as ClaudeError).error).toHaveProperty(
+          'message',
+          'Test error message'
+        );
+        expect(result.headers).toHaveProperty(
+          'Content-Type',
+          'application/json'
+        );
+        expect(result.headers).toHaveProperty(
+          'X-Correlation-ID',
+          mockCorrelationId
+        );
+      });
+
+      it('should create OpenAI format error', () => {
+        const result = createErrorResponseByFormat(
+          'authentication_error',
+          'Authentication failed',
+          401,
+          mockCorrelationId,
+          'openai'
+        );
+
+        expect(result.format).toBe('openai');
+        expect(result.statusCode).toBe(401);
+        expect(result.response).toHaveProperty('error');
+        expect((result.response as OpenAIError).error).toHaveProperty(
+          'type',
+          'authentication_error'
+        );
+        expect((result.response as OpenAIError).error).toHaveProperty(
+          'message',
+          'Authentication failed'
+        );
+        expect(result.response).not.toHaveProperty('type'); // Should not have Claude-style root type
+        expect(result.headers).toHaveProperty(
+          'Content-Type',
+          'application/json'
+        );
+        expect(result.headers).toHaveProperty(
+          'X-Correlation-ID',
+          mockCorrelationId
+        );
+      });
+
+      it('should sanitize error messages', () => {
+        const result = createErrorResponseByFormat(
+          'api_error',
+          'Error with user@example.com and Bearer abc123',
+          500,
+          mockCorrelationId,
+          'claude'
+        );
+
+        const errorMessage = (result.response as ClaudeError).error.message;
+        expect(errorMessage).toContain('[EMAIL_REDACTED]');
+        expect(errorMessage).toContain('[TOKEN_REDACTED]');
+        expect(errorMessage).not.toContain('user@example.com');
+        expect(errorMessage).not.toContain('abc123');
+      });
     });
   });
 });
