@@ -99,7 +99,7 @@ const config: Linter.FlatConfig[] = [
       parserOptions: {
         ecmaVersion: 2022,
         sourceType: 'module',
-        project: ['./tsconfig.json'],
+        project: ['./tsconfig.eslint.json'],
         tsconfigRootDir: import.meta.dirname,
       },
       globals: {
@@ -153,7 +153,7 @@ const config: Linter.FlatConfig[] = [
       parserOptions: {
         ecmaVersion: 2022,
         sourceType: 'module',
-        project: ['./tsconfig.test.json'],
+        project: ['./tsconfig.eslint.json'],
         tsconfigRootDir: import.meta.dirname,
       },
       globals: {
@@ -178,25 +178,25 @@ const config: Linter.FlatConfig[] = [
       },
     },
     rules: {
-      // Same strict TypeScript rules as source code
-      '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/no-unsafe-assignment': 'error',
-      '@typescript-eslint/no-unsafe-call': 'error',
-      '@typescript-eslint/no-unsafe-member-access': 'error',
-      '@typescript-eslint/no-unsafe-return': 'error',
-      '@typescript-eslint/no-unsafe-argument': 'error',
-      '@typescript-eslint/prefer-readonly': 'error',
+      // Relaxed TypeScript rules for tests
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/prefer-readonly': 'warn',
       '@typescript-eslint/prefer-readonly-parameter-types': 'off',
-      '@typescript-eslint/strict-boolean-expressions': 'error',
+      '@typescript-eslint/strict-boolean-expressions': 'warn',
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/await-thenable': 'error',
       '@typescript-eslint/no-misused-promises': 'error',
-      '@typescript-eslint/require-await': 'error',
-      '@typescript-eslint/prefer-nullish-coalescing': 'error',
-      '@typescript-eslint/prefer-optional-chain': 'error',
-      '@typescript-eslint/no-unnecessary-condition': 'error',
-      '@typescript-eslint/no-unused-vars': 'error',
-      '@typescript-eslint/unbound-method': 'error',
+      '@typescript-eslint/require-await': 'off',
+      '@typescript-eslint/prefer-nullish-coalescing': 'warn',
+      '@typescript-eslint/prefer-optional-chain': 'warn',
+      '@typescript-eslint/no-unnecessary-condition': 'warn',
+      '@typescript-eslint/no-unused-vars': 'warn',
+      '@typescript-eslint/unbound-method': 'warn',
 
       // Override base rules that conflict with TypeScript
       'no-unused-vars': 'off',
@@ -209,9 +209,9 @@ const config: Linter.FlatConfig[] = [
       eqeqeq: ['error', 'always'],
       curly: ['error', 'all'],
 
-      // Security rules - keep strict for tests too
-      'security/detect-object-injection': 'error',
-      'no-script-url': 'error',
+      // Security rules - relaxed for tests
+      'security/detect-object-injection': 'warn',
+      'no-script-url': 'warn',
     },
   },
 

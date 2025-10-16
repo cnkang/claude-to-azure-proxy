@@ -15,6 +15,11 @@ services:
       - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
       - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY}
       - AZURE_OPENAI_MODEL=${AZURE_OPENAI_MODEL}
+      # Responses API Configuration
+      - AZURE_OPENAI_API_VERSION=${AZURE_OPENAI_API_VERSION:-}
+      - AZURE_OPENAI_TIMEOUT=${AZURE_OPENAI_TIMEOUT:-60000}
+      - AZURE_OPENAI_MAX_RETRIES=${AZURE_OPENAI_MAX_RETRIES:-3}
+      - DEFAULT_REASONING_EFFORT=${DEFAULT_REASONING_EFFORT:-medium}
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:' + (process.env.PORT || 8080) + '/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
       interval: 30s
