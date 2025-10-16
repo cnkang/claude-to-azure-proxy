@@ -49,6 +49,58 @@ if (missing.length) {
 "
 ```
 
+## 🐳 Docker Health Issues
+
+### High Memory Usage (90%+)
+
+**Symptoms:**
+- Health check shows `"status": "unhealthy"`
+- Memory percentage > 85%
+- Container restarts frequently
+
+**Solutions:**
+
+1. **Create memory optimization override:**
+   ```bash
+   # Copy the example file
+   cp docker-compose.override.yml.example docker-compose.override.yml
+   
+   # Restart with optimizations
+   docker compose down && docker compose up -d
+   ```
+
+2. **Quick fix script:**
+   ```bash
+   ./scripts/quick-fix.sh
+   ```
+
+3. **Manual Docker memory settings:**
+   ```bash
+   # Increase Docker Desktop memory allocation
+   # Docker Desktop > Settings > Resources > Memory > 4GB+
+   ```
+
+### Inconsistent Azure OpenAI Status
+
+**Symptoms:**
+- Health check shows conflicting Azure OpenAI status
+- One check shows "connected", another shows "disconnected"
+
+**Solutions:**
+- This was a bug in duplicate health checks (now fixed)
+- Restart the container to apply the fix
+
+### Docker Compose Command Issues
+
+**Symptoms:**
+- `docker-compose: command not found`
+- Scripts fail with compose errors
+
+**Solutions:**
+- Use `docker compose` (new integrated version) instead of `docker-compose`
+- Our scripts auto-detect the correct command
+- Run `./scripts/check-docker-compose.sh` to verify your setup
+
 ## 🚨 Common Issues
 
 ### 1. Authentication Errors
@@ -216,7 +268,18 @@ curl -X POST http://localhost:8080/v1/messages \
     "max_tokens": 100,
     "messages": [{"role": "user", "content": "Count to 10"}],
     "stream": true
-  }'
+  }' --no-buffer
+
+# OpenAI format streaming
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Authorization: Bearer your-key" \
+  -H "Content-Type: application/json" \
+  -H "Accept: text/event-stream" \
+  -d '{
+    "model": "gpt-4",
+    "messages": [{"role": "user", "content": "Count to 10"}],
+    "stream": true
+  }' --no-buffer
 ```
 
 **Check Network Configuration:**
@@ -260,6 +323,48 @@ The proxy automatically cleans up old conversations. Check configuration:
 # Conversation cleanup settings (in config)
 export CONVERSATION_MAX_AGE=3600000  # 1 hour
 export CONVERSATION_CLEANUP_INTERVAL=300000  # 5 minutes
+```
+
+## 🔄 Docker Quick Commands
+
+### Health and Status
+```bash
+# Check health
+curl http://localhost:8080/health | jq '.'
+
+# Check container status
+docker compose ps
+
+# View logs
+docker compose logs -f claude-proxy
+
+# Check resource usage
+docker stats --no-stream
+```
+
+### Container Management
+```bash
+# Restart container
+docker compose restart
+
+# Full restart with rebuild
+docker compose down && docker compose up -d --build
+
+# Apply memory optimizations
+cp docker-compose.override.yml.example docker-compose.override.yml
+docker compose down && docker compose up -d
+```
+
+### Debug Scripts
+```bash
+# Quick fix for common issues
+./scripts/quick-fix.sh
+
+# Comprehensive debugging
+./scripts/docker-debug.sh
+
+# Full health fix
+./scripts/fix-docker-health.sh
 ```
 
 ## 🔧 Advanced Debugging

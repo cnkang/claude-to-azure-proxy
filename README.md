@@ -39,7 +39,7 @@ This high-performance proxy server enables seamless integration between Claude C
 - **Multi-Format Support**: Automatic detection and support for both Claude and OpenAI request/response formats
 - **Language Optimization**: Enhanced support for Python/Django, Java/Spring, TypeScript, React, Vue, Android, and shell scripting
 - **Conversation Management**: Improved multi-turn conversation handling with context tracking
-- **Streaming Support**: Real-time response streaming with proper format conversion for both API formats
+- **Streaming Support**: Real-time response streaming with Server-Sent Events for both Claude and OpenAI formats
 
 ### Security & Authentication
 
@@ -357,25 +357,27 @@ docker run -p 8080:8080 --env-file .env claude-to-azure-proxy
 
 ### Docker Compose
 
-```yaml
-version: '3.8'
-services:
-  claude-proxy:
-    build: .
-    ports:
-      - '8080:8080'
-    environment:
-      - PROXY_API_KEY=${PROXY_API_KEY}
-      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
-      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY}
-      - AZURE_OPENAI_MODEL=${AZURE_OPENAI_MODEL}
-    restart: unless-stopped
-    healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:8080/health']
-      interval: 30s
-      timeout: 10s
-      retries: 3
+```bash
+# Quick start
+docker compose up -d
+
+# With memory optimizations (recommended)
+cp docker-compose.override.yml.example docker-compose.override.yml
+docker compose up -d
+
+# Check health
+curl http://localhost:8080/health
 ```
+
+For memory optimization and production settings, copy the override example:
+```bash
+cp docker-compose.override.yml.example docker-compose.override.yml
+```
+
+This provides:
+- Increased memory limits (512MB)
+- Node.js heap optimization (384MB max heap, 64MB semi-space)
+- Extended health check timeouts
 
 ## 📊 Monitoring
 

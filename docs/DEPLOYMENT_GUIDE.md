@@ -78,11 +78,11 @@ pnpm run security:env
 pnpm run deploy:docker-compose
 
 # Or manually
-docker-compose up -d --build
+docker compose up -d --build
 
 # Check status
-docker-compose ps
-docker-compose logs -f claude-proxy
+docker compose ps
+docker compose logs -f claude-proxy
 ```
 
 ### Option 2: Standalone Docker

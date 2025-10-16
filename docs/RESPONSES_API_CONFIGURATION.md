@@ -4,13 +4,31 @@ This guide explains how to configure the Claude-to-Azure Proxy to use Azure Open
 
 ## 🚀 Overview
 
-The v1 Responses API provides several advantages over the Chat Completions API:
+The Responses API provides several advantages over the Chat Completions API:
 
 - **Enhanced Reasoning**: GPT-5-Codex can apply internal reasoning for complex tasks
 - **Better Context Management**: Improved conversation tracking with `previous_response_id`
 - **Structured Outputs**: Support for JSON schemas and structured responses
 - **Tool Usage**: Enhanced function calling capabilities
 - **Language Optimization**: Automatic adjustments for different programming languages
+
+## 📋 API Version Selection
+
+Azure OpenAI offers two versions of the Responses API:
+
+### ✅ GA v1 API (Recommended)
+- **Status**: Generally Available (Production Ready)
+- **Configuration**: Leave `AZURE_OPENAI_API_VERSION` empty or undefined
+- **Endpoint**: Uses `/openai/v1/` path
+- **Benefits**: Stable, production-ready, no api-version parameter needed
+
+### 🔄 Legacy Preview API
+- **Status**: Preview (Legacy)
+- **Configuration**: Set `AZURE_OPENAI_API_VERSION=preview`
+- **Endpoint**: Uses legacy Azure OpenAI endpoints
+- **Use Case**: Only if you need specific preview features not yet in GA
+
+**Recommendation**: Use the GA v1 API unless you specifically need preview features.
 
 ## 🔧 Basic Configuration
 
@@ -29,8 +47,8 @@ PROXY_API_KEY=your-secure-proxy-api-key-32-chars-min
 ### Optional Configuration
 
 ```bash
-# API Version (only for preview features)
-# AZURE_OPENAI_API_VERSION=preview  # Uncomment only if using preview features
+# API Version (for legacy preview API only)
+# AZURE_OPENAI_API_VERSION=preview  # Only set for legacy preview API (leave empty for GA v1)
 
 # Timeout and Retry Configuration
 AZURE_OPENAI_TIMEOUT=60000          # 60 seconds (default)
