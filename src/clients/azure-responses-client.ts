@@ -87,8 +87,9 @@ export class AzureResponsesClient {
     this.validateConfig(config);
     this.config = Object.freeze({ ...config });
 
-    // Initialize OpenAI client with Azure v1 API configuration
-    // Note: v1 API optionally uses api-version as query parameter for preview features
+    // Initialize OpenAI client with Azure Responses API configuration
+    // GA v1 API: No api-version needed (recommended)
+    // Legacy preview API: Requires api-version=preview
     this.client = new OpenAI({
       baseURL: config.baseURL, // Should be https://resource.openai.azure.com/openai/v1/
       apiKey: config.apiKey,
@@ -97,7 +98,7 @@ export class AzureResponsesClient {
       defaultHeaders: {
         'User-Agent': 'claude-to-azure-proxy/1.0.0',
       },
-      // Only add api-version for preview features, not required for GA v1 API
+      // Only add api-version for legacy preview API
       ...(config.apiVersion !== undefined &&
         config.apiVersion.length > 0 &&
         config.apiVersion !== 'v1' && {
@@ -173,15 +174,50 @@ export class AzureResponsesClient {
 
     const correlationId = uuidv4();
 
-    // Placeholder for future streaming implementation
-    await Promise.resolve();
+    try {
+      // Create streaming request parameters
+      const streamParams = {
+        ...params,
+        stream: true,
+      };
 
-    throw new ServiceUnavailableError(
-      'Streaming support will be implemented in the next task',
-      correlationId,
-      undefined,
-      'createResponseStream'
-    );
+      // Make streaming request to Azure OpenAI Responses API
+      const stream = await this.client.responses.create(streamParams);
+
+      // Process the stream and yield chunks
+      for await (const chunk of stream) {
+        // Validate chunk structure
+        if (!chunk || typeof chunk !== 'object') {
+          continue;
+        }
+
+        // Transform OpenAI stream chunk to our ResponsesStreamChunk format
+        const responsesChunk: ResponsesStreamChunk = {
+          id: chunk.id || correlationId,
+          object: 'response.chunk',
+          created: chunk.created || Math.floor(Date.now() / 1000),
+          model: params.model,
+          output: Array.isArray(chunk.output) ? chunk.output : [],
+          usage: chunk.usage,
+        };
+
+        yield responsesChunk;
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        throw ErrorFactory.fromAzureOpenAIError(
+          error,
+          correlationId,
+          'createResponseStream'
+        );
+      }
+      throw new AzureOpenAIError(
+        'Unknown error during streaming request',
+        correlationId,
+        undefined,
+        'createResponseStream'
+      );
+    }
   }
 
   /**
