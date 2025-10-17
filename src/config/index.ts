@@ -121,8 +121,8 @@ export interface Config {
    * Maximum time to wait for Azure OpenAI API responses before timing out.
    * Should be set based on expected response times and reasoning complexity.
    *
-   * @default 60000
-   * @example 60000
+   * @default 120000
+   * @example 120000
    */
   AZURE_OPENAI_TIMEOUT: number;
 
@@ -147,6 +147,19 @@ export interface Config {
    * @example "minimal" | "low" | "medium" | "high"
    */
   DEFAULT_REASONING_EFFORT: 'minimal' | 'low' | 'medium' | 'high';
+
+  /**
+   * Enable content security validation for request content.
+   *
+   * When enabled, the proxy will scan request content for potentially
+   * malicious patterns like script tags, event handlers, and template
+   * injection attempts. Disable for development/code review scenarios
+   * where such content is legitimate.
+   *
+   * @default true
+   * @example true | false
+   */
+  ENABLE_CONTENT_SECURITY_VALIDATION: boolean;
 
   /**
    * Server port number for HTTP connections.
@@ -219,8 +232,8 @@ const configSchema = Joi.object<Config>({
     .integer()
     .min(5000)
     .max(300000)
-    .default(60000)
-    .description('Request timeout in milliseconds (default: 60000)'),
+    .default(120000)
+    .description('Request timeout in milliseconds (default: 120000)'),
 
   // Optional max retries with default value and range validation
   AZURE_OPENAI_MAX_RETRIES: Joi.number()
@@ -235,6 +248,11 @@ const configSchema = Joi.object<Config>({
     .valid('minimal', 'low', 'medium', 'high')
     .default('medium')
     .description('Default reasoning effort level'),
+
+  // Optional content security validation flag
+  ENABLE_CONTENT_SECURITY_VALIDATION: Joi.boolean()
+    .default(true)
+    .description('Enable content security validation (disable for code review scenarios)'),
 
   // Optional port with default value and range validation
   PORT: Joi.number()
@@ -270,6 +288,7 @@ function createConfig(): Readonly<Config> {
     AZURE_OPENAI_TIMEOUT: process.env.AZURE_OPENAI_TIMEOUT,
     AZURE_OPENAI_MAX_RETRIES: process.env.AZURE_OPENAI_MAX_RETRIES,
     DEFAULT_REASONING_EFFORT: process.env.DEFAULT_REASONING_EFFORT,
+    ENABLE_CONTENT_SECURITY_VALIDATION: process.env.ENABLE_CONTENT_SECURITY_VALIDATION,
     PORT: process.env.PORT,
     NODE_ENV: process.env.NODE_ENV,
   };
@@ -318,9 +337,10 @@ function createConfig(): Readonly<Config> {
       '',
       'Optional environment variables:',
       '  - AZURE_OPENAI_API_VERSION: API version (optional: "preview" for legacy API, empty for GA)',
-      '  - AZURE_OPENAI_TIMEOUT: Request timeout in ms (5000-300000, default: 60000)',
+      '  - AZURE_OPENAI_TIMEOUT: Request timeout in ms (5000-300000, default: 120000)',
       '  - AZURE_OPENAI_MAX_RETRIES: Max retry attempts (0-10, default: 3)',
       '  - DEFAULT_REASONING_EFFORT: Default reasoning effort (minimal|low|medium|high, default: medium)',
+      '  - ENABLE_CONTENT_SECURITY_VALIDATION: Enable content security validation (true|false, default: true)',
       '  - PORT: Server port number (1024-65535, default: 8080)',
       '  - NODE_ENV: Node.js environment (development|production|test, default: production)',
     ].join('\n');
@@ -354,6 +374,7 @@ export interface SanitizedConfig {
   readonly AZURE_OPENAI_TIMEOUT: number;
   readonly AZURE_OPENAI_MAX_RETRIES: number;
   readonly DEFAULT_REASONING_EFFORT: 'minimal' | 'low' | 'medium' | 'high';
+  readonly ENABLE_CONTENT_SECURITY_VALIDATION: boolean;
   readonly PORT: number;
   readonly NODE_ENV: 'development' | 'production' | 'test';
   readonly PROXY_API_KEY: '[REDACTED]';
@@ -445,6 +466,12 @@ function assertIsConfig(value: unknown): asserts value is Config {
       'Configuration key DEFAULT_REASONING_EFFORT is missing or not a string'
     );
   }
+
+  if (typeof candidate.ENABLE_CONTENT_SECURITY_VALIDATION !== 'boolean') {
+    throw new Error(
+      'Configuration key ENABLE_CONTENT_SECURITY_VALIDATION is missing or not a boolean'
+    );
+  }
 }
 
 function sanitizeConfig(value: Readonly<Config>): SanitizedConfig {
@@ -455,6 +482,7 @@ function sanitizeConfig(value: Readonly<Config>): SanitizedConfig {
     AZURE_OPENAI_TIMEOUT: value.AZURE_OPENAI_TIMEOUT,
     AZURE_OPENAI_MAX_RETRIES: value.AZURE_OPENAI_MAX_RETRIES,
     DEFAULT_REASONING_EFFORT: value.DEFAULT_REASONING_EFFORT,
+    ENABLE_CONTENT_SECURITY_VALIDATION: value.ENABLE_CONTENT_SECURITY_VALIDATION,
     PORT: value.PORT,
     NODE_ENV: value.NODE_ENV,
     PROXY_API_KEY: '[REDACTED]',

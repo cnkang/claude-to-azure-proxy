@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   claude-proxy:
     build:
@@ -17,7 +15,7 @@ services:
       - AZURE_OPENAI_MODEL=${AZURE_OPENAI_MODEL}
       # Responses API Configuration (optional)
       - AZURE_OPENAI_API_VERSION=${AZURE_OPENAI_API_VERSION:-}
-      - AZURE_OPENAI_TIMEOUT=${AZURE_OPENAI_TIMEOUT:-60000}
+      - AZURE_OPENAI_TIMEOUT=${AZURE_OPENAI_TIMEOUT:-120000}
       - AZURE_OPENAI_MAX_RETRIES=${AZURE_OPENAI_MAX_RETRIES:-3}
       - DEFAULT_REASONING_EFFORT=${DEFAULT_REASONING_EFFORT:-medium}
     healthcheck:
