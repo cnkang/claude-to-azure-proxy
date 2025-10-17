@@ -84,7 +84,6 @@ jobs:
       security-events: write
     outputs:
       image-tag: ${{ steps.meta.outputs.tags }}
-      image-digest: ${{ steps.build.outputs.digest }}
 
     steps:
       - name: Checkout code
@@ -252,6 +251,20 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Verify latest tag for main branch
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "🏷️ Verifying latest tag for main branch..."
+          echo "📋 All GHCR tags: ${{ steps.ghcr-meta.outputs.tags }}"
+          
+          # Check if latest tag is included
+          if echo "${{ steps.ghcr-meta.outputs.tags }}" | grep -q ":latest"; then
+            echo "✅ Latest tag confirmed for main branch"
+          else
+            echo "❌ Latest tag missing for main branch"
+            exit 1
+          fi
+
   # Push to GitHub Container Registry (already done in build-multiplatform)
   push-ghcr:
     runs-on: ubuntu-latest
@@ -367,8 +380,20 @@ jobs:
         run: |
           echo "🔄 Copying multi-platform image from GHCR to ECR..."
           
-          # Get the source image from GHCR (use latest tag for simplicity)
-          SOURCE_IMAGE="ghcr.io/${{ github.repository }}:latest"
+          # Determine source image based on branch/tag
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            SOURCE_IMAGE="ghcr.io/${{ github.repository }}:latest"
+          elif [ "${{ github.ref }}" = "refs/heads/develop" ]; then
+            SOURCE_IMAGE="ghcr.io/${{ github.repository }}:develop"
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            TAG_NAME=$(echo "${{ github.ref }}" | sed 's/refs\/tags\///')
+            SOURCE_IMAGE="ghcr.io/${{ github.repository }}:${TAG_NAME}"
+          else
+            # Fallback to main-SHA format
+            SOURCE_IMAGE="ghcr.io/${{ github.repository }}:main-${{ github.sha }}"
+          fi
+          
+          echo "📦 Source image: $SOURCE_IMAGE"
           
           # Copy to all ECR tags
           IFS=',' read -ra TAGS <<< "${{ steps.meta.outputs.tags }}"
@@ -382,6 +407,7 @@ jobs:
           
           echo "🚀 Successfully copied multi-platform image to ECR!"
           echo "📦 Copied platforms: linux/amd64, linux/arm64"
+          echo "📋 ECR tags created: ${{ steps.meta.outputs.tags }}"
 
       - name: Start ECR image scan
         if: steps.build-push.outcome == 'success'
