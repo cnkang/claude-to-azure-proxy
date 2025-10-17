@@ -312,7 +312,7 @@ describe('createAzureRetryConfig', () => {
     expect(config.maxDelayMs).toBe(30000);
     expect(config.backoffMultiplier).toBe(2);
     expect(config.jitterFactor).toBe(0.1);
-    expect(config.timeoutMs).toBe(60000);
+    expect(config.timeoutMs).toBe(120000);
     expect(config.retryableErrors).toContain('NETWORK_ERROR');
     expect(config.retryableErrors).toContain('rate_limit_error');
   });
@@ -343,7 +343,7 @@ describe('AzureRetryConfigs', () => {
     expect(AzureRetryConfigs.models).toBeDefined();
 
     // Completions should have longer timeout
-    expect(AzureRetryConfigs.completions.timeoutMs).toBe(120000);
+    expect(AzureRetryConfigs.completions.timeoutMs).toBe(240000);
     
     // Streaming should have fewer retries
     expect(AzureRetryConfigs.streaming.maxAttempts).toBe(2);

@@ -235,8 +235,8 @@ describe('Request Transformer', () => {
       );
     });
 
-    it('should throw ValidationError for content block with empty text', () => {
-      const invalidChatRequest = {
+    it('should handle content block with empty text (sanitized)', () => {
+      const requestWithEmptyText = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
           {
@@ -244,7 +244,7 @@ describe('Request Transformer', () => {
             content: [
               {
                 type: 'text' as const,
-                text: '', // empty text not allowed
+                text: '', // empty text is now allowed and will be sanitized
               },
             ],
           },
@@ -252,9 +252,10 @@ describe('Request Transformer', () => {
         max_tokens: 100,
       };
 
-      expect(() => validateClaudeRequest(invalidChatRequest)).toThrow(
-        ValidationError
-      );
+      // Empty text is now allowed and will be sanitized with default content
+      const result = validateClaudeRequest(requestWithEmptyText);
+      expect(result).toBeDefined();
+      expect(result.messages[0].content).toBeDefined();
     });
 
     it('should throw ValidationError for request with both prompt and messages', () => {

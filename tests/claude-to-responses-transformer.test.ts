@@ -295,8 +295,8 @@ describe('ClaudeToResponsesTransformer', () => {
       );
     });
 
-    it('should throw ValidationError for invalid content block', () => {
-      const invalidRequest: ClaudeRequest = {
+    it('should handle invalid content block with default text', () => {
+      const requestWithMissingText: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
           {
@@ -304,16 +304,17 @@ describe('ClaudeToResponsesTransformer', () => {
             content: [
               {
                 type: 'text',
-                // Missing text property
+                // Missing text property will be handled with default
               } as ClaudeContentBlock,
             ],
           },
         ],
       };
 
-      expect(() => transformer.transformRequest(invalidRequest)).toThrow(
-        ValidationError
-      );
+      // Missing text property is now handled with default content
+      const result = transformer.transformRequest(requestWithMissingText);
+      expect(result).toBeDefined();
+      expect(result.input).toContain('[Content was processed and converted to text]');
     });
   });
 

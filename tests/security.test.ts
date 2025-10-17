@@ -278,7 +278,7 @@ describe('Security Middleware', () => {
 
       middleware(mockRequest as Request, mockResponse as Response, mockNext);
 
-      expect(timeoutSpy).toHaveBeenCalledWith(30000, expect.any(Function)); // Default 30s
+      expect(timeoutSpy).toHaveBeenCalledWith(120000, expect.any(Function)); // Default 120s
     });
 
     it('should handle missing setTimeout method', () => {

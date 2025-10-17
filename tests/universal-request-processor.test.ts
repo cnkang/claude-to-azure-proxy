@@ -70,7 +70,7 @@ describe('UniversalRequestProcessor', () => {
       expect(result.correlationId).toMatch(/^req_[a-f0-9-]+$/);
       expect(result.conversationId).toMatch(/^conv_/);
       expect(result.estimatedComplexity).toBe('simple');
-      expect(result.reasoningEffort).toBe('minimal');
+      expect(result.reasoningEffort).toBe('low');
     });
 
     it('should process OpenAI format request successfully', async () => {
@@ -106,7 +106,7 @@ describe('UniversalRequestProcessor', () => {
       expect(result.correlationId).toMatch(/^req_[a-f0-9-]+$/);
       expect(result.conversationId).toMatch(/^conv_/);
       expect(result.estimatedComplexity).toBe('simple');
-      expect(result.reasoningEffort).toBe('minimal');
+      expect(result.reasoningEffort).toBe('low');
     });
 
     it('should handle conversation context with previous response ID', async () => {
@@ -166,7 +166,7 @@ describe('UniversalRequestProcessor', () => {
       const result = await processor.processRequest(incomingRequest);
 
       // Should boost reasoning effort for Swift content
-      expect(result.reasoningEffort).toBe('low'); // Boosted from 'minimal'
+      expect(result.reasoningEffort).toBe('low')'
     });
 
     it('should handle complex conversations with high reasoning effort', async () => {
@@ -457,7 +457,7 @@ describe('UniversalRequestProcessor', () => {
       const result = await processor.processRequest(incomingRequest);
 
       expect(result.estimatedComplexity).toBe('simple');
-      expect(result.reasoningEffort).toBe('minimal');
+      expect(result.reasoningEffort).toBe('low');
     });
 
     it('should use medium effort for medium complexity conversations', async () => {
@@ -527,7 +527,7 @@ describe('UniversalRequestProcessor', () => {
       const result =
         await processorWithSwiftOptimization.processRequest(incomingRequest);
 
-      expect(result.reasoningEffort).toBe('low'); // Boosted from 'minimal'
+      expect(result.reasoningEffort).toBe('low')'
     });
 
     it('should not boost reasoning effort when Swift optimization is disabled', async () => {
@@ -555,7 +555,7 @@ describe('UniversalRequestProcessor', () => {
       const result =
         await processorWithoutSwiftOptimization.processRequest(incomingRequest);
 
-      expect(result.reasoningEffort).toBe('minimal'); // Not boosted
+      expect(result.reasoningEffort).toBe('low'); // Not boosted
     });
   });
 

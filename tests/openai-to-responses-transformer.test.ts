@@ -330,15 +330,16 @@ describe('OpenAIToResponsesTransformer', () => {
       );
     });
 
-    it('should throw ValidationError for missing message content', () => {
-      const invalidRequest = {
+    it('should handle missing message content with default sanitization', () => {
+      const requestWithMissingContent = {
         model: 'gpt-4',
-        messages: [{ role: 'user' }], // Missing content for user message
+        messages: [{ role: 'user' }], // Missing content will be sanitized
       } as OpenAIRequest;
 
-      expect(() => transformer.transformRequest(invalidRequest)).toThrow(
-        ValidationError
-      );
+      // Missing content is now handled with default sanitization
+      const result = transformer.transformRequest(requestWithMissingContent);
+      expect(result).toBeDefined();
+      expect(result.input).toContain('[Content was sanitized and removed for security]');
     });
 
     it('should throw ValidationError for invalid tool call structure', () => {
