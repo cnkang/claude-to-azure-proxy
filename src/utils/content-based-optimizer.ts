@@ -453,7 +453,7 @@ export class ContentBasedOptimizerService implements ContentBasedOptimizer {
     }
 
     if (hasSimplePatterns && content.length < 200) {
-      return 'minimal';
+      return 'low'; // Changed from 'minimal' to 'low' for gpt-5-codex compatibility
     }
 
     // Apply complexity boost for this language
@@ -627,7 +627,7 @@ export class ContentBasedOptimizerService implements ContentBasedOptimizer {
   private getReasoningLevelValue(level: ReasoningEffort): number {
     switch (level) {
       case 'minimal':
-        return 1;
+        return 1; // Keep for backward compatibility, but map to 'low' in practice
       case 'low':
         return 2;
       case 'medium':

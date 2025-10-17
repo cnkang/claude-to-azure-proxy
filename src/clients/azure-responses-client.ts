@@ -24,18 +24,35 @@
 
 import { OpenAI } from 'openai';
 import type {
+  Response as OpenAIResponse,
+  ResponseCreateParamsNonStreaming,
+  ResponseCreateParamsStreaming,
+  ResponseFunctionToolCall,
+  ResponseOutputItem,
+  ResponseOutputMessage,
+  ResponseReasoningItem,
+  ResponseStreamEvent,
+  ResponseTextDeltaEvent,
+  ResponseReasoningTextDeltaEvent,
+  ResponseReasoningTextDoneEvent,
+  ResponseCompletedEvent,
+  ResponseOutputItemAddedEvent,
+  ResponseUsage as OpenAIResponseUsage,
+} from 'openai/resources/responses/responses';
+import type {
   AzureOpenAIConfig,
   ResponsesCreateParams,
   ResponsesResponse,
   ResponsesStreamChunk,
+  ResponseOutput,
 } from '../types/index.js';
 import {
   ValidationError,
   AzureOpenAIError,
   ErrorFactory,
-  ServiceUnavailableError,
 } from '../errors/index.js';
 import { v4 as uuidv4 } from 'uuid';
+import { logger } from '../middleware/logging.js';
 
 /**
  * Azure OpenAI v1 Responses API client with comprehensive error handling and monitoring.
@@ -64,6 +81,17 @@ import { v4 as uuidv4 } from 'uuid';
 export class AzureResponsesClient {
   private readonly client: OpenAI;
   private readonly config: AzureOpenAIConfig;
+  private static readonly ignoredStreamEvents = new Set<string>([
+    'response.in_progress',
+    'response.output_text.done',
+    'response.output_item.done',
+    'response.content_part.added',
+    'response.content_part.done',
+    'response.reasoning_summary.part.added',
+    'response.reasoning_summary.part.done',
+    'response.reasoning_summary.text.delta',
+    'response.reasoning_summary.text.done',
+  ]);
 
   /**
    * Creates a new Azure Responses API client instance.
@@ -134,12 +162,19 @@ export class AzureResponsesClient {
     this.validateRequestParams(params);
 
     try {
-      const requestParams = this.buildRequestParams(params, false);
+      const requestParams = this.buildRequestParams(
+        params,
+        false
+      ) as ResponseCreateParamsNonStreaming;
 
       // Make the API call using the OpenAI client
-      const response = await this.client.responses.create(requestParams);
+      const response: OpenAIResponse = await this.client.responses.create(
+        requestParams
+      );
 
-      return this.validateAndTransformResponse(response);
+      const normalized = this.normalizeResponsesResponse(response);
+
+      return this.validateAndTransformResponse(normalized);
     } catch (error) {
       throw this.handleApiError(error, 'createResponse');
     }
@@ -175,33 +210,100 @@ export class AzureResponsesClient {
     const correlationId = uuidv4();
 
     try {
-      // Create streaming request parameters
-      const streamParams = {
-        ...params,
-        stream: true,
-      };
+      const streamParams = this.buildRequestParams(
+        params,
+        true
+      ) as unknown as ResponseCreateParamsStreaming;
 
-      // Make streaming request to Azure OpenAI Responses API
-      const stream = await this.client.responses.create(streamParams);
+      const stream = this.client.responses.stream(streamParams);
 
-      // Process the stream and yield chunks
-      for await (const chunk of stream) {
-        // Validate chunk structure
-        if (!chunk || typeof chunk !== 'object') {
-          continue;
+      let responseId = correlationId;
+      let createdAt = Math.floor(Date.now() / 1000);
+      const model = this.config.deployment;
+
+      for await (const event of stream as AsyncIterable<ResponseStreamEvent>) {
+        switch (event.type) {
+          case 'response.created': {
+            responseId = event.response.id;
+            createdAt = this.normalizeTimestamp(event.response.created_at);
+            break;
+          }
+          case 'response.output_text.delta': {
+            const chunk = this.createTextDeltaChunk(
+              event,
+              responseId,
+              createdAt,
+              model
+            );
+            yield this.validateAndTransformStreamChunk(chunk);
+            break;
+          }
+          case 'response.reasoning_text.delta': {
+            const chunk = this.createReasoningDeltaChunk(
+              event,
+              responseId,
+              createdAt,
+              model,
+              'in_progress'
+            );
+            yield this.validateAndTransformStreamChunk(chunk);
+            break;
+          }
+          case 'response.reasoning_text.done': {
+            const chunk = this.createReasoningDoneChunk(
+              event,
+              responseId,
+              createdAt,
+              model
+            );
+            yield this.validateAndTransformStreamChunk(chunk);
+            break;
+          }
+          case 'response.output_item.added': {
+            const chunk = this.createOutputItemChunk(
+              event,
+              responseId,
+              createdAt,
+              model
+            );
+            if (chunk !== undefined) {
+              yield this.validateAndTransformStreamChunk(chunk);
+            }
+            break;
+          }
+          case 'response.completed': {
+            const chunk = this.createCompletedChunk(event);
+            yield this.validateAndTransformStreamChunk(chunk);
+            break;
+          }
+          case 'response.failed': {
+            throw ErrorFactory.fromAzureOpenAIError(
+              new Error(`Response ${event.response.id} failed`),
+              correlationId,
+              'createResponseStream'
+            );
+          }
+          case 'error': {
+            throw ErrorFactory.fromAzureOpenAIError(
+              new Error(
+                'message' in event && typeof event.message === 'string'
+                  ? event.message
+                  : 'Response stream error'
+              ),
+              correlationId,
+              'createResponseStream'
+            );
+          }
+          default: {
+            // Ignore other event types but keep debug trace for observability
+            if (!AzureResponsesClient.ignoredStreamEvents.has(event.type)) {
+              logger.debug('Unhandled Responses stream event', correlationId, {
+                eventType: event.type,
+              });
+            }
+            break;
+          }
         }
-
-        // Transform OpenAI stream chunk to our ResponsesStreamChunk format
-        const responsesChunk: ResponsesStreamChunk = {
-          id: chunk.id || correlationId,
-          object: 'response.chunk',
-          created: chunk.created || Math.floor(Date.now() / 1000),
-          model: params.model,
-          output: Array.isArray(chunk.output) ? chunk.output : [],
-          usage: chunk.usage,
-        };
-
-        yield responsesChunk;
       }
     } catch (error) {
       if (error instanceof Error) {
@@ -213,11 +315,272 @@ export class AzureResponsesClient {
       }
       throw new AzureOpenAIError(
         'Unknown error during streaming request',
+        500,
         correlationId,
+        undefined,
         undefined,
         'createResponseStream'
       );
     }
+  }
+
+  private createTextDeltaChunk(
+    event: ResponseTextDeltaEvent,
+    responseId: string,
+    createdAt: number,
+    model: string
+  ): ResponsesStreamChunk {
+    return {
+      id: responseId,
+      object: 'response.chunk',
+      created: createdAt,
+      model,
+      output: [
+        {
+          type: 'text',
+          text: event.delta,
+        },
+      ],
+    };
+  }
+
+  private createReasoningDeltaChunk(
+    event: ResponseReasoningTextDeltaEvent,
+    responseId: string,
+    createdAt: number,
+    model: string,
+    status: 'in_progress' | 'completed'
+  ): ResponsesStreamChunk {
+    return {
+      id: responseId,
+      object: 'response.chunk',
+      created: createdAt,
+      model,
+      output: [
+        {
+          type: 'reasoning',
+          reasoning: {
+            content: event.delta,
+            status,
+          },
+        },
+      ],
+    };
+  }
+
+  private createReasoningDoneChunk(
+    event: ResponseReasoningTextDoneEvent,
+    responseId: string,
+    createdAt: number,
+    model: string
+  ): ResponsesStreamChunk {
+    return {
+      id: responseId,
+      object: 'response.chunk',
+      created: createdAt,
+      model,
+      output: [
+        {
+          type: 'reasoning',
+          reasoning: {
+            content: event.text,
+            status: 'completed',
+          },
+        },
+      ],
+    };
+  }
+
+  private createOutputItemChunk(
+    event: ResponseOutputItemAddedEvent,
+    responseId: string,
+    createdAt: number,
+    model: string
+  ): ResponsesStreamChunk | undefined {
+    const outputs = this.transformOutputItems([event.item]);
+    if (outputs.length === 0) {
+      return undefined;
+    }
+
+    return {
+      id: responseId,
+      object: 'response.chunk',
+      created: createdAt,
+      model,
+      output: outputs,
+    };
+  }
+
+  private createCompletedChunk(
+    event: ResponseCompletedEvent
+  ): ResponsesStreamChunk {
+    const normalized = this.normalizeResponsesResponse(event.response);
+
+    return {
+      ...normalized,
+      object: 'response.chunk',
+      model: normalized.model,
+    };
+  }
+
+  private normalizeResponsesResponse(response: OpenAIResponse): ResponsesResponse {
+    const output = this.transformOutputItems(response.output);
+    const usage = this.transformUsage(response.usage);
+
+    return {
+      id: response.id,
+      object: 'response',
+      created: this.normalizeTimestamp(response.created_at),
+      model:
+        typeof response.model === 'string'
+          ? response.model
+          : this.config.deployment,
+      output,
+      usage,
+    };
+  }
+
+  private transformUsage(
+    usage: OpenAIResponseUsage | undefined
+  ): ResponsesResponse['usage'] {
+    if (usage === undefined) {
+      return {
+        prompt_tokens: 0,
+        completion_tokens: 0,
+        total_tokens: 0,
+        reasoning_tokens: undefined,
+      };
+    }
+
+    const partialUsage = usage as Partial<OpenAIResponseUsage>;
+    const inputTokens = partialUsage.input_tokens ?? 0;
+    const outputTokens = partialUsage.output_tokens ?? 0;
+    const totalTokens = partialUsage.total_tokens ?? inputTokens + outputTokens;
+    const reasoningTokens =
+      partialUsage.output_tokens_details?.reasoning_tokens;
+
+    return {
+      prompt_tokens: inputTokens,
+      completion_tokens: outputTokens,
+      total_tokens: totalTokens,
+      reasoning_tokens: reasoningTokens,
+    };
+  }
+
+  private transformOutputItems(
+    items: readonly ResponseOutputItem[]
+  ): ResponsesResponse['output'] {
+    const outputs: ResponseOutput[] = [];
+
+    for (const item of items) {
+      switch (item.type) {
+        case 'message': {
+          const messageItem: ResponseOutputMessage = item;
+          for (const content of messageItem.content) {
+            if (content.type === 'output_text') {
+              outputs.push({
+                type: 'text',
+                text: content.text,
+              });
+            }
+          }
+          break;
+        }
+        case 'reasoning': {
+          const reasoningItem: ResponseReasoningItem = item;
+          const reasoningContent = Array.isArray(reasoningItem.content)
+            ? reasoningItem.content.map((content) => content.text).join('')
+            : '';
+
+          const status: 'in_progress' | 'completed' =
+            reasoningItem.status === 'in_progress' || reasoningItem.status === 'incomplete'
+              ? 'in_progress'
+              : 'completed';
+
+          outputs.push({
+            type: 'reasoning',
+            reasoning: {
+              content: reasoningContent,
+              status,
+            },
+          });
+          break;
+        }
+        case 'function_call': {
+          outputs.push(this.transformFunctionToolCall(item));
+          break;
+        }
+        default: {
+          const legacyOutput = this.transformLegacyOutputItem(item);
+          if (legacyOutput !== undefined) {
+            outputs.push(legacyOutput);
+            break;
+          }
+          logger.debug('Unhandled Responses output item', 'azure-responses-client', {
+            itemType: item.type,
+          });
+          break;
+        }
+      }
+    }
+
+    return outputs;
+  }
+
+  private transformFunctionToolCall(
+    item: ResponseFunctionToolCall
+  ): ResponseOutput {
+    const callId =
+      typeof item.id === 'string' && item.id.length > 0 ? item.id : item.call_id;
+
+    return {
+      type: 'tool_call',
+      tool_call: {
+        id: callId,
+        type: 'function',
+        function: {
+          name: item.name,
+          arguments: item.arguments,
+        },
+      },
+    };
+  }
+
+  private transformLegacyOutputItem(item: unknown): ResponseOutput | undefined {
+    if (
+      typeof item === 'object' &&
+      item !== null &&
+      'type' in item &&
+      (item as { type?: unknown }).type === 'text'
+    ) {
+      const textValue =
+        'text' in (item as Record<string, unknown>) &&
+        typeof (item as { text?: unknown }).text === 'string'
+          ? (item as { text?: string }).text
+          : '';
+
+      return {
+        type: 'text',
+        text: textValue,
+      };
+    }
+
+    return undefined;
+  }
+
+  private normalizeTimestamp(value: unknown): number {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const parsed = Number.parseInt(value, 10);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+
+    return Math.floor(Date.now() / 1000);
   }
 
   /**
@@ -445,20 +808,49 @@ export class AzureResponsesClient {
     params: ResponsesCreateParams,
     stream: boolean
   ): Record<string, unknown> {
-    return {
+    const input =
+      typeof params.input === 'string'
+        ? params.input
+        : params.input.map((message) => ({
+            role: message.role,
+            content: message.content,
+          }));
+
+    const request: Record<string, unknown> = {
       model: this.config.deployment, // Use deployment name instead of model
-      input: params.input,
+      input,
       max_output_tokens: params.max_output_tokens ?? 4000,
-      reasoning: params.reasoning,
       stream,
-      temperature: params.temperature,
-      top_p: params.top_p,
-      previous_response_id: params.previous_response_id,
-      stop: params.stop,
-      tools: params.tools,
-      tool_choice: params.tool_choice,
-      response_format: params.response_format,
     };
+
+
+
+    if (params.reasoning !== undefined) {
+      request.reasoning = params.reasoning;
+    }
+    if (params.temperature !== undefined) {
+      request.temperature = params.temperature;
+    }
+    if (params.top_p !== undefined) {
+      request.top_p = params.top_p;
+    }
+    if (params.previous_response_id !== undefined) {
+      request.previous_response_id = params.previous_response_id;
+    }
+    if (params.stop !== undefined) {
+      request.stop = params.stop;
+    }
+    if (params.tools !== undefined) {
+      request.tools = params.tools;
+    }
+    if (params.tool_choice !== undefined) {
+      request.tool_choice = params.tool_choice;
+    }
+    if (params.response_format !== undefined) {
+      request.response_format = params.response_format;
+    }
+
+    return request;
   }
 
   /**

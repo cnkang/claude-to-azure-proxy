@@ -724,8 +724,8 @@ export class ComplexityAnalysisService implements ComplexityAnalyzer {
       return 'low';
     }
 
-    // Minimal reasoning for simple tasks that still need some reasoning
-    return 'minimal';
+    // Low reasoning for simple tasks that still need some reasoning
+    return 'low'; // Changed from 'minimal' to 'low' for gpt-5-codex compatibility
   }
 
   /**
@@ -987,7 +987,7 @@ export class ReasoningDecisionEngineService implements ReasoningDecisionEngine {
     } else if (complexityScore >= 0.3) {
       return 'low';
     } else if (complexityScore > 0) {
-      return 'minimal';
+      return 'low'; // Changed from 'minimal' to 'low' for gpt-5-codex compatibility
     }
 
     // No reasoning needed
