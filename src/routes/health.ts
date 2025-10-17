@@ -129,8 +129,8 @@ export const healthCheckHandler = (config: Readonly<ServerConfig>) => {
       // Consider unhealthy if memory usage > 85%
       // In test environments, don't require Azure OpenAI connectivity
       const azureHealthy = azureOpenAIStatus.status === 'connected';
-      const isTestEnvironment = config.azureOpenAI?.endpoint?.includes('test.openai.azure.com') || 
-                               config.azureOpenAI?.baseURL?.includes('test.openai.azure.com');
+      const isTestEnvironment = (config.azureOpenAI?.endpoint?.includes('test.openai.azure.com') ?? false) || 
+                               (config.azureOpenAI?.baseURL?.includes('test.openai.azure.com') ?? false);
       
       const isHealthy = memory.percentage < 85 && (azureHealthy || isTestEnvironment);
 
