@@ -48,15 +48,15 @@ info:
         "type": "error_type",
         "message": "Human readable error message",
         "correlationId": "uuid-v4-correlation-id",
-        "timestamp": "2024-01-01T00:00:00.000Z"
+        "timestamp": "2025-10-17T15:45:00.000Z"
       }
     }
     ```
     
   version: 2.0.0
   contact:
-    name: Claude-to-Azure Proxy Team
-    email: support@example.com
+    name: Claude-to-Azure Proxy
+    url: https://github.com/cnkang/claude-to-azure-proxy
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
@@ -64,8 +64,10 @@ info:
 servers:
   - url: http://localhost:8080
     description: Local development server
-  - url: https://your-app-runner-url.amazonaws.com
-    description: AWS App Runner production deployment
+  - url: https://your-proxy-domain.com
+    description: Production deployment
+  - url: https://ghcr.io/cnkang/claude-to-azure-proxy
+    description: Container registry (for reference)
 
 paths:
   /health:
@@ -88,7 +90,7 @@ paths:
                 $ref: '#/components/schemas/HealthResponse'
               example:
                 status: "healthy"
-                timestamp: "2024-01-01T00:00:00.000Z"
+                timestamp: "2025-10-17T15:45:00.000Z"
                 correlationId: "550e8400-e29b-41d4-a716-446655440000"
                 checks:
                   memory:
@@ -103,7 +105,7 @@ paths:
                 $ref: '#/components/schemas/HealthResponse'
               example:
                 status: "unhealthy"
-                timestamp: "2024-01-01T00:00:00.000Z"
+                timestamp: "2025-10-17T15:45:00.000Z"
                 correlationId: "550e8400-e29b-41d4-a716-446655440000"
                 checks:
                   memory:
@@ -898,7 +900,7 @@ components:
               type: "validation_error"
               message: "Invalid request parameters"
               correlationId: "550e8400-e29b-41d4-a716-446655440000"
-              timestamp: "2024-01-01T00:00:00.000Z"
+              timestamp: "2025-10-17T15:45:00.000Z"
 
     UnauthorizedError:
       description: Unauthorized - Invalid or missing authentication credentials
@@ -911,7 +913,7 @@ components:
               type: "authentication_failed"
               message: "Invalid credentials provided"
               correlationId: "550e8400-e29b-41d4-a716-446655440000"
-              timestamp: "2024-01-01T00:00:00.000Z"
+              timestamp: "2025-10-17T15:45:00.000Z"
 
     RateLimitError:
       description: Too Many Requests - Rate limit exceeded
@@ -924,7 +926,7 @@ components:
               type: "rate_limit_exceeded"
               message: "Too many requests, please try again later"
               correlationId: "550e8400-e29b-41d4-a716-446655440000"
-              timestamp: "2024-01-01T00:00:00.000Z"
+              timestamp: "2025-10-17T15:45:00.000Z"
 
     ServiceUnavailableError:
       description: Service Unavailable - Service is temporarily unavailable
@@ -937,7 +939,7 @@ components:
               type: "service_unavailable"
               message: "Service is temporarily unavailable"
               correlationId: "550e8400-e29b-41d4-a716-446655440000"
-              timestamp: "2024-01-01T00:00:00.000Z"
+              timestamp: "2025-10-17T15:45:00.000Z"
 
 tags:
   - name: Health
