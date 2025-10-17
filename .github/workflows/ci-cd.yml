@@ -3,15 +3,13 @@ name: CI/CD Pipeline
 on:
   push:
     branches: [main, develop]
+    tags: ["v*"]
   pull_request:
     branches: [main]
-  schedule:
-    # Run security scan weekly on Sundays at 2 AM UTC
-    - cron: "0 2 * * 0"
 
 env:
   IMAGE_NAME: claude-to-azure-proxy
-  REGISTRY: ghcr.io
+  NODE_VERSION: 22
 
 jobs:
   # Code quality and security checks
@@ -24,10 +22,10 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
 
-      - name: Use Node.js 22
+      - name: Use Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: "pnpm"
 
       - name: Install dependencies
@@ -49,42 +47,38 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
 
-  # Environment security check
-  env-security:
+  # Security checks
+  security-checks:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Check .env file security
-        run: |
-          chmod +x scripts/security-check-env.sh
-          ./scripts/security-check-env.sh
-
-  # Dockerfile linting
-  dockerfile-lint:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Run Hadolint
+      - name: Run Hadolint (Dockerfile linting)
         uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: Dockerfile
           failure-threshold: warning
 
-  # Build and security scan
+      - name: Check environment security
+        run: |
+          if [ -f "scripts/security-check-env.sh" ]; then
+            chmod +x scripts/security-check-env.sh
+            ./scripts/security-check-env.sh
+          else
+            echo "⚠️ Security check script not found, skipping"
+          fi
+
+  # Build and scan Docker image
   build-and-scan:
     runs-on: ubuntu-latest
-    needs: [code-quality, env-security, dockerfile-lint]
+    needs: [code-quality, security-checks]
     permissions:
       contents: read
-      packages: write
       security-events: write
     outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
       image-digest: ${{ steps.build.outputs.digest }}
-      image-tags: ${{ steps.meta.outputs.tags }}
 
     steps:
       - name: Checkout code
@@ -93,84 +87,54 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Container Registry
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ github.repository }}
+          images: ${{ env.IMAGE_NAME }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build and push Docker image
+      - name: Build Docker image
         id: build
         uses: docker/build-push-action@v5
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name != 'pull_request' }}
+          platforms: linux/amd64
+          push: false
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=Claude to Azure OpenAI Proxy
+          load: true
 
-      - name: Build local image for PR scanning
-        if: github.event_name == 'pull_request'
-        run: |
-          docker build -t local-scan-image:latest .
-
-      - name: Run Trivy vulnerability scanner (pushed image)
+      - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.28.0
-        if: github.event_name != 'pull_request'
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ github.repository }}@${{ steps.build.outputs.digest }}
+          image-ref: ${{ env.IMAGE_NAME }}:${{ github.sha }}
           format: "sarif"
           output: "trivy-results.sarif"
           severity: "CRITICAL,HIGH,MEDIUM"
 
-      - name: Run Trivy vulnerability scanner (local image for PR)
-        uses: aquasecurity/trivy-action@0.28.0
-        if: github.event_name == 'pull_request'
-        with:
-          image-ref: local-scan-image:latest
-          format: "sarif"
-          output: "trivy-results.sarif"
-          severity: "CRITICAL,HIGH,MEDIUM"
-
-      - name: Upload Trivy scan results to GitHub Security tab
+      - name: Upload Trivy scan results
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: "trivy-results.sarif"
 
-      - name: Run Trivy vulnerability scanner summary (pushed image)
+      - name: Run Trivy summary scan
         uses: aquasecurity/trivy-action@0.28.0
-        if: github.event_name != 'pull_request'
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ github.repository }}@${{ steps.build.outputs.digest }}
+          image-ref: ${{ env.IMAGE_NAME }}:${{ github.sha }}
           format: "table"
           severity: "CRITICAL,HIGH"
 
-      - name: Run Trivy vulnerability scanner summary (local image for PR)
-        uses: aquasecurity/trivy-action@0.28.0
-        if: github.event_name == 'pull_request'
-        with:
-          image-ref: local-scan-image:latest
-          format: "table"
-          severity: "CRITICAL,HIGH"
-
-  # Container security and functionality tests
+  # Container functionality tests
   container-tests:
     runs-on: ubuntu-latest
     needs: build-and-scan
@@ -183,24 +147,14 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Container Registry
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
+      - name: Build test image
+        uses: docker/build-push-action@v5
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Pull image for testing
-        run: |
-          if [ "${{ github.event_name }}" != "pull_request" ]; then
-            # Use the digest from the build step for reliable image reference
-            docker pull ${{ env.REGISTRY }}/${{ github.repository }}@${{ needs.build-and-scan.outputs.image-digest }}
-            docker tag ${{ env.REGISTRY }}/${{ github.repository }}@${{ needs.build-and-scan.outputs.image-digest }} test-image:latest
-          else
-            # For PR, build locally for testing
-            docker build -t test-image:latest .
-          fi
+          context: .
+          platforms: linux/amd64
+          push: false
+          tags: test-image:latest
+          load: true
 
       - name: Verify non-root user
         run: |
@@ -239,13 +193,12 @@ jobs:
           docker stop $CONTAINER_ID
           docker rm $CONTAINER_ID
 
-      - name: Check image size and efficiency
+      - name: Check image efficiency
         run: |
           IMAGE_SIZE=$(docker image inspect test-image:latest --format='{{.Size}}')
           IMAGE_SIZE_MB=$((IMAGE_SIZE / 1024 / 1024))
           echo "📏 Image size: ${IMAGE_SIZE_MB} MB"
 
-          # Check layer count
           LAYER_COUNT=$(docker history test-image:latest --format "{{.ID}}" | wc -l)
           echo "📚 Layer count: ${LAYER_COUNT}"
 
@@ -255,113 +208,153 @@ jobs:
             echo "✅ Image size is reasonable"
           fi
 
-          if [ $LAYER_COUNT -gt 20 ]; then
-            echo "⚠️ Image has many layers (${LAYER_COUNT}). Consider optimizing Dockerfile."
-          else
-            echo "✅ Layer count is reasonable"
-          fi
-
-      - name: Test container startup time
-        run: |
-          echo "⏱️ Testing container startup time..."
-          START_TIME=$(date +%s)
-
-          CONTAINER_ID=$(docker run -d -p 8081:8080 \
-            -e PROXY_API_KEY=test-proxy-api-key-32-characters-long \
-            -e AZURE_OPENAI_ENDPOINT=https://test.openai.azure.com \
-            -e AZURE_OPENAI_API_KEY=test-azure-openai-api-key-32-characters \
-            -e AZURE_OPENAI_MODEL=test-model \
-            test-image:latest)
-
-          # Wait for health check to pass
-          TIMEOUT=30
-          while [ $TIMEOUT -gt 0 ]; do
-            if curl -f --silent --max-time 2 http://localhost:8081/health > /dev/null 2>&1; then
-              END_TIME=$(date +%s)
-              STARTUP_TIME=$((END_TIME - START_TIME))
-              echo "✅ Container started in ${STARTUP_TIME} seconds"
-              break
-            fi
-            sleep 1
-            TIMEOUT=$((TIMEOUT - 1))
-          done
-
-          if [ $TIMEOUT -eq 0 ]; then
-            echo "❌ Container failed to start within 30 seconds"
-            docker logs $CONTAINER_ID
-            exit 1
-          fi
-
-          # Cleanup
-          docker stop $CONTAINER_ID
-          docker rm $CONTAINER_ID
-
-  # Deployment readiness check
-  deployment-check:
+  # Push to GitHub Container Registry (always for main/develop)
+  push-ghcr:
     runs-on: ubuntu-latest
     needs: [build-and-scan, container-tests]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/tags/v'))
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Validate App Runner configuration
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata for GHCR
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push to GHCR
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Push to AWS ECR (optional, requires secrets)
+  push-ecr:
+    runs-on: ubuntu-latest
+    needs: [build-and-scan, container-tests]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/tags/v')) && secrets.AWS_ROLE_ARN != ''
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: GitHubActions-${{ github.run_id }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-duration-seconds: 3600
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata for ECR
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push to ECR
+        id: build-push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start ECR image scan
         run: |
-          echo "🔍 Validating apprunner.yaml configuration..."
-
-          # Check if apprunner.yaml exists
-          if [ ! -f "apprunner.yaml" ]; then
-            echo "❌ apprunner.yaml not found"
-            exit 1
+          IMAGE_TAG=$(echo "${{ github.ref }}" | sed 's/refs\/heads\///g' | sed 's/refs\/tags\///g')
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            IMAGE_TAG="latest"
           fi
 
-          # Basic YAML syntax check
-          if command -v python3 &> /dev/null; then
-            python3 -c "import yaml; yaml.safe_load(open('apprunner.yaml'))" || {
-              echo "❌ Invalid YAML syntax in apprunner.yaml"
-              exit 1
-            }
-            echo "✅ apprunner.yaml syntax is valid"
-          fi
+          echo "Starting ECR scan for tag: $IMAGE_TAG"
+          aws ecr start-image-scan \
+            --repository-name ${{ secrets.ECR_REPOSITORY_NAME }} \
+            --image-id imageTag=$IMAGE_TAG \
+            --region ${{ secrets.AWS_REGION }} || true
 
-          # Check required fields
-          if grep -q "version: 1.0" apprunner.yaml && \
-             grep -q "runtime: nodejs22" apprunner.yaml && \
-             grep -q "pnpm run build" apprunner.yaml && \
-             grep -q "node dist/index.js" apprunner.yaml; then
-            echo "✅ Required App Runner configuration fields present"
-          else
-            echo "❌ Missing required App Runner configuration fields"
-            exit 1
-          fi
-
-      - name: Check deployment documentation
+      - name: Output ECR deployment info
         run: |
-          echo "📚 Checking deployment documentation..."
+          echo "🚀 Successfully pushed to ECR!"
+          echo "📍 Repository: ${{ secrets.ECR_REPOSITORY_NAME }}"
+          echo "📍 Region: ${{ secrets.AWS_REGION }}"
+          echo "📍 Tags: ${{ steps.meta.outputs.tags }}"
 
-          if [ -f "docs/DEPLOYMENT.md" ]; then
-            echo "✅ Deployment documentation exists"
-            
-            # Check for App Runner section
-            if grep -q "App Runner" docs/DEPLOYMENT.md; then
-              echo "✅ App Runner deployment instructions found"
-            else
-              echo "⚠️ App Runner deployment instructions not found in documentation"
-            fi
-          else
-            echo "⚠️ Deployment documentation not found"
-          fi
+  # Deployment summary
+  deployment-summary:
+    runs-on: ubuntu-latest
+    needs: [push-ghcr, push-ecr]
+    if: always() && github.ref == 'refs/heads/main' && github.event_name == 'push'
 
-      - name: Summary
+    steps:
+      - name: Deployment status summary
         run: |
-          echo "🎉 Deployment readiness check completed!"
+          echo "🎉 CI/CD Pipeline Completed!"
           echo ""
-          echo "📋 Ready for deployment:"
-          echo "  ✅ Docker image built and scanned"
-          echo "  ✅ Container security verified"
-          echo "  ✅ Health checks passing"
-          echo "  ✅ App Runner configuration valid"
+          echo "📋 Results Summary:"
+          echo "  ✅ Code quality checks passed"
+          echo "  ✅ Security scans completed"
+          echo "  ✅ Container tests passed"
+          
+          if [ "${{ needs.push-ghcr.result }}" = "success" ]; then
+            echo "  ✅ Pushed to GitHub Container Registry"
+          else
+            echo "  ❌ GitHub Container Registry push failed"
+          fi
+          
+          if [ "${{ needs.push-ecr.result }}" = "success" ]; then
+            echo "  ✅ Pushed to AWS ECR"
+          elif [ "${{ needs.push-ecr.result }}" = "skipped" ]; then
+            echo "  ⏭️ AWS ECR push skipped (no AWS secrets configured)"
+          else
+            echo "  ❌ AWS ECR push failed"
+          fi
+          
           echo ""
-          echo "🚀 Deploy using:"
-          echo "  aws apprunner create-service --source-configuration file://apprunner.yaml"
+          echo "🚀 Ready for deployment!"

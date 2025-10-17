@@ -4,42 +4,37 @@ This project provides multiple GitHub Actions workflows for different deployment
 
 ## 📋 Available Workflows
 
-### 1. GitHub Container Registry Pipeline (`.github/workflows/ci-cd.yml`)
+### 1. Unified CI/CD Pipeline (`.github/workflows/ci-cd.yml`)
 
-**Purpose**: Deploy to GitHub Container Registry (GHCR) for open-source projects or GitHub ecosystem integration.
-
-**Trigger Conditions:**
-- Push to `main` or `develop` branches
-- Pull Request to `main` branch
-- Scheduled security scan every Sunday at 2 AM UTC
-
-**Job Structure:**
-```mermaid
-graph TD
-    A[code-quality] --> D[build-and-scan]
-    B[env-security] --> D
-    C[dockerfile-lint] --> D
-    D --> E[container-tests]
-    D --> F[deployment-check]
-    E --> F
-```
-
-### 2. AWS ECR Pipeline (`.github/workflows/build-push-ecr.yml`)
-
-**Purpose**: Deploy to AWS Elastic Container Registry (ECR) using secure STS authentication.
+**Purpose**: Complete CI/CD pipeline with support for both GitHub Container Registry (GHCR) and AWS ECR deployment.
 
 **Trigger Conditions:**
 - Push to `main`, `develop` branches
 - Tags starting with `v` (e.g., `v1.0.0`)
 - Pull Request to `main` branch
 
-**Security Features:**
-- ✅ AWS STS authentication (no long-term credentials)
-- ✅ OIDC integration between GitHub and AWS
-- ✅ Minimal IAM permissions
-- ✅ Multi-architecture builds (AMD64/ARM64)
+**Job Structure:**
+```mermaid
+graph TD
+    A[code-quality] --> C[build-and-scan]
+    B[security-checks] --> C
+    C --> D[container-tests]
+    D --> E[push-ghcr]
+    D --> F[push-ecr]
+    E --> G[deployment-summary]
+    F --> G
+```
 
-### 3. Security Scan (`.github/workflows/security-scan.yml`)
+**Key Features:**
+- ✅ Comprehensive code quality checks (lint, type-check, tests)
+- ✅ Security scanning (Dockerfile, dependencies, vulnerabilities)
+- ✅ Container functionality testing
+- ✅ Multi-registry support (GHCR + ECR)
+- ✅ AWS STS authentication (no long-term credentials)
+- ✅ Multi-architecture builds (AMD64/ARM64)
+- ✅ Conditional ECR deployment (only if AWS secrets are configured)
+
+### 2. Security Scan (`.github/workflows/security-scan.yml`)
 
 **Purpose**: Periodic security scanning and vulnerability assessment.
 
@@ -251,9 +246,9 @@ Use the verification script to ensure everything is configured correctly:
 
 ## 🔄 Workflow Details
 
-### ECR Pipeline Jobs
+### Unified CI/CD Pipeline Jobs
 
-#### `test`
+#### `code-quality`
 - Node.js 22 environment setup
 - pnpm dependency installation
 - ESLint linting
@@ -261,24 +256,40 @@ Use the verification script to ensure everything is configured correctly:
 - Unit tests with coverage
 - Coverage upload to Codecov
 
-#### `build`
-- Docker Buildx setup
-- Multi-platform image build (AMD64/ARM64)
-- Trivy security scanning
-- Container functionality testing
-- Security scan results upload
+#### `security-checks`
+- Dockerfile linting with Hadolint
+- Environment security validation
+- Security configuration checks
 
-#### `push-ecr` (Production branches only)
+#### `build-and-scan`
+- Docker Buildx setup
+- Multi-platform image build (AMD64)
+- Trivy vulnerability scanning
+- Security scan results upload to GitHub Security tab
+- Image metadata extraction
+
+#### `container-tests`
+- Container functionality testing
+- Non-root user verification
+- Health endpoint testing
+- Image size and efficiency analysis
+
+#### `push-ghcr` (Always for main/develop/tags)
+- GitHub Container Registry authentication
+- Multi-architecture image push (AMD64/ARM64)
+- Automatic tagging strategy
+
+#### `push-ecr` (Conditional - requires AWS secrets)
 - AWS STS authentication via OIDC
 - ECR login and authentication
-- Multi-architecture image push
+- Multi-architecture image push (AMD64/ARM64)
 - ECR vulnerability scan initiation
-- Deployment information output
+- Only runs if AWS_ROLE_ARN secret is configured
 
-#### `notify`
+#### `deployment-summary`
 - Deployment status summary
+- Multi-registry deployment confirmation
 - Success/failure notifications
-- Deployment readiness confirmation
 
 ### Supported Tag Strategies
 
