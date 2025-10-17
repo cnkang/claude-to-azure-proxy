@@ -219,10 +219,10 @@ aws ecr put-lifecycle-policy \
 
 ### Step 3: Configure GitHub Repository
 
-In your GitHub repository, go to **Settings > Secrets and variables > Actions** and add these **Variables**:
+In your GitHub repository, go to **Settings > Secrets and variables > Actions** and add these **Repository Secrets**:
 
-| Variable Name | Description | Example Value |
-|---------------|-------------|---------------|
+| Secret Name | Description | Example Value |
+|-------------|-------------|---------------|
 | `AWS_REGION` | AWS region for ECR | `us-east-1` |
 | `AWS_ROLE_ARN` | IAM Role ARN for GitHub Actions | `arn:aws:iam::123456789012:role/GitHubActions-ECR-Role` |
 | `ECR_REPOSITORY_NAME` | ECR repository name | `claude-to-azure-proxy` |
@@ -231,6 +231,8 @@ In your GitHub repository, go to **Settings > Secrets and variables > Actions** 
 | Secret Name | Description |
 |-------------|-------------|
 | `CODECOV_TOKEN` | Codecov token for coverage reports |
+
+> **Security Note**: All AWS-related configuration is stored as Repository Secrets to ensure sensitive information like Role ARNs are properly protected. Even though some values like region names are not highly sensitive, using secrets provides consistency and better security practices.
 
 ### Step 4: Verify Setup
 

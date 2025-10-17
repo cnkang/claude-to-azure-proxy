@@ -268,8 +268,8 @@ display_github_config() {
     print_header "GitHub Repository Configuration"
     
     echo ""
-    echo "Please set the following Variables in your GitHub repository:"
-    echo "Repository Settings > Secrets and variables > Actions > Variables"
+    echo "Please set the following Repository Secrets in your GitHub repository:"
+    echo "Repository Settings > Secrets and variables > Actions > Repository secrets"
     echo ""
     echo -e "${BLUE}AWS_REGION${NC}: $AWS_REGION"
     echo -e "${BLUE}AWS_ROLE_ARN${NC}: arn:aws:iam::$AWS_ACCOUNT_ID:role/$ROLE_NAME"
@@ -365,7 +365,7 @@ main() {
 
     echo ""
     print_status "🎉 Setup completed successfully!"
-    print_status "Don't forget to configure the GitHub repository variables."
+    print_status "Don't forget to configure the GitHub repository secrets."
 }
 
 # Run main function
