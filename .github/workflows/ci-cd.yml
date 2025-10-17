@@ -271,6 +271,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-and-scan, container-tests]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/tags/v'))
+    continue-on-error: true  # Don't fail the entire workflow if ECR push fails
     permissions:
       contents: read
       id-token: write
@@ -291,6 +292,8 @@ jobs:
 
       - name: Configure AWS credentials
         if: steps.check-aws.outputs.aws-configured == 'true'
+        id: aws-config
+        continue-on-error: true
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
@@ -298,16 +301,29 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
           role-duration-seconds: 3600
 
-      - name: Login to Amazon ECR
+      - name: Check AWS configuration result
         if: steps.check-aws.outputs.aws-configured == 'true'
+        id: aws-ready
+        run: |
+          if [ "${{ steps.aws-config.outcome }}" = "success" ]; then
+            echo "aws-ready=true" >> $GITHUB_OUTPUT
+            echo "✅ AWS credentials configured successfully"
+          else
+            echo "aws-ready=false" >> $GITHUB_OUTPUT
+            echo "⚠️ AWS credentials configuration failed, skipping ECR operations"
+          fi
+
+      - name: Login to Amazon ECR
+        if: steps.aws-ready.outputs.aws-ready == 'true'
         id: login-ecr
+        continue-on-error: true
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Extract metadata for ECR
-        if: steps.check-aws.outputs.aws-configured == 'true'
+        if: steps.aws-ready.outputs.aws-ready == 'true' && steps.login-ecr.outcome == 'success'
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -320,8 +336,9 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push to ECR
-        if: steps.check-aws.outputs.aws-configured == 'true'
+        if: steps.aws-ready.outputs.aws-ready == 'true' && steps.login-ecr.outcome == 'success' && steps.meta.outcome == 'success'
         id: build-push
+        continue-on-error: true
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -333,6 +350,8 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Start ECR image scan
+        if: steps.build-push.outcome == 'success'
+        continue-on-error: true
         run: |
           IMAGE_TAG=$(echo "${{ github.ref }}" | sed 's/refs\/heads\///g' | sed 's/refs\/tags\///g')
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
@@ -346,11 +365,27 @@ jobs:
             --region ${{ secrets.AWS_REGION }} || true
 
       - name: Output ECR deployment info
+        if: steps.build-push.outcome == 'success'
         run: |
-          echo "🚀 Successfully pushed to ECR!"
+          echo "�  Successfully pushed to ECR!"
           echo "📍 Repository: ${{ secrets.ECR_REPOSITORY_NAME }}"
           echo "📍 Region: ${{ secrets.AWS_REGION }}"
           echo "📍 Tags: ${{ steps.meta.outputs.tags }}"
+
+      - name: ECR deployment summary
+        if: always()
+        run: |
+          if [ "${{ steps.check-aws.outputs.aws-configured }}" != "true" ]; then
+            echo "ℹ️ AWS ECR push skipped - AWS secrets not configured"
+          elif [ "${{ steps.aws-config.outcome }}" != "success" ]; then
+            echo "⚠️ AWS ECR push skipped - AWS credentials configuration failed"
+          elif [ "${{ steps.login-ecr.outcome }}" != "success" ]; then
+            echo "⚠️ AWS ECR push skipped - ECR login failed"
+          elif [ "${{ steps.build-push.outcome }}" == "success" ]; then
+            echo "✅ AWS ECR push completed successfully"
+          else
+            echo "⚠️ AWS ECR push failed but workflow continues"
+          fi
 
   # Deployment summary
   deployment-summary:
@@ -368,19 +403,28 @@ jobs:
           echo "  ✅ Security scans completed"
           echo "  ✅ Container tests passed"
           
+          # GitHub Container Registry is required
           if [ "${{ needs.push-ghcr.result }}" = "success" ]; then
             echo "  ✅ Pushed to GitHub Container Registry"
           else
             echo "  ❌ GitHub Container Registry push failed"
+            exit 1
           fi
           
+          # AWS ECR is optional
           if [ "${{ needs.push-ecr.result }}" = "success" ]; then
             echo "  ✅ Pushed to AWS ECR"
           elif [ "${{ needs.push-ecr.result }}" = "skipped" ]; then
-            echo "  ⏭️ AWS ECR push skipped (no AWS secrets configured)"
+            echo "  ℹ️ AWS ECR push skipped (AWS not configured)"
           else
-            echo "  ❌ AWS ECR push failed"
+            echo "  ⚠️ AWS ECR push failed (but pipeline continues)"
           fi
           
           echo ""
           echo "🚀 Ready for deployment!"
+          echo ""
+          echo "📦 Available images:"
+          echo "  • GitHub Container Registry: ghcr.io/${{ github.repository }}:latest"
+          if [ "${{ needs.push-ecr.result }}" = "success" ]; then
+            echo "  • AWS ECR: Available in configured repository"
+          fi
