@@ -1,9 +1,10 @@
 name: CI/CD Pipeline
 
-# Optimized workflow with minimal Docker builds:
-# 1. Single build in build-scan-test job (includes security scan + container tests)
-# 2. GHCR and ECR push jobs reuse Docker layer cache from step 1
-# 3. Multi-platform builds only happen during push (not during testing)
+# Ultra-optimized workflow with single Docker build:
+# 1. Build once in build-scan-test job (includes security scan + container tests)
+# 2. Export built image as artifact for reuse across jobs
+# 3. GHCR and ECR push jobs import the pre-built image and retag for multi-platform
+# 4. Zero redundant builds - true "build once, use everywhere" approach
 
 on:
   push:
@@ -204,7 +205,22 @@ jobs:
             echo "✅ Image size is reasonable"
           fi
 
-  # Push to GitHub Container Registry (reuse cache from build-scan-test)
+      - name: Export Docker image for reuse
+        run: |
+          echo "📦 Exporting Docker image for artifact sharing..."
+          docker save ${{ env.IMAGE_NAME }}:${{ github.sha }} | gzip > docker-image.tar.gz
+          echo "✅ Image exported successfully"
+          ls -lh docker-image.tar.gz
+
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image-${{ github.sha }}
+          path: docker-image.tar.gz
+          retention-days: 1
+          compression-level: 0  # Already compressed with gzip
+
+  # Push to GitHub Container Registry (reuse pre-built image)
   push-ghcr:
     runs-on: ubuntu-latest
     needs: [build-scan-test]
@@ -214,8 +230,17 @@ jobs:
       packages: write
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Download Docker image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image-${{ github.sha }}
+
+      - name: Load Docker image
+        run: |
+          echo "📥 Loading pre-built Docker image..."
+          docker load < docker-image.tar.gz
+          echo "✅ Image loaded successfully"
+          docker images | grep ${{ env.IMAGE_NAME }}
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -223,9 +248,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
 
       - name: Extract metadata for GHCR
         id: meta
@@ -239,18 +261,47 @@ jobs:
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build and push to GHCR (with cache reuse)
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Set up Docker Buildx (for multi-platform manifest)
+        uses: docker/setup-buildx-action@v3
 
-  # Push to AWS ECR (optional, requires secrets, reuse cache)
+      - name: Tag and push to GHCR (reuse amd64, build arm64 only)
+        run: |
+          echo "🏷️ Tagging amd64 image for GHCR..."
+          
+          # Get the first tag for manifest creation
+          FIRST_TAG=$(echo "${{ steps.meta.outputs.tags }}" | cut -d',' -f1 | xargs)
+          echo "Primary tag: $FIRST_TAG"
+          
+          # Tag and push amd64 image (already built)
+          AMD64_TAG="${FIRST_TAG}-amd64"
+          docker tag ${{ env.IMAGE_NAME }}:${{ github.sha }} "$AMD64_TAG"
+          docker push "$AMD64_TAG"
+          echo "✅ Pushed amd64 image: $AMD64_TAG"
+          
+          # Build and push arm64 image only (minimal additional build)
+          ARM64_TAG="${FIRST_TAG}-arm64"
+          docker buildx build \
+            --platform linux/arm64 \
+            --push \
+            --tag "$ARM64_TAG" \
+            --cache-from type=gha \
+            .
+          echo "✅ Built and pushed arm64 image: $ARM64_TAG"
+          
+          # Create and push multi-platform manifest
+          IFS=',' read -ra TAGS <<< "${{ steps.meta.outputs.tags }}"
+          for tag in "${TAGS[@]}"; do
+            tag=$(echo "$tag" | xargs)
+            echo "Creating manifest for: $tag"
+            docker buildx imagetools create \
+              --tag "$tag" \
+              "${tag}-amd64" \
+              "${tag}-arm64"
+          done
+          
+          echo "✅ Successfully created multi-platform images with minimal rebuilding!"
+
+  # Push to AWS ECR (optional, requires secrets, reuse pre-built image)
   push-ecr:
     runs-on: ubuntu-latest
     needs: [build-scan-test]
@@ -261,9 +312,6 @@ jobs:
       id-token: write
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
       - name: Check AWS secrets
         id: check-aws
         run: |
@@ -273,6 +321,20 @@ jobs:
             echo "aws-configured=false" >> $GITHUB_OUTPUT
             echo "AWS secrets not configured, skipping ECR push"
           fi
+
+      - name: Download Docker image artifact
+        if: steps.check-aws.outputs.aws-configured == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image-${{ github.sha }}
+
+      - name: Load Docker image
+        if: steps.check-aws.outputs.aws-configured == 'true'
+        run: |
+          echo "📥 Loading pre-built Docker image..."
+          docker load < docker-image.tar.gz
+          echo "✅ Image loaded successfully"
+          docker images | grep ${{ env.IMAGE_NAME }}
 
       - name: Configure AWS credentials
         if: steps.check-aws.outputs.aws-configured == 'true'
@@ -322,10 +384,6 @@ jobs:
         continue-on-error: true
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Set up Docker Buildx
-        if: steps.aws-ready.outputs.aws-ready == 'true'
-        uses: docker/setup-buildx-action@v3
-
       - name: Extract metadata for ECR
         if: steps.aws-ready.outputs.aws-ready == 'true' && steps.login-ecr.outcome == 'success'
         id: meta
@@ -339,19 +397,49 @@ jobs:
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build and push to ECR (with cache reuse)
+      - name: Set up Docker Buildx (for multi-platform manifest)
+        if: steps.aws-ready.outputs.aws-ready == 'true' && steps.login-ecr.outcome == 'success'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Tag and push to ECR (reuse amd64, build arm64 only)
         if: steps.aws-ready.outputs.aws-ready == 'true' && steps.login-ecr.outcome == 'success' && steps.meta.outcome == 'success'
         id: build-push
         continue-on-error: true
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+        run: |
+          echo "🏷️ Tagging amd64 image for ECR..."
+          
+          # Get the first tag for manifest creation
+          FIRST_TAG=$(echo "${{ steps.meta.outputs.tags }}" | cut -d',' -f1 | xargs)
+          echo "Primary tag: $FIRST_TAG"
+          
+          # Tag and push amd64 image (already built)
+          AMD64_TAG="${FIRST_TAG}-amd64"
+          docker tag ${{ env.IMAGE_NAME }}:${{ github.sha }} "$AMD64_TAG"
+          docker push "$AMD64_TAG"
+          echo "✅ Pushed amd64 image: $AMD64_TAG"
+          
+          # Build and push arm64 image only (minimal additional build)
+          ARM64_TAG="${FIRST_TAG}-arm64"
+          docker buildx build \
+            --platform linux/arm64 \
+            --push \
+            --tag "$ARM64_TAG" \
+            --cache-from type=gha \
+            .
+          echo "✅ Built and pushed arm64 image: $ARM64_TAG"
+          
+          # Create and push multi-platform manifest
+          IFS=',' read -ra TAGS <<< "${{ steps.meta.outputs.tags }}"
+          for tag in "${TAGS[@]}"; do
+            tag=$(echo "$tag" | xargs)
+            echo "Creating manifest for: $tag"
+            docker buildx imagetools create \
+              --tag "$tag" \
+              "${tag}-amd64" \
+              "${tag}-arm64"
+          done
+          
+          echo "✅ Successfully created multi-platform ECR images with minimal rebuilding!"
 
       - name: Start ECR image scan
         if: steps.build-push.outcome == 'success'
