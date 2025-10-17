@@ -166,7 +166,7 @@ describe('UniversalRequestProcessor', () => {
       const result = await processor.processRequest(incomingRequest);
 
       // Should boost reasoning effort for Swift content
-      expect(result.reasoningEffort).toBe('low')'
+      expect(result.reasoningEffort).toBe('low');
     });
 
     it('should handle complex conversations with high reasoning effort', async () => {
@@ -527,7 +527,7 @@ describe('UniversalRequestProcessor', () => {
       const result =
         await processorWithSwiftOptimization.processRequest(incomingRequest);
 
-      expect(result.reasoningEffort).toBe('low')'
+      expect(result.reasoningEffort).toBe('low');
     });
 
     it('should not boost reasoning effort when Swift optimization is disabled', async () => {
