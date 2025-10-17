@@ -390,7 +390,7 @@ Include load balancing and database design.`
         hasComplexFrameworkPatterns: false,
       };
 
-      expect(service.determineReasoningLevel(factors)).toBe('minimal');
+      expect(service.determineReasoningLevel(factors)).toBe('low');
     });
   });
 

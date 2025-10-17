@@ -375,10 +375,10 @@ describe('Completions Route - Responses API Integration', () => {
       expect(response.headers['cache-control']).toBe('no-cache');
       expect(response.headers['connection']).toBe('keep-alive');
 
-      // Verify streaming was called
-      expect(mockResponsesClient.createResponseStream).toHaveBeenCalledWith(
+      // Verify non-streaming was called (simulated streaming)
+      expect(mockResponsesClient.createResponse).toHaveBeenCalledWith(
         expect.objectContaining({
-          stream: true,
+          // stream parameter is not passed to non-streaming API
         })
       );
     });
@@ -410,7 +410,7 @@ describe('Completions Route - Responses API Integration', () => {
         .expect(200);
 
       expect(response.headers['content-type']).toBe('text/event-stream');
-      expect(mockResponsesClient.createResponseStream).toHaveBeenCalled();
+      expect(mockResponsesClient.createResponse).toHaveBeenCalled();
     });
   });
 

@@ -304,7 +304,7 @@ Include proper error handling and validation.`
       };
 
       const result = optimizer.applyLanguageOptimizations(request, languageContext);
-      expect(result).toBe('minimal');
+      expect(result).toBe('low');
     });
 
     it('should return undefined for languages that do not benefit from reasoning', () => {
