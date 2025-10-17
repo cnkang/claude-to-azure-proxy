@@ -51,7 +51,7 @@ PROXY_API_KEY=your-secure-proxy-api-key-32-chars-min
 # AZURE_OPENAI_API_VERSION=preview  # Only set for legacy preview API (leave empty for GA v1)
 
 # Timeout and Retry Configuration
-AZURE_OPENAI_TIMEOUT=60000          # 60 seconds (default)
+AZURE_OPENAI_TIMEOUT=120000         # 120 seconds (default)
 AZURE_OPENAI_MAX_RETRIES=3          # 3 retries (default)
 
 # Reasoning Configuration
@@ -259,7 +259,7 @@ HEALTH_CHECK_MEMORY_THRESHOLD=0.9   # Alert at 90% memory usage
 # Timeout settings for different reasoning levels
 TIMEOUT_MINIMAL=10000               # 10 seconds for minimal reasoning
 TIMEOUT_LOW=20000                   # 20 seconds for low reasoning
-TIMEOUT_MEDIUM=60000                # 60 seconds for medium reasoning (default)
+TIMEOUT_MEDIUM=120000               # 120 seconds for medium reasoning (default)
 TIMEOUT_HIGH=120000                 # 120 seconds for high reasoning
 ```
 
@@ -269,7 +269,7 @@ TIMEOUT_HIGH=120000                 # 120 seconds for high reasoning
 # HTTP client configuration
 HTTP_KEEP_ALIVE=true                # Enable keep-alive connections
 HTTP_MAX_SOCKETS=50                 # Maximum concurrent connections
-HTTP_TIMEOUT=60000                  # Connection timeout
+HTTP_TIMEOUT=120000                 # Connection timeout
 ```
 
 ### Memory Management
@@ -305,7 +305,7 @@ NODE_ENV=production
 LOG_LEVEL=info
 LOG_FORMAT=json
 DEFAULT_REASONING_EFFORT=medium
-AZURE_OPENAI_TIMEOUT=60000
+AZURE_OPENAI_TIMEOUT=120000
 ENABLE_METRICS=true
 HEALTH_CHECK_AZURE_CONNECTIVITY=true
 ```

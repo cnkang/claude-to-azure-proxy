@@ -229,7 +229,7 @@ NODE_ENV=production
 ### Optional Variables (Azure OpenAI v1 API)
 ```bash
 # AZURE_OPENAI_API_VERSION=preview  # Optional: only needed for preview features
-AZURE_OPENAI_TIMEOUT=60000          # Optional: request timeout in milliseconds
+AZURE_OPENAI_TIMEOUT=120000         # Optional: request timeout in milliseconds
 AZURE_OPENAI_MAX_RETRIES=3          # Optional: maximum retry attempts
 DEFAULT_REASONING_EFFORT=medium     # Optional: default reasoning effort level
 ```

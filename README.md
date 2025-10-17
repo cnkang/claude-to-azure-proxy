@@ -116,7 +116,7 @@ This high-performance proxy server enables seamless integration between Claude C
 
    # Optional Responses API Configuration
    # AZURE_OPENAI_API_VERSION=preview  # Only for preview features
-   AZURE_OPENAI_TIMEOUT=60000
+   AZURE_OPENAI_TIMEOUT=120000
    AZURE_OPENAI_MAX_RETRIES=3
    DEFAULT_REASONING_EFFORT=medium
 
@@ -300,9 +300,10 @@ pnpm docs:serve
 | `AZURE_OPENAI_API_KEY`       | ✅       | -            | Azure OpenAI API key                           |
 | `AZURE_OPENAI_MODEL`         | ✅       | -            | GPT-5-Codex deployment name                    |
 | `AZURE_OPENAI_API_VERSION`   | ❌       | -            | API version (only for preview features)        |
-| `AZURE_OPENAI_TIMEOUT`       | ❌       | `60000`      | Request timeout in milliseconds                |
+| `AZURE_OPENAI_TIMEOUT`       | ❌       | `120000`     | Request timeout in milliseconds                |
 | `AZURE_OPENAI_MAX_RETRIES`   | ❌       | `3`          | Maximum retry attempts                         |
 | `DEFAULT_REASONING_EFFORT`   | ❌       | `medium`     | Default reasoning level (minimal/low/medium/high) |
+| `ENABLE_CONTENT_SECURITY_VALIDATION` | ❌ | `true`   | Enable content security validation (true/false)   |
 | `PORT`                       | ❌       | `8080`       | Server port (1024-65535)                       |
 | `NODE_ENV`                   | ❌       | `production` | Environment (development/production/test)      |
 
@@ -324,9 +325,12 @@ The proxy includes comprehensive security features:
 - **Authentication**: Multiple methods (Bearer token, API key header)
 - **Rate Limiting**: Configurable limits per endpoint and IP
 - **Input Validation**: Joi schema validation with sanitization
+- **Content Security**: Configurable validation (`ENABLE_CONTENT_SECURITY_VALIDATION`)
 - **Security Headers**: Comprehensive HTTP security headers
 - **CORS**: Configurable cross-origin resource sharing
 - **Request Sanitization**: Automatic removal of sensitive data from logs
+
+> **Content Security**: Set `ENABLE_CONTENT_SECURITY_VALIDATION=false` for development/code review scenarios. See [Environment Guide](docs/ENVIRONMENT.md#content-security-validation) for details.
 
 ## 🚀 Deployment
 

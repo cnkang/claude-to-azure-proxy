@@ -69,9 +69,10 @@ The system automatically detects:
 | `PORT` | Server port | `8080` | `3000` |
 | `NODE_ENV` | Node.js environment | `production` | `development` |
 | `AZURE_OPENAI_API_VERSION` | API version (only for preview features) | `undefined` | `preview` |
-| `AZURE_OPENAI_TIMEOUT` | Request timeout in milliseconds | `60000` | `30000` |
+| `AZURE_OPENAI_TIMEOUT` | Request timeout in milliseconds | `120000` | `30000` |
 | `AZURE_OPENAI_MAX_RETRIES` | Maximum retry attempts | `3` | `5` |
 | `DEFAULT_REASONING_EFFORT` | Default reasoning effort level | `medium` | `high` |
+| `ENABLE_CONTENT_SECURITY_VALIDATION` | Enable content security validation | `true` | `false` |
 | `RATE_LIMIT_WINDOW_MS` | Rate limit window in milliseconds | `900000` | `600000` |
 | `RATE_LIMIT_MAX_REQUESTS` | Max requests per window | `100` | `50` |
 | `CORS_ORIGIN` | CORS allowed origins | `*` | `https://myapp.com` |
@@ -85,6 +86,76 @@ The system automatically detects:
 2. **Docker Protection**: `.dockerignore` excludes `.env` from builds
 3. **Template System**: `.env.example` provides safe template
 4. **Automated Checks**: Security scripts validate configuration
+
+### 🔒 Content Security Validation
+
+The proxy includes configurable content security validation to protect against malicious input while maintaining flexibility for development scenarios.
+
+#### Configuration
+
+```bash
+ENABLE_CONTENT_SECURITY_VALIDATION=true|false
+```
+
+- **Default**: `true` (security enabled)
+- **Production**: `true` (recommended)
+- **Development/Code Review**: `false` (for flexibility)
+
+#### Use Cases
+
+**🔒 Production Environment** (`ENABLE_CONTENT_SECURITY_VALIDATION=true`)
+- Blocks XSS attempts: `<script>alert('xss')</script>`
+- Prevents template injection: `{{constructor}}`
+- Filters malicious event handlers: `<img onclick="malicious()">`
+- Protects against JavaScript protocol: `javascript:alert(1)`
+
+**🛠️ Development Environment** (`ENABLE_CONTENT_SECURITY_VALIDATION=false`)
+- Allows code review of HTML/JavaScript content
+- Permits template syntax in documentation
+- Enables processing of shell scripts and configuration files
+- Supports technical documentation with code examples
+
+#### Configuration Methods
+
+**Method 1: Environment Variable**
+```bash
+export ENABLE_CONTENT_SECURITY_VALIDATION=false
+```
+
+**Method 2: .env File**
+```env
+ENABLE_CONTENT_SECURITY_VALIDATION=false
+```
+
+**Method 3: Docker Compose Override**
+```yaml
+# docker-compose.override.yml
+version: '3.8'
+services:
+  claude-proxy:
+    environment:
+      - ENABLE_CONTENT_SECURITY_VALIDATION=false
+```
+
+#### Testing Configuration
+
+Send a test request with HTML content to verify your configuration:
+
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your-api-key" \
+  -d '{
+    "model": "gpt-4o",
+    "messages": [{
+      "role": "user", 
+      "content": "<button onclick=\"test()\">Test Button</button>"
+    }]
+  }'
+```
+
+- **Security enabled**: Request will be sanitized or rejected
+- **Security disabled**: Content will be processed as-is
 
 ### 🔍 Security Validation
 

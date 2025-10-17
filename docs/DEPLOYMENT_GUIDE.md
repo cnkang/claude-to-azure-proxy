@@ -50,7 +50,7 @@ AZURE_OPENAI_MODEL=gpt-5-codex  # Your GPT-5-Codex deployment name
 
 # Responses API Configuration (Optional)
 # AZURE_OPENAI_API_VERSION=preview  # Only for preview features
-AZURE_OPENAI_TIMEOUT=60000
+AZURE_OPENAI_TIMEOUT=120000
 AZURE_OPENAI_MAX_RETRIES=3
 DEFAULT_REASONING_EFFORT=medium
 
