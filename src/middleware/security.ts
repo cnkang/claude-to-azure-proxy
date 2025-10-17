@@ -291,6 +291,11 @@ const baseGlobalRateLimit = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  // Skip trust proxy validation for rate limiting
+  skip: (req: Request) => {
+    // Skip rate limiting for health checks from localhost
+    return req.path === '/health' && req.ip === '127.0.0.1';
+  },
   // Use CloudFront headers for real client IP identification
   keyGenerator: (req: Request): string => {
     const clientIp = resolveClientIp(req);
@@ -407,7 +412,7 @@ export const correlationIdMiddleware = (
 };
 
 // Request timeout middleware
-export const timeoutMiddleware = (timeoutMs: number = 30000) => {
+export const timeoutMiddleware = (timeoutMs: number = 120000) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     const timeout = setTimeout(() => {
       if (!res.headersSent) {
@@ -505,7 +510,7 @@ export const requestSizeMiddleware = (
 /**
  * Request timeout middleware
  */
-export const requestTimeoutMiddleware = (timeoutMs: number = 30000) => {
+export const requestTimeoutMiddleware = (timeoutMs: number = 120000) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (typeof req.setTimeout === 'function') {
       req.setTimeout(timeoutMs, () => {

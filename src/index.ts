@@ -163,8 +163,9 @@ class ProxyServer {
    */
   private setupMiddleware(): void {
     // Trust proxy for AWS App Runner and CloudFront
-    // CloudFront adds multiple proxy layers, so we trust all proxies
-    this.app.set('trust proxy', true);
+    // Use specific proxy configuration instead of trusting all proxies
+    // This is more secure than 'trust proxy: true'
+    this.app.set('trust proxy', ['loopback', 'linklocal', 'uniquelocal']);
 
     // Disable unnecessary Express features
     this.app.disable('x-powered-by');
@@ -176,7 +177,11 @@ class ProxyServer {
 
     // Request processing middleware
     this.app.use(correlationIdMiddleware);
-    this.app.use(timeoutMiddleware(30000)); // 30 second timeout
+    this.app.use(timeoutMiddleware(
+      typeof this.config.azureOpenAI?.timeout === 'number' 
+        ? this.config.azureOpenAI.timeout 
+        : parseInt(String(this.config.azureOpenAI?.timeout || '120000'), 10)
+    )); // Use configured timeout
     this.app.use(globalRateLimit);
 
     // Body parsing with size limits

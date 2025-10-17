@@ -353,7 +353,7 @@ export class AzureErrorMapper {
     // Try to extract from error message
     const message = error instanceof Error ? error.message : '';
     const timeoutMatch = message.match(/(\d+)\s*ms/);
-    return timeoutMatch?.[1] !== undefined ? parseInt(timeoutMatch[1], 10) : 30000;
+    return timeoutMatch?.[1] !== undefined ? parseInt(timeoutMatch[1], 10) : 120000;
   }
 
   /**

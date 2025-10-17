@@ -71,7 +71,7 @@ export class AzureRetryStrategy {
         'EHOSTUNREACH',
         'ENETUNREACH',
       ],
-      timeoutMs: 60000, // 60 seconds timeout
+      timeoutMs: 120000, // 120 seconds timeout
       ...config,
     };
 
@@ -293,52 +293,60 @@ export function createAzureRetryConfig(overrides: Readonly<Partial<RetryConfig>>
       'EHOSTUNREACH',
       'ENETUNREACH',
     ],
-    timeoutMs: 60000,
+    timeoutMs: 120000,
     ...overrides,
   };
 }
 
 /**
- * Create retry configuration for different operation types
+ * Create retry configurations for different operation types with dynamic timeout
  */
-export const AzureRetryConfigs = {
-  /**
-   * Configuration for completion requests
-   */
-  completions: createAzureRetryConfig({
-    maxAttempts: 3,
-    baseDelayMs: 1000,
-    maxDelayMs: 30000,
-    timeoutMs: 120000, // 2 minutes for completions
-  }),
+export function createAzureRetryConfigs(baseTimeoutMs: number = 120000) {
+  return {
+    /**
+     * Configuration for completion requests
+     */
+    completions: createAzureRetryConfig({
+      maxAttempts: 3,
+      baseDelayMs: 1000,
+      maxDelayMs: 30000,
+      timeoutMs: Math.max(baseTimeoutMs * 2, 120000), // At least 2 minutes for completions
+    }),
 
-  /**
-   * Configuration for streaming requests
-   */
-  streaming: createAzureRetryConfig({
-    maxAttempts: 2, // Fewer retries for streaming
-    baseDelayMs: 500,
-    maxDelayMs: 10000,
-    timeoutMs: 180000, // 3 minutes for streaming
-  }),
+    /**
+     * Configuration for streaming requests
+     */
+    streaming: createAzureRetryConfig({
+      maxAttempts: 2, // Fewer retries for streaming
+      baseDelayMs: 500,
+      maxDelayMs: 10000,
+      timeoutMs: Math.max(baseTimeoutMs * 3, 180000), // At least 3 minutes for streaming
+    }),
 
-  /**
-   * Configuration for health checks
-   */
-  healthCheck: createAzureRetryConfig({
-    maxAttempts: 2,
-    baseDelayMs: 500,
-    maxDelayMs: 5000,
-    timeoutMs: 10000, // 10 seconds for health checks
-  }),
+    /**
+     * Configuration for health checks
+     */
+    healthCheck: createAzureRetryConfig({
+      maxAttempts: 2,
+      baseDelayMs: 500,
+      maxDelayMs: 5000,
+      timeoutMs: 10000, // 10 seconds for health checks (fixed)
+    }),
 
-  /**
-   * Configuration for model operations
-   */
-  models: createAzureRetryConfig({
-    maxAttempts: 2,
-    baseDelayMs: 1000,
-    maxDelayMs: 10000,
-    timeoutMs: 30000, // 30 seconds for model operations
-  }),
-} as const;
+    /**
+     * Configuration for model operations
+     */
+    models: createAzureRetryConfig({
+      maxAttempts: 2,
+      baseDelayMs: 1000,
+      maxDelayMs: 10000,
+      timeoutMs: baseTimeoutMs, // Use configured timeout for model operations
+    }),
+  } as const;
+}
+
+/**
+ * Create retry configuration for different operation types
+ * @deprecated Use createAzureRetryConfigs() instead for dynamic timeout configuration
+ */
+export const AzureRetryConfigs = createAzureRetryConfigs();
