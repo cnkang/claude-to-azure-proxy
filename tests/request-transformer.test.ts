@@ -309,7 +309,7 @@ describe('Request Transformer', () => {
     it('should throw SecurityError for template injection patterns', () => {
       const maliciousRequest = {
         ...validClaudeRequest,
-        prompt: 'Hello {{user.password}} world',
+        prompt: 'Hello {{constructor}} world',
       };
 
       expect(() => validateClaudeRequest(maliciousRequest)).toThrow(
@@ -594,7 +594,7 @@ describe('Request Transformer', () => {
     it('should throw SecurityError for malicious input', () => {
       const maliciousRequest = {
         ...validClaudeRequest,
-        prompt: 'Hello {{user.secret}} world',
+        prompt: 'Hello {{__proto__}} world',
       };
 
       expect(() =>

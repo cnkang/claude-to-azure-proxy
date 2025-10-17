@@ -177,7 +177,9 @@ describe('Property-Based Tests', () => {
         '<script>alert("xss")</script>',
         // eslint-disable-next-line no-script-url
         'javascript:alert(1)',
-        '{{user.password}}',
+        '{{constructor}}',
+        '{{__proto__}}',
+        '{{eval("alert(1)")}}',
         '<img src=x onerror=alert(1)>',
         'data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==',
       ];

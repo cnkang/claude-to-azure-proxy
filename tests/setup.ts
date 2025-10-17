@@ -89,79 +89,99 @@ vi.mock('openai', () => {
 
   const toResponsesResponse = (
     data: Record<string, unknown> | undefined,
-    fallbackModel: unknown
+    fallbackModel: unknown,
+    defaultText = 'Mock Azure OpenAI response'
   ): Record<string, unknown> => {
     if (data !== undefined && data.object === 'response') {
       return data;
     }
 
-    let choicesCandidate: unknown;
-    if (isRecord(data) && 'choices' in data) {
-      choicesCandidate = data.choices;
-    }
-    const choices = Array.isArray(choicesCandidate) ? choicesCandidate : [];
-    const output = choices.map((choice, index) => {
-      let content = '';
-      if (isRecord(choice) && 'message' in choice) {
-        const messageCandidate = choice.message;
-        if (isRecord(messageCandidate) && typeof messageCandidate.content === 'string') {
-          content = messageCandidate.content;
-        }
+    const responseId =
+      (isRecord(data) && typeof data.id === 'string'
+        ? data.id
+        : undefined) ?? `resp_${Math.random().toString(36).slice(2)}`;
+
+    const createdAt =
+      (isRecord(data) &&
+        typeof (data.created_at ?? data.created) === 'number' &&
+        Number.isFinite(data.created_at ?? data.created)
+        ? (data.created_at ?? data.created) as number
+        : Math.floor(Date.now() / 1000));
+
+    const model =
+      (isRecord(data) && typeof data.model === 'string'
+        ? data.model
+        : typeof fallbackModel === 'string'
+        ? fallbackModel
+        : 'mock-model');
+
+    let textContent = defaultText;
+    if (isRecord(data) && 'choices' in data && Array.isArray(data.choices)) {
+      const firstChoice = data.choices[0];
+      textContent = '';
+      if (
+        isRecord(firstChoice) &&
+        'message' in firstChoice &&
+        isRecord(firstChoice.message) &&
+        typeof firstChoice.message.content === 'string'
+      ) {
+        textContent = firstChoice.message.content;
       }
-
-      return {
-        type: 'text',
-        id: `msg_${index}`,
-        role: 'assistant',
-        content: [{ type: 'text', text: content }],
-        text: content,
-      };
-    });
-
-    let usageCandidate: unknown;
-    if (isRecord(data) && 'usage' in data) {
-      usageCandidate = data.usage;
     }
-    const usage = isRecord(usageCandidate)
-      ? (usageCandidate as Record<string, number | undefined>)
-      : {};
+
+    const usageCandidate = (() => {
+      if (!isRecord(data)) {
+        return undefined;
+      }
+      const candidateUsage = (data as { usage?: unknown }).usage;
+      return isRecord(candidateUsage) ? candidateUsage : undefined;
+    })();
 
     const promptTokens =
-      typeof usage.prompt_tokens === 'number' ? usage.prompt_tokens : 0;
-    const completionTokens =
-      typeof usage.completion_tokens === 'number'
-        ? usage.completion_tokens
+      typeof usageCandidate?.prompt_tokens === 'number'
+        ? usageCandidate.prompt_tokens
         : 0;
-    const totalTokensValue = usage.total_tokens;
+    const completionTokens =
+      typeof usageCandidate?.completion_tokens === 'number'
+        ? usageCandidate.completion_tokens
+        : Math.max(1, Math.ceil(textContent.length / 4));
     const totalTokens =
-      typeof totalTokensValue === 'number'
-        ? totalTokensValue
+      typeof usageCandidate?.total_tokens === 'number'
+        ? usageCandidate.total_tokens
         : promptTokens + completionTokens;
-
     return {
-      id:
-        typeof data?.id === 'string'
-          ? data.id
-          : `resp_${Math.random().toString(36).slice(2)}`,
+      id: responseId,
       object: 'response',
-      created:
-        typeof data?.created === 'number'
-          ? data.created
-          : Math.floor(Date.now() / 1000),
-      model:
-        typeof data?.model === 'string'
-          ? data.model
-          : typeof fallbackModel === 'string'
-          ? fallbackModel
-          : 'unknown',
-      output,
+      created_at: createdAt,
+      model,
+      output: [
+        {
+          type: 'message',
+          id: `${responseId}_msg_0`,
+          role: 'assistant',
+          status: 'completed',
+          content: [
+            {
+              type: 'output_text',
+              text: textContent,
+              annotations: [],
+            },
+          ],
+        },
+      ],
       usage: {
-        prompt_tokens: promptTokens,
-        completion_tokens: completionTokens,
+        input_tokens: promptTokens,
+        output_tokens: completionTokens,
         total_tokens: totalTokens,
-        ...(usage.reasoning_tokens !== undefined
-          ? { reasoning_tokens: usage.reasoning_tokens }
-          : {}),
+        input_tokens_details: {
+          cached_tokens: 0,
+        },
+        output_tokens_details: {
+          reasoning_tokens:
+            typeof usageCandidate?.reasoning_tokens === 'number'
+              ? usageCandidate.reasoning_tokens
+              : 0,
+        },
       },
     } as Record<string, unknown>;
   };
@@ -169,6 +189,7 @@ vi.mock('openai', () => {
   class MockOpenAI {
     public readonly responses: {
       create: ReturnType<typeof vi.fn>;
+      stream: ReturnType<typeof vi.fn>;
     };
 
     private readonly baseURL: string;
@@ -198,7 +219,15 @@ vi.mock('openai', () => {
 
           try {
             const response = await axiosMock.post(url, payload, { headers });
-            return toResponsesResponse(response.data, payload.model);
+            const firstMessage =
+              Array.isArray(payload.messages) && payload.messages.length > 0
+                ? payload.messages[0]
+                : undefined;
+            const defaultText =
+              firstMessage !== undefined && typeof firstMessage.content === 'string'
+                ? `Mock response to: ${firstMessage.content}`
+                : 'Mock Azure OpenAI response';
+            return toResponsesResponse(response.data, payload.model, defaultText);
           } catch (error) {
             const axiosError = error as {
               response?: { status?: number; data?: unknown };
@@ -236,6 +265,90 @@ vi.mock('openai', () => {
             throw error;
           }
         }),
+        stream: vi.fn((params: Record<string, unknown>) =>
+          this.createMockStream(params)
+        ),
+      };
+    }
+
+    private createMockStream(
+      params: Record<string, unknown>
+    ): AsyncIterable<Record<string, unknown>> {
+      const model =
+        typeof params.model === 'string' ? params.model : 'mock-model';
+
+      const response = toResponsesResponse(
+        undefined,
+        model,
+        'Mock streaming response'
+      );
+
+      const responseId =
+        typeof response.id === 'string'
+          ? response.id
+          : `resp_${Math.random().toString(36).slice(2)}`;
+      const createdAt =
+        typeof response.created_at === 'number'
+          ? response.created_at
+          : Math.floor(Date.now() / 1000);
+
+      const firstOutput =
+        Array.isArray(response.output) && response.output.length > 0
+          ? (response.output[0] as Record<string, unknown>)
+          : undefined;
+      const contentArray =
+        firstOutput !== undefined &&
+        'content' in firstOutput &&
+        Array.isArray(firstOutput.content)
+          ? (firstOutput.content as Array<Record<string, unknown>>)
+          : undefined;
+      const firstContent =
+        contentArray !== undefined && contentArray.length > 0
+          ? contentArray[0]
+          : undefined;
+      const messageContent =
+        firstContent !== undefined &&
+        typeof firstContent.text === 'string'
+          ? firstContent.text
+          : 'Mock streaming response';
+
+      const completedResponse = {
+        ...response,
+        id: responseId,
+        created_at: createdAt,
+      };
+
+      const events: ReadonlyArray<Record<string, unknown>> = [
+        {
+          type: 'response.created',
+          sequence_number: 0,
+          response: {
+            ...completedResponse,
+            output: [],
+          },
+        },
+        {
+          type: 'response.output_text.delta',
+          sequence_number: 1,
+          item_id: `${responseId}_msg_0`,
+          output_index: 0,
+          content_index: 0,
+          delta: messageContent,
+          logprobs: [],
+        },
+        {
+          type: 'response.completed',
+          sequence_number: 2,
+          response: completedResponse,
+        },
+      ];
+
+      return {
+        async *[Symbol.asyncIterator]() {
+          for (const event of events) {
+            yield event;
+          }
+        },
       };
     }
   }

@@ -16,6 +16,7 @@ import { AzureResponsesClient } from '../../src/clients/azure-responses-client.j
 import type {
   AzureOpenAIConfig,
   ResponsesCreateParams,
+  ResponsesStreamChunk,
 } from '../../src/types/index.js';
 
 describe('AzureResponsesClient', () => {
@@ -241,17 +242,37 @@ describe('AzureResponsesClient', () => {
       client = new AzureResponsesClient(validConfig);
     });
 
-    it('should handle streaming not implemented error', async () => {
+    it('should stream response chunks from Azure Responses API', async () => {
       const params: ResponsesCreateParams = {
         model: 'gpt-5-codex',
         input: [{ role: 'user', content: 'Hello' }],
         stream: true,
       };
 
-      const streamGenerator = client.createResponseStream(params);
-      await expect(streamGenerator.next()).rejects.toThrow(
-        'Streaming support will be implemented in the next task'
-      );
+      const chunks: ResponsesStreamChunk[] = [];
+
+      for await (const chunk of client.createResponseStream(params)) {
+        chunks.push(chunk);
+      }
+
+      expect(chunks.length).toBeGreaterThanOrEqual(2);
+
+      const firstChunk = chunks[0];
+      expect(firstChunk.object).toBe('response.chunk');
+      expect(firstChunk.model).toBe(validConfig.deployment);
+      expect(firstChunk.output.length).toBeGreaterThan(0);
+      expect(firstChunk.output[0]?.type).toBe('text');
+      expect(typeof firstChunk.id).toBe('string');
+
+      if (chunks.length === 0) {
+        throw new Error('No chunks returned from streaming call');
+      }
+
+      const finalChunk = chunks.reduce<ResponsesStreamChunk>((_, chunk) => chunk);
+
+      expect(finalChunk.usage).toBeDefined();
+      expect(finalChunk.usage?.total_tokens).toBeGreaterThan(0);
+      expect(finalChunk.output.length).toBeGreaterThan(0);
     });
   });
 
