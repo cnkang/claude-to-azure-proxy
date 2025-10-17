@@ -180,7 +180,7 @@ class ProxyServer {
     this.app.use(timeoutMiddleware(
       typeof this.config.azureOpenAI?.timeout === 'number' 
         ? this.config.azureOpenAI.timeout 
-        : parseInt(String(this.config.azureOpenAI?.timeout || '120000'), 10)
+        : parseInt(String(this.config.azureOpenAI?.timeout ?? '120000'), 10)
     )); // Use configured timeout
     this.app.use(globalRateLimit);
 
