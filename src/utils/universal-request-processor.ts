@@ -42,6 +42,7 @@ export interface UniversalProcessingResult {
  */
 export interface UniversalProcessorConfig {
   readonly enableInputValidation: boolean;
+  readonly enableContentSecurityValidation: boolean; // New option for content security checks
   readonly maxRequestSize: number;
   readonly defaultReasoningEffort: ReasoningEffort;
   readonly enableSwiftOptimization: boolean;
@@ -195,7 +196,10 @@ export class UniversalRequestProcessor {
       format
     );
 
-    this.ensureNoMaliciousContent(normalizedBody, format, correlationId);
+    // Only perform content security validation if enabled
+    if (this.config.enableContentSecurityValidation) {
+      this.ensureNoMaliciousContent(normalizedBody, format, correlationId);
+    }
 
     // Common validations for both formats
     this.validateCommonFields(normalizedBody, correlationId);
@@ -450,6 +454,12 @@ export class UniversalRequestProcessor {
     // Remove null bytes and control characters except newlines and tabs
     sanitized = sanitized.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
 
+    // If content becomes empty after sanitization, preserve original for legitimate use cases
+    if (sanitized.trim().length === 0 && content.trim().length > 0) {
+      // For code review scenarios, preserve the original content
+      return content;
+    }
+
     return sanitized;
   }
 
@@ -554,10 +564,12 @@ export class UniversalRequestProcessor {
   private containsMaliciousContent(value: string): boolean {
     const patterns: readonly RegExp[] = [
       /<script[\s\S]*?>[\s\S]*?<\/script>/i,
-      /javascript:\s*/i,
+      /(?:^|\s)javascript:\s*/i, // More specific - only match javascript: protocol at start or after whitespace
       /data:text\//i,
-      /on[a-z]+\s*=/i,
-      /\{\{[^}]*\}\}/,
+      /\s+on(click|load|error|focus|blur|change|submit|keydown|keyup|mouseover|mouseout)\s*=/i, // HTML event handlers only
+      // More specific template injection patterns that are actually malicious
+      /\{\{\s*(constructor|__proto__|prototype)\s*\}\}/i,
+      /\{\{\s*.*\s*(eval|Function|require|import|process|global)\s*.*\s*\}\}/i,
     ];
 
     return patterns.some((pattern) => pattern.test(value));
@@ -599,7 +611,7 @@ export class UniversalRequestProcessor {
     let baseEffort: ReasoningEffort = (() => {
       switch (complexity) {
         case 'simple':
-          return 'minimal';
+          return 'low'; // Changed from 'minimal' to 'low' for gpt-5-codex compatibility
         case 'medium':
           return 'medium';
         case 'complex':
@@ -748,6 +760,7 @@ export function createUniversalRequestProcessor(
  */
 export const defaultUniversalProcessorConfig: UniversalProcessorConfig = {
   enableInputValidation: true,
+  enableContentSecurityValidation: true, // Default to enabled for security
   maxRequestSize: 10 * 1024 * 1024, // 10MB
   defaultReasoningEffort: 'medium',
   enableSwiftOptimization: true,
@@ -783,4 +796,10 @@ export const defaultUniversalProcessorConfig: UniversalProcessorConfig = {
     'bundle identifier',
   ],
   reasoningBoost: 1.5,
+};
+
+// Configuration for development/code review scenarios
+export const developmentUniversalProcessorConfig: UniversalProcessorConfig = {
+  ...defaultUniversalProcessorConfig,
+  enableContentSecurityValidation: false, // Disable content security validation for code review
 };

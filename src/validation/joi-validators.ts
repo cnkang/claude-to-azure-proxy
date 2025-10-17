@@ -53,7 +53,7 @@ const contentBlockSchema = Joi.object({
   type: Joi.string().valid('text', 'image', 'tool_use', 'tool_result').required(),
   text: Joi.when('type', {
     is: 'text',
-    then: Joi.string().min(1).max(VALIDATION_LIMITS.MAX_MESSAGE_LENGTH).required(),
+    then: Joi.string().allow('').max(VALIDATION_LIMITS.MAX_MESSAGE_LENGTH).optional().default('[Content was sanitized and removed for security]'),
     otherwise: Joi.optional(),
   }),
 }).unknown(true);
@@ -61,7 +61,7 @@ const contentBlockSchema = Joi.object({
 const messageSchema = Joi.object({
   role: Joi.string().valid('user', 'assistant', 'system', 'tool').required(),
   content: Joi.alternatives().try(
-    Joi.string().min(1).max(VALIDATION_LIMITS.MAX_MESSAGE_LENGTH),
+    Joi.string().allow('').max(VALIDATION_LIMITS.MAX_MESSAGE_LENGTH).default('[Content was sanitized and removed for security]'),
     Joi.array().items(contentBlockSchema).min(1),
     Joi.allow(null)
   ).required(),

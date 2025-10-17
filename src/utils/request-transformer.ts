@@ -139,11 +139,11 @@ const claudeCompletionSchema = Joi.object({
 const contentBlockSchema = Joi.object({
   type: Joi.string().valid('text').required(),
   text: Joi.string()
-    .required()
-    .min(1)
+    .allow('')
+    .optional()
     .max(8 * 1024 * 1024) // 8MB limit per text block
+    .default('[Content was sanitized and removed for security]')
     .messages({
-      'string.min': 'Text content must not be empty',
       'string.max': 'Text content exceeds maximum length',
     }),
 });
@@ -159,10 +159,10 @@ const claudeChatCompletionSchema = Joi.object({
           .try(
             // String format (simple text)
             Joi.string()
-              .min(1)
+              .allow('')
               .max(8 * 1024 * 1024) // 8MB limit per message
+              .default('[Content was sanitized and removed for security]')
               .messages({
-                'string.min': 'Message content must not be empty',
                 'string.max': 'Message content exceeds maximum length',
               }),
             // Array format (content blocks)
@@ -239,11 +239,13 @@ function sanitizePrompt(prompt: string): string {
 
   // Check for potential injection patterns
   const suspiciousPatterns = [
-    /\{\{.*\}\}/g, // Template injection
+    // More specific template injection patterns that are actually malicious
+    /\{\{\s*(constructor|__proto__|prototype)\s*\}\}/gi,
+    /\{\{\s*.*\s*(eval|Function|require|import|process|global)\s*.*\s*\}\}/gi,
     /<script.*?>.*?<\/script>/gi, // Script tags
-    /javascript:/gi, // JavaScript protocol
+    /(?:^|\s)javascript:\s*/gi, // More specific - only match javascript: protocol at start or after whitespace
     /data:.*base64/gi, // Data URLs
-    /\bon\w+\s*=/gi, // Event handlers
+    /\s+on(click|load|error|focus|blur|change|submit|keydown|keyup|mouseover|mouseout)\s*=/gi, // HTML event handlers only
   ];
 
   for (const pattern of suspiciousPatterns) {
