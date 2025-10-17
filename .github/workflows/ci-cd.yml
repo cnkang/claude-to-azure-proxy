@@ -373,6 +373,17 @@ jobs:
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
 
+      - name: Debug ECR metadata
+        if: steps.aws-ready.outputs.aws-ready == 'true' && steps.login-ecr.outcome == 'success'
+        run: |
+          echo "🔍 ECR Metadata Debug Information:"
+          echo "  • Branch: ${{ github.ref }}"
+          echo "  • Is default branch: ${{ github.ref == 'refs/heads/main' }}"
+          echo "  • ECR Registry: ${{ steps.login-ecr.outputs.registry }}"
+          echo "  • ECR Repository: ${{ secrets.ECR_REPOSITORY_NAME }}"
+          echo "  • Generated tags: ${{ steps.meta.outputs.tags }}"
+          echo "  • Generated labels: ${{ steps.meta.outputs.labels }}"
+
       - name: Copy multi-platform image from GHCR to ECR
         if: steps.aws-ready.outputs.aws-ready == 'true' && steps.login-ecr.outcome == 'success' && steps.meta.outcome == 'success'
         id: build-push
@@ -394,6 +405,7 @@ jobs:
           fi
           
           echo "📦 Source image: $SOURCE_IMAGE"
+          echo "🏷️ ECR tags to create: ${{ steps.meta.outputs.tags }}"
           
           # Copy to all ECR tags
           IFS=',' read -ra TAGS <<< "${{ steps.meta.outputs.tags }}"
@@ -404,6 +416,15 @@ jobs:
               --tag "$tag" \
               "$SOURCE_IMAGE"
           done
+          
+          # Ensure latest tag is explicitly created for main branch
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            LATEST_TAG="${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY_NAME }}:latest"
+            echo "🏷️ Explicitly creating latest tag: $LATEST_TAG"
+            docker buildx imagetools create \
+              --tag "$LATEST_TAG" \
+              "$SOURCE_IMAGE"
+          fi
           
           echo "🚀 Successfully copied multi-platform image to ECR!"
           echo "📦 Copied platforms: linux/amd64, linux/arm64"
