@@ -108,6 +108,7 @@ make all
 3. **Input Validation**:
    - Request validation using express-validator
    - Schema validation with Joi
+   - Configurable content security validation (`ENABLE_CONTENT_SECURITY_VALIDATION`)
 
 4. **Security Headers**:
    - Helmet.js for security headers

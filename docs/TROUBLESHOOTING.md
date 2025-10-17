@@ -325,6 +325,71 @@ export CONVERSATION_MAX_AGE=3600000  # 1 hour
 export CONVERSATION_CLEANUP_INTERVAL=300000  # 5 minutes
 ```
 
+### 7. Content Security Validation Issues
+
+#### Symptoms
+- Legitimate code/HTML content being rejected
+- "Content contains potentially harmful content" errors
+- Code review requests failing
+- Template syntax being blocked
+
+#### Solutions
+
+**For Development/Code Review (Disable Security Validation):**
+```bash
+# Method 1: Environment variable
+export ENABLE_CONTENT_SECURITY_VALIDATION=false
+
+# Method 2: Update .env file
+echo "ENABLE_CONTENT_SECURITY_VALIDATION=false" >> .env
+
+# Method 3: Docker Compose override
+cat > docker-compose.override.yml << EOF
+version: '3.8'
+services:
+  claude-proxy:
+    environment:
+      - ENABLE_CONTENT_SECURITY_VALIDATION=false
+EOF
+
+# Restart service
+docker compose down && docker compose up -d
+```
+
+**Test Configuration:**
+```bash
+# Test with HTML content (should pass when security is disabled)
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your-api-key" \
+  -d '{
+    "model": "gpt-4o",
+    "messages": [{
+      "role": "user", 
+      "content": "<button onclick=\"test()\">Test Button</button>"
+    }]
+  }'
+```
+
+**Verify Configuration:**
+```bash
+# Check current setting
+echo "Content security validation: $ENABLE_CONTENT_SECURITY_VALIDATION"
+
+# Check logs for security events
+docker compose logs | grep -i "security\|validation"
+```
+
+**When to Use Each Setting:**
+- **`true` (Production)**: For user-facing applications, untrusted input
+- **`false` (Development)**: For code review, documentation processing, template development
+
+**Common Content That Gets Blocked:**
+- HTML with event handlers: `<div onclick="handler()">`
+- Template syntax: `{{user.name}}`, `{{constructor}}`
+- JavaScript protocols: `javascript:alert(1)`
+- Script tags: `<script>code</script>`
+
 ## 🔄 Docker Quick Commands
 
 ### Health and Status

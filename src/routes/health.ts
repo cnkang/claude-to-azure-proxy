@@ -6,7 +6,6 @@ import type {
   ServerConfig,
 } from '../types/index.js';
 import { logger } from '../middleware/logging.js';
-import { healthMonitor } from '../monitoring/health-monitor.js';
 import {
   circuitBreakerRegistry,
   retryStrategyRegistry,
@@ -113,13 +112,14 @@ export const healthCheckHandler = (config: Readonly<ServerConfig>) => {
       const uptime = process.uptime();
 
       // Check Azure OpenAI connectivity (optional for basic health check)
-      let azureOpenAIStatus: HealthCheckResult['azureOpenAI'];
+      let azureOpenAIStatus: HealthCheckResult['azureOpenAI'] = {
+        status: 'disconnected',
+      };
 
       try {
         azureOpenAIStatus = await checkAzureOpenAI(config);
       } catch (error) {
         // Don't fail health check if Azure OpenAI is temporarily unavailable
-        azureOpenAIStatus = { status: 'disconnected' };
         logger.warn('Azure OpenAI health check failed', correlationId, {
           error: error instanceof Error ? error.message : 'Unknown error',
         });
@@ -127,8 +127,8 @@ export const healthCheckHandler = (config: Readonly<ServerConfig>) => {
 
       // Determine overall health status
       // Consider unhealthy if memory usage > 85% or Azure OpenAI is disconnected
-      const isHealthy = memory.percentage < 85 && 
-                       (azureOpenAIStatus?.status === 'connected' || azureOpenAIStatus?.status === undefined);
+      const azureHealthy = azureOpenAIStatus.status === 'connected';
+      const isHealthy = memory.percentage < 85 && azureHealthy;
 
       // Get resilience metrics
       const circuitBreakerMetrics = circuitBreakerRegistry.getAllMetrics();
