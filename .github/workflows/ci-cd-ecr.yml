@@ -51,7 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Check .env file security
         run: |
@@ -226,11 +226,11 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configure AWS credentials using STS
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           role-session-name: GitHubActions-ECR-Push
-          aws-region: ${{ vars.AWS_REGION }}
+          aws-region: ${{ secrets.AWS_REGION }}
           role-duration-seconds: 3600
 
       - name: Login to Amazon ECR
@@ -244,7 +244,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ steps.login-ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY_NAME }}
+          images: ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY_NAME }}
           tags: |
             type=ref,event=branch
             type=sha,prefix={{branch}}-
@@ -266,21 +266,21 @@ jobs:
       - name: Scan pushed image in ECR
         run: |
           # Get the image URI
-          IMAGE_URI="${{ steps.login-ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY_NAME }}:${{ github.sha }}"
+          IMAGE_URI="${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY_NAME }}:${{ github.sha }}"
 
           # Start ECR image scan
           aws ecr start-image-scan \
-            --repository-name ${{ vars.ECR_REPOSITORY_NAME }} \
+            --repository-name ${{ secrets.ECR_REPOSITORY_NAME }} \
             --image-id imageTag=${{ github.sha }} \
-            --region ${{ vars.AWS_REGION }} || true
+            --region ${{ secrets.AWS_REGION }} || true
 
           echo "✅ ECR image scan initiated for: $IMAGE_URI"
 
       - name: Output image details
         run: |
           echo "🚀 Successfully pushed to ECR:"
-          echo "Repository: ${{ vars.ECR_REPOSITORY_NAME }}"
-          echo "Region: ${{ vars.AWS_REGION }}"
+          echo "Repository: ${{ secrets.ECR_REPOSITORY_NAME }}"
+          echo "Region: ${{ secrets.AWS_REGION }}"
           echo "Tags: ${{ steps.meta.outputs.tags }}"
           echo "Digest: ${{ steps.build-push.outputs.digest }}"
 
@@ -306,6 +306,6 @@ jobs:
           echo "  - AWS EKS"
           echo ""
           echo "📍 ECR Image:"
-          echo "  Repository: ${{ vars.ECR_REPOSITORY_NAME }}"
-          echo "  Region: ${{ vars.AWS_REGION }}"
+          echo "  Repository: ${{ secrets.ECR_REPOSITORY_NAME }}"
+          echo "  Region: ${{ secrets.AWS_REGION }}"
           echo "  Latest Tag: ${{ github.sha }}"

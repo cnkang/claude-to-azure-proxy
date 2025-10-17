@@ -3,7 +3,7 @@ name: Build and Push to ECR
 on:
   push:
     branches: [main, develop]
-    tags: ['v*']
+    tags: ["v*"]
   pull_request:
     branches: [main]
 
@@ -133,18 +133,18 @@ jobs:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/tags/v'))
     permissions:
       contents: read
-      id-token: write  # Required for AWS STS
-    
+      id-token: write # Required for AWS STS
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           role-session-name: GitHubActions-${{ github.run_id }}
-          aws-region: ${{ vars.AWS_REGION }}
+          aws-region: ${{ secrets.AWS_REGION }}
           role-duration-seconds: 3600
 
       - name: Login to Amazon ECR
@@ -158,7 +158,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ steps.login-ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY_NAME }}
+          images: ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY_NAME }}
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
@@ -186,29 +186,29 @@ jobs:
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
             IMAGE_TAG="latest"
           fi
-          
+
           echo "Starting ECR scan for tag: $IMAGE_TAG"
           aws ecr start-image-scan \
-            --repository-name ${{ vars.ECR_REPOSITORY_NAME }} \
+            --repository-name ${{ secrets.ECR_REPOSITORY_NAME }} \
             --image-id imageTag=$IMAGE_TAG \
-            --region ${{ vars.AWS_REGION }} || true
+            --region ${{ secrets.AWS_REGION }} || true
 
       - name: Output deployment info
         run: |
           echo "🚀 Successfully pushed to ECR!"
           echo ""
-          echo "📍 Repository: ${{ vars.ECR_REPOSITORY_NAME }}"
-          echo "📍 Region: ${{ vars.AWS_REGION }}"
+          echo "📍 Repository: ${{ secrets.ECR_REPOSITORY_NAME }}"
+          echo "📍 Region: ${{ secrets.AWS_REGION }}"
           echo "📍 Registry: ${{ steps.login-ecr.outputs.registry }}"
           echo "📍 Tags: ${{ steps.meta.outputs.tags }}"
           echo "📍 Digest: ${{ steps.build-push.outputs.digest }}"
           echo ""
           echo "🔧 Deploy commands:"
           echo "# Pull image:"
-          echo "docker pull ${{ steps.login-ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY_NAME }}:latest"
+          echo "docker pull ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY_NAME }}:latest"
           echo ""
           echo "# App Runner deployment:"
-          echo "aws apprunner create-service --source-configuration ImageRepository={ImageIdentifier=${{ steps.login-ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY_NAME }}:latest,ImageConfiguration={Port=8080},AutoDeploymentsEnabled=true}"
+          echo "aws apprunner create-service --source-configuration ImageRepository={ImageIdentifier=${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY_NAME }}:latest,ImageConfiguration={Port=8080},AutoDeploymentsEnabled=true}"
 
   # Notify on success
   notify:
