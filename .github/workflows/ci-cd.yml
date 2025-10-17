@@ -1,10 +1,10 @@
 name: CI/CD Pipeline
 
-# Perfect "Build Once, Use Everywhere" workflow:
-# 1. Build BOTH amd64 and arm64 in build-scan-test job (test on amd64)
-# 2. Export both platform images as artifacts for cross-job reuse
-# 3. GHCR and ECR push jobs simply load, retag, and push - ZERO builds
-# 4. Absolute zero redundant builds - each platform built exactly once
+# Efficient CI/CD Pipeline:
+# 1. Build and test on amd64 for fast feedback
+# 2. Build and push multi-platform images to registries
+# 3. Use build cache to minimize redundant work
+# 4. Parallel registry pushes for faster deployment
 
 on:
   push:
@@ -216,28 +216,9 @@ jobs:
             echo "✅ Image size is reasonable"
           fi
 
-      - name: Export multi-platform images for reuse
-        run: |
-          echo "📦 Exporting multi-platform Docker images..."
-          
-          # The OCI image tar contains both platforms
-          echo "✅ Multi-platform image built and ready for export"
-          ls -lh /tmp/image.tar
-          
-          # Compress for faster artifact transfer
-          gzip /tmp/image.tar
-          echo "✅ Image compressed successfully"
-          ls -lh /tmp/image.tar.gz
 
-      - name: Upload multi-platform Docker image artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-image-multiplatform-${{ github.sha }}
-          path: /tmp/image.tar.gz
-          retention-days: 1
-          compression-level: 0  # Already compressed with gzip
 
-  # Push to GitHub Container Registry (reuse pre-built image)
+  # Push to GitHub Container Registry (simplified approach)
   push-ghcr:
     runs-on: ubuntu-latest
     needs: [build-scan-test]
@@ -247,19 +228,11 @@ jobs:
       packages: write
 
     steps:
-      - name: Download multi-platform Docker image artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-image-multiplatform-${{ github.sha }}
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Load multi-platform images
-        run: |
-          echo "📥 Loading pre-built multi-platform Docker images..."
-          gunzip image.tar.gz
-          
-          # Import the OCI image with both platforms
-          docker buildx imagetools inspect --raw oci-layout:image.tar
-          echo "✅ Multi-platform images ready for retagging"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -280,34 +253,18 @@ jobs:
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Set up Docker Buildx (for image import and push)
-        uses: docker/setup-buildx-action@v3
+      - name: Build and push to GHCR
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Import and push to GHCR (zero builds - pure retag and push)
-        run: |
-          echo "🏷️ Importing and retagging pre-built multi-platform images..."
-          
-          # Import the multi-platform OCI image to buildx
-          docker buildx imagetools create \
-            --tag temp-import:latest \
-            oci-layout:image.tar
-          
-          echo "✅ Multi-platform image imported to buildx"
-          
-          # Retag and push to all GHCR tags
-          IFS=',' read -ra TAGS <<< "${{ steps.meta.outputs.tags }}"
-          for tag in "${TAGS[@]}"; do
-            tag=$(echo "$tag" | xargs)
-            echo "Retagging and pushing: temp-import:latest -> $tag"
-            docker buildx imagetools create \
-              --tag "$tag" \
-              temp-import:latest
-          done
-          
-          echo "🚀 Successfully pushed all tags to GHCR with ZERO rebuilds!"
-          echo "📦 Pushed platforms: linux/amd64, linux/arm64"
-
-  # Push to AWS ECR (optional, requires secrets, reuse pre-built image)
+  # Push to AWS ECR (optional, requires secrets, simplified approach)
   push-ecr:
     runs-on: ubuntu-latest
     needs: [build-scan-test]
@@ -328,21 +285,13 @@ jobs:
             echo "AWS secrets not configured, skipping ECR push"
           fi
 
-      - name: Download multi-platform Docker image artifact
+      - name: Checkout code
         if: steps.check-aws.outputs.aws-configured == 'true'
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-image-multiplatform-${{ github.sha }}
+        uses: actions/checkout@v4
 
-      - name: Load multi-platform images
+      - name: Set up Docker Buildx
         if: steps.check-aws.outputs.aws-configured == 'true'
-        run: |
-          echo "📥 Loading pre-built multi-platform Docker images..."
-          gunzip image.tar.gz
-          
-          # Import the OCI image with both platforms
-          docker buildx imagetools inspect --raw oci-layout:image.tar
-          echo "✅ Multi-platform images ready for ECR push"
+        uses: docker/setup-buildx-action@v3
 
       - name: Configure AWS credentials
         if: steps.check-aws.outputs.aws-configured == 'true'
@@ -405,36 +354,19 @@ jobs:
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Set up Docker Buildx (for image import and push)
-        if: steps.aws-ready.outputs.aws-ready == 'true' && steps.login-ecr.outcome == 'success'
-        uses: docker/setup-buildx-action@v3
-
-      - name: Import and push to ECR (zero builds - pure retag and push)
+      - name: Build and push to ECR
         if: steps.aws-ready.outputs.aws-ready == 'true' && steps.login-ecr.outcome == 'success' && steps.meta.outcome == 'success'
         id: build-push
         continue-on-error: true
-        run: |
-          echo "🏷️ Importing and retagging pre-built multi-platform images for ECR..."
-          
-          # Import the multi-platform OCI image to buildx
-          docker buildx imagetools create \
-            --tag temp-import-ecr:latest \
-            oci-layout:image.tar
-          
-          echo "✅ Multi-platform image imported to buildx"
-          
-          # Retag and push to all ECR tags
-          IFS=',' read -ra TAGS <<< "${{ steps.meta.outputs.tags }}"
-          for tag in "${TAGS[@]}"; do
-            tag=$(echo "$tag" | xargs)
-            echo "Retagging and pushing: temp-import-ecr:latest -> $tag"
-            docker buildx imagetools create \
-              --tag "$tag" \
-              temp-import-ecr:latest
-          done
-          
-          echo "🚀 Successfully pushed all tags to ECR with ZERO rebuilds!"
-          echo "📦 Pushed platforms: linux/amd64, linux/arm64"
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Start ECR image scan
         if: steps.build-push.outcome == 'success'
