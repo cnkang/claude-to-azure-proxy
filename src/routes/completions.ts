@@ -37,9 +37,7 @@ import {
   detectRequestFormat,
   getResponseFormat,
 } from '../utils/format-detection.js';
-import {
-  createResponsesStreamProcessor,
-} from '../utils/responses-streaming-handler.js';
+
 import {
   transformResponsesToClaude,
 } from '../utils/responses-to-claude-transformer.js';
@@ -1011,165 +1009,7 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
   );
 };
 
-/**
- * Handle streaming requests to Azure Responses API
- */
-async function handleStreamingRequest(
-  client: AzureResponsesClient,
-  processingResult: import('../utils/universal-request-processor.js').UniversalProcessingResult,
-  conversationId: string,
-  responseFormat: import('../types/index.js').ResponseFormat,
-  correlationId: string,
-  req: RequestWithCorrelationId,
-  res: Response,
-  metrics: RequestMetrics
-): Promise<void> {
-  const azureRequestStart = Date.now();
 
-  try {
-    logger.debug('Starting streaming request', correlationId, {
-      conversationId,
-      responseFormat,
-      reasoningEffort: processingResult.reasoningEffort,
-    });
-
-    // Set streaming headers
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Headers', 'Cache-Control');
-
-    // Create stream processor
-    const streamProcessor = createResponsesStreamProcessor(correlationId, responseFormat);
-
-    // Get streaming response from Azure Responses API
-    const streamIterable = client.createResponseStream(processingResult.responsesParams);
-
-    let chunkCount = 0;
-    let totalTokens = 0;
-    let reasoningTokens = 0;
-    let responseId = '';
-
-    // Process stream chunks
-    for await (const transformedChunk of streamProcessor.processStream(streamIterable)) {
-      chunkCount++;
-
-      // Extract response ID from first chunk for conversation tracking
-      if (chunkCount === 1) {
-        if (responseFormat === 'claude' && 'message' in transformedChunk) {
-          const claudeMessage = (transformedChunk as { message?: { id?: string } }).message;
-          const messageId = claudeMessage?.id;
-          if (typeof messageId === 'string' && messageId.length > 0) {
-            responseId = messageId;
-          }
-        } else if (responseFormat === 'openai' && 'id' in transformedChunk) {
-          responseId = (transformedChunk as { id: string }).id;
-        }
-      }
-
-      // Send chunk to client
-      if (responseFormat === 'claude' && 'type' in transformedChunk) {
-        res.write(`event: ${(transformedChunk as { type: string }).type}\n`);
-        res.write(`data: ${JSON.stringify(transformedChunk)}\n\n`);
-      } else {
-        res.write(`data: ${JSON.stringify(transformedChunk)}\n\n`);
-      }
-
-      // Extract token usage if available
-      if ('usage' in transformedChunk && transformedChunk.usage) {
-        const usage = transformedChunk.usage as {
-          total_tokens?: number;
-          input_tokens?: number;
-          output_tokens?: number;
-          reasoning_tokens?: number;
-        };
-        totalTokens = (usage.total_tokens ?? ((usage.input_tokens ?? 0) + (usage.output_tokens ?? 0))) || totalTokens;
-        reasoningTokens = usage.reasoning_tokens ?? reasoningTokens;
-      }
-    }
-
-    metrics.azureRequestTime = Date.now() - azureRequestStart;
-
-    // Track conversation for continuity
-    if (responseId.length > 0) {
-      conversationManager.trackConversation(
-        conversationId,
-        responseId,
-        {
-          totalTokensUsed: totalTokens,
-          reasoningTokensUsed: reasoningTokens,
-          averageResponseTime: metrics.azureRequestTime,
-          errorCount: 0,
-        }
-      );
-    }
-
-    // Send final event to close stream
-    if (responseFormat === 'claude') {
-      res.write('event: message_stop\n');
-      res.write('data: {}\n\n');
-    } else {
-      res.write('data: [DONE]\n\n');
-    }
-
-    res.end();
-
-    metrics.totalTime = Date.now() - metrics.startTime;
-
-    logger.info('Streaming request completed', correlationId, {
-      totalTime: metrics.totalTime,
-      azureRequestTime: metrics.azureRequestTime,
-      chunkCount,
-      totalTokens,
-      reasoningTokens,
-      conversationId,
-      responseFormat,
-    });
-
-  } catch (error) {
-    metrics.azureRequestTime = Date.now() - azureRequestStart;
-    metrics.totalTime = Date.now() - metrics.startTime;
-
-    logger.error('Streaming request failed', correlationId, {
-      error: error instanceof Error ? error.message : 'Unknown error',
-      totalTime: metrics.totalTime,
-      azureRequestTime: metrics.azureRequestTime,
-    });
-
-    // Update conversation with error
-    conversationManager.updateConversationMetrics(conversationId, {
-      errorCount: 1,
-    });
-
-    // Send error event and close stream
-    if (!res.headersSent) {
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
-    }
-
-    if (responseFormat === 'claude') {
-      res.write('event: error\n');
-      res.write(`data: ${JSON.stringify({
-        type: 'error',
-        error: {
-          type: 'api_error',
-          message: 'Streaming request failed'
-        }
-      })}\n\n`);
-    } else {
-      res.write(`data: ${JSON.stringify({
-        error: {
-          message: 'Streaming request failed',
-          type: 'api_error'
-        }
-      })}\n\n`);
-    }
-
-    res.end();
-  }
-}
 
 /**
  * Handle simulated streaming requests using non-streaming Azure backend
@@ -1456,3 +1296,22 @@ export const secureCompletionsHandler = (config: Readonly<ServerConfig>) => [
   completionsRateLimit,
   completionsHandler(config),
 ];
+/*
+// TEMPORARILY DISABLED: handleStreamingRequest function
+// This function was disabled due to issues with Azure OpenAI streaming API
+// It may be re-enabled in the future after fixing the underlying issues
+// The function has been replaced with handleSimulatedStreamingRequest which provides
+// streaming-like behavior using non-streaming Azure API calls
+
+// Original function signature:
+// async function handleStreamingRequest(
+//   req: RequestWithCorrelationId,
+//   client: AzureResponsesClient,
+//   processingResult: UniversalProcessingResult,
+//   responsesParams: ResponsesCreateParams,
+//   conversationId: string,
+//   responseFormat: 'claude' | 'openai',
+//   correlationId: string,
+//   res: Response
+// ): Promise<void>
+*/
