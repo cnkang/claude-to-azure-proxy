@@ -458,6 +458,56 @@ pnpm test tests/integration.test.ts
 pnpm test:coverage
 ```
 
+## 🚀 CI/CD and Deployment
+
+### GitHub Actions Workflows
+
+The project includes optimized GitHub Actions workflows for different deployment scenarios:
+
+#### AWS ECR Pipeline (Recommended for Production)
+- **File**: `.github/workflows/build-push-ecr.yml`
+- **Purpose**: Secure deployment to AWS Elastic Container Registry
+- **Features**: 
+  - AWS STS authentication (no long-term credentials)
+  - Multi-architecture builds (AMD64/ARM64)
+  - Comprehensive security scanning
+  - Automated ECR image scanning
+
+#### GitHub Container Registry Pipeline
+- **File**: `.github/workflows/ci-cd.yml`
+- **Purpose**: Open-source friendly deployment to GHCR
+- **Features**:
+  - GitHub ecosystem integration
+  - Public repository support
+  - Comprehensive testing and security scans
+
+### Quick Setup for AWS ECR
+
+1. **Run the automated setup script**:
+   ```bash
+   ./scripts/setup-aws-github-actions.sh
+   ```
+
+2. **Configure GitHub repository variables**:
+   - `AWS_REGION`: Your AWS region (e.g., `us-east-1`)
+   - `AWS_ROLE_ARN`: IAM Role ARN for GitHub Actions
+   - `ECR_REPOSITORY_NAME`: ECR repository name
+
+3. **Verify setup**:
+   ```bash
+   ./scripts/verify-aws-setup.sh
+   ```
+
+### Supported Deployment Targets
+
+- **AWS App Runner**: Serverless container deployment
+- **AWS ECS**: Container orchestration service
+- **AWS EKS**: Kubernetes-based deployment
+- **Docker Compose**: Local and development deployment
+- **Kubernetes**: Any Kubernetes cluster
+
+For detailed deployment instructions, see the [GitHub Actions Guide](docs/GITHUB_ACTIONS.md) and [Deployment Guide](docs/DEPLOYMENT_GUIDE.md).
+
 ## 🤝 Contributing
 
 We welcome contributions! Please see our contributing guidelines:
