@@ -324,7 +324,7 @@ check_reasoning_config() {
     
     # Check if reasoning effort configuration is working
     local default_effort="${DEFAULT_REASONING_EFFORT:-medium}"
-    local timeout_setting="${AZURE_OPENAI_TIMEOUT:-60000}"
+    local timeout_setting="${AZURE_OPENAI_TIMEOUT:-120000}"
     
     local end_time=$(date +%s%3N)
     local response_time=$((end_time - start_time))
