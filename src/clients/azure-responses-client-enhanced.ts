@@ -72,6 +72,7 @@ export class EnhancedAzureResponsesClient {
     this.circuitBreakerName = mergedConfig.circuitBreakerName;
     this.retryStrategy = new AzureRetryStrategy('azure-responses-client', {
       maxAttempts: mergedConfig.maxRetries,
+      timeoutMs: mergedConfig.timeout,
     });
 
     const defaultHeaders: Record<string, string> = {

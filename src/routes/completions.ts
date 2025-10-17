@@ -31,7 +31,7 @@ import {
 } from '../utils/universal-request-processor.js';
 import { createReasoningEffortAnalyzer } from '../utils/reasoning-effort-analyzer.js';
 import { conversationManager } from '../utils/conversation-manager.js';
-
+import config from '../config/index.js';
 import { createErrorResponseByFormat } from '../utils/response-transformer.js';
 import {
   detectRequestFormat,
@@ -102,8 +102,11 @@ interface RequestMetrics {
   totalTime?: number;
 }
 
-// Initialize universal request processor
-const universalProcessor = createUniversalRequestProcessor(defaultUniversalProcessorConfig);
+// Initialize universal request processor with configuration from environment
+const universalProcessor = createUniversalRequestProcessor({
+  ...defaultUniversalProcessorConfig,
+  enableContentSecurityValidation: config.ENABLE_CONTENT_SECURITY_VALIDATION,
+});
 
 // Initialize reasoning effort analyzer
 const reasoningAnalyzer = createReasoningEffortAnalyzer();
@@ -131,7 +134,7 @@ async function makeResponsesAPIRequestWithResilience(
     maxAttempts: 3,
     baseDelayMs: 1000,
     maxDelayMs: 10000,
-    timeoutMs: 30000,
+    timeoutMs: config.AZURE_OPENAI_TIMEOUT,
   });
 
   // Execute with circuit breaker protection
@@ -170,7 +173,7 @@ async function makeResponsesAPIRequestWithResilience(
             if (error instanceof Error) {
               if (error.message.includes('timeout')) {
                 throw ErrorFactory.fromTimeout(
-                  30000,
+                  config.AZURE_OPENAI_TIMEOUT,
                   correlationId,
                   'azure-responses-api-request'
                 );
@@ -540,7 +543,7 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
 
         const baseURL = ensureResponsesBaseURL(endpointCandidate);
 
-        const timeoutRaw = azureSourceConfig.timeout ?? 60000;
+        const timeoutRaw = azureSourceConfig.timeout ?? 120000;
         const timeoutMs =
           typeof timeoutRaw === 'number' ? timeoutRaw : Number(timeoutRaw);
         if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
@@ -678,16 +681,22 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
         const finalReasoningEffort =
           responsesParams.reasoning?.effort ?? processingResult.reasoningEffort;
 
-        // Check if streaming is requested
+        // Check if streaming is requested by client
         const isStreamingRequest = responsesParams.stream === true;
 
+        // Always use non-streaming for Azure requests, but simulate streaming for client if needed
+        const azureParams = {
+          ...responsesParams,
+          stream: false, // Force non-streaming for Azure
+        };
+
         if (isStreamingRequest) {
-          // Handle streaming request
-          await handleStreamingRequest(
+          // Handle client streaming request with non-streaming Azure backend
+          await handleSimulatedStreamingRequest(
             responsesClient,
             {
               ...processingResult,
-              responsesParams,
+              responsesParams: azureParams,
               reasoningEffort: finalReasoningEffort,
             },
             conversationId,
@@ -707,7 +716,7 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
         try {
           responsesAPIResponse = await makeResponsesAPIRequestWithResilience(
             responsesClient,
-            responsesParams,
+            azureParams, // Use non-streaming params
             correlationId
           );
 
@@ -923,8 +932,8 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
         });
 
         // Performance warning for slow requests
-        if (metrics.totalTime > 30000) {
-          // 30 seconds
+        if (metrics.totalTime > timeoutMs * 0.25) {
+          // 25% of configured timeout
           logger.warn('Slow completion request detected', correlationId, {
             totalTime: metrics.totalTime,
             breakdown: {
@@ -1160,6 +1169,283 @@ async function handleStreamingRequest(
 
     res.end();
   }
+}
+
+/**
+ * Handle simulated streaming requests using non-streaming Azure backend
+ * This function makes a non-streaming request to Azure but simulates streaming for the client
+ */
+async function handleSimulatedStreamingRequest(
+  client: AzureResponsesClient,
+  processingResult: import('../utils/universal-request-processor.js').UniversalProcessingResult,
+  conversationId: string,
+  responseFormat: import('../types/index.js').ResponseFormat,
+  correlationId: string,
+  req: RequestWithCorrelationId,
+  res: Response,
+  metrics: RequestMetrics
+): Promise<void> {
+  const azureRequestStart = Date.now();
+
+  try {
+    logger.debug('Starting simulated streaming request', correlationId, {
+      conversationId,
+      responseFormat,
+      reasoningEffort: processingResult.reasoningEffort,
+    });
+
+    // Set streaming headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Cache-Control');
+
+    // Make non-streaming request to Azure
+    const responsesAPIResponse = await makeResponsesAPIRequestWithResilience(
+      client,
+      processingResult.responsesParams,
+      correlationId
+    );
+
+    metrics.azureRequestTime = Date.now() - azureRequestStart;
+
+    // Simulate streaming by breaking the response into chunks
+    await simulateStreamingResponse(
+      responsesAPIResponse,
+      responseFormat,
+      correlationId,
+      res
+    );
+
+    // Track conversation for continuity
+    conversationManager.trackConversation(
+      conversationId,
+      responsesAPIResponse.id,
+      {
+        totalTokensUsed: responsesAPIResponse.usage.total_tokens,
+        reasoningTokensUsed: responsesAPIResponse.usage.reasoning_tokens,
+        averageResponseTime: metrics.azureRequestTime,
+        errorCount: 0,
+      }
+    );
+
+    metrics.totalTime = Date.now() - metrics.startTime;
+
+    logger.info('Simulated streaming request completed', correlationId, {
+      totalTime: metrics.totalTime,
+      azureRequestTime: metrics.azureRequestTime,
+      chunkCount: 'simulated',
+      totalTokens: responsesAPIResponse.usage.total_tokens,
+      reasoningTokens: responsesAPIResponse.usage.reasoning_tokens,
+      conversationId,
+      responseFormat,
+    });
+
+  } catch (error) {
+    metrics.totalTime = Date.now() - metrics.startTime;
+    metrics.azureRequestTime = Date.now() - azureRequestStart;
+
+    logger.error('Simulated streaming request failed', correlationId, {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      totalTime: metrics.totalTime,
+      azureRequestTime: metrics.azureRequestTime,
+    });
+
+    // Update conversation with error
+    conversationManager.updateConversationMetrics(conversationId, {
+      errorCount: 1,
+    });
+
+    // Send error event and close stream
+    if (responseFormat === 'claude') {
+      res.write('event: error\n');
+      res.write(`data: ${JSON.stringify({
+        type: 'error',
+        error: {
+          type: 'api_error',
+          message: error instanceof Error ? error.message : 'Unknown error'
+        }
+      })}\n\n`);
+      res.write('event: message_stop\n');
+      res.write('data: {"type":"message_stop"}\n\n');
+    } else {
+      res.write(`data: ${JSON.stringify({
+        error: {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          type: 'api_error'
+        }
+      })}\n\n`);
+      res.write('data: [DONE]\n\n');
+    }
+
+    res.end();
+  }
+}
+
+/**
+ * Simulate streaming response by breaking non-streaming response into chunks
+ */
+async function simulateStreamingResponse(
+  response: import('../types/index.js').ResponsesResponse,
+  responseFormat: import('../types/index.js').ResponseFormat,
+  correlationId: string,
+  res: Response
+): Promise<void> {
+  if (responseFormat === 'claude') {
+    // Send Claude-format streaming events
+    
+    // 1. Send message_start event
+    res.write('event: message_start\n');
+    res.write(`data: ${JSON.stringify({
+      type: 'message_start',
+      message: {
+        id: response.id,
+        type: 'message',
+        role: 'assistant',
+        content: [],
+        model: 'claude-3-5-sonnet-20241022',
+        stop_reason: null,
+        usage: {
+          input_tokens: response.usage.prompt_tokens,
+          output_tokens: 0,
+        },
+      },
+    })}\n\n`);
+
+    // 2. Extract text content from response
+    const textContent = extractTextFromResponseOutput(response.output);
+    
+    if (textContent && textContent.length > 0) {
+      // 3. Send content_block_start event
+      res.write('event: content_block_start\n');
+      res.write(`data: ${JSON.stringify({
+        type: 'content_block_start',
+        index: 0,
+        content_block: {
+          type: 'text',
+          text: '',
+        },
+      })}\n\n`);
+
+      // 4. Simulate streaming by sending text in chunks
+      const chunkSize = Math.max(1, Math.floor(textContent.length / 5)); // Break into ~5 chunks
+      for (let i = 0; i < textContent.length; i += chunkSize) {
+        const chunk = textContent.slice(i, i + chunkSize);
+        
+        res.write('event: content_block_delta\n');
+        res.write(`data: ${JSON.stringify({
+          type: 'content_block_delta',
+          index: 0,
+          delta: {
+            type: 'text_delta',
+            text: chunk,
+          },
+        })}\n\n`);
+
+        // Small delay to simulate real streaming
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+
+      // 5. Send content_block_stop event
+      res.write('event: content_block_stop\n');
+      res.write(`data: ${JSON.stringify({
+        type: 'content_block_stop',
+        index: 0,
+      })}\n\n`);
+    }
+
+    // 6. Send message_stop event
+    res.write('event: message_stop\n');
+    res.write(`data: ${JSON.stringify({
+      type: 'message_stop',
+      usage: {
+        input_tokens: response.usage.prompt_tokens,
+        output_tokens: response.usage.completion_tokens,
+      },
+    })}\n\n`);
+
+  } else {
+    // Send OpenAI-format streaming events
+    
+    // 1. Send initial chunk with role
+    res.write(`data: ${JSON.stringify({
+      id: response.id,
+      object: 'chat.completion.chunk',
+      created: Math.floor(Date.now() / 1000),
+      model: 'gpt-5-codex',
+      choices: [{
+        index: 0,
+        delta: {
+          role: 'assistant',
+        },
+        finish_reason: null,
+      }],
+    })}\n\n`);
+
+    // 2. Extract text content from response
+    const textContent = extractTextFromResponseOutput(response.output);
+    
+    if (textContent && textContent.length > 0) {
+      // 3. Simulate streaming by sending text in chunks
+      const chunkSize = Math.max(1, Math.floor(textContent.length / 5)); // Break into ~5 chunks
+      for (let i = 0; i < textContent.length; i += chunkSize) {
+        const chunk = textContent.slice(i, i + chunkSize);
+        
+        res.write(`data: ${JSON.stringify({
+          id: response.id,
+          object: 'chat.completion.chunk',
+          created: Math.floor(Date.now() / 1000),
+          model: 'gpt-5-codex',
+          choices: [{
+            index: 0,
+            delta: {
+              content: chunk,
+            },
+            finish_reason: null,
+          }],
+        })}\n\n`);
+
+        // Small delay to simulate real streaming
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+    }
+
+    // 4. Send final chunk
+    res.write(`data: ${JSON.stringify({
+      id: response.id,
+      object: 'chat.completion.chunk',
+      created: Math.floor(Date.now() / 1000),
+      model: 'gpt-5-codex',
+      choices: [{
+        index: 0,
+        delta: {},
+        finish_reason: 'stop',
+      }],
+      usage: {
+        prompt_tokens: response.usage.prompt_tokens,
+        completion_tokens: response.usage.completion_tokens,
+        total_tokens: response.usage.total_tokens,
+      },
+    })}\n\n`);
+
+    // 5. Send [DONE] marker
+    res.write('data: [DONE]\n\n');
+  }
+
+  res.end();
+}
+
+/**
+ * Extract text content from response output array
+ */
+function extractTextFromResponseOutput(output: readonly import('../types/index.js').ResponseOutput[]): string {
+  for (const outputItem of output) {
+    if (outputItem.type === 'text' && outputItem.text !== undefined) {
+      return outputItem.text;
+    }
+  }
+  return '';
 }
 
 /**
