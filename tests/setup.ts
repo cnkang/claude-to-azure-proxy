@@ -92,7 +92,7 @@ vi.mock('openai', () => {
     fallbackModel: unknown,
     defaultText = 'Mock Azure OpenAI response'
   ): Record<string, unknown> => {
-    if (data !== undefined && data.object === 'response') {
+    if (data?.object === 'response') {
       return data;
     }
 

@@ -155,7 +155,7 @@ export class HealthMonitor {
     }
 
     // Check Azure OpenAI connection
-    if (azureOpenAI && azureOpenAI.status === 'disconnected') {
+    if (azureOpenAI?.status === 'disconnected') {
       return false;
     }
 
