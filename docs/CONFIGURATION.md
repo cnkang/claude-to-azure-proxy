@@ -175,7 +175,7 @@ runtime: nodejs22
 build:
   commands:
     build:
-      - corepack enable && corepack prepare pnpm@10.18.1 --activate
+      - corepack enable && corepack prepare pnpm@10.18.3 --activate
       - pnpm install --frozen-lockfile
       - pnpm run build
 run:

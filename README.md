@@ -79,7 +79,7 @@ This high-performance proxy server enables seamless integration between Claude C
 ### Prerequisites
 
 - **Node.js** 22.0.0 or higher
-- **pnpm** 10.18.1 or higher (recommended) or npm
+- **pnpm** 10.18.3 or higher (recommended) or npm
 - **Azure OpenAI** resource with API access
 
 ### Installation
