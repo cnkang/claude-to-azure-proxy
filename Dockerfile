@@ -16,7 +16,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 
 # Install pnpm globally
-RUN npm install -g pnpm@10.18.1
+RUN npm install -g pnpm@10.18.3
 
 # Install dependencies in a separate layer for better caching
 FROM base AS deps
