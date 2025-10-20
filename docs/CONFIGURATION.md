@@ -6,51 +6,52 @@ Complete configuration reference for the Claude-to-Azure Proxy.
 
 ### Required Configuration
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `PROXY_API_KEY` | Secure API key for proxy authentication | `your-secure-32-character-key` |
-| `AZURE_OPENAI_ENDPOINT` | Azure OpenAI resource endpoint | `https://your-resource.openai.azure.com` |
-| `AZURE_OPENAI_API_KEY` | Azure OpenAI API key | `your-azure-api-key` |
-| `AZURE_OPENAI_MODEL` | Default model deployment name | `gpt-4o` |
+| Variable                | Description                             | Example                                  |
+| ----------------------- | --------------------------------------- | ---------------------------------------- |
+| `PROXY_API_KEY`         | Secure API key for proxy authentication | `your-secure-32-character-key`           |
+| `AZURE_OPENAI_ENDPOINT` | Azure OpenAI resource endpoint          | `https://your-resource.openai.azure.com` |
+| `AZURE_OPENAI_API_KEY`  | Azure OpenAI API key                    | `your-azure-api-key`                     |
+| `AZURE_OPENAI_MODEL`    | Default model deployment name           | `gpt-4o`                                 |
 
 ### Optional Configuration
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `8080` | Server port |
-| `NODE_ENV` | `development` | Environment mode |
-| `LOG_LEVEL` | `info` | Logging level (debug, info, warn, error) |
-| `LOG_FORMAT` | `pretty` | Log format (pretty, json) |
+| Variable     | Default       | Description                              |
+| ------------ | ------------- | ---------------------------------------- |
+| `PORT`       | `8080`        | Server port                              |
+| `NODE_ENV`   | `development` | Environment mode                         |
+| `LOG_LEVEL`  | `info`        | Logging level (debug, info, warn, error) |
+| `LOG_FORMAT` | `pretty`      | Log format (pretty, json)                |
 
 ### Azure OpenAI Settings
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `AZURE_OPENAI_API_VERSION` | `2024-10-21` | API version (leave unset for GA) |
-| `AZURE_OPENAI_TIMEOUT` | `120000` | Request timeout (ms) |
-| `AZURE_OPENAI_MAX_RETRIES` | `3` | Max retry attempts |
-| `DEFAULT_REASONING_EFFORT` | `medium` | Default reasoning effort (minimal, low, medium, high) |
+| Variable                   | Default      | Description                                           |
+| -------------------------- | ------------ | ----------------------------------------------------- |
+| `AZURE_OPENAI_API_VERSION` | `2024-10-21` | API version (leave unset for GA)                      |
+| `AZURE_OPENAI_TIMEOUT`     | `120000`     | Request timeout (ms)                                  |
+| `AZURE_OPENAI_MAX_RETRIES` | `3`          | Max retry attempts                                    |
+| `DEFAULT_REASONING_EFFORT` | `medium`     | Default reasoning effort (minimal, low, medium, high) |
 
 ### Security Settings
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `ENABLE_CONTENT_SECURITY_VALIDATION` | `true` | Enable content security validation |
-| `CORS_ORIGIN` | `*` | CORS allowed origins |
-| `RATE_LIMIT_WINDOW_MS` | `900000` | Rate limit window (15 min) |
-| `RATE_LIMIT_MAX_REQUESTS` | `100` | Max requests per window |
+| Variable                             | Default  | Description                        |
+| ------------------------------------ | -------- | ---------------------------------- |
+| `ENABLE_CONTENT_SECURITY_VALIDATION` | `true`   | Enable content security validation |
+| `CORS_ORIGIN`                        | `*`      | CORS allowed origins               |
+| `RATE_LIMIT_WINDOW_MS`               | `900000` | Rate limit window (15 min)         |
+| `RATE_LIMIT_MAX_REQUESTS`            | `100`    | Max requests per window            |
 
 ### Performance Settings
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `MAX_CONCURRENT_REQUESTS` | `50` | Max concurrent requests |
-| `CONVERSATION_MAX_AGE` | `3600000` | Conversation cleanup age (1 hour) |
-| `CONVERSATION_CLEANUP_INTERVAL` | `300000` | Cleanup interval (5 min) |
+| Variable                        | Default   | Description                       |
+| ------------------------------- | --------- | --------------------------------- |
+| `MAX_CONCURRENT_REQUESTS`       | `50`      | Max concurrent requests           |
+| `CONVERSATION_MAX_AGE`          | `3600000` | Conversation cleanup age (1 hour) |
+| `CONVERSATION_CLEANUP_INTERVAL` | `300000`  | Cleanup interval (5 min)          |
 
 ## 📝 Configuration Files
 
 ### .env File
+
 ```bash
 # Core Configuration
 PROXY_API_KEY=your-secure-32-character-api-key-here
@@ -69,6 +70,7 @@ ENABLE_CONTENT_SECURITY_VALIDATION=false
 ```
 
 ### Docker Compose Override
+
 ```yaml
 # docker-compose.override.yml
 version: '3.8'
@@ -88,6 +90,7 @@ services:
 ## 🔐 Security Configuration
 
 ### API Key Generation
+
 ```bash
 # Generate secure proxy API key
 openssl rand -base64 32
@@ -97,7 +100,9 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ```
 
 ### Content Security
+
 For development/code review, disable content security validation:
+
 ```bash
 export ENABLE_CONTENT_SECURITY_VALIDATION=false
 ```
@@ -105,6 +110,7 @@ export ENABLE_CONTENT_SECURITY_VALIDATION=false
 For production with untrusted input, keep it enabled (default).
 
 ### CORS Configuration
+
 ```bash
 # Allow specific origins
 export CORS_ORIGIN="https://yourdomain.com,https://app.yourdomain.com"
@@ -116,6 +122,7 @@ export CORS_ORIGIN="*"
 ## 🎯 Environment-Specific Configs
 
 ### Development
+
 ```bash
 NODE_ENV=development
 LOG_LEVEL=debug
@@ -124,6 +131,7 @@ ENABLE_CONTENT_SECURITY_VALIDATION=false
 ```
 
 ### Production
+
 ```bash
 NODE_ENV=production
 LOG_LEVEL=info
@@ -133,6 +141,7 @@ CORS_ORIGIN=https://yourdomain.com
 ```
 
 ### Testing
+
 ```bash
 NODE_ENV=test
 LOG_LEVEL=warn
@@ -143,6 +152,7 @@ MAX_CONCURRENT_REQUESTS=10
 ## 🔄 Configuration Validation
 
 ### Automatic Validation
+
 ```bash
 # Validate configuration
 pnpm run validate:config
@@ -152,6 +162,7 @@ pnpm run security:env
 ```
 
 ### Manual Validation
+
 ```bash
 # Check required variables
 node -e "
@@ -168,6 +179,7 @@ curl -H "Authorization: Bearer $AZURE_OPENAI_API_KEY" \
 ## 🏗️ Platform-Specific Configuration
 
 ### AWS App Runner
+
 ```yaml
 # apprunner.yaml
 version: 1.0
@@ -190,6 +202,7 @@ run:
 ```
 
 ### Kubernetes
+
 ```yaml
 # configmap.yaml
 apiVersion: v1
@@ -197,13 +210,14 @@ kind: ConfigMap
 metadata:
   name: claude-proxy-config
 data:
-  NODE_ENV: "production"
-  PORT: "8080"
-  LOG_LEVEL: "info"
-  DEFAULT_REASONING_EFFORT: "medium"
+  NODE_ENV: 'production'
+  PORT: '8080'
+  LOG_LEVEL: 'info'
+  DEFAULT_REASONING_EFFORT: 'medium'
 ```
 
 ### Docker Swarm
+
 ```yaml
 # docker-stack.yml
 version: '3.8'
@@ -226,6 +240,7 @@ services:
 ## 📊 Monitoring Configuration
 
 ### Prometheus Metrics
+
 ```bash
 # Enable metrics endpoint
 export ENABLE_METRICS=true
@@ -235,6 +250,7 @@ export METRICS_PORT=9090
 ```
 
 ### Health Check Configuration
+
 ```bash
 # Health check timeout
 export HEALTH_CHECK_TIMEOUT=5000
@@ -246,6 +262,7 @@ export MEMORY_THRESHOLD=85
 ## 🔧 Advanced Configuration
 
 ### Node.js Options
+
 ```bash
 # Memory optimization
 export NODE_OPTIONS="--max-old-space-size=2048 --gc-interval=100"
@@ -258,6 +275,7 @@ export NODE_OPTIONS="--inspect=0.0.0.0:9229"
 ```
 
 ### Logging Configuration
+
 ```bash
 # Structured JSON logging
 export LOG_FORMAT=json
@@ -276,6 +294,7 @@ export LOG_FILE=logs/app.log
 ### Common Issues
 
 **Invalid endpoint format:**
+
 ```bash
 # Correct format (must end with /openai/v1/)
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
@@ -286,6 +305,7 @@ AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
 ```
 
 **API version conflicts:**
+
 ```bash
 # For GA API, don't set version
 unset AZURE_OPENAI_API_VERSION
@@ -295,6 +315,7 @@ export AZURE_OPENAI_API_VERSION=preview
 ```
 
 **Memory issues:**
+
 ```bash
 # Increase Node.js memory limit
 export NODE_OPTIONS="--max-old-space-size=4096"
