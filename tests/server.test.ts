@@ -1,58 +1,214 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import request from 'supertest';
-import express from 'express';
+import type { Application } from 'express';
 import type { ServerConfig } from '../src/types/index.js';
+import { ProxyServer, createServerConfig, setupGracefulShutdown } from '../src/index.js';
+import { testConfig, testServerConfig, validApiKey } from './test-config.js';
 
-// Mock configuration for testing
-const mockConfig: ServerConfig = {
-  port: 3001,
-  nodeEnv: 'test',
-  proxyApiKey: 'test-api-key-123456789012345678901234567890123',
-  azureOpenAI: {
-    endpoint: 'https://test.openai.azure.com',
-    apiKey: 'test-azure-key-12345678901234567890123456789012',
-    model: 'gpt-4',
-  },
+const {
+  loggerMock,
+  registerHealthCheck,
+  startMonitoring,
+  stopMonitoring,
+  completionsRouteHandler,
+  completionsHandlerFactory,
+} = vi.hoisted(() => {
+  const loggerMock = {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    critical: vi.fn(),
+  };
+
+  const registerHealthCheck = vi.fn();
+  const startMonitoring = vi.fn();
+  const stopMonitoring = vi.fn();
+  const completionsRouteHandler = vi.fn((req, res) => {
+    res.status(200).json({ ok: true, correlationId: (req as { correlationId?: string }).correlationId });
+  });
+  const completionsHandlerFactory = vi.fn(() => completionsRouteHandler);
+
+  return {
+    loggerMock,
+    registerHealthCheck,
+    startMonitoring,
+    stopMonitoring,
+    completionsRouteHandler,
+    completionsHandlerFactory,
+  };
+});
+
+vi.mock('../src/middleware/logging.js', () => ({
+  logger: loggerMock,
+  requestLoggingMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
+  errorLoggingMiddleware: (_err: unknown, _req: unknown, _res: unknown, next: (error?: unknown) => void) => next(_err),
+}));
+
+vi.mock('../src/monitoring/health-monitor.js', () => ({
+  getHealthMonitor: vi.fn(() => ({
+    registerHealthCheck,
+    startMonitoring,
+    stopMonitoring,
+  })),
+}));
+
+vi.mock('../src/routes/completions.js', () => ({
+  completionsHandler: completionsHandlerFactory,
+  completionsRateLimit: (_req: unknown, _res: unknown, next: () => void) => next(),
+}));
+
+vi.mock('../src/resilience/graceful-degradation.js', () => ({
+  checkFeatureAvailability: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+}));
+
+
+const createProxyServer = (): ProxyServer => {
+  const config: ServerConfig = {
+    ...testServerConfig,
+    port: 0,
+    azureOpenAI: testServerConfig.azureOpenAI
+      ? { ...testServerConfig.azureOpenAI }
+      : undefined,
+  };
+
+  return new ProxyServer(config);
 };
 
-describe('Express Server Configuration', () => {
-  let app: express.Application;
+const getAppFromServer = (server: ProxyServer): Application => {
+  return (server as unknown as { app: Application }).app;
+};
 
-  beforeAll(() => {
-    // Create a minimal Express app for testing middleware
-    app = express();
+describe('ProxyServer integration', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    completionsRouteHandler.mockClear();
+  });
 
-    // Test basic Express setup
-    app.get('/test', (req, res) => {
-      res.json({ message: 'test endpoint' });
+  afterEach(() => {
+    vi.clearAllMocks();
+    completionsRouteHandler.mockClear();
+  });
+
+  it('creates a server config with sanitized Azure settings', () => {
+    const serverConfig = createServerConfig(testConfig);
+
+    expect(serverConfig.port).toBe(testConfig.PORT);
+    expect(serverConfig.proxyApiKey).toBe(testConfig.PROXY_API_KEY);
+    expect(serverConfig.azureOpenAI?.deployment).toBe(testConfig.AZURE_OPENAI_MODEL);
+    expect(serverConfig.azureOpenAI?.endpoint).toBe(testConfig.AZURE_OPENAI_ENDPOINT);
+  });
+
+  it('serves service metadata with correlation IDs on the root endpoint', async () => {
+    const server = createProxyServer();
+    const app = getAppFromServer(server);
+
+    const response = await request(app)
+      .get('/')
+      .set('x-correlation-id', 'server-test-correlation');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      service: 'Claude-to-Azure Proxy',
+      status: 'running',
+      correlationId: 'server-test-correlation',
     });
-  });
-
-  it('should create server config correctly', () => {
-    expect(mockConfig.port).toBe(3001);
-    expect(mockConfig.nodeEnv).toBe('test');
-    expect(mockConfig.proxyApiKey.length).toBeGreaterThanOrEqual(32);
-    expect(mockConfig.azureOpenAI.endpoint).toBe(
-      'https://test.openai.azure.com'
-    );
-    expect(mockConfig.azureOpenAI.model).toBe('gpt-4');
-  });
-
-  it('should respond to test endpoint', async () => {
-    const response = await request(app).get('/test').expect(200);
-
-    expect((response.body as { message: string }).message).toBe(
-      'test endpoint'
+    expect(loggerMock.info).toHaveBeenCalledWith(
+      'Root endpoint accessed',
+      'server-test-correlation'
     );
   });
 
-  it('should validate required config properties', () => {
-    expect(mockConfig).toHaveProperty('port');
-    expect(mockConfig).toHaveProperty('nodeEnv');
-    expect(mockConfig).toHaveProperty('proxyApiKey');
-    expect(mockConfig).toHaveProperty('azureOpenAI');
-    expect(mockConfig.azureOpenAI).toHaveProperty('endpoint');
-    expect(mockConfig.azureOpenAI).toHaveProperty('apiKey');
-    expect(mockConfig.azureOpenAI).toHaveProperty('model');
+  it('initializes health monitoring when invoked explicitly', () => {
+    const server = createProxyServer();
+    const hooks = server as unknown as { setupHealthMonitoring: () => void };
+    hooks.setupHealthMonitoring();
+
+    expect(registerHealthCheck).toHaveBeenCalled();
+    expect(startMonitoring).toHaveBeenCalledWith(60000);
+  });
+
+  it('rejects unauthorized requests to protected routes', async () => {
+    const server = createProxyServer();
+    const app = getAppFromServer(server);
+
+    const response = await request(app).get('/v1/models');
+
+    expect(response.status).toBe(401);
+    expect(response.body.error?.type).toBe('authentication_required');
+  });
+
+  it('allows authenticated access to protected routes', async () => {
+    const server = createProxyServer();
+    const app = getAppFromServer(server);
+
+    const response = await request(app)
+      .get('/v1/models')
+      .set('Authorization', `Bearer ${validApiKey}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.object).toBe('list');
+    expect(Array.isArray(response.body.data)).toBe(true);
+  });
+
+  it('configures completions handlers for Claude, chat, and messages routes', () => {
+    createProxyServer();
+
+    expect(completionsHandlerFactory).toHaveBeenCalledTimes(3);
+    for (const call of completionsHandlerFactory.mock.calls) {
+      const configArg = call[0];
+      expect(configArg).toMatchObject({
+        proxyApiKey: testServerConfig.proxyApiKey,
+        azureOpenAI: expect.objectContaining({ model: testServerConfig.azureOpenAI?.model }),
+      });
+    }
+  });
+
+  it('starts and stops the HTTP server cleanly', async () => {
+    const server = createProxyServer();
+    const app = getAppFromServer(server);
+    const mockHttpServer = {
+      on: vi.fn(),
+      close: vi.fn((callback: () => void) => {
+        callback();
+        return undefined;
+      }),
+    } as unknown as import('http').Server;
+
+    const listenSpy = vi
+      .spyOn(app, 'listen')
+      .mockImplementation(((_port: number, _host: string, callback: () => void) => {
+        callback();
+        return mockHttpServer;
+      }) as unknown as typeof app.listen);
+
+    await server.start();
+    expect(listenSpy).toHaveBeenCalled();
+    await server.stop();
+    expect(mockHttpServer.close).toHaveBeenCalled();
+
+    listenSpy.mockRestore();
+  });
+
+  it('registers graceful shutdown handlers with the process', () => {
+    const server = createProxyServer();
+    const registeredHandlers: Record<string | symbol, (...args: unknown[]) => unknown> = {};
+    const onSpy = vi.spyOn(process, 'on').mockImplementation(
+      ((event: NodeJS.Signals | 'uncaughtException' | 'unhandledRejection', handler: (...args: unknown[]) => unknown) => {
+        registeredHandlers[event] = handler;
+        return process;
+      }) as typeof process.on
+    );
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as typeof process.exit);
+
+    setupGracefulShutdown(server);
+
+    expect(onSpy).toHaveBeenCalledWith('SIGTERM', expect.any(Function));
+    expect(onSpy).toHaveBeenCalledWith('SIGINT', expect.any(Function));
+    expect(onSpy).toHaveBeenCalledWith('uncaughtException', expect.any(Function));
+    expect(onSpy).toHaveBeenCalledWith('unhandledRejection', expect.any(Function));
+
+    onSpy.mockRestore();
+    exitSpy.mockRestore();
   });
 });
