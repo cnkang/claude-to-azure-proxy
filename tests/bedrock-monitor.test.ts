@@ -318,6 +318,7 @@ describe('BedrockMonitor', () => {
 
       // Verify the metric was recorded with service tag
       const { metricsCollector } = await import('../src/monitoring/metrics.js');
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(metricsCollector.recordBusiness).toHaveBeenCalledWith({
         name: 'bedrock_model_requests',
         value: 1,

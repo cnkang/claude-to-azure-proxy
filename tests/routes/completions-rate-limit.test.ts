@@ -43,6 +43,7 @@ describe('completionsRateLimitHandler', () => {
       'corr-rate-1',
       expect.objectContaining({ ip: '127.0.0.1' })
     );
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(res.status).toHaveBeenCalledWith(429);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({

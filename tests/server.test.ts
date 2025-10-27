@@ -185,6 +185,7 @@ describe('ProxyServer integration', () => {
     await server.start();
     expect(listenSpy).toHaveBeenCalled();
     await server.stop();
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(mockHttpServer.close).toHaveBeenCalled();
 
     listenSpy.mockRestore();

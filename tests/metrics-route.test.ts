@@ -108,6 +108,7 @@ describe('Metrics Route', () => {
     
     // Re-setup mocks after clearing
     const { metricsCollector } = await import('../src/monitoring/metrics.js');
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     vi.mocked(metricsCollector.getMetrics).mockReturnValue(mockMetrics);
     
     const { getHealthMonitor } = await import('../src/monitoring/health-monitor.js');
@@ -290,6 +291,7 @@ describe('Metrics Route', () => {
     it('should handle metrics collection errors gracefully', async () => {
       // Mock metrics collector error
       const { metricsCollector } = await import('../src/monitoring/metrics.js');
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       vi.mocked(metricsCollector.getMetrics).mockImplementation(() => {
         throw new Error('Metrics collection failed');
       });

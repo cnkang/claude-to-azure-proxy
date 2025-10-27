@@ -186,6 +186,7 @@ describe('Health Route with Bedrock Integration', () => {
     it('should be healthy when both Azure and Bedrock are connected', async () => {
       // Mock successful Azure OpenAI
       const mockedAxios = await import('axios');
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       vi.mocked(mockedAxios.default.get).mockResolvedValue({
         status: 200,
         data: { object: 'list', data: [] },
@@ -215,6 +216,7 @@ describe('Health Route with Bedrock Integration', () => {
     it('should be healthy when only Azure is connected (Bedrock not configured)', async () => {
       // Mock successful Azure OpenAI
       const mockedAxios = await import('axios');
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       vi.mocked(mockedAxios.default.get).mockResolvedValue({
         status: 200,
         data: { object: 'list', data: [] },
@@ -239,6 +241,7 @@ describe('Health Route with Bedrock Integration', () => {
     it('should be healthy when only Bedrock is connected (Azure disconnected)', async () => {
       // Mock failed Azure OpenAI
       const mockedAxios = await import('axios');
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       vi.mocked(mockedAxios.default.get).mockRejectedValue(new Error('Azure connection failed'));
 
       // Mock successful Bedrock
@@ -285,6 +288,7 @@ describe('Health Route with Bedrock Integration', () => {
 
       // Mock failed Azure OpenAI
       const mockedAxios = await import('axios');
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       vi.mocked(mockedAxios.default.get).mockRejectedValue(new Error('Azure connection failed'));
 
       // Mock failed Bedrock
@@ -315,6 +319,7 @@ describe('Health Route with Bedrock Integration', () => {
       
       // Mock successful services
       const mockedAxios = await import('axios');
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       vi.mocked(mockedAxios.default.get).mockResolvedValue({
         status: 200,
         data: { object: 'list', data: [] },
