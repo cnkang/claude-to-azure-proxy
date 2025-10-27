@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { it, expect } from 'vitest';
 
 it('exposes monitoring utilities', async () => {
   const monitoring = await import('../../src/monitoring/index.js');

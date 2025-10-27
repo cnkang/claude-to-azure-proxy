@@ -16,7 +16,6 @@ import { AWSBedrockClient } from '../../src/clients/aws-bedrock-client.js';
 import type {
   AWSBedrockConfig,
   ResponsesCreateParams,
-  ResponsesStreamChunk,
 } from '../../src/types/index.js';
 
 describe('AWSBedrockClient', () => {

@@ -3,7 +3,6 @@ import type {
   ResponsesCreateParams,
   ResponsesResponse,
   UniversalRequest,
-  UniversalResponse,
 } from '../../src/types/index.js';
 import { EnhancedAzureResponsesClient } from '../../src/clients/azure-responses-client-enhanced.js';
 import { testServerConfig } from '../test-config.js';
@@ -22,7 +21,7 @@ const axiosMocks = vi.hoisted(() => {
     },
   } as const;
   const create = vi.fn(() => axiosInstance);
-  const isAxiosError = (error: unknown): boolean => Boolean((error as { isAxiosError?: boolean })?.isAxiosError);
+  const isAxiosError = (error: unknown): boolean => Boolean((error as { isAxiosError?: boolean }).isAxiosError);
   return { request, get, requestInterceptors, responseInterceptors, create, isAxiosError };
 });
 
@@ -156,7 +155,7 @@ describe('EnhancedAzureResponsesClient', () => {
   });
 
   it('creates axios client with expected defaults', () => {
-    // eslint-disable-next-line no-new
+     
     new EnhancedAzureResponsesClient();
 
     expect(axiosMocks.create).toHaveBeenCalledWith(
@@ -239,7 +238,7 @@ describe('EnhancedAzureResponsesClient', () => {
 
     expect(result.success).toBe(false);
     expect(errorMapperMocks.mapError).toHaveBeenCalled();
-    expect(result.error?.error?.message).toBe('Mapped error');
+    expect(result.error!.error.message).toBe('Mapped error');
   });
 
   it('provides circuit breaker and retry metrics', () => {

@@ -12,8 +12,6 @@ import type {
   ConversationMetrics,
   IncomingRequest,
   ReasoningEffort,
-  ModelRoutingDecision,
-  UniversalRequest,
 } from '../../src/types/index.js';
 import type { UniversalProcessingResult } from '../../src/utils/universal-request-processor.js';
 
