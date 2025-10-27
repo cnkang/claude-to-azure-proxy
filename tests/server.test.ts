@@ -195,7 +195,7 @@ describe('ProxyServer integration', () => {
     const registeredHandlers: Record<string | symbol, (...args: unknown[]) => unknown> = {};
     const onSpy = vi.spyOn(process, 'on').mockImplementation(
       ((event: NodeJS.Signals | 'uncaughtException' | 'unhandledRejection', handler: (...args: unknown[]) => unknown) => {
-        registeredHandlers[event] = handler;
+        Object.assign(registeredHandlers, { [event]: handler });
         return process;
       }) as typeof process.on
     );

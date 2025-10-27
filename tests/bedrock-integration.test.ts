@@ -344,7 +344,8 @@ describe('Bedrock Integration Tests', () => {
       mockAxiosInstance.post.mockRejectedValue(streamError);
 
       await expect(async () => {
-        for await (const chunk of bedrockClient.createResponseStream(params)) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        for await (const _ of bedrockClient.createResponseStream(params)) {
           // Should not reach here
         }
       }).rejects.toThrow();
