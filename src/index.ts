@@ -24,6 +24,7 @@ import { enhancedErrorHandler } from './middleware/error-handler.js';
 import { secureAuthenticationMiddleware } from './middleware/authentication.js';
 import { healthCheckHandler } from './routes/health.js';
 import { modelsHandler } from './routes/models.js';
+import { metricsHandler, detailedMetricsHandler } from './routes/metrics.js';
 import {
   completionsRateLimit,
   completionsHandler,
@@ -225,6 +226,17 @@ class ProxyServer {
     this.app.get(
       '/health',
       healthCheckHandler(this.config) as unknown as express.RequestHandler
+    );
+
+    // Metrics endpoints for monitoring (Requirement 4.5)
+    this.app.get(
+      '/metrics',
+      metricsHandler as unknown as express.RequestHandler
+    );
+
+    this.app.get(
+      '/metrics/detailed',
+      detailedMetricsHandler as unknown as express.RequestHandler
     );
 
     // Root endpoint
