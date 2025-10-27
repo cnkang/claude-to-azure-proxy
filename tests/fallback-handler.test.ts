@@ -116,7 +116,7 @@ describe('FallbackHandler', () => {
     const result = await FallbackHandler.executeFallback(context);
 
     expect(result.success).toBe(false);
-    expect(result.error?.error?.type).toBe('api_error');
+    expect(result.error!.error.type).toBe('api_error');
     expect(result.fallbackUsed).toBe('service_unavailable_error');
     expect(result.degraded).toBe(true);
   });

@@ -575,9 +575,7 @@ describe('Compatibility Validation Tests', () => {
   });
 
   afterAll(() => {
-    if (server) {
-      server.close();
-    }
+    server.close();
   });
 
   describe('Backward Compatibility with Existing Claude Format Integrations', () => {
