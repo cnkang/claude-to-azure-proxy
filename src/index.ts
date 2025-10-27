@@ -95,7 +95,7 @@ import { checkFeatureAvailability } from './resilience/graceful-degradation.js';
  * await server.start();
  * ```
  */
-class ProxyServer {
+export class ProxyServer {
   /**
    * Express application instance with configured middleware and routes.
    * @private
@@ -502,7 +502,7 @@ class ProxyServer {
 }
 
 // Graceful shutdown handling
-const setupGracefulShutdown = (server: ProxyServer): void => {
+export const setupGracefulShutdown = (server: ProxyServer): void => {
   const shutdown = async (signal: string): Promise<void> => {
     logger.info(`Received ${signal}, starting graceful shutdown`);
 
@@ -553,7 +553,7 @@ const setupGracefulShutdown = (server: ProxyServer): void => {
 };
 
 // Convert loaded config to ServerConfig format
-const createServerConfig = (config: Readonly<Config>): ServerConfig => ({
+export const createServerConfig = (config: Readonly<Config>): ServerConfig => ({
   port: config.PORT,
   nodeEnv: config.NODE_ENV,
   proxyApiKey: config.PROXY_API_KEY,
@@ -570,7 +570,7 @@ const createServerConfig = (config: Readonly<Config>): ServerConfig => ({
 });
 
 // Main application entry point
-const main = async (): Promise<void> => {
+export const main = async (): Promise<void> => {
   try {
     // Load and validate configuration
     const config = createServerConfig(loadedConfig);
