@@ -8,7 +8,7 @@
 [![Tests](https://img.shields.io/badge/Tests-325%20passing-brightgreen.svg)](#testing)
 [![Security](https://img.shields.io/badge/Security-Hardened-red.svg)](#security-features)
 
-**A production-ready TypeScript API proxy server that seamlessly translates Claude API requests to Azure OpenAI format**
+**A production-ready TypeScript API proxy server that seamlessly translates Claude API requests to Azure OpenAI and AWS Bedrock formats with intelligent model routing**
 
 [Features](#-features) • [Quick Start](#-quick-start) • [Documentation](#-documentation) • [Deployment](#-deployment) • [Contributing](#-contributing)
 
@@ -18,11 +18,12 @@
 
 ## 🎯 Overview
 
-This high-performance proxy server enables seamless integration between Claude Code CLI and Azure OpenAI's v1 Responses API, leveraging GPT-5-Codex's enhanced reasoning capabilities for superior coding assistance. Built with enterprise-grade security, intelligent reasoning optimization, and production-ready resilience features.
+This high-performance proxy server enables seamless integration between Claude Code CLI and multiple AI services including Azure OpenAI's v1 Responses API and AWS Bedrock. It features intelligent model routing, leveraging GPT-5-Codex's enhanced reasoning capabilities and AWS Bedrock's Qwen models for superior coding assistance. Built with enterprise-grade security, intelligent reasoning optimization, and production-ready resilience features.
 
 ### Why Use This Proxy?
 
 - **🧠 Enhanced Reasoning**: Leverages GPT-5-Codex's internal reasoning for complex coding tasks
+- **🤖 Multi-Model Support**: Intelligent routing between Azure OpenAI and AWS Bedrock based on model selection
 - **🔄 Multi-Format Support**: Supports both Claude and OpenAI API formats automatically
 - **🎯 Language-Aware**: Intelligent optimizations for Python, Java, TypeScript, React, Vue, and more
 - **🛡️ Enterprise Security**: Comprehensive authentication, rate limiting, and input validation
@@ -34,7 +35,9 @@ This high-performance proxy server enables seamless integration between Claude C
 
 ### Core Functionality
 
-- **Responses API Integration**: Uses Azure OpenAI v1 Responses API for enhanced reasoning capabilities
+- **Multi-Service Integration**: Supports Azure OpenAI v1 Responses API and AWS Bedrock with intelligent model routing
+- **Intelligent Model Routing**: Automatically routes requests to Azure OpenAI or AWS Bedrock based on model parameter
+- **Enhanced Model Support**: GPT-5-Codex (Azure) and Qwen 3 Coder (AWS Bedrock) for diverse coding capabilities
 - **Intelligent Reasoning**: Automatic reasoning effort adjustment based on task complexity and programming language
 - **Multi-Format Support**: Automatic detection and support for both Claude and OpenAI request/response formats
 - **Language Optimization**: Enhanced support for Python/Django, Java/Spring, TypeScript, React, Vue, Android, and shell scripting
@@ -114,6 +117,12 @@ This high-performance proxy server enables seamless integration between Claude C
    AZURE_OPENAI_API_KEY=your-azure-openai-api-key
    AZURE_OPENAI_MODEL=gpt-5-codex  # GPT-5-Codex deployment name
 
+   # Optional AWS Bedrock Configuration (enables Qwen model support)
+   # AWS_BEDROCK_API_KEY=your-aws-bedrock-api-key-here
+   # AWS_BEDROCK_REGION=us-west-2
+   # AWS_BEDROCK_TIMEOUT=120000
+   # AWS_BEDROCK_MAX_RETRIES=3
+
    # Optional Responses API Configuration
    # AZURE_OPENAI_API_VERSION=preview  # Only for preview features
    AZURE_OPENAI_TIMEOUT=120000
@@ -176,15 +185,15 @@ pnpm run validate       # Run all quality checks
 
 ### Usage Example
 
-Once running, test the proxy with different API formats:
+Once running, test the proxy with different models and API formats:
 
 ```bash
-# Test with Claude format (automatic reasoning adjustment)
+# Test with Azure OpenAI model (GPT-5-Codex via Azure)
 curl -X POST http://localhost:8080/v1/messages \
   -H "Authorization: Bearer your-proxy-api-key" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "claude-3-5-sonnet-20241022",
+    "model": "gpt-5-codex",
     "max_tokens": 1000,
     "messages": [
       {
@@ -194,16 +203,31 @@ curl -X POST http://localhost:8080/v1/messages \
     ]
   }'
 
-# Test with OpenAI format (same backend, different format)
+# Test with AWS Bedrock model (Qwen 3 Coder)
+curl -X POST http://localhost:8080/v1/messages \
+  -H "Authorization: Bearer your-proxy-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "qwen-3-coder",
+    "max_tokens": 1000,
+    "messages": [
+      {
+        "role": "user",
+        "content": "Create a React component for a todo list with TypeScript"
+      }
+    ]
+  }'
+
+# Test with OpenAI format (automatic model routing)
 curl -X POST http://localhost:8080/v1/chat/completions \
   -H "Authorization: Bearer your-proxy-api-key" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "gpt-4",
+    "model": "qwen.qwen3-coder-480b-a35b-v1:0",
     "messages": [
       {
         "role": "user",
-        "content": "Create a React component for a todo list"
+        "content": "Explain async/await in JavaScript"
       }
     ]
   }'
@@ -299,6 +323,10 @@ pnpm docs:serve
 | `AZURE_OPENAI_ENDPOINT`      | ✅       | -            | Azure OpenAI v1 endpoint URL (HTTPS only)      |
 | `AZURE_OPENAI_API_KEY`       | ✅       | -            | Azure OpenAI API key                           |
 | `AZURE_OPENAI_MODEL`         | ✅       | -            | GPT-5-Codex deployment name                    |
+| `AWS_BEDROCK_API_KEY`        | ❌       | -            | AWS Bedrock API key (enables Qwen models)     |
+| `AWS_BEDROCK_REGION`         | ❌       | `us-west-2`  | AWS region for Bedrock service                 |
+| `AWS_BEDROCK_TIMEOUT`        | ❌       | `120000`     | Bedrock request timeout in milliseconds       |
+| `AWS_BEDROCK_MAX_RETRIES`    | ❌       | `3`          | Bedrock maximum retry attempts                 |
 | `AZURE_OPENAI_API_VERSION`   | ❌       | -            | API version (only for preview features)        |
 | `AZURE_OPENAI_TIMEOUT`       | ❌       | `120000`     | Request timeout in milliseconds                |
 | `AZURE_OPENAI_MAX_RETRIES`   | ❌       | `3`          | Maximum retry attempts                         |
@@ -306,6 +334,27 @@ pnpm docs:serve
 | `ENABLE_CONTENT_SECURITY_VALIDATION` | ❌ | `true`   | Enable content security validation (true/false)   |
 | `PORT`                       | ❌       | `8080`       | Server port (1024-65535)                       |
 | `NODE_ENV`                   | ❌       | `production` | Environment (development/production/test)      |
+
+### Model Routing and Multi-Service Support
+
+The proxy intelligently routes requests to the appropriate AI service based on the model parameter:
+
+#### Supported Models
+
+| Model Name                        | Service      | Description                           |
+| --------------------------------- | ------------ | ------------------------------------- |
+| `qwen-3-coder`                    | AWS Bedrock  | Qwen 3 Coder (user-friendly name)    |
+| `qwen.qwen3-coder-480b-a35b-v1:0` | AWS Bedrock  | Qwen 3 Coder (full AWS model ID)     |
+| `gpt-5-codex`                     | Azure OpenAI | GPT-5 Codex deployment                |
+| `gpt-4`                           | Azure OpenAI | GPT-4 models                          |
+| `claude-3-5-sonnet-20241022`      | Azure OpenAI | Claude models (via Azure)             |
+
+#### Routing Logic
+
+- **Qwen Models**: Automatically routed to AWS Bedrock (requires `AWS_BEDROCK_API_KEY`)
+- **GPT/Claude Models**: Routed to Azure OpenAI
+- **Fallback**: Unrecognized models default to Azure OpenAI
+- **Error Handling**: Clear error messages for unsupported models
 
 ### Responses API Features
 

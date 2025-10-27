@@ -73,6 +73,7 @@ services:
 - AWS CLI configured
 - Container image in ECR or public registry
 - Environment variables configured
+- AWS Bedrock API access (optional, for Qwen model support)
 
 ### Deployment Steps
 
@@ -107,6 +108,11 @@ run:
   env:
     - name: NODE_ENV
       value: production
+    # Optional: AWS Bedrock configuration for Qwen model support
+    # - name: AWS_BEDROCK_API_KEY
+    #   value: your-bedrock-api-key
+    # - name: AWS_BEDROCK_REGION
+    #   value: us-west-2
 ```
 
 3. **Configure via AWS Console:**
@@ -135,6 +141,8 @@ type: Opaque
 stringData:
   PROXY_API_KEY: "your-proxy-api-key"
   AZURE_OPENAI_API_KEY: "your-azure-api-key"
+  # Optional: AWS Bedrock API key for Qwen model support
+  # AWS_BEDROCK_API_KEY: "your-bedrock-api-key"
 ---
 # deployment.yaml
 apiVersion: apps/v1
@@ -174,6 +182,14 @@ spec:
             secretKeyRef:
               name: claude-proxy-secrets
               key: AZURE_OPENAI_API_KEY
+        # Optional: AWS Bedrock configuration for Qwen model support
+        # - name: AWS_BEDROCK_API_KEY
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: claude-proxy-secrets
+        #       key: AWS_BEDROCK_API_KEY
+        # - name: AWS_BEDROCK_REGION
+        #   value: "us-west-2"
         livenessProbe:
           httpGet:
             path: /health
@@ -344,6 +360,103 @@ scrape_configs:
 - `proxy_active_conversations` - Active conversations
 - `process_resident_memory_bytes` - Memory usage
 
+## 🤖 AWS Bedrock Integration
+
+### Bedrock Deployment Considerations
+
+When deploying with AWS Bedrock support for Qwen models:
+
+#### API Key Management
+```bash
+# Generate and store AWS Bedrock API key securely
+export AWS_BEDROCK_API_KEY="your-bedrock-api-key"
+export AWS_BEDROCK_REGION="us-west-2"
+
+# Validate Bedrock configuration
+curl -X POST "https://bedrock-runtime.us-west-2.amazonaws.com/model/qwen.qwen3-coder-480b-a35b-v1:0/converse" \
+     -H "Authorization: Bearer $AWS_BEDROCK_API_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{"messages":[{"role":"user","content":[{"text":"test"}]}],"inferenceConfig":{"maxTokens":10}}'
+```
+
+#### Model Routing Configuration
+```yaml
+# docker-compose.yml with Bedrock support
+version: '3.8'
+services:
+  claude-proxy:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      # Required Azure OpenAI configuration
+      - AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
+      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY}
+      - AZURE_OPENAI_MODEL=gpt-5-codex
+      
+      # Optional AWS Bedrock configuration (enables Qwen models)
+      - AWS_BEDROCK_API_KEY=${AWS_BEDROCK_API_KEY}
+      - AWS_BEDROCK_REGION=us-west-2
+      - AWS_BEDROCK_TIMEOUT=120000
+      - AWS_BEDROCK_MAX_RETRIES=3
+    restart: unless-stopped
+```
+
+#### Health Check Updates
+```bash
+# Health check includes both services when Bedrock is configured
+curl http://localhost:8080/health
+
+# Expected response with Bedrock enabled:
+{
+  "status": "healthy",
+  "services": {
+    "azure": "healthy",
+    "bedrock": "healthy"  // Only present when AWS_BEDROCK_API_KEY is configured
+  },
+  "models": ["gpt-5-codex", "qwen-3-coder", "qwen.qwen3-coder-480b-a35b-v1:0"]
+}
+```
+
+#### Performance Considerations
+- **Latency**: AWS Bedrock may have different latency characteristics than Azure OpenAI
+  - Qwen models typically have 2-5 second response times for complex coding tasks
+  - Configure `AWS_BEDROCK_TIMEOUT=120000` (2 minutes) for complex requests
+- **Rate Limits**: Configure separate rate limits for Bedrock API calls
+  - AWS Bedrock has different rate limits than Azure OpenAI
+  - Monitor both services independently for rate limit violations
+- **Monitoring**: Track metrics separately for Azure and Bedrock services
+  - Use service identifiers in logs: `azure` vs `bedrock`
+  - Track model-specific performance metrics
+- **Fallback**: Ensure graceful degradation when one service is unavailable
+  - Circuit breaker patterns prevent cascade failures
+  - Clear error messages when services are down
+
+#### Security Considerations
+- **API Keys**: Store AWS Bedrock API keys securely alongside Azure keys
+  - Use same security practices as Azure OpenAI keys
+  - Rotate keys regularly and update configuration
+- **Network**: Ensure outbound HTTPS access to `bedrock-runtime.us-west-2.amazonaws.com`
+  - Configure firewall rules for AWS Bedrock endpoints
+  - Use VPC endpoints for enhanced security in AWS environments
+- **Logging**: AWS Bedrock API keys are automatically sanitized in logs
+  - Keys are redacted as `[REDACTED]` in all log outputs
+  - Error responses never expose API key information
+- **Validation**: Bedrock configuration is validated at startup with fail-fast behavior
+  - Invalid configuration prevents server startup
+  - Clear error messages guide proper configuration
+
+#### Regional Considerations
+- **AWS Region**: Qwen models are only available in `us-west-2` region
+  - Set `AWS_BEDROCK_REGION=us-west-2` explicitly
+  - Consider latency implications for global deployments
+- **Data Residency**: AWS Bedrock processes data in the configured region
+  - Ensure compliance with data residency requirements
+  - Consider GDPR and other regulatory implications
+- **Availability**: Monitor AWS Bedrock service status for us-west-2
+  - Subscribe to AWS service health notifications
+  - Implement appropriate fallback strategies
+
 ## 🔐 Security Best Practices
 
 ### Network Security
@@ -367,6 +480,7 @@ sudo ufw enable
 kubectl create secret generic claude-proxy-secrets \
   --from-file=PROXY_API_KEY=proxy-key.txt \
   --from-file=AZURE_OPENAI_API_KEY=azure-key.txt \
+  --from-file=AWS_BEDROCK_API_KEY=bedrock-key.txt \
   -n claude-proxy
 ```
 
@@ -375,6 +489,7 @@ kubectl create secret generic claude-proxy-secrets \
 # Create Docker secrets
 echo "your-proxy-api-key" | docker secret create proxy_api_key -
 echo "your-azure-api-key" | docker secret create azure_api_key -
+echo "your-bedrock-api-key" | docker secret create bedrock_api_key -
 ```
 
 **AWS Secrets Manager:**
@@ -382,7 +497,7 @@ echo "your-azure-api-key" | docker secret create azure_api_key -
 # Store secrets in AWS
 aws secretsmanager create-secret \
   --name "claude-proxy/api-keys" \
-  --secret-string '{"PROXY_API_KEY":"your-key","AZURE_OPENAI_API_KEY":"your-azure-key"}'
+  --secret-string '{"PROXY_API_KEY":"your-key","AZURE_OPENAI_API_KEY":"your-azure-key","AWS_BEDROCK_API_KEY":"your-bedrock-key"}'
 ```
 
 ### Container Security
@@ -490,6 +605,16 @@ ab -n 1000 -c 10 -H "Authorization: Bearer your-key" \
 
 ### Pre-Deployment
 - [ ] Environment variables configured and validated
+- [ ] Azure OpenAI connectivity tested
+- [ ] AWS Bedrock connectivity tested (if configured)
+- [ ] Model routing behavior verified
+  - [ ] `qwen-3-coder` routes to AWS Bedrock
+  - [ ] `qwen.qwen3-coder-480b-a35b-v1:0` routes to AWS Bedrock  
+  - [ ] `gpt-5-codex` routes to Azure OpenAI
+  - [ ] Unsupported models return appropriate errors
+- [ ] Model availability confirmed
+  - [ ] Azure models accessible via configured endpoint
+  - [ ] Bedrock models accessible in us-west-2 region (if configured)
 - [ ] Security scan passed
 - [ ] Load testing completed
 - [ ] Monitoring configured
@@ -497,8 +622,10 @@ ab -n 1000 -c 10 -H "Authorization: Bearer your-key" \
 - [ ] Rollback procedures tested
 
 ### Post-Deployment
-- [ ] Health checks passing
+- [ ] Health checks passing for all configured services
 - [ ] Authentication working
+- [ ] Model routing working correctly
+- [ ] Both Azure and Bedrock endpoints responding (if configured)
 - [ ] Performance metrics baseline established
 - [ ] Monitoring alerts configured
 - [ ] Documentation updated
