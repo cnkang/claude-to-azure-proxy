@@ -68,7 +68,7 @@ describe('Secure credential storage', () => {
     const metadata = secureCredentialManager.getAllCredentialMetadata();
     const proxyMetadata = metadata.proxy_api_key;
     expect(proxyMetadata).toBeDefined();
-    if (proxyMetadata) {
+    if (proxyMetadata !== undefined) {
       proxyMetadata.usageCount = 999;
     }
 

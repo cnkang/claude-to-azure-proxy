@@ -261,7 +261,7 @@ describe('Bedrock Security Tests', () => {
       const { logger } = await import('../src/middleware/logging.js');
       
       // Trigger some operation that might log
-      const sanitizedConfig = client.getConfig();
+      client.getConfig();
       
       // Check that no log calls contain the actual API key
       const allLogCalls = [
@@ -293,7 +293,7 @@ describe('Bedrock Security Tests', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(ValidationError);
         const errorString = error.toString();
-        const errorStack = (error as Error).stack || '';
+        const errorStack = (error as Error).stack ?? '';
         
         expect(errorString).not.toContain(validConfig.apiKey);
         expect(errorStack).not.toContain(validConfig.apiKey);

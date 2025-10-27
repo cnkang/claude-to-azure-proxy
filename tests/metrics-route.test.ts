@@ -274,11 +274,11 @@ describe('Metrics Route', () => {
       
       // Should include performance metrics from both services
       const azurePerformanceMetrics = performanceMetrics.filter((m: any) => 
-        m.name.includes('azure') || m.tags?.service === 'azure'
+        (typeof m.name === 'string' && m.name.includes('azure')) ?? (m.tags?.service === 'azure')
       );
       
       const bedrockPerformanceMetrics = performanceMetrics.filter((m: any) => 
-        m.name.includes('bedrock') || m.tags?.service === 'bedrock'
+        (typeof m.name === 'string' && m.name.includes('bedrock')) ?? (m.tags?.service === 'bedrock')
       );
       
       expect(azurePerformanceMetrics.length).toBeGreaterThanOrEqual(0);
@@ -399,12 +399,12 @@ describe('Metrics Route', () => {
       
       // Check for Azure performance metrics
       const azureMetrics = performanceMetrics.filter((m: any) => 
-        m.name.includes('azure') || m.tags?.service === 'azure'
+        (typeof m.name === 'string' && m.name.includes('azure')) ?? (m.tags?.service === 'azure')
       );
       
       // Check for Bedrock performance metrics
       const bedrockMetrics = performanceMetrics.filter((m: any) => 
-        m.name.includes('bedrock') || m.tags?.service === 'bedrock'
+        (typeof m.name === 'string' && m.name.includes('bedrock')) ?? (m.tags?.service === 'bedrock')
       );
       
       // Both services should have separate tracking
@@ -412,13 +412,13 @@ describe('Metrics Route', () => {
       
       // Verify service tags are present
       azureMetrics.forEach((metric: any) => {
-        if (metric.tags) {
+        if (metric.tags !== undefined) {
           expect(metric.tags.service).toBe('azure');
         }
       });
       
       bedrockMetrics.forEach((metric: any) => {
-        if (metric.tags) {
+        if (metric.tags !== undefined) {
           expect(metric.tags.service).toBe('bedrock');
         }
       });

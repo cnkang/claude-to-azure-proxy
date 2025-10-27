@@ -183,7 +183,7 @@ export class ClaudeRequestFactory {
           content,
         },
       ],
-      ...(maxTokens && { max_tokens: maxTokens }),
+      ...(maxTokens !== undefined && maxTokens > 0 && { max_tokens: maxTokens }),
     };
   }
 }

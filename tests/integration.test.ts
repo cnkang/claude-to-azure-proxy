@@ -396,7 +396,7 @@ describe('Integration Tests', () => {
       // Should return some error response (exact status may vary based on error handling)
       expect([500, 503]).toContain(response.status);
       // OpenAI format errors have error object
-      if (response.body.error) {
+      if (response.body.error !== undefined) {
         expect(response.body).toHaveProperty('error');
       } else {
         // Or it might be a successful response with OpenAI format
