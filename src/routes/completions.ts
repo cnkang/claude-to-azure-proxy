@@ -54,6 +54,8 @@ import { ensureResponsesBaseURL } from '../utils/azure-endpoint.js';
 import { AWSBedrockClient } from '../clients/aws-bedrock-client.js';
 
 import { getHealthMonitor } from '../monitoring/health-monitor.js';
+import { completionsRateLimitHandler } from './completions-rate-limit-handler.js';
+export { completionsRateLimitHandler } from './completions-rate-limit-handler.js';
 
 /**
  * Robust /v1/completions proxy endpoint with comprehensive security and error handling
@@ -74,26 +76,7 @@ export const completionsRateLimit = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  handler: (req: Readonly<Request>, res: Response) => {
-    const correlationId =
-      (req as RequestWithCorrelationId).correlationId || 'unknown';
-
-    logger.warn('Completions rate limit exceeded', correlationId, {
-      ip: req.ip,
-      userAgent: req.headers['user-agent'],
-      method: req.method,
-      url: req.url,
-    });
-
-    res.status(429).json({
-      error: {
-        type: 'rate_limit_exceeded',
-        message: 'Too many completion requests, please try again later.',
-        correlationId,
-        timestamp: new Date().toISOString(),
-      },
-    });
-  },
+  handler: completionsRateLimitHandler,
 });
 
 // Request/response correlation tracking
