@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import type {
   RequestWithCorrelationId,
