@@ -68,9 +68,8 @@ describe('Secure credential storage', () => {
     const metadata = secureCredentialManager.getAllCredentialMetadata();
     const proxyMetadata = metadata.proxy_api_key;
     expect(proxyMetadata).toBeDefined();
-    if (proxyMetadata !== undefined) {
-      proxyMetadata.usageCount = 999;
-    }
+    // TypeScript knows proxyMetadata is defined after the assertion above
+    proxyMetadata.usageCount = 999;
 
     const original = secureCredentialManager.getCredentialMetadata('proxy_api_key');
     expect(original?.usageCount).not.toBe(999);
