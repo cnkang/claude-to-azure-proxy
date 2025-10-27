@@ -13,6 +13,7 @@ import {
 } from '../resilience/index.js';
 import { ensureResponsesBaseURL } from '../utils/azure-endpoint.js';
 import { ConfigurationError } from '../errors/index.js';
+import { getHealthMonitor } from '../monitoring/health-monitor.js';
 
 /**
  * Health check endpoint for AWS App Runner and monitoring
@@ -125,14 +126,43 @@ export const healthCheckHandler = (config: Readonly<ServerConfig>) => {
         });
       }
 
+      // Check AWS Bedrock connectivity (Requirement 4.3: Extend health check endpoint to include AWS Bedrock service status validation)
+      let awsBedrockStatus: HealthCheckResult['awsBedrock'] = undefined;
+      
+      try {
+        const healthMonitor = getHealthMonitor(config);
+        const bedrockMonitor = healthMonitor.getBedrockMonitor();
+        
+        if (bedrockMonitor) {
+          awsBedrockStatus = await bedrockMonitor.checkBedrockHealth();
+          
+          logger.debug('Bedrock health check completed', correlationId, {
+            serviceId: 'bedrock',
+            status: awsBedrockStatus?.status,
+            responseTime: awsBedrockStatus?.responseTime,
+          });
+        }
+      } catch (error) {
+        // Don't fail health check if Bedrock is temporarily unavailable
+        logger.warn('AWS Bedrock health check failed', correlationId, {
+          serviceId: 'bedrock',
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+        
+        awsBedrockStatus = { status: 'disconnected' };
+      }
+
       // Determine overall health status
       // Consider unhealthy if memory usage > 85%
       // In test environments, don't require Azure OpenAI connectivity
       const azureHealthy = azureOpenAIStatus.status === 'connected';
+      const bedrockHealthy = awsBedrockStatus?.status === 'connected';
       const isTestEnvironment = (config.azureOpenAI?.endpoint?.includes('test.openai.azure.com') ?? false) || 
                                (config.azureOpenAI?.baseURL?.includes('test.openai.azure.com') ?? false);
       
-      const isHealthy = memory.percentage < 85 && (azureHealthy || isTestEnvironment);
+      // System is healthy if memory is good AND at least one service is available (or in test environment)
+      const hasHealthyService = azureHealthy || bedrockHealthy || isTestEnvironment;
+      const isHealthy = memory.percentage < 85 && hasHealthyService;
 
       // Get resilience metrics
       const circuitBreakerMetrics = circuitBreakerRegistry.getAllMetrics();
@@ -151,6 +181,7 @@ export const healthCheckHandler = (config: Readonly<ServerConfig>) => {
         uptime,
         memory,
         azureOpenAI: azureOpenAIStatus,
+        awsBedrock: awsBedrockStatus,
         resilience: {
           circuitBreakers: circuitBreakerMetrics,
           retryStrategies: retryMetrics,
@@ -164,6 +195,12 @@ export const healthCheckHandler = (config: Readonly<ServerConfig>) => {
         status: healthResult.status,
         responseTime: Date.now() - startTime,
         memoryUsage: memory.percentage,
+        azureStatus: azureOpenAIStatus.status,
+        bedrockStatus: awsBedrockStatus?.status ?? 'not_configured',
+        servicesChecked: {
+          azure: true,
+          bedrock: awsBedrockStatus !== undefined,
+        },
       });
 
       res.status(statusCode).json(healthResult);

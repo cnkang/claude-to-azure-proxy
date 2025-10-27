@@ -11,6 +11,8 @@ import type {
   OpenAIResponse,
   ClaudeError,
   OpenAIError,
+  ModelRoutingConfig,
+  ModelRoutingDecision,
 } from '../types/index.js';
 import { logger } from '../middleware/logging.js';
 import { asyncErrorHandler } from '../middleware/error-handler.js';
@@ -31,7 +33,10 @@ import {
 } from '../utils/universal-request-processor.js';
 import { createReasoningEffortAnalyzer } from '../utils/reasoning-effort-analyzer.js';
 import { conversationManager } from '../utils/conversation-manager.js';
-import config from '../config/index.js';
+import config, {
+  createAWSBedrockConfig,
+  isAWSBedrockConfigured,
+} from '../config/index.js';
 import { createErrorResponseByFormat } from '../utils/response-transformer.js';
 import {
   detectRequestFormat,
@@ -46,6 +51,9 @@ import {
 } from '../utils/responses-to-openai-transformer.js';
 import { AzureErrorMapper } from '../utils/azure-error-mapper.js';
 import { ensureResponsesBaseURL } from '../utils/azure-endpoint.js';
+import { AWSBedrockClient } from '../clients/aws-bedrock-client.js';
+
+import { getHealthMonitor } from '../monitoring/health-monitor.js';
 
 /**
  * Robust /v1/completions proxy endpoint with comprehensive security and error handling
@@ -96,14 +104,66 @@ interface RequestMetrics {
   reasoningAnalysisTime?: number;
   transformationTime?: number;
   azureRequestTime?: number;
+  bedrockRequestTime?: number;
   responseTransformationTime?: number;
   totalTime?: number;
 }
 
 // Initialize universal request processor with configuration from environment
+const AZURE_MODEL_ALIASES = Array.from(
+  new Set(
+    [
+      config.AZURE_OPENAI_MODEL,
+      'gpt-5-codex',
+      'gpt-4',
+      'gpt-4o',
+      'gpt-4-turbo',
+      'gpt-3.5-turbo',
+    ].filter(
+      (alias): alias is string =>
+        typeof alias === 'string' && alias.trim().length > 0
+    )
+  )
+);
+
+const BEDROCK_MODEL_ID = 'qwen.qwen3-coder-480b-a35b-v1:0';
+const BEDROCK_MODEL_ALIASES = [
+  'qwen-3-coder',
+  BEDROCK_MODEL_ID,
+] as const;
+
+const bedrockConfiguration = isAWSBedrockConfigured(config)
+  ? createAWSBedrockConfig(config)
+  : null;
+
+const bedrockClientSingleton =
+  bedrockConfiguration !== null ? new AWSBedrockClient(bedrockConfiguration) : null;
+
+const modelRoutingConfig: ModelRoutingConfig = {
+  defaultProvider: 'azure',
+  defaultModel: config.AZURE_OPENAI_MODEL,
+  entries: [
+    {
+      provider: 'azure',
+      backendModel: config.AZURE_OPENAI_MODEL,
+      aliases: AZURE_MODEL_ALIASES,
+    },
+    ...(bedrockClientSingleton !== null
+      ? [
+          {
+            provider: 'bedrock' as const,
+            backendModel: BEDROCK_MODEL_ID,
+            aliases: BEDROCK_MODEL_ALIASES,
+          },
+        ]
+      : []),
+  ],
+};
+
 const universalProcessor = createUniversalRequestProcessor({
   ...defaultUniversalProcessorConfig,
   enableContentSecurityValidation: config.ENABLE_CONTENT_SECURITY_VALIDATION,
+  modelRouting: modelRoutingConfig,
 });
 
 // Initialize reasoning effort analyzer
@@ -627,6 +687,7 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
         });
 
         let { responsesParams } = processingResult;
+        const routingDecision = processingResult.routingDecision;
 
         // Add previous_response_id for conversation continuity
         const previousResponseId = conversationManager.getPreviousResponseId(conversationId);
@@ -671,23 +732,48 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
           }
         }
 
-        responsesParams = {
-          ...responsesParams,
-          model: azureConfig.deployment,
-        };
-
         const finalReasoningEffort =
           responsesParams.reasoning?.effort ?? processingResult.reasoningEffort;
 
         // Check if streaming is requested by client
         const isStreamingRequest = responsesParams.stream === true;
 
+        if (routingDecision.provider === 'bedrock') {
+          if (bedrockClientSingleton === null) {
+            throw new ValidationError(
+              'AWS Bedrock configuration is missing',
+              correlationId,
+              'config.awsBedrock',
+              'missing'
+            );
+          }
+
+          await handleBedrockRequest(
+            bedrockClientSingleton,
+            {
+              ...processingResult,
+              responsesParams,
+              reasoningEffort: finalReasoningEffort,
+            },
+            conversationId,
+            responseFormat,
+            correlationId,
+            req,
+            res,
+            metrics,
+            routingDecision
+          );
+          return;
+        }
+
         // Always use non-streaming for Azure requests, but simulate streaming for client if needed
         const azureParams = {
           ...responsesParams,
+          model: routingDecision.backendModel,
           stream: false, // Force non-streaming for Azure
         };
 
+        // Always use non-streaming for Azure requests, but simulate streaming for client if needed
         if (isStreamingRequest) {
           // Handle client streaming request with non-streaming Azure backend
           await handleSimulatedStreamingRequest(
@@ -871,8 +957,13 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
         let responseTransformationResult;
 
         try {
+          const normalizedResponse: ResponsesResponse = {
+            ...responsesAPIResponse,
+            model: routingDecision.requestedModel,
+          };
+
           responseTransformationResult = buildSuccessResponse(
-            responsesAPIResponse,
+            normalizedResponse,
             responseFormat,
             correlationId
           );
@@ -1010,6 +1101,573 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
 };
 
 
+
+/**
+ * Make AWS Bedrock API request with circuit breaker and retry logic
+ */
+async function makeBedrockAPIRequestWithResilience(
+  client: AWSBedrockClient,
+  params: import('../types/index.js').ResponsesCreateParams,
+  correlationId: string
+): Promise<ResponsesResponse> {
+  // Get circuit breaker for AWS Bedrock
+  const circuitBreaker = circuitBreakerRegistry.getCircuitBreaker(
+    'aws-bedrock-api',
+    {
+      failureThreshold: 5,
+      recoveryTimeout: 60000,
+      expectedErrors: ['NETWORK_ERROR', 'TIMEOUT_ERROR', 'AZURE_OPENAI_ERROR'],
+    }
+  );
+
+  // Get retry strategy
+  const retryStrategy = retryStrategyRegistry.getStrategy('aws-bedrock-api', {
+    maxAttempts: 3,
+    baseDelayMs: 1000,
+    maxDelayMs: 10000,
+    timeoutMs: bedrockConfiguration?.timeout ?? 120000,
+  });
+
+  // Execute with circuit breaker protection
+  const circuitResult = await circuitBreaker.execute(
+    async () => {
+      // Execute with retry logic
+      const retryResult = await retryStrategy.execute(
+        async () => {
+          try {
+            logger.debug('Making AWS Bedrock API request', correlationId, {
+              model: params.model,
+              hasReasoning: Boolean(params.reasoning),
+              reasoningEffort: params.reasoning?.effort,
+              inputType: typeof params.input,
+              inputLength: Array.isArray(params.input) ? params.input.length : 
+                          typeof params.input === 'string' ? params.input.length : 0,
+            });
+
+            const response = await client.createResponse(params);
+
+            logger.debug('AWS Bedrock API request successful', correlationId, {
+              responseId: response.id,
+              outputCount: response.output.length,
+              totalTokens: response.usage.total_tokens,
+            });
+
+            return response;
+          } catch (error) {
+            // Re-throw our custom errors as-is
+            if (error instanceof ValidationError || error instanceof AzureOpenAIError) {
+              throw error;
+            }
+
+            // Convert other errors to our custom error types
+            if (error instanceof Error) {
+              if (error.message.includes('timeout')) {
+                throw ErrorFactory.fromTimeout(
+                  bedrockConfiguration?.timeout ?? 120000,
+                  correlationId,
+                  'aws-bedrock-api-request'
+                );
+              }
+
+              if (error.message.includes('network') || error.message.includes('ECONNREFUSED')) {
+                throw ErrorFactory.fromNetworkError(
+                  error,
+                  correlationId,
+                  'aws-bedrock-api-request'
+                );
+              }
+            }
+
+            throw error;
+          }
+        },
+        correlationId,
+        'aws-bedrock-api-request'
+      );
+
+      if (retryResult.success && retryResult.data !== undefined) {
+        return retryResult.data;
+      }
+
+      const retryFailureError =
+        retryResult.error ??
+        new Error('Request failed after all retry attempts');
+      throw retryFailureError;
+    },
+    correlationId,
+    'aws-bedrock-api-request'
+  );
+
+  if (circuitResult.success && circuitResult.data !== undefined) {
+    return circuitResult.data;
+  }
+
+  const circuitFailureError =
+    circuitResult.error ??
+    new Error('Circuit breaker prevented request execution');
+  throw circuitFailureError;
+}
+
+async function handleBedrockRequest(
+  client: AWSBedrockClient,
+  processingResult: import('../utils/universal-request-processor.js').UniversalProcessingResult,
+  conversationId: string,
+  responseFormat: ResponseFormat,
+  correlationId: string,
+  req: RequestWithCorrelationId,
+  res: Response,
+  metrics: RequestMetrics,
+  routingDecision: ModelRoutingDecision
+): Promise<void> {
+  const { responsesParams, reasoningEffort } = processingResult;
+  
+  // Track Bedrock request start (Requirement 4.1)
+  const healthMonitor = getHealthMonitor();
+  const bedrockMonitor = healthMonitor.getBedrockMonitor();
+  const requestType = responsesParams.stream === true ? 'streaming' : 'non-streaming';
+  
+  if (bedrockMonitor) {
+    bedrockMonitor.trackBedrockRequest(
+      correlationId,
+      routingDecision.requestedModel,
+      requestType
+    );
+  }
+  
+  logger.debug('Starting Bedrock request handling', correlationId, {
+    conversationId,
+    provider: routingDecision.provider,
+    model: routingDecision.requestedModel,
+    backendModel: routingDecision.backendModel,
+    streaming: responsesParams.stream === true,
+    reasoningEffort,
+  });
+
+  // Check if streaming is requested by client
+  const isStreamingRequest = responsesParams.stream === true;
+
+  // Prepare Bedrock parameters with correct model mapping
+  const bedrockParams = {
+    ...responsesParams,
+    model: routingDecision.backendModel, // Use the mapped backend model ID
+    stream: false, // Force non-streaming for now, simulate streaming if needed
+  };
+
+  if (isStreamingRequest) {
+    // Handle client streaming request with simulated streaming
+    await handleBedrockSimulatedStreamingRequest(
+      client,
+      {
+        ...processingResult,
+        responsesParams: bedrockParams,
+        reasoningEffort,
+      },
+      conversationId,
+      responseFormat,
+      correlationId,
+      req,
+      res,
+      metrics
+    );
+    return;
+  }
+
+  // Make non-streaming request to AWS Bedrock with circuit breaker and retry logic
+  let bedrockAPIResponse: ResponsesResponse;
+  const bedrockRequestStart = Date.now();
+
+  try {
+    bedrockAPIResponse = await makeBedrockAPIRequestWithResilience(
+      client,
+      bedrockParams,
+      correlationId
+    );
+
+    metrics.bedrockRequestTime = Date.now() - bedrockRequestStart;
+
+    logger.debug('AWS Bedrock API request completed', correlationId, {
+      responseId: bedrockAPIResponse.id,
+      bedrockRequestTime: metrics.bedrockRequestTime,
+      outputCount: bedrockAPIResponse.output.length,
+      totalTokens: bedrockAPIResponse.usage.total_tokens,
+    });
+
+    // Track conversation for continuity
+    conversationManager.trackConversation(
+      conversationId,
+      bedrockAPIResponse.id,
+      {
+        totalTokensUsed: bedrockAPIResponse.usage.total_tokens,
+        reasoningTokensUsed: bedrockAPIResponse.usage.reasoning_tokens ?? 0,
+        averageResponseTime: metrics.bedrockRequestTime,
+        errorCount: 0,
+      }
+    );
+  } catch (error) {
+    metrics.bedrockRequestTime = Date.now() - bedrockRequestStart;
+
+    // Track Bedrock request error (Requirement 4.2)
+    if (bedrockMonitor) {
+      const errorType = error instanceof Error ? error.constructor.name : 'UnknownError';
+      bedrockMonitor.completeBedrockRequest(correlationId, false, errorType);
+    }
+
+    // Update conversation with error
+    conversationManager.updateConversationMetrics(conversationId, {
+      errorCount: 1,
+    });
+
+    // Try graceful degradation for Bedrock API failures
+    const axiosStatus =
+      typeof (error as { response?: { status?: number } }).response
+        ?.status === 'number'
+        ? (error as { response: { status: number } }).response.status
+        : undefined;
+
+    const derivedStatus =
+      error instanceof AzureOpenAIError
+        ? error.statusCode
+        : error instanceof ValidationError
+          ? 400
+          : axiosStatus;
+
+    const shouldAttemptDegradation =
+      derivedStatus === undefined || derivedStatus >= 500;
+
+    if (shouldAttemptDegradation) {
+      try {
+        const degradationResult =
+          await gracefulDegradationManager.executeGracefulDegradation({
+            correlationId,
+            operation: 'bedrock-api-completions',
+            error: error as Error,
+            attempt: 1,
+            metadata: { bedrockRequestTime: metrics.bedrockRequestTime },
+          });
+
+        if (degradationResult.success) {
+          logger.info('Graceful degradation successful for Bedrock', correlationId, {
+            fallback: degradationResult.fallbackUsed,
+            degraded: degradationResult.degraded,
+          });
+
+          const fallbackResult = buildFallbackResponse(
+            degradationResult.data,
+            responseFormat,
+            correlationId
+          );
+
+          res
+            .status(fallbackResult.statusCode)
+            .set(fallbackResult.headers)
+            .json(fallbackResult.body);
+          return;
+        }
+      } catch (degradationError) {
+        logger.warn('Graceful degradation exception for Bedrock', correlationId, {
+          originalError:
+            error instanceof Error ? error.message : 'Unknown error',
+          degradationError:
+            degradationError instanceof Error
+              ? degradationError.message
+              : 'Unknown error',
+        });
+      }
+    }
+
+    // Handle specific error types
+    if (error instanceof ValidationError) {
+      const errorResponse = createErrorResponseByFormat(
+        'invalid_request_error',
+        error.message,
+        400,
+        correlationId,
+        responseFormat
+      );
+
+      res
+        .status(errorResponse.statusCode)
+        .set(errorResponse.headers)
+        .json(errorResponse.response);
+      return;
+    }
+
+    if (error instanceof AzureOpenAIError) {
+      let errorType:
+        | 'invalid_request_error'
+        | 'authentication_error'
+        | 'rate_limit_error'
+        | 'api_error' = 'api_error';
+
+      if (error.azureErrorType === 'invalid_request_error') {
+        errorType = 'invalid_request_error';
+      } else if (error.azureErrorType === 'authentication_error') {
+        errorType = 'authentication_error';
+      } else if (error.azureErrorType === 'rate_limit_error') {
+        errorType = 'rate_limit_error';
+      }
+
+      const errorResponse = createErrorResponseByFormat(
+        errorType,
+        error.message,
+        error.statusCode,
+        correlationId,
+        responseFormat
+      );
+
+      res
+        .status(errorResponse.statusCode)
+        .set(errorResponse.headers)
+        .json(errorResponse.response);
+      return;
+    }
+
+    const mappedError = mapErrorToClientResponse(
+      error,
+      correlationId,
+      responseFormat
+    );
+
+    res
+      .status(mappedError.statusCode)
+      .set(mappedError.headers)
+      .json(mappedError.body);
+    return;
+  }
+
+  // Transform Bedrock API response to appropriate format
+  const responseTransformStart = Date.now();
+  let responseTransformationResult;
+
+  try {
+    const normalizedResponse: ResponsesResponse = {
+      ...bedrockAPIResponse,
+      model: routingDecision.requestedModel, // Return the user's requested model name
+    };
+
+    responseTransformationResult = buildSuccessResponse(
+      normalizedResponse,
+      responseFormat,
+      correlationId
+    );
+
+    metrics.responseTransformationTime = Date.now() - responseTransformStart;
+
+    logger.debug('Bedrock response transformation successful', correlationId, {
+      responseTransformationTime: metrics.responseTransformationTime,
+      responseFormat,
+      outputCount: bedrockAPIResponse.output.length,
+    });
+  } catch (error) {
+    metrics.responseTransformationTime = Date.now() - responseTransformStart;
+
+    logger.error('Bedrock response transformation failed', correlationId, {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      responseTransformationTime: metrics.responseTransformationTime,
+    });
+
+    // Create fallback error response
+    const errorResponse = createErrorResponseByFormat(
+      'api_error',
+      'Failed to transform Bedrock response',
+      500,
+      correlationId,
+      responseFormat
+    );
+
+    res
+      .status(errorResponse.statusCode)
+      .set(errorResponse.headers)
+      .json(errorResponse.response);
+    return;
+  }
+
+  // Calculate total processing time
+  metrics.totalTime = Date.now() - metrics.startTime;
+
+  // Performance monitoring and logging
+  logger.info('Bedrock completions request completed', correlationId, {
+    statusCode: responseTransformationResult.statusCode,
+    totalTime: metrics.totalTime,
+    requestSize: metrics.requestSize,
+    formatDetectionTime: metrics.formatDetectionTime,
+    transformationTime: metrics.transformationTime,
+    bedrockRequestTime: metrics.bedrockRequestTime,
+    responseTransformationTime: metrics.responseTransformationTime,
+    responseSize: JSON.stringify(responseTransformationResult.body).length,
+    responseFormat,
+    conversationId,
+    reasoningEffort,
+    estimatedComplexity: processingResult.estimatedComplexity,
+    totalTokens: bedrockAPIResponse.usage.total_tokens,
+    provider: 'bedrock',
+    requestedModel: routingDecision.requestedModel,
+    backendModel: routingDecision.backendModel,
+  });
+
+  // Performance warning for slow requests
+  const timeoutMs = bedrockConfiguration?.timeout ?? 120000;
+  if (metrics.totalTime > timeoutMs * 0.25) {
+    // 25% of configured timeout
+    logger.warn('Slow Bedrock completion request detected', correlationId, {
+      totalTime: metrics.totalTime,
+      breakdown: {
+        formatDetection: metrics.formatDetectionTime,
+        transformation: metrics.transformationTime,
+        bedrockRequest: metrics.bedrockRequestTime,
+        responseTransformation: metrics.responseTransformationTime,
+      },
+      conversationId,
+      reasoningEffort,
+    });
+  }
+
+  // Track Bedrock request completion (Requirement 4.2)
+  if (bedrockMonitor) {
+    bedrockMonitor.completeBedrockRequest(correlationId, true);
+  }
+
+  // Send response with proper headers
+  res
+    .status(responseTransformationResult.statusCode)
+    .set(responseTransformationResult.headers)
+    .json(responseTransformationResult.body);
+}
+
+/**
+ * Handle simulated streaming requests using non-streaming Bedrock backend
+ * This function makes a non-streaming request to Bedrock but simulates streaming for the client
+ */
+async function handleBedrockSimulatedStreamingRequest(
+  client: AWSBedrockClient,
+  processingResult: import('../utils/universal-request-processor.js').UniversalProcessingResult,
+  conversationId: string,
+  responseFormat: import('../types/index.js').ResponseFormat,
+  correlationId: string,
+  req: RequestWithCorrelationId,
+  res: Response,
+  metrics: RequestMetrics
+): Promise<void> {
+  const bedrockRequestStart = Date.now();
+
+  // Track Bedrock streaming request start (Requirement 4.1)
+  const healthMonitor = getHealthMonitor();
+  const bedrockMonitor = healthMonitor.getBedrockMonitor();
+  
+  if (bedrockMonitor) {
+    bedrockMonitor.trackBedrockRequest(
+      correlationId,
+      processingResult.responsesParams.model,
+      'streaming'
+    );
+  }
+
+  try {
+    logger.debug('Starting Bedrock simulated streaming request', correlationId, {
+      conversationId,
+      responseFormat,
+      reasoningEffort: processingResult.reasoningEffort,
+    });
+
+    // Set streaming headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Cache-Control');
+
+    // Make non-streaming request to Bedrock
+    const bedrockAPIResponse = await makeBedrockAPIRequestWithResilience(
+      client,
+      processingResult.responsesParams,
+      correlationId
+    );
+
+    metrics.bedrockRequestTime = Date.now() - bedrockRequestStart;
+
+    // Simulate streaming by breaking the response into chunks
+    await simulateStreamingResponse(
+      bedrockAPIResponse,
+      responseFormat,
+      correlationId,
+      res
+    );
+
+    // Track conversation for continuity
+    conversationManager.trackConversation(
+      conversationId,
+      bedrockAPIResponse.id,
+      {
+        totalTokensUsed: bedrockAPIResponse.usage.total_tokens,
+        reasoningTokensUsed: bedrockAPIResponse.usage.reasoning_tokens,
+        averageResponseTime: metrics.bedrockRequestTime,
+        errorCount: 0,
+      }
+    );
+
+    metrics.totalTime = Date.now() - metrics.startTime;
+
+    // Track Bedrock streaming request completion (Requirement 4.2)
+    if (bedrockMonitor) {
+      bedrockMonitor.completeBedrockRequest(correlationId, true);
+    }
+
+    logger.info('Bedrock simulated streaming request completed', correlationId, {
+      totalTime: metrics.totalTime,
+      bedrockRequestTime: metrics.bedrockRequestTime,
+      chunkCount: 'simulated',
+      totalTokens: bedrockAPIResponse.usage.total_tokens,
+      conversationId,
+      responseFormat,
+      provider: 'bedrock',
+    });
+
+  } catch (error) {
+    metrics.totalTime = Date.now() - metrics.startTime;
+    metrics.bedrockRequestTime = Date.now() - bedrockRequestStart;
+
+    // Track Bedrock streaming request error (Requirement 4.2)
+    if (bedrockMonitor) {
+      const errorType = error instanceof Error ? error.constructor.name : 'UnknownError';
+      bedrockMonitor.completeBedrockRequest(correlationId, false, errorType);
+    }
+
+    logger.error('Bedrock simulated streaming request failed', correlationId, {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      totalTime: metrics.totalTime,
+      bedrockRequestTime: metrics.bedrockRequestTime,
+    });
+
+    // Update conversation with error
+    conversationManager.updateConversationMetrics(conversationId, {
+      errorCount: 1,
+    });
+
+    // Send error event and close stream
+    if (responseFormat === 'claude') {
+      res.write('event: error\n');
+      res.write(`data: ${JSON.stringify({
+        type: 'error',
+        error: {
+          type: 'api_error',
+          message: error instanceof Error ? error.message : 'Unknown error'
+        }
+      })}\n\n`);
+      res.write('event: message_stop\n');
+      res.write('data: {"type":"message_stop"}\n\n');
+    } else {
+      res.write(`data: ${JSON.stringify({
+        error: {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          type: 'api_error'
+        }
+      })}\n\n`);
+      res.write('data: [DONE]\n\n');
+    }
+
+    res.end();
+  }
+}
 
 /**
  * Handle simulated streaming requests using non-streaming Azure backend
