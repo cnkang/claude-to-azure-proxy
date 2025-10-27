@@ -365,6 +365,38 @@ describe('Completions Endpoint', () => {
     });
   });
 
+  describe('Bedrock routing safeguards', () => {
+    it('returns a validation error when Bedrock routing is requested without configuration', async () => {
+      const bedrockResult = {
+        ...mockResponses.universalProcessingResult(),
+        responsesParams: {
+          model: 'qwen-3-coder',
+          input: 'Route this request to Bedrock',
+          stream: false,
+        },
+        routingDecision: {
+          provider: 'bedrock' as const,
+          requestedModel: 'qwen-3-coder',
+          backendModel: 'qwen.qwen3-coder-480b-a35b-v1:0',
+          isSupported: true,
+        },
+      };
+      mocks.universalProcessor.processRequest.mockResolvedValueOnce(bedrockResult);
+
+      const response = await request(app)
+        .post('/v1/completions')
+        .set('Authorization', `Bearer ${validApiKey}`)
+        .send({
+          model: 'qwen-3-coder',
+          prompt: 'Please use the alternative provider',
+          max_tokens: 200,
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error?.message).toContain('AWS Bedrock configuration is missing');
+    });
+  });
+
   describe('Error Handling', () => {
     it('should handle basic error scenarios', async () => {
       // Test with a request that will trigger the defensive handler
