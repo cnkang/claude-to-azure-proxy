@@ -211,6 +211,45 @@ describe('Configuration Module', () => {
     });
   });
 
+  describe('Optional overrides and summaries', () => {
+    it('applies Azure overrides and reports configuration summary', async () => {
+      process.env.PROXY_API_KEY = 'a'.repeat(32);
+      process.env.AZURE_OPENAI_ENDPOINT = 'https://test.openai.azure.com';
+      process.env.AZURE_OPENAI_API_KEY = 'b'.repeat(32);
+      process.env.AZURE_OPENAI_MODEL = 'gpt-4o';
+      process.env.AZURE_OPENAI_TIMEOUT = '60000';
+      process.env.AZURE_OPENAI_MAX_RETRIES = '6';
+      process.env.AZURE_OPENAI_API_VERSION = '2024-05-01';
+      process.env.DEFAULT_REASONING_EFFORT = 'medium';
+      process.env.ENABLE_CONTENT_SECURITY_VALIDATION = 'false';
+
+      const configModule = await import('../src/config/index.js?t=' + Date.now());
+      const config = configModule.default as Record<string, unknown>;
+
+      expect(config.AZURE_OPENAI_TIMEOUT).toBe(60000);
+      expect(config.AZURE_OPENAI_MAX_RETRIES).toBe(6);
+      expect(config.AZURE_OPENAI_API_VERSION).toBe('2024-05-01');
+      expect(config.ENABLE_CONTENT_SECURITY_VALIDATION).toBe(false);
+
+      const summary = configModule.getConfigurationSummary();
+      expect(summary.timeout).toBe(60000);
+      expect(summary.maxRetries).toBe(6);
+      expect(summary.azureApiVersion).toBe('2024-05-01');
+    });
+
+    it('exits when DEFAULT_REASONING_EFFORT is invalid', async () => {
+      process.env.PROXY_API_KEY = 'a'.repeat(32);
+      process.env.AZURE_OPENAI_ENDPOINT = 'https://test.openai.azure.com';
+      process.env.AZURE_OPENAI_API_KEY = 'b'.repeat(32);
+      process.env.AZURE_OPENAI_MODEL = 'gpt-4';
+      process.env.DEFAULT_REASONING_EFFORT = 'extreme';
+
+      await import('../src/config/index.js?t=' + Date.now());
+
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+  });
+
   describe('Data Type Validation', () => {
     it('should convert PORT to number', async () => {
       process.env.PROXY_API_KEY = 'a'.repeat(32);
