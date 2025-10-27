@@ -1,5 +1,6 @@
 // Core TypeScript interfaces for the application
 import { Request, Response, NextFunction } from 'express';
+import type { Readable } from 'node:stream';
 
 export interface ServerConfig {
   readonly port: number;
@@ -26,6 +27,145 @@ export interface AzureOpenAIConfig {
   readonly timeout: number;
   readonly maxRetries: number;
 }
+
+// AWS Bedrock Configuration
+export interface AWSBedrockConfig {
+  readonly baseURL: string; // https://bedrock-runtime.{region}.amazonaws.com
+  readonly apiKey: string;
+  readonly region: string; // AWS region (e.g., us-west-2)
+  readonly timeout: number;
+  readonly maxRetries: number;
+}
+
+export type ModelProvider = 'azure' | 'bedrock';
+
+export interface ModelRoutingEntry {
+  readonly provider: ModelProvider;
+  readonly backendModel: string;
+  readonly aliases: readonly string[];
+  readonly capabilities?: readonly string[];
+}
+
+export interface ModelRoutingConfig {
+  readonly defaultProvider: ModelProvider;
+  readonly defaultModel: string;
+  readonly entries: readonly ModelRoutingEntry[];
+}
+
+export interface ModelRoutingDecision {
+  readonly provider: ModelProvider;
+  readonly requestedModel: string;
+  readonly backendModel: string;
+  readonly isSupported: boolean;
+}
+
+// AWS Bedrock Converse API Types
+export interface BedrockConverseRequest {
+  readonly messages: readonly BedrockMessage[];
+  readonly inferenceConfig?: {
+    readonly maxTokens?: number;
+    readonly temperature?: number;
+    readonly topP?: number;
+    readonly stopSequences?: readonly string[];
+  };
+  readonly system?: readonly BedrockSystemMessage[];
+  readonly toolConfig?: BedrockToolConfig;
+}
+
+export interface BedrockMessage {
+  readonly role: 'user' | 'assistant';
+  readonly content: readonly BedrockContentBlock[];
+}
+
+export interface BedrockContentBlock {
+  readonly text?: string;
+  readonly toolUse?: BedrockToolUse;
+  readonly toolResult?: BedrockToolResult;
+}
+
+export interface BedrockSystemMessage {
+  readonly text: string;
+}
+
+export interface BedrockToolConfig {
+  readonly tools?: readonly BedrockTool[];
+  readonly toolChoice?: BedrockToolChoice;
+}
+
+export interface BedrockTool {
+  readonly toolSpec: {
+    readonly name: string;
+    readonly description: string;
+    readonly inputSchema: {
+      readonly json: JsonSchema;
+    };
+  };
+}
+
+export interface BedrockToolChoice {
+  readonly auto?: Record<string, never>;
+  readonly any?: Record<string, never>;
+  readonly tool?: {
+    readonly name: string;
+  };
+}
+
+export interface BedrockToolUse {
+  readonly toolUseId: string;
+  readonly name: string;
+  readonly input: Record<string, unknown>;
+}
+
+export interface BedrockToolResult {
+  readonly toolUseId: string;
+  readonly content: readonly BedrockContentBlock[];
+  readonly status?: 'success' | 'error';
+}
+
+export interface BedrockConverseResponse {
+  readonly responseId: string;
+  readonly output: {
+    readonly message: BedrockMessage;
+  };
+  readonly stopReason:
+    | 'end_turn'
+    | 'tool_use'
+    | 'max_tokens'
+    | 'stop_sequence';
+  readonly usage: BedrockUsage;
+  readonly metrics?: BedrockMetrics;
+}
+
+export interface BedrockStreamChunk {
+  readonly messageStart?: { readonly role: 'assistant' };
+  readonly contentBlockStart?: {
+    readonly start: { readonly toolUse?: BedrockToolUse };
+  };
+  readonly contentBlockDelta?: {
+    readonly delta: { readonly text?: string };
+  };
+  readonly contentBlockStop?: { readonly contentBlockIndex: number };
+  readonly messageStop?: { readonly stopReason: string };
+  readonly metadata?: {
+    readonly usage?: BedrockUsage;
+    readonly metrics?: BedrockMetrics;
+  };
+  readonly message?: BedrockMessage;
+}
+
+export interface BedrockUsage {
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+  readonly totalTokens: number;
+  readonly invocationLatency?: number;
+  readonly firstByteLatency?: number;
+}
+
+export interface BedrockMetrics {
+  readonly latencyMs: number;
+}
+
+export type BedrockStream = Readable & AsyncIterable<Buffer | string>;
 
 // Responses API Types
 export type ReasoningEffort = 'minimal' | 'low' | 'medium' | 'high';
@@ -163,6 +303,10 @@ export interface HealthCheckResult {
     readonly percentage: number;
   };
   readonly azureOpenAI?: {
+    readonly status: 'connected' | 'disconnected';
+    readonly responseTime?: number;
+  };
+  readonly awsBedrock?: {
     readonly status: 'connected' | 'disconnected';
     readonly responseTime?: number;
   };
@@ -978,6 +1122,22 @@ export function isResponsesResponse(value: unknown): value is ResponsesResponse 
     isString(model) &&
     isArray(output) &&
     isRecord(usage)
+  );
+}
+
+export function isResponsesStreamChunk(value: unknown): value is ResponsesStreamChunk {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  const { id, object, created, model, output, usage } = value;
+  return (
+    isString(id) &&
+    object === 'response.chunk' &&
+    isNumber(created) &&
+    isString(model) &&
+    isArray(output) &&
+    (usage === undefined || isRecord(usage))
   );
 }
 

@@ -16,6 +16,9 @@ import type {
   ReasoningEffort,
   ConversationContext,
   DeepReadonly,
+  ModelRoutingConfig,
+  ModelRoutingDecision,
+  ModelProvider,
 } from '../types/index.js';
 import { ValidationError, InternalServerError } from '../errors/index.js';
 import { FormatDetectionService } from './format-detection.js';
@@ -28,6 +31,7 @@ import { createReasoningEffortAnalyzer } from './reasoning-effort-analyzer.js';
  */
 export interface UniversalProcessingResult {
   readonly responsesParams: ResponsesCreateParams;
+  readonly routingDecision: ModelRoutingDecision;
   readonly requestFormat: RequestFormat;
   readonly responseFormat: ResponseFormat;
   readonly conversationId: string;
@@ -49,6 +53,7 @@ export interface UniversalProcessorConfig {
   readonly swiftKeywords: readonly string[];
   readonly iosKeywords: readonly string[];
   readonly reasoningBoost: number;
+  readonly modelRouting: ModelRoutingConfig;
 }
 
 /**
@@ -59,11 +64,15 @@ export class UniversalRequestProcessor {
   private readonly formatDetector: FormatDetectionService;
   private readonly config: UniversalProcessorConfig;
   private readonly reasoningAnalyzer: ReturnType<typeof createReasoningEffortAnalyzer>;
+  private readonly modelRoutingMap: Map<string, { readonly provider: ModelProvider; readonly backendModel: string }>;
+  private readonly supportedModels: readonly string[];
 
   constructor(config: Readonly<UniversalProcessorConfig>) {
     this.formatDetector = new FormatDetectionService();
     this.config = config;
     this.reasoningAnalyzer = createReasoningEffortAnalyzer();
+    this.modelRoutingMap = this.createModelRoutingMap(config.modelRouting);
+    this.supportedModels = this.extractSupportedModels(config.modelRouting);
   }
 
   /**
@@ -121,8 +130,19 @@ export class UniversalRequestProcessor {
         requestFormat
       );
 
+      const routingDecision = this.determineModelRouting(
+        responsesParams.model,
+        correlationId
+      );
+
+      const routedParams: ResponsesCreateParams = {
+        ...responsesParams,
+        model: routingDecision.backendModel,
+      };
+
       return Promise.resolve({
-        responsesParams,
+        responsesParams: routedParams,
+        routingDecision,
         requestFormat,
         responseFormat,
         conversationId,
@@ -735,6 +755,106 @@ export class UniversalRequestProcessor {
       conversationContext
     );
   }
+
+  private determineModelRouting(
+    model: string,
+    correlationId: string
+  ): ModelRoutingDecision {
+    if (typeof model !== 'string' || model.trim().length === 0) {
+      throw new ValidationError(
+        'Model is required for routing',
+        correlationId,
+        'model',
+        model
+      );
+    }
+
+    const normalizedModel = model.trim().toLowerCase();
+    const mapping = this.modelRoutingMap.get(normalizedModel);
+
+    if (mapping === undefined) {
+      const supported =
+        this.supportedModels.length > 0
+          ? `Supported models: ${this.supportedModels.join(', ')}`
+          : 'No models are currently configured';
+
+      throw new ValidationError(
+        `Unsupported model "${model}". ${supported}`,
+        correlationId,
+        'model',
+        model,
+        true,
+        'UniversalRequestProcessor.determineModelRouting'
+      );
+    }
+
+    return {
+      provider: mapping.provider,
+      requestedModel: model,
+      backendModel: mapping.backendModel,
+      isSupported: true,
+    };
+  }
+
+  private createModelRoutingMap(
+    routingConfig: ModelRoutingConfig
+  ): Map<string, { readonly provider: ModelProvider; readonly backendModel: string }> {
+    const map = new Map<
+      string,
+      { readonly provider: ModelProvider; readonly backendModel: string }
+    >();
+
+    for (const entry of routingConfig.entries) {
+      const backendModel =
+        typeof entry.backendModel === 'string'
+          ? entry.backendModel.trim()
+          : '';
+      const aliasSet = new Set<string>();
+
+      if (backendModel.length > 0) {
+        aliasSet.add(backendModel.toLowerCase());
+      }
+
+      for (const alias of entry.aliases) {
+        if (typeof alias === 'string' && alias.trim().length > 0) {
+          aliasSet.add(alias.trim().toLowerCase());
+        }
+      }
+
+      for (const alias of aliasSet) {
+        if (map.has(alias)) {
+          continue;
+        }
+
+        map.set(alias, {
+          provider: entry.provider,
+          backendModel: backendModel.length > 0 ? backendModel : entry.backendModel,
+        });
+      }
+    }
+
+    return map;
+  }
+
+  private extractSupportedModels(
+    routingConfig: ModelRoutingConfig
+  ): readonly string[] {
+    const models = new Set<string>();
+
+    for (const entry of routingConfig.entries) {
+      if (typeof entry.backendModel === 'string' && entry.backendModel.trim().length > 0) {
+        models.add(entry.backendModel.trim());
+      }
+
+      for (const alias of entry.aliases) {
+        if (typeof alias === 'string' && alias.trim().length > 0) {
+          models.add(alias.trim());
+        }
+      }
+    }
+
+    return Object.freeze(Array.from(models));
+  }
   /**
    * Generate correlation ID for request tracking
    */
@@ -754,6 +874,23 @@ export function createUniversalRequestProcessor(
 ): UniversalRequestProcessor {
   return new UniversalRequestProcessor(config);
 }
+
+const DEFAULT_MODEL_ROUTING_CONFIG: ModelRoutingConfig = {
+  defaultProvider: 'azure',
+  defaultModel: 'gpt-5-codex',
+  entries: [
+    {
+      provider: 'azure',
+      backendModel: 'gpt-5-codex',
+      aliases: ['gpt-5-codex', 'gpt-4', 'gpt-4o', 'gpt-4-turbo'],
+    },
+    {
+      provider: 'bedrock',
+      backendModel: 'qwen.qwen3-coder-480b-a35b-v1:0',
+      aliases: ['qwen-3-coder', 'qwen.qwen3-coder-480b-a35b-v1:0'],
+    },
+  ],
+};
 
 /**
  * Default configuration for universal request processor
@@ -796,6 +933,7 @@ export const defaultUniversalProcessorConfig: UniversalProcessorConfig = {
     'bundle identifier',
   ],
   reasoningBoost: 1.5,
+  modelRouting: DEFAULT_MODEL_ROUTING_CONFIG,
 };
 
 // Configuration for development/code review scenarios

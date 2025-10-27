@@ -183,6 +183,50 @@ export interface Config {
    * @example "development" | "production" | "test"
    */
   NODE_ENV: 'development' | 'production' | 'test';
+
+  /**
+   * AWS Bedrock API key for backend authentication (optional).
+   *
+   * This key is used by the proxy to authenticate with AWS Bedrock API.
+   * When provided, enables AWS Bedrock model support alongside Azure OpenAI.
+   * It should be kept secure and never exposed to clients.
+   *
+   * @example "AKIA1234567890ABCDEF"
+   */
+  AWS_BEDROCK_API_KEY?: string;
+
+  /**
+   * AWS Bedrock region for API calls (optional).
+   *
+   * The AWS region where Bedrock models are deployed.
+   * Currently supports us-west-2 for Qwen models.
+   *
+   * @default "us-west-2"
+   * @example "us-west-2"
+   */
+  AWS_BEDROCK_REGION?: string;
+
+  /**
+   * Request timeout in milliseconds for AWS Bedrock API calls (optional).
+   *
+   * Maximum time to wait for AWS Bedrock API responses before timing out.
+   * Should be set based on expected response times and model complexity.
+   *
+   * @default 120000
+   * @example 120000
+   */
+  AWS_BEDROCK_TIMEOUT?: number;
+
+  /**
+   * Maximum number of retry attempts for failed AWS Bedrock API calls (optional).
+   *
+   * Number of times to retry failed requests before giving up.
+   * Uses exponential backoff with jitter for retry delays.
+   *
+   * @default 3
+   * @example 3
+   */
+  AWS_BEDROCK_MAX_RETRIES?: number;
 }
 
 /**
@@ -267,6 +311,38 @@ const configSchema = Joi.object<Config>({
     .valid('development', 'production', 'test')
     .default('production')
     .description('Node.js environment'),
+
+  // Optional AWS Bedrock API key
+  AWS_BEDROCK_API_KEY: Joi.string()
+    .min(16)
+    .max(256)
+    .optional()
+    .description('AWS Bedrock API key for backend authentication (optional)'),
+
+  // Optional AWS Bedrock region
+  AWS_BEDROCK_REGION: Joi.string()
+    .valid('us-west-2', 'us-east-1', 'eu-west-1')
+    .default('us-west-2')
+    .optional()
+    .description('AWS Bedrock region (default: us-west-2)'),
+
+  // Optional AWS Bedrock timeout
+  AWS_BEDROCK_TIMEOUT: Joi.number()
+    .integer()
+    .min(5000)
+    .max(300000)
+    .default(120000)
+    .optional()
+    .description('AWS Bedrock request timeout in milliseconds (default: 120000)'),
+
+  // Optional AWS Bedrock max retries
+  AWS_BEDROCK_MAX_RETRIES: Joi.number()
+    .integer()
+    .min(0)
+    .max(10)
+    .default(3)
+    .optional()
+    .description('AWS Bedrock maximum retry attempts (default: 3)'),
 });
 
 /**
@@ -291,6 +367,10 @@ function createConfig(): Readonly<Config> {
     ENABLE_CONTENT_SECURITY_VALIDATION: process.env.ENABLE_CONTENT_SECURITY_VALIDATION,
     PORT: process.env.PORT,
     NODE_ENV: process.env.NODE_ENV,
+    AWS_BEDROCK_API_KEY: process.env.AWS_BEDROCK_API_KEY,
+    AWS_BEDROCK_REGION: process.env.AWS_BEDROCK_REGION,
+    AWS_BEDROCK_TIMEOUT: process.env.AWS_BEDROCK_TIMEOUT,
+    AWS_BEDROCK_MAX_RETRIES: process.env.AWS_BEDROCK_MAX_RETRIES,
   };
 
   // Validate against schema
@@ -343,6 +423,10 @@ function createConfig(): Readonly<Config> {
       '  - ENABLE_CONTENT_SECURITY_VALIDATION: Enable content security validation (true|false, default: true)',
       '  - PORT: Server port number (1024-65535, default: 8080)',
       '  - NODE_ENV: Node.js environment (development|production|test, default: production)',
+      '  - AWS_BEDROCK_API_KEY: AWS Bedrock API key (optional, 16-256 characters)',
+      '  - AWS_BEDROCK_REGION: AWS Bedrock region (optional, default: us-west-2)',
+      '  - AWS_BEDROCK_TIMEOUT: AWS Bedrock request timeout in ms (optional, 5000-300000, default: 120000)',
+      '  - AWS_BEDROCK_MAX_RETRIES: AWS Bedrock max retry attempts (optional, 0-10, default: 3)',
     ].join('\n');
 
     throw new ConfigurationError(
@@ -379,6 +463,10 @@ export interface SanitizedConfig {
   readonly NODE_ENV: 'development' | 'production' | 'test';
   readonly PROXY_API_KEY: '[REDACTED]';
   readonly AZURE_OPENAI_API_KEY: '[REDACTED]';
+  readonly AWS_BEDROCK_API_KEY?: '[REDACTED]';
+  readonly AWS_BEDROCK_REGION?: string;
+  readonly AWS_BEDROCK_TIMEOUT?: number;
+  readonly AWS_BEDROCK_MAX_RETRIES?: number;
 }
 
 function assertIsConfig(value: unknown): asserts value is Config {
@@ -472,6 +560,50 @@ function assertIsConfig(value: unknown): asserts value is Config {
       'Configuration key ENABLE_CONTENT_SECURITY_VALIDATION is missing or not a boolean'
     );
   }
+
+  if (
+    candidate.AWS_BEDROCK_API_KEY !== undefined &&
+    typeof candidate.AWS_BEDROCK_API_KEY !== 'string'
+  ) {
+    throw new ConfigurationError(
+      'Configuration key AWS_BEDROCK_API_KEY must be a string when provided',
+      'config-validation',
+      'configuration_validation'
+    );
+  }
+
+  if (
+    candidate.AWS_BEDROCK_REGION !== undefined &&
+    typeof candidate.AWS_BEDROCK_REGION !== 'string'
+  ) {
+    throw new ConfigurationError(
+      'Configuration key AWS_BEDROCK_REGION must be a string when provided',
+      'config-validation',
+      'configuration_validation'
+    );
+  }
+
+  if (
+    candidate.AWS_BEDROCK_TIMEOUT !== undefined &&
+    typeof candidate.AWS_BEDROCK_TIMEOUT !== 'number'
+  ) {
+    throw new ConfigurationError(
+      'Configuration key AWS_BEDROCK_TIMEOUT must be a number when provided',
+      'config-validation',
+      'configuration_validation'
+    );
+  }
+
+  if (
+    candidate.AWS_BEDROCK_MAX_RETRIES !== undefined &&
+    typeof candidate.AWS_BEDROCK_MAX_RETRIES !== 'number'
+  ) {
+    throw new ConfigurationError(
+      'Configuration key AWS_BEDROCK_MAX_RETRIES must be a number when provided',
+      'config-validation',
+      'configuration_validation'
+    );
+  }
 }
 
 function sanitizeConfig(value: Readonly<Config>): SanitizedConfig {
@@ -487,6 +619,10 @@ function sanitizeConfig(value: Readonly<Config>): SanitizedConfig {
     NODE_ENV: value.NODE_ENV,
     PROXY_API_KEY: '[REDACTED]',
     AZURE_OPENAI_API_KEY: '[REDACTED]',
+    AWS_BEDROCK_API_KEY: value.AWS_BEDROCK_API_KEY !== undefined ? '[REDACTED]' : undefined,
+    AWS_BEDROCK_REGION: value.AWS_BEDROCK_REGION,
+    AWS_BEDROCK_TIMEOUT: value.AWS_BEDROCK_TIMEOUT,
+    AWS_BEDROCK_MAX_RETRIES: value.AWS_BEDROCK_MAX_RETRIES,
   };
 }
 
@@ -542,6 +678,36 @@ export function createAzureOpenAIConfig(
     deployment: config.AZURE_OPENAI_MODEL,
     timeout: config.AZURE_OPENAI_TIMEOUT,
     maxRetries: config.AZURE_OPENAI_MAX_RETRIES,
+  };
+}
+
+/**
+ * Creates an AWSBedrockConfig from the validated configuration.
+ *
+ * @param config - Validated configuration object
+ * @returns AWS Bedrock client configuration
+ * @throws ConfigurationError if AWS Bedrock is not configured
+ */
+export function createAWSBedrockConfig(
+  config: Readonly<Config>
+): import('../types/index.js').AWSBedrockConfig {
+  if (config.AWS_BEDROCK_API_KEY === undefined) {
+    throw new ConfigurationError(
+      'AWS Bedrock API key is required to create Bedrock configuration',
+      'config-validation',
+      'bedrock_configuration'
+    );
+  }
+
+  const region = config.AWS_BEDROCK_REGION ?? 'us-west-2';
+  const baseURL = `https://bedrock-runtime.${region}.amazonaws.com`;
+
+  return {
+    baseURL,
+    apiKey: config.AWS_BEDROCK_API_KEY,
+    region,
+    timeout: config.AWS_BEDROCK_TIMEOUT ?? 120000,
+    maxRetries: config.AWS_BEDROCK_MAX_RETRIES ?? 3,
   };
 }
 
@@ -610,6 +776,16 @@ export function validateNumericEnvironmentVariable(
 }
 
 /**
+ * Checks if AWS Bedrock is configured and available
+ *
+ * @param config - Validated configuration object
+ * @returns True if AWS Bedrock is configured with required settings
+ */
+export function isAWSBedrockConfigured(config: Readonly<Config>): boolean {
+  return config.AWS_BEDROCK_API_KEY !== undefined;
+}
+
+/**
  * Creates a configuration validation summary for debugging
  */
 export function getConfigurationSummary(): Record<string, unknown> {
@@ -629,6 +805,10 @@ export function getConfigurationSummary(): Record<string, unknown> {
     AZURE_OPENAI_TIMEOUT,
     AZURE_OPENAI_MAX_RETRIES,
     DEFAULT_REASONING_EFFORT,
+    AWS_BEDROCK_API_KEY,
+    AWS_BEDROCK_REGION,
+    AWS_BEDROCK_TIMEOUT,
+    AWS_BEDROCK_MAX_RETRIES,
   } = config;
   
   return {
@@ -642,6 +822,10 @@ export function getConfigurationSummary(): Record<string, unknown> {
     timeout: AZURE_OPENAI_TIMEOUT,
     maxRetries: AZURE_OPENAI_MAX_RETRIES,
     defaultReasoningEffort: DEFAULT_REASONING_EFFORT,
+    hasBedrockApiKey: AWS_BEDROCK_API_KEY !== undefined,
+    bedrockRegion: AWS_BEDROCK_REGION,
+    bedrockTimeout: AWS_BEDROCK_TIMEOUT,
+    bedrockMaxRetries: AWS_BEDROCK_MAX_RETRIES,
   };
 }
 
