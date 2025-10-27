@@ -9,7 +9,7 @@ import type {
   ClaudeError,
   ResponsesResponse,
 } from '../src/types/index.js';
-import type { ClaudeCompletionRequest } from '../src/utils/request-transformer.js';
+import type { ClaudeRequest } from '../src/types/index.js';
 
 export interface TestDataOptions {
   readonly seed?: number;
@@ -24,7 +24,7 @@ export interface TestDataOptions {
 export class ClaudeRequestFactory {
   private static counter = 0;
 
-  static create(options: TestDataOptions = {}): ClaudeCompletionRequest {
+  static create(options: TestDataOptions = {}): ClaudeRequest {
     const {
       size = 'medium',
       includeOptional = false,
@@ -47,10 +47,22 @@ export class ClaudeRequestFactory {
           : prompts.large;
     const maxTokens = size === 'small' ? 50 : size === 'medium' ? 100 : 500;
 
-    const baseRequest: ClaudeCompletionRequest = {
-      model: 'claude-3-5-sonnet-20241022',
-      prompt: promptText,
+    const baseRequest: ClaudeRequest = {
+      model: 'gpt-4', // Use supported model but with Claude format structure
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: promptText,
+            },
+          ],
+        },
+      ],
       max_tokens: maxTokens,
+      // Add Claude-specific indicator to trigger Claude format detection
+      'anthropic-version': '2023-06-01',
     };
 
     if (includeOptional) {
@@ -58,9 +70,10 @@ export class ClaudeRequestFactory {
         ...baseRequest,
         temperature: 0.7,
         top_p: 0.9,
-        top_k: 40,
         stop_sequences: ['END', 'STOP'],
         stream: false,
+        // Ensure Claude format indicator is preserved
+        'anthropic-version': '2023-06-01',
       };
     }
 
@@ -70,7 +83,7 @@ export class ClaudeRequestFactory {
   static createBatch(
     count: number,
     options: TestDataOptions = {}
-  ): ClaudeCompletionRequest[] {
+  ): ClaudeRequest[] {
     return Array.from({ length: count }, (_, i) =>
       ClaudeRequestFactory.create({ ...options, seed: i })
     );
@@ -132,39 +145,46 @@ export class ClaudeRequestFactory {
 
   static createEdgeCase(
     type: 'empty' | 'unicode' | 'very_long' | 'special_chars'
-  ): ClaudeCompletionRequest {
+  ): ClaudeRequest {
     const base = ClaudeRequestFactory.create();
+
+    let content: string;
+    let maxTokens: number | undefined;
 
     switch (type) {
       case 'empty':
-        return {
-          ...base,
-          prompt: '',
-          max_tokens: 1,
-        };
+        content = '';
+        maxTokens = 1;
+        break;
 
       case 'unicode':
-        return {
-          ...base,
-          prompt: 'Hello 世界 🌍 café naïve résumé ∑∫∆√π',
-        };
+        content = 'Hello 世界 🌍 café naïve résumé ∑∫∆√π';
+        break;
 
       case 'very_long':
-        return {
-          ...base,
-          prompt: 'Very long prompt: ' + 'x'.repeat(50000),
-          max_tokens: 131072,
-        };
+        content = 'Very long prompt: ' + 'x'.repeat(50000);
+        maxTokens = 131072;
+        break;
 
       case 'special_chars':
-        return {
-          ...base,
-          prompt: 'Special chars: !@#$%^&*()_+-=[]{}|;:,.<>?`~',
-        };
+        content = 'Special chars: !@#$%^&*()_+-=[]{}|;:,.<>?`~';
+        break;
 
       default:
-        return base;
+        content = 'Default test content';
+        break;
     }
+
+    return {
+      ...base,
+      messages: [
+        {
+          role: 'user',
+          content,
+        },
+      ],
+      ...(maxTokens && { max_tokens: maxTokens }),
+    };
   }
 }
 
@@ -587,13 +607,18 @@ export class MaliciousDataFactory {
  * Factory for creating performance test data
  */
 export class PerformanceDataFactory {
-  static createLargeRequest(sizeKB: number): ClaudeCompletionRequest {
+  static createLargeRequest(sizeKB: number): ClaudeRequest {
     const promptSize = sizeKB * 1024;
-    const prompt = 'x'.repeat(promptSize);
+    const content = 'x'.repeat(promptSize);
 
     return {
       model: 'claude-3-5-sonnet-20241022',
-      prompt,
+      messages: [
+        {
+          role: 'user',
+          content,
+        },
+      ],
       max_tokens: 100,
     };
   }

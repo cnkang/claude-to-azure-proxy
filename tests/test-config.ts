@@ -65,6 +65,15 @@ export const createMockConfig = (overrides: Partial<Config> = {}) => ({
     timeout: testConfig.AZURE_OPENAI_TIMEOUT,
     maxRetries: testConfig.AZURE_OPENAI_MAX_RETRIES,
   }),
+  // Add Bedrock configuration functions for testing
+  isAWSBedrockConfigured: () => false, // Default to false for tests
+  createAWSBedrockConfig: () => ({
+    baseURL: 'https://bedrock-runtime.us-west-2.amazonaws.com',
+    apiKey: 'test-bedrock-key',
+    region: 'us-west-2',
+    timeout: 120000,
+    maxRetries: 3,
+  }),
 });
 
 /**

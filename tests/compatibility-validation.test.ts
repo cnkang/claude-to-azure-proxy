@@ -425,12 +425,24 @@ describe('Compatibility Validation Tests', () => {
     // Initialize components
     universalProcessor = new UniversalRequestProcessor({
       enableInputValidation: true,
+      enableContentSecurityValidation: true,
       maxRequestSize: 10 * 1024 * 1024,
       defaultReasoningEffort: 'medium',
       enableSwiftOptimization: true,
       swiftKeywords: ['swift', 'ios', 'xcode', 'swiftui', 'uikit'],
       iosKeywords: ['ios', 'iphone', 'ipad', 'macos', 'watchos'],
       reasoningBoost: 1.5,
+      modelRouting: {
+        defaultProvider: 'azure',
+        defaultModel: 'gpt-5-codex',
+        entries: [
+          {
+            provider: 'azure',
+            backendModel: 'gpt-5-codex',
+            aliases: ['gpt-5-codex', 'gpt-4', 'gpt-4o', 'gpt-4-turbo', 'claude-3-5-sonnet-20241022'],
+          },
+        ],
+      },
     });
 
     // Create Express app
@@ -563,7 +575,9 @@ describe('Compatibility Validation Tests', () => {
   });
 
   afterAll(() => {
-    server.close();
+    if (server) {
+      server.close();
+    }
   });
 
   describe('Backward Compatibility with Existing Claude Format Integrations', () => {

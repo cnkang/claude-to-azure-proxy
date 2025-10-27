@@ -34,6 +34,22 @@ describe('UniversalRequestProcessor', () => {
     config = {
       ...defaultUniversalProcessorConfig,
       maxRequestSize: 1024 * 1024, // 1MB for testing
+      modelRouting: {
+        defaultProvider: 'azure',
+        defaultModel: 'gpt-5-codex',
+        entries: [
+          {
+            provider: 'azure',
+            backendModel: 'gpt-5-codex',
+            aliases: ['gpt-5-codex', 'gpt-4', 'gpt-4o', 'gpt-4-turbo', 'claude-3-5-sonnet-20241022'],
+          },
+          {
+            provider: 'bedrock',
+            backendModel: 'qwen.qwen3-coder-480b-a35b-v1:0',
+            aliases: ['qwen-3-coder', 'qwen.qwen3-coder-480b-a35b-v1:0'],
+          },
+        ],
+      },
     };
     processor = new UniversalRequestProcessor(config);
   });
@@ -63,7 +79,7 @@ describe('UniversalRequestProcessor', () => {
 
       expect(result.requestFormat).toBe('claude');
       expect(result.responseFormat).toBe('claude');
-      expect(result.responsesParams.model).toBe('claude-3-5-sonnet-20241022');
+      expect(result.responsesParams.model).toBe('gpt-5-codex'); // Model routing maps claude-3-5-sonnet-20241022 to gpt-5-codex
       expect(result.responsesParams.input).toBe('Hello, how are you?');
       expect(result.responsesParams.max_output_tokens).toBe(1000);
       expect(result.responsesParams.temperature).toBe(0.7);
@@ -99,7 +115,7 @@ describe('UniversalRequestProcessor', () => {
 
       expect(result.requestFormat).toBe('openai');
       expect(result.responseFormat).toBe('openai');
-      expect(result.responsesParams.model).toBe('gpt-4');
+      expect(result.responsesParams.model).toBe('gpt-5-codex');
       expect(result.responsesParams.input).toBe('Hello, how are you?');
       expect(result.responsesParams.max_output_tokens).toBeUndefined(); // No max_tokens specified
       expect(result.responsesParams.temperature).toBe(0.7);

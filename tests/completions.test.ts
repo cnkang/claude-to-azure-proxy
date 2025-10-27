@@ -18,6 +18,11 @@ vi.mock('../src/clients/azure-responses-client.js', () => ({
   AzureResponsesClient: vi.fn().mockImplementation(() => mocks.azureClient),
 }));
 
+// Mock AWS Bedrock Client
+vi.mock('../src/clients/aws-bedrock-client.js', () => ({
+  AWSBedrockClient: vi.fn().mockImplementation(() => mocks.bedrockClient),
+}));
+
 // Mock other dependencies with typed implementations
 vi.mock('../src/utils/universal-request-processor.js', () => ({
   createUniversalRequestProcessor: vi.fn().mockReturnValue(mocks.universalProcessor),

@@ -15,6 +15,7 @@ interface TestResponseBody {
     object: string;
     created: number;
     owned_by: string;
+    provider?: 'azure' | 'bedrock';
   }>;
 }
 
@@ -134,7 +135,7 @@ describe('Models Endpoint', () => {
       expect(body.data?.length).toBeGreaterThan(0);
     });
 
-    it('should return expected model (gpt-5-codex)', async () => {
+    it('should return expected Azure model (gpt-5-codex)', async () => {
       const response = await request(app)
         .get('/v1/models')
         .set('Authorization', `Bearer ${validApiKey}`)
@@ -146,10 +147,11 @@ describe('Models Endpoint', () => {
       // Verify expected model ID is present
       expect(modelIds).toContain('gpt-5-codex');
 
-      // Verify model is owned by openai
-      body.data?.forEach((model) => {
-        expect(model.owned_by).toBe('openai');
-      });
+      // Verify Azure model properties
+      const azureModel = body.data?.find((model) => model.id === 'gpt-5-codex');
+      expect(azureModel).toBeDefined();
+      expect(azureModel?.owned_by).toBe('openai');
+      expect(azureModel?.provider).toBe('azure');
     });
 
     it('should return consistent response structure', async () => {
@@ -189,6 +191,7 @@ describe('Models Endpoint', () => {
           object: 'model',
           created: expect.any(Number) as number,
           owned_by: expect.any(String) as string,
+          provider: expect.stringMatching(/^(azure|bedrock)$/) as string,
         });
       });
     });
@@ -200,6 +203,34 @@ describe('Models Endpoint', () => {
         .expect(200);
 
       expect(response.headers['content-type']).toMatch(/application\/json/);
+    });
+  });
+
+  // Note: Bedrock model integration tests are skipped in this test suite
+  // because the configuration is loaded at module initialization time.
+  // The Bedrock functionality is tested through manual verification
+  // and integration tests with proper environment setup.
+
+  describe('Configuration-Based Model Inclusion', () => {
+    it('should only include Azure models when Bedrock is not configured', async () => {
+      // This test uses the original app without Bedrock configuration
+      const response = await request(app)
+        .get('/v1/models')
+        .set('Authorization', `Bearer ${validApiKey}`)
+        .expect(200);
+
+      const body = response.body as TestResponseBody;
+      const modelIds = body.data?.map((model) => model.id) ?? [];
+
+      // Verify only Azure model is present (Requirement 5.4)
+      expect(modelIds).toContain('gpt-5-codex');
+      expect(modelIds).not.toContain('qwen-3-coder');
+      expect(modelIds).not.toContain('qwen.qwen3-coder-480b-a35b-v1:0');
+      expect(body.data?.length).toBe(1);
+
+      // Verify Azure model has correct provider
+      const azureModel = body.data?.find((model) => model.id === 'gpt-5-codex');
+      expect(azureModel?.provider).toBe('azure');
     });
   });
 });

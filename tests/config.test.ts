@@ -250,4 +250,124 @@ describe('Configuration Module', () => {
       expect(exitSpy).toHaveBeenCalledWith(1);
     });
   });
+
+  describe('AWS Bedrock Configuration', () => {
+    it('should load configuration with AWS Bedrock settings', async () => {
+      // Set valid environment variables including AWS Bedrock
+      process.env.PROXY_API_KEY = 'a'.repeat(32);
+      process.env.AZURE_OPENAI_ENDPOINT = 'https://test.openai.azure.com';
+      process.env.AZURE_OPENAI_API_KEY = 'b'.repeat(32);
+      process.env.AZURE_OPENAI_MODEL = 'gpt-4';
+      process.env.AWS_BEDROCK_API_KEY = 'c'.repeat(32);
+      process.env.AWS_BEDROCK_REGION = 'us-west-2';
+      process.env.AWS_BEDROCK_TIMEOUT = '90000';
+      process.env.AWS_BEDROCK_MAX_RETRIES = '5';
+
+      const configModule = (await import(
+        '../src/config/index.js?t=' + Date.now()
+      )) as { default: Record<string, unknown> };
+      const config = configModule.default;
+
+      expect(config.AWS_BEDROCK_API_KEY).toBe('c'.repeat(32));
+      expect(config.AWS_BEDROCK_REGION).toBe('us-west-2');
+      expect(config.AWS_BEDROCK_TIMEOUT).toBe(90000);
+      expect(config.AWS_BEDROCK_MAX_RETRIES).toBe(5);
+    });
+
+    it('should use default values for AWS Bedrock optional settings', async () => {
+      // Set required variables but not AWS Bedrock
+      process.env.PROXY_API_KEY = 'a'.repeat(32);
+      process.env.AZURE_OPENAI_ENDPOINT = 'https://test.openai.azure.com';
+      process.env.AZURE_OPENAI_API_KEY = 'b'.repeat(32);
+      process.env.AZURE_OPENAI_MODEL = 'gpt-4';
+
+      const configModule = (await import(
+        '../src/config/index.js?t=' + Date.now()
+      )) as { default: Record<string, unknown> };
+      const config = configModule.default;
+
+      expect(config.AWS_BEDROCK_API_KEY).toBeUndefined();
+      expect(config.AWS_BEDROCK_REGION).toBe('us-west-2'); // Default value
+      expect(config.AWS_BEDROCK_TIMEOUT).toBe(120000); // Default value
+      expect(config.AWS_BEDROCK_MAX_RETRIES).toBe(3); // Default value
+    });
+
+    it('should validate createAWSBedrockConfig function', async () => {
+      process.env.PROXY_API_KEY = 'a'.repeat(32);
+      process.env.AZURE_OPENAI_ENDPOINT = 'https://test.openai.azure.com';
+      process.env.AZURE_OPENAI_API_KEY = 'b'.repeat(32);
+      process.env.AZURE_OPENAI_MODEL = 'gpt-4';
+      process.env.AWS_BEDROCK_API_KEY = 'c'.repeat(32);
+      process.env.AWS_BEDROCK_REGION = 'us-west-2';
+
+      const configModule = (await import(
+        '../src/config/index.js?t=' + Date.now()
+      )) as { 
+        default: Record<string, unknown>;
+        createAWSBedrockConfig: (config: any) => any;
+      };
+      const config = configModule.default;
+      const bedrockConfig = configModule.createAWSBedrockConfig(config);
+
+      expect(bedrockConfig.baseURL).toBe('https://bedrock-runtime.us-west-2.amazonaws.com');
+      expect(bedrockConfig.apiKey).toBe('c'.repeat(32));
+      expect(bedrockConfig.region).toBe('us-west-2');
+      expect(bedrockConfig.timeout).toBe(120000);
+      expect(bedrockConfig.maxRetries).toBe(3);
+    });
+
+    it('should validate isAWSBedrockConfigured function', async () => {
+      process.env.PROXY_API_KEY = 'a'.repeat(32);
+      process.env.AZURE_OPENAI_ENDPOINT = 'https://test.openai.azure.com';
+      process.env.AZURE_OPENAI_API_KEY = 'b'.repeat(32);
+      process.env.AZURE_OPENAI_MODEL = 'gpt-4';
+      process.env.AWS_BEDROCK_API_KEY = 'c'.repeat(32);
+
+      const configModule = (await import(
+        '../src/config/index.js?t=' + Date.now()
+      )) as { 
+        default: Record<string, unknown>;
+        isAWSBedrockConfigured: (config: any) => boolean;
+      };
+      const config = configModule.default;
+
+      expect(configModule.isAWSBedrockConfigured(config)).toBe(true);
+    });
+
+    it('should return false for isAWSBedrockConfigured when not configured', async () => {
+      process.env.PROXY_API_KEY = 'a'.repeat(32);
+      process.env.AZURE_OPENAI_ENDPOINT = 'https://test.openai.azure.com';
+      process.env.AZURE_OPENAI_API_KEY = 'b'.repeat(32);
+      process.env.AZURE_OPENAI_MODEL = 'gpt-4';
+
+      const configModule = (await import(
+        '../src/config/index.js?t=' + Date.now()
+      )) as { 
+        default: Record<string, unknown>;
+        isAWSBedrockConfigured: (config: any) => boolean;
+      };
+      const config = configModule.default;
+
+      expect(configModule.isAWSBedrockConfigured(config)).toBe(false);
+    });
+
+    it('should throw error when creating Bedrock config without API key', async () => {
+      process.env.PROXY_API_KEY = 'a'.repeat(32);
+      process.env.AZURE_OPENAI_ENDPOINT = 'https://test.openai.azure.com';
+      process.env.AZURE_OPENAI_API_KEY = 'b'.repeat(32);
+      process.env.AZURE_OPENAI_MODEL = 'gpt-4';
+
+      const configModule = (await import(
+        '../src/config/index.js?t=' + Date.now()
+      )) as { 
+        default: Record<string, unknown>;
+        createAWSBedrockConfig: (config: any) => any;
+      };
+      const config = configModule.default;
+
+      expect(() => configModule.createAWSBedrockConfig(config)).toThrow(
+        'AWS Bedrock API key is required to create Bedrock configuration'
+      );
+    });
+  });
 });

@@ -12,6 +12,8 @@ import type {
   ConversationMetrics,
   IncomingRequest,
   ReasoningEffort,
+  ModelRoutingDecision,
+  UniversalRequest,
 } from '../../src/types/index.js';
 import type { UniversalProcessingResult } from '../../src/utils/universal-request-processor.js';
 
@@ -26,6 +28,21 @@ export interface TypedAzureResponsesClientMock {
 }
 
 export function createMockAzureResponsesClient(): TypedAzureResponsesClientMock {
+  const createResponse = vi.fn<CreateResponseFn>();
+  const createResponseStream = vi.fn<CreateResponseStreamFn>();
+
+  return {
+    createResponse,
+    createResponseStream,
+  };
+}
+
+export interface TypedAWSBedrockClientMock {
+  readonly createResponse: MockedFunction<CreateResponseFn>;
+  readonly createResponseStream: MockedFunction<CreateResponseStreamFn>;
+}
+
+export function createMockAWSBedrockClient(): TypedAWSBedrockClientMock {
   const createResponse = vi.fn<CreateResponseFn>();
   const createResponseStream = vi.fn<CreateResponseStreamFn>();
 
@@ -198,6 +215,7 @@ export const mockResponses = {
     requestFormat: 'claude',
     responseFormat: 'claude',
     conversationId: 'test-conversation-id',
+    correlationId: 'test-correlation-id',
     estimatedComplexity: 'medium',
     reasoningEffort: 'medium',
     responsesParams: {
@@ -207,11 +225,22 @@ export const mockResponses = {
         effort: 'medium',
       },
     },
+    routingDecision: {
+      provider: 'azure',
+      requestedModel: 'gpt-4-test-deployment',
+      backendModel: 'gpt-4-test-deployment',
+      isSupported: true,
+    },
+    normalizedRequest: {
+      messages: [{ role: 'user', content: 'Test input message' }],
+      model: 'gpt-4-test-deployment',
+    },
   }),
 } as const;
 
 export function setupAllMocks(): {
   azureClient: TypedAzureResponsesClientMock;
+  bedrockClient: TypedAWSBedrockClientMock;
   conversationManager: TypedConversationManagerMock;
   universalProcessor: TypedUniversalRequestProcessorMock;
   reasoningAnalyzer: TypedReasoningAnalyzerMock;
@@ -220,6 +249,7 @@ export function setupAllMocks(): {
   gracefulDegradation: TypedGracefulDegradationManagerMock;
 } {
   const azureClient = createMockAzureResponsesClient();
+  const bedrockClient = createMockAWSBedrockClient();
   const conversationManager = createMockConversationManager();
   const universalProcessor = createMockUniversalRequestProcessor();
   const reasoningAnalyzer = createMockReasoningAnalyzer();
@@ -228,6 +258,7 @@ export function setupAllMocks(): {
   const gracefulDegradation = createMockGracefulDegradationManager();
 
   azureClient.createResponse.mockResolvedValue(mockResponses.azureResponsesSuccess());
+  bedrockClient.createResponse.mockResolvedValue(mockResponses.azureResponsesSuccess());
   conversationManager.extractConversationId.mockReturnValue('test-conversation-id');
   conversationManager.getConversationContext.mockReturnValue(mockResponses.conversationContext());
   conversationManager.getPreviousResponseId.mockReturnValue(undefined);
@@ -248,6 +279,7 @@ export function setupAllMocks(): {
 
   return {
     azureClient,
+    bedrockClient,
     conversationManager,
     universalProcessor,
     reasoningAnalyzer,
