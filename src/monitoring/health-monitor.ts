@@ -41,6 +41,8 @@ export class HealthMonitor {
   private readonly azureEndpoint: string;
   private readonly azureApiKey: string;
   private azureInitAttempted = false;
+  private readonly hasBedrockConfig: boolean;
+  private bedrockMonitor?: import('./bedrock-monitor.js').BedrockMonitor;
   private readonly healthChecks: Map<string, RegisteredHealthCheck> = new Map();
   private monitoringInterval?: NodeJS.Timeout;
 
@@ -60,6 +62,14 @@ export class HealthMonitor {
       this.azureEndpoint = '';
       this.azureApiKey = '';
       this.hasAzureConfig = false;
+    }
+
+    // Handle AWS Bedrock config - check if Bedrock is configured
+    this.hasBedrockConfig = this.isBedrockConfigured(config);
+    if (this.hasBedrockConfig) {
+      this.initializeBedrockMonitor(config).catch(() => {
+        // Log error silently - console.error disabled by ESLint
+      });
     }
   }
 
@@ -85,7 +95,13 @@ export class HealthMonitor {
         : { status: 'disconnected' };
     }
 
-    const isHealthy = this.determineHealthStatus(memory, azureOpenAIStatus);
+    // Check AWS Bedrock connectivity (Requirement 4.3)
+    let awsBedrockStatus: HealthStatus['awsBedrock'] = undefined;
+    if (this.hasBedrockConfig && this.bedrockMonitor) {
+      awsBedrockStatus = await this.bedrockMonitor.checkBedrockHealth();
+    }
+
+    const isHealthy = this.determineHealthStatus(memory, azureOpenAIStatus, awsBedrockStatus);
 
     const healthStatus: HealthStatus = {
       status: isHealthy ? 'healthy' : 'unhealthy',
@@ -93,6 +109,7 @@ export class HealthMonitor {
       uptime,
       memory,
       azureOpenAI: azureOpenAIStatus,
+      awsBedrock: awsBedrockStatus,
     };
 
     this.lastHealthCheck = healthStatus;
@@ -147,15 +164,21 @@ export class HealthMonitor {
 
   private determineHealthStatus(
     memory: HealthStatus['memory'],
-    azureOpenAI?: HealthStatus['azureOpenAI']
+    azureOpenAI?: HealthStatus['azureOpenAI'],
+    awsBedrock?: HealthStatus['awsBedrock']
   ): boolean {
     // Check memory usage - unhealthy if over 90%
     if (memory.percentage > 90) {
       return false;
     }
 
-    // Check Azure OpenAI connection
-    if (azureOpenAI?.status === 'disconnected') {
+    // Check Azure OpenAI connection (if configured)
+    if (this.hasAzureConfig && azureOpenAI?.status === 'disconnected') {
+      return false;
+    }
+
+    // Check AWS Bedrock connection (if configured)
+    if (this.hasBedrockConfig && awsBedrock?.status === 'disconnected') {
       return false;
     }
 
@@ -260,6 +283,71 @@ export class HealthMonitor {
       alert,
     });
     return Promise.resolve();
+  }
+
+  /**
+   * Gets the Bedrock monitor instance for external access.
+   */
+  getBedrockMonitor(): import('./bedrock-monitor.js').BedrockMonitor | undefined {
+    return this.bedrockMonitor;
+  }
+
+  /**
+   * Checks if Bedrock is configured by checking environment variables.
+   *
+   * @private
+   * @param _config - Server configuration (unused but required for interface consistency)
+   * @returns True if Bedrock is configured
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private isBedrockConfigured(_config: ServerConfig): boolean {
+    // Check if AWS Bedrock API key is configured in environment
+    const apiKey = process.env.AWS_BEDROCK_API_KEY;
+    return apiKey !== undefined && apiKey.length > 0;
+  }
+
+  /**
+   * Initializes the Bedrock monitor if Bedrock is configured.
+   *
+   * @private
+   * @param _config - Server configuration (unused but required for interface consistency)
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private async initializeBedrockMonitor(_config: ServerConfig): Promise<void> {
+    try {
+      // Import Bedrock monitor dynamically to avoid circular dependencies
+      const { BedrockMonitor } = await import('./bedrock-monitor.js');
+      
+      // Get Bedrock configuration from environment variables
+      const apiKey = process.env.AWS_BEDROCK_API_KEY;
+      const region = process.env.AWS_BEDROCK_REGION ?? 'us-west-2';
+      
+      if (apiKey === undefined || apiKey.length === 0) {
+        logger.warn('Bedrock API key not found in environment', '', {
+          hasApiKey: false,
+        });
+        return;
+      }
+
+      const bedrockConfig = {
+        baseURL: `https://bedrock-runtime.${region}.amazonaws.com`,
+        apiKey,
+        region,
+        timeout: parseInt(process.env.AWS_BEDROCK_TIMEOUT ?? '5000', 10),
+        maxRetries: parseInt(process.env.AWS_BEDROCK_MAX_RETRIES ?? '1', 10),
+      };
+
+      this.bedrockMonitor = new BedrockMonitor(bedrockConfig);
+      
+      logger.info('Bedrock monitor initialized', '', {
+        region,
+        hasApiKey: true,
+      });
+    } catch (error) {
+      logger.warn('Failed to initialize Bedrock monitor', '', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
   }
 }
 
