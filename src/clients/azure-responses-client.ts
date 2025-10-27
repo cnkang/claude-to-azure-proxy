@@ -53,6 +53,11 @@ import {
 } from '../errors/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../middleware/logging.js';
+import {
+  assertValidResponsesResponse,
+  assertValidResponsesStreamChunk,
+  validateResponsesCreateParams,
+} from '../utils/responses-validator.js';
 
 /**
  * Azure OpenAI v1 Responses API client with comprehensive error handling and monitoring.
@@ -159,7 +164,7 @@ export class AzureResponsesClient {
   public async createResponse(
     params: ResponsesCreateParams
   ): Promise<ResponsesResponse> {
-    this.validateRequestParams(params);
+    validateResponsesCreateParams(params);
 
     try {
       const requestParams = this.buildRequestParams(
@@ -174,7 +179,7 @@ export class AzureResponsesClient {
 
       const normalized = this.normalizeResponsesResponse(response);
 
-      return this.validateAndTransformResponse(normalized);
+      return assertValidResponsesResponse(normalized);
     } catch (error) {
       throw this.handleApiError(error, 'createResponse');
     }
@@ -205,7 +210,7 @@ export class AzureResponsesClient {
   public async *createResponseStream(
     params: ResponsesCreateParams
   ): AsyncIterable<ResponsesStreamChunk> {
-    this.validateRequestParams(params);
+    validateResponsesCreateParams(params);
 
     const correlationId = uuidv4();
 
@@ -235,7 +240,7 @@ export class AzureResponsesClient {
               createdAt,
               model
             );
-            yield this.validateAndTransformStreamChunk(chunk);
+            yield assertValidResponsesStreamChunk(chunk);
             break;
           }
           case 'response.reasoning_text.delta': {
@@ -246,7 +251,7 @@ export class AzureResponsesClient {
               model,
               'in_progress'
             );
-            yield this.validateAndTransformStreamChunk(chunk);
+            yield assertValidResponsesStreamChunk(chunk);
             break;
           }
           case 'response.reasoning_text.done': {
@@ -256,7 +261,7 @@ export class AzureResponsesClient {
               createdAt,
               model
             );
-            yield this.validateAndTransformStreamChunk(chunk);
+            yield assertValidResponsesStreamChunk(chunk);
             break;
           }
           case 'response.output_item.added': {
@@ -267,13 +272,13 @@ export class AzureResponsesClient {
               model
             );
             if (chunk !== undefined) {
-              yield this.validateAndTransformStreamChunk(chunk);
+              yield assertValidResponsesStreamChunk(chunk);
             }
             break;
           }
           case 'response.completed': {
             const chunk = this.createCompletedChunk(event);
-            yield this.validateAndTransformStreamChunk(chunk);
+            yield assertValidResponsesStreamChunk(chunk);
             break;
           }
           case 'response.failed': {
@@ -661,142 +666,6 @@ export class AzureResponsesClient {
   }
 
   /**
-   * Validates request parameters before sending to the API.
-   *
-   * @private
-   * @param params - Request parameters to validate
-   * @throws {Error} When parameters are invalid
-   */
-  private validateRequestParams(params: ResponsesCreateParams): void {
-    const correlationId = uuidv4();
-
-    if (!params.model || typeof params.model !== 'string') {
-      throw new ValidationError(
-        'Invalid model: must be a non-empty string',
-        correlationId,
-        'model',
-        params.model
-      );
-    }
-
-    if (typeof params.input === 'string') {
-      if (params.input.length === 0) {
-        throw new ValidationError(
-          'Invalid input: string input cannot be empty',
-          correlationId,
-          'input',
-          '[EMPTY_STRING]'
-        );
-      }
-    } else if (Array.isArray(params.input)) {
-      if (params.input.length === 0) {
-        throw new ValidationError(
-          'Invalid input: message array cannot be empty',
-          correlationId,
-          'input',
-          '[EMPTY_ARRAY]'
-        );
-      }
-
-      for (const [index, message] of params.input.entries()) {
-        if (typeof message !== 'object' || message === null) {
-          throw new ValidationError(
-            `Invalid message at index ${index}: must be an object`,
-            correlationId,
-            `input[${index}]`,
-            message
-          );
-        }
-
-        const messageObj = message as Record<string, unknown>;
-
-        if (
-          typeof messageObj.role !== 'string' ||
-          !['user', 'assistant', 'system'].includes(messageObj.role)
-        ) {
-          throw new ValidationError(
-            `Invalid message role at index ${index}: must be user, assistant, or system`,
-            correlationId,
-            `input[${index}].role`,
-            messageObj.role
-          );
-        }
-
-        if (
-          typeof messageObj.content !== 'string' ||
-          messageObj.content.length === 0
-        ) {
-          throw new ValidationError(
-            `Invalid message content at index ${index}: must be a non-empty string`,
-            correlationId,
-            `input[${index}].content`,
-            messageObj.content
-          );
-        }
-      }
-    } else {
-      throw new ValidationError(
-        'Invalid input: must be a string or array of messages',
-        correlationId,
-        'input',
-        typeof params.input
-      );
-    }
-
-    if (
-      params.max_output_tokens !== undefined &&
-      (typeof params.max_output_tokens !== 'number' ||
-        params.max_output_tokens <= 0)
-    ) {
-      throw new ValidationError(
-        'Invalid max_output_tokens: must be a positive number',
-        correlationId,
-        'max_output_tokens',
-        params.max_output_tokens
-      );
-    }
-
-    if (
-      params.temperature !== undefined &&
-      (typeof params.temperature !== 'number' ||
-        params.temperature < 0 ||
-        params.temperature > 2)
-    ) {
-      throw new ValidationError(
-        'Invalid temperature: must be a number between 0 and 2',
-        correlationId,
-        'temperature',
-        params.temperature
-      );
-    }
-
-    if (
-      params.top_p !== undefined &&
-      (typeof params.top_p !== 'number' || params.top_p < 0 || params.top_p > 1)
-    ) {
-      throw new ValidationError(
-        'Invalid top_p: must be a number between 0 and 1',
-        correlationId,
-        'top_p',
-        params.top_p
-      );
-    }
-
-    if (
-      params.reasoning !== undefined &&
-      (typeof params.reasoning.effort !== 'string' ||
-        !['minimal', 'low', 'medium', 'high'].includes(params.reasoning.effort))
-    ) {
-      throw new ValidationError(
-        'Invalid reasoning effort: must be minimal, low, medium, or high',
-        correlationId,
-        'reasoning.effort',
-        params.reasoning.effort
-      );
-    }
-  }
-
-  /**
    * Builds request parameters for the OpenAI client.
    *
    * @private
@@ -822,8 +691,6 @@ export class AzureResponsesClient {
       max_output_tokens: params.max_output_tokens ?? 4000,
       stream,
     };
-
-
 
     if (params.reasoning !== undefined) {
       request.reasoning = params.reasoning;
@@ -851,117 +718,6 @@ export class AzureResponsesClient {
     }
 
     return request;
-  }
-
-  /**
-   * Validates and transforms the API response.
-   *
-   * @private
-   * @param response - Raw response from the API
-   * @returns Validated and typed response
-   * @throws {Error} When response validation fails
-   */
-  private validateAndTransformResponse(response: unknown): ResponsesResponse {
-    if (!this.isValidResponsesResponse(response)) {
-      const correlationId = uuidv4();
-      throw new ValidationError(
-        'Invalid API response format',
-        correlationId,
-        'response',
-        typeof response,
-        true,
-        'validateAndTransformResponse'
-      );
-    }
-
-    return response;
-  }
-
-  /**
-   * Validates and transforms a streaming response chunk.
-   *
-   * @private
-   * @param chunk - Raw chunk from the streaming API
-   * @returns Validated and typed chunk
-   * @throws {Error} When chunk validation fails
-   */
-  private validateAndTransformStreamChunk(
-    chunk: unknown
-  ): ResponsesStreamChunk {
-    if (!this.isValidResponsesStreamChunk(chunk)) {
-      const correlationId = uuidv4();
-      throw new ValidationError(
-        'Invalid streaming response chunk format',
-        correlationId,
-        'chunk',
-        typeof chunk,
-        true,
-        'validateAndTransformStreamChunk'
-      );
-    }
-
-    return chunk;
-  }
-
-  /**
-   * Type guard for ResponsesResponse.
-   *
-   * @private
-   * @param value - Value to check
-   * @returns True if value is a valid ResponsesResponse
-   */
-  private isValidResponsesResponse(value: unknown): value is ResponsesResponse {
-    if (typeof value !== 'object' || value === null) {
-      return false;
-    }
-
-    const candidate = value as Record<string, unknown>;
-
-    return (
-      'id' in candidate &&
-      'object' in candidate &&
-      'created' in candidate &&
-      'model' in candidate &&
-      'output' in candidate &&
-      'usage' in candidate &&
-      typeof candidate.id === 'string' &&
-      candidate.object === 'response' &&
-      typeof candidate.created === 'number' &&
-      typeof candidate.model === 'string' &&
-      Array.isArray(candidate.output) &&
-      typeof candidate.usage === 'object' &&
-      candidate.usage !== null
-    );
-  }
-
-  /**
-   * Type guard for ResponsesStreamChunk.
-   *
-   * @private
-   * @param value - Value to check
-   * @returns True if value is a valid ResponsesStreamChunk
-   */
-  private isValidResponsesStreamChunk(
-    value: unknown
-  ): value is ResponsesStreamChunk {
-    if (typeof value !== 'object' || value === null) {
-      return false;
-    }
-
-    const candidate = value as Record<string, unknown>;
-
-    return (
-      'id' in candidate &&
-      'object' in candidate &&
-      'created' in candidate &&
-      'model' in candidate &&
-      'output' in candidate &&
-      typeof candidate.id === 'string' &&
-      candidate.object === 'response.chunk' &&
-      typeof candidate.created === 'number' &&
-      typeof candidate.model === 'string' &&
-      Array.isArray(candidate.output)
-    );
   }
 
   /**
