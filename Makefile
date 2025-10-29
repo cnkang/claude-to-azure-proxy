@@ -27,7 +27,7 @@ build-no-cache: ## Build the Docker image without cache
 .PHONY: run
 run: ## Run the container locally
 	@echo "🚀 Starting container $(CONTAINER_NAME)..."
-	docker run -d \
+	docker run --init -d \
 		--name $(CONTAINER_NAME) \
 		-p 8080:8080 \
 		-e PROXY_API_KEY=${PROXY_API_KEY} \
@@ -40,7 +40,7 @@ run: ## Run the container locally
 .PHONY: run-interactive
 run-interactive: ## Run the container interactively
 	@echo "🚀 Starting container interactively..."
-	docker run -it --rm \
+	docker run --init -it --rm \
 		-p 8080:8080 \
 		-e PROXY_API_KEY=${PROXY_API_KEY} \
 		-e AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT} \
