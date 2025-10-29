@@ -19,7 +19,6 @@ import { Agent as HttpsAgent } from 'node:https';
 
 import type {
   AWSBedrockConfig,
-
   ResponsesCreateParams,
   ResponsesResponse,
   ResponsesStreamChunk,
@@ -34,7 +33,6 @@ import type {
   BedrockContentBlock,
   BedrockConverseResponse,
   BedrockStreamChunk,
-
   BedrockStream,
 } from '../types/index.js';
 import {
@@ -48,7 +46,7 @@ import {
   assertValidResponsesStreamChunk,
   validateResponsesCreateParams,
 } from '../utils/responses-validator.js';
-import { 
+import {
   createHTTPConnectionResource,
   createStreamResource,
   type HTTPConnectionResource,
@@ -83,11 +81,11 @@ export class AWSBedrockClient implements AsyncDisposable {
       timeout: config.timeout,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${config.apiKey}`,
+        Authorization: `Bearer ${config.apiKey}`,
         'User-Agent': 'claude-to-azure-proxy/1.0.0 (Node.js 24)',
         'X-Amzn-Bedrock-Accept': 'application/json',
         'X-Amzn-Bedrock-Region': config.region,
-        'Connection': 'keep-alive',
+        Connection: 'keep-alive',
         'Keep-Alive': 'timeout=30, max=100',
       },
       // Enhanced HTTP agent configuration for Node.js 24
@@ -96,7 +94,7 @@ export class AWSBedrockClient implements AsyncDisposable {
     });
 
     this.setupRetryInterceptor();
-    
+
     // Track memory usage for this client instance
     memoryManager.startMonitoring();
   }
@@ -162,7 +160,7 @@ export class AWSBedrockClient implements AsyncDisposable {
     validateResponsesCreateParams(params);
 
     const correlationId = uuidv4();
-    
+
     // Create stream resource for tracking and automatic cleanup
     // Note: We'll create the resource after we have the actual stream
     let streamResource: StreamResource | undefined;
@@ -177,7 +175,7 @@ export class AWSBedrockClient implements AsyncDisposable {
         {
           responseType: 'stream',
           headers: {
-            'Accept': 'application/vnd.amazon.eventstream',
+            Accept: 'application/vnd.amazon.eventstream',
           },
         }
       );
@@ -203,10 +201,14 @@ export class AWSBedrockClient implements AsyncDisposable {
         if (chunkCount % 10 === 0) {
           const memoryMetrics = memoryManager.getMemoryMetrics();
           if (memoryMetrics.pressure.level === 'critical') {
-            logger.warn('Critical memory pressure during Bedrock streaming', correlationId, {
-              heapUsage: memoryMetrics.heap.percentage,
-              chunkCount,
-            });
+            logger.warn(
+              'Critical memory pressure during Bedrock streaming',
+              correlationId,
+              {
+                heapUsage: memoryMetrics.heap.percentage,
+                chunkCount,
+              }
+            );
           }
         }
 
@@ -261,7 +263,7 @@ export class AWSBedrockClient implements AsyncDisposable {
             event.messageStop.stopReason
           );
           chunkCount++;
-          
+
           // Log streaming completion metrics
           const duration = performance.now() - startTime;
           logger.debug('AWS Bedrock streaming completed', correlationId, {
@@ -271,15 +273,13 @@ export class AWSBedrockClient implements AsyncDisposable {
             modelId,
             responseId,
           });
-          
+
           yield assertValidResponsesStreamChunk(chunk, correlationId);
           continue;
         }
 
         if (event.message !== undefined) {
-          const outputs = this.transformContentBlocks(
-            event.message.content
-          );
+          const outputs = this.transformContentBlocks(event.message.content);
           if (outputs.length > 0) {
             const chunk: ResponsesStreamChunk = {
               id: responseId,
@@ -294,13 +294,9 @@ export class AWSBedrockClient implements AsyncDisposable {
           continue;
         }
 
-        logger.debug(
-          'Unhandled AWS Bedrock stream event',
-          correlationId,
-          {
-            keys: Object.keys(event),
-          }
-        );
+        logger.debug('Unhandled AWS Bedrock stream event', correlationId, {
+          keys: Object.keys(event),
+        });
       }
     } catch (error) {
       throw this.handleApiError(error, 'createResponseStream');
@@ -388,16 +384,18 @@ export class AWSBedrockClient implements AsyncDisposable {
     });
 
     // Clean up active connections
-    const connectionCleanup = Array.from(this.activeConnections).map(async (connection) => {
-      try {
-        await connection[Symbol.asyncDispose]();
-      } catch (error) {
-        logger.warn('Failed to dispose Bedrock connection resource', '', {
-          resourceId: connection.resourceInfo.id,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
+    const connectionCleanup = Array.from(this.activeConnections).map(
+      async (connection) => {
+        try {
+          await connection[Symbol.asyncDispose]();
+        } catch (error) {
+          logger.warn('Failed to dispose Bedrock connection resource', '', {
+            resourceId: connection.resourceInfo.id,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
       }
-    });
+    );
 
     // Clean up active streams
     const streamCleanup = Array.from(this.activeStreams).map(async (stream) => {
@@ -520,12 +518,12 @@ export class AWSBedrockClient implements AsyncDisposable {
       params.tool_choice === undefined
         ? undefined
         : params.tool_choice === 'auto'
-        ? ({ auto: {} } as const)
-        : params.tool_choice === 'none'
-        ? ({ any: {} } as const)
-        : ({
-            tool: { name: params.tool_choice.function.name },
-          } as const);
+          ? ({ auto: {} } as const)
+          : params.tool_choice === 'none'
+            ? ({ any: {} } as const)
+            : ({
+                tool: { name: params.tool_choice.function.name },
+              } as const);
 
     return {
       ...(tools !== undefined && {
@@ -539,7 +537,9 @@ export class AWSBedrockClient implements AsyncDisposable {
     response: BedrockConverseResponse,
     requestedModel: string
   ): ResponsesResponse {
-    const outputs = this.transformContentBlocks(response.output.message.content);
+    const outputs = this.transformContentBlocks(
+      response.output.message.content
+    );
     const usage = this.normalizeUsage(response.usage);
 
     const normalized: ResponsesResponse = {
@@ -574,7 +574,9 @@ export class AWSBedrockClient implements AsyncDisposable {
       }
 
       if (block.toolResult !== undefined) {
-        const resultContent = this.serializeToolBlocks(block.toolResult.content);
+        const resultContent = this.serializeToolBlocks(
+          block.toolResult.content
+        );
         outputs.push({
           type: 'tool_result',
           tool_result: {
@@ -783,7 +785,11 @@ export class AWSBedrockClient implements AsyncDisposable {
       const rawData = error.response?.data;
       let message = error.message;
 
-      if (rawData !== undefined && typeof rawData === 'object' && rawData !== null) {
+      if (
+        rawData !== undefined &&
+        typeof rawData === 'object' &&
+        rawData !== null
+      ) {
         try {
           message = JSON.stringify(rawData);
         } catch {
@@ -891,9 +897,7 @@ export class AWSBedrockClient implements AsyncDisposable {
           | undefined;
 
         if (config === undefined) {
-          return Promise.reject(
-            this.handleApiError(error, 'awsBedrockRetry')
-          );
+          return Promise.reject(this.handleApiError(error, 'awsBedrockRetry'));
         }
 
         const retryCount = config.__retryCount ?? 0;
@@ -901,9 +905,7 @@ export class AWSBedrockClient implements AsyncDisposable {
           retryCount >= this.config.maxRetries ||
           !this.shouldRetry(axiosError)
         ) {
-          return Promise.reject(
-            this.handleApiError(error, 'awsBedrockRetry')
-          );
+          return Promise.reject(this.handleApiError(error, 'awsBedrockRetry'));
         }
 
         config.__retryCount = retryCount + 1;
@@ -953,7 +955,9 @@ export class AWSBedrockClient implements AsyncDisposable {
   /**
    * Returns sanitized configuration with API key redacted for logging.
    */
-  public getConfig(): Omit<AWSBedrockConfig, 'apiKey'> & { apiKey: '[REDACTED]' } {
+  public getConfig(): Omit<AWSBedrockConfig, 'apiKey'> & {
+    apiKey: '[REDACTED]';
+  } {
     return {
       baseURL: this.config.baseURL,
       apiKey: '[REDACTED]',

@@ -61,7 +61,7 @@ import {
   assertValidResponsesStreamChunk,
   validateResponsesCreateParams,
 } from '../utils/responses-validator.js';
-import { 
+import {
   createHTTPConnectionResource,
   createStreamResource,
   type HTTPConnectionResource,
@@ -105,7 +105,7 @@ export class AzureResponsesClient implements AsyncDisposable {
   private readonly activeConnections = new Set<HTTPConnectionResource>();
   private readonly activeStreams = new Set<StreamResource>();
   private _disposed = false;
-  
+
   private static readonly ignoredStreamEvents = new Set<string>([
     'response.in_progress',
     'response.output_text.done',
@@ -128,7 +128,7 @@ export class AzureResponsesClient implements AsyncDisposable {
    * ```typescript
    * // Traditional usage
    * const client = new AzureResponsesClient(config);
-   * 
+   *
    * // Node.js 24 explicit resource management
    * using client = new AzureResponsesClient(config);
    * // Automatic cleanup when leaving scope
@@ -147,7 +147,7 @@ export class AzureResponsesClient implements AsyncDisposable {
       maxRetries: config.maxRetries,
       defaultHeaders: {
         'User-Agent': 'claude-to-azure-proxy/1.0.0 (Node.js 24)',
-        'Connection': 'keep-alive',
+        Connection: 'keep-alive',
         'Keep-Alive': 'timeout=30, max=100',
       },
       // Only add api-version for legacy preview API
@@ -205,9 +205,8 @@ export class AzureResponsesClient implements AsyncDisposable {
 
       // Make the API call using the OpenAI client with enhanced monitoring
       const startTime = performance.now();
-      const response: OpenAIResponse = await this.client.responses.create(
-        requestParams
-      );
+      const response: OpenAIResponse =
+        await this.client.responses.create(requestParams);
       const duration = performance.now() - startTime;
 
       // Log performance metrics
@@ -257,7 +256,7 @@ export class AzureResponsesClient implements AsyncDisposable {
     validateResponsesCreateParams(params);
 
     const correlationId = uuidv4();
-    
+
     // Create stream resource for tracking and automatic cleanup
     // Note: We'll create the resource after we have the actual stream
     let streamResource: StreamResource | undefined;
@@ -269,7 +268,7 @@ export class AzureResponsesClient implements AsyncDisposable {
       ) as unknown as ResponseCreateParamsStreaming;
 
       const stream = this.client.responses.stream(streamParams);
-      
+
       // Create stream resource now that we have the actual stream
       streamResource = createStreamResource(
         stream as unknown as NodeJS.ReadableStream,
@@ -288,10 +287,14 @@ export class AzureResponsesClient implements AsyncDisposable {
         if (chunkCount % 10 === 0) {
           const memoryMetrics = memoryManager.getMemoryMetrics();
           if (memoryMetrics.pressure.level === 'critical') {
-            logger.warn('Critical memory pressure during streaming', correlationId, {
-              heapUsage: memoryMetrics.heap.percentage,
-              chunkCount,
-            });
+            logger.warn(
+              'Critical memory pressure during streaming',
+              correlationId,
+              {
+                heapUsage: memoryMetrics.heap.percentage,
+                chunkCount,
+              }
+            );
           }
         }
 
@@ -351,7 +354,7 @@ export class AzureResponsesClient implements AsyncDisposable {
           case 'response.completed': {
             const chunk = this.createCompletedChunk(event);
             chunkCount++;
-            
+
             // Log streaming completion metrics
             const duration = performance.now() - startTime;
             logger.debug('Azure OpenAI streaming completed', correlationId, {
@@ -360,7 +363,7 @@ export class AzureResponsesClient implements AsyncDisposable {
               model: params.model,
               responseId,
             });
-            
+
             yield assertValidResponsesStreamChunk(chunk);
             break;
           }
@@ -426,7 +429,7 @@ export class AzureResponsesClient implements AsyncDisposable {
     try {
       const isHttps = this.config.baseURL.startsWith('https://');
       const AgentClass = isHttps ? HttpsAgent : HttpAgent;
-      
+
       return new AgentClass({
         keepAlive: true,
         keepAliveMsecs: 30000, // 30 seconds
@@ -452,7 +455,9 @@ export class AzureResponsesClient implements AsyncDisposable {
    */
   private ensureNotDisposed(): void {
     if (this._disposed) {
-      throw new Error('AzureResponsesClient has been disposed and cannot be used');
+      throw new Error(
+        'AzureResponsesClient has been disposed and cannot be used'
+      );
     }
   }
 
@@ -473,16 +478,18 @@ export class AzureResponsesClient implements AsyncDisposable {
     });
 
     // Clean up active connections
-    const connectionCleanup = Array.from(this.activeConnections).map(async (connection) => {
-      try {
-        await connection[Symbol.asyncDispose]();
-      } catch (error) {
-        logger.warn('Failed to dispose connection resource', '', {
-          resourceId: connection.resourceInfo.id,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
+    const connectionCleanup = Array.from(this.activeConnections).map(
+      async (connection) => {
+        try {
+          await connection[Symbol.asyncDispose]();
+        } catch (error) {
+          logger.warn('Failed to dispose connection resource', '', {
+            resourceId: connection.resourceInfo.id,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
       }
-    });
+    );
 
     // Clean up active streams
     const streamCleanup = Array.from(this.activeStreams).map(async (stream) => {
@@ -630,7 +637,9 @@ export class AzureResponsesClient implements AsyncDisposable {
     };
   }
 
-  private normalizeResponsesResponse(response: OpenAIResponse): ResponsesResponse {
+  private normalizeResponsesResponse(
+    response: OpenAIResponse
+  ): ResponsesResponse {
     const output = this.transformOutputItems(response.output);
     const usage = this.transformUsage(response.usage);
 
@@ -700,7 +709,8 @@ export class AzureResponsesClient implements AsyncDisposable {
             : '';
 
           const status: 'in_progress' | 'completed' =
-            reasoningItem.status === 'in_progress' || reasoningItem.status === 'incomplete'
+            reasoningItem.status === 'in_progress' ||
+            reasoningItem.status === 'incomplete'
               ? 'in_progress'
               : 'completed';
 
@@ -723,9 +733,13 @@ export class AzureResponsesClient implements AsyncDisposable {
             outputs.push(legacyOutput);
             break;
           }
-          logger.debug('Unhandled Responses output item', 'azure-responses-client', {
-            itemType: item.type,
-          });
+          logger.debug(
+            'Unhandled Responses output item',
+            'azure-responses-client',
+            {
+              itemType: item.type,
+            }
+          );
           break;
         }
       }
@@ -738,7 +752,9 @@ export class AzureResponsesClient implements AsyncDisposable {
     item: ResponseFunctionToolCall
   ): ResponseOutput {
     const callId =
-      typeof item.id === 'string' && item.id.length > 0 ? item.id : item.call_id;
+      typeof item.id === 'string' && item.id.length > 0
+        ? item.id
+        : item.call_id;
 
     return {
       type: 'tool_call',

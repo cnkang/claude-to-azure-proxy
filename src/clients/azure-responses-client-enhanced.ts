@@ -9,9 +9,18 @@ import axios, {
   type AxiosResponse,
 } from 'axios';
 import { circuitBreakerRegistry } from '../resilience/circuit-breaker.js';
-import { AzureRetryStrategy, type AzureRetryContext } from '../utils/azure-retry-strategy.js';
-import { FallbackHandler, type FallbackContext } from '../utils/fallback-handler.js';
-import { AzureErrorMapper, type ErrorMappingContext } from '../utils/azure-error-mapper.js';
+import {
+  AzureRetryStrategy,
+  type AzureRetryContext,
+} from '../utils/azure-retry-strategy.js';
+import {
+  FallbackHandler,
+  type FallbackContext,
+} from '../utils/fallback-handler.js';
+import {
+  AzureErrorMapper,
+  type ErrorMappingContext,
+} from '../utils/azure-error-mapper.js';
 import { logger } from '../middleware/logging.js';
 import config, { createAzureOpenAIConfig } from '../config/index.js';
 import { ErrorFactory } from '../errors/index.js';
@@ -99,11 +108,15 @@ export class EnhancedAzureResponsesClient {
     this.axiosClient.interceptors.request.use(
       (requestConfig) => {
         const hasData = requestConfig.data !== undefined;
-        logger.debug('Azure OpenAI request initiated', 'azure-responses-client', {
-          url: requestConfig.url,
-          method: requestConfig.method,
-          hasData,
-        });
+        logger.debug(
+          'Azure OpenAI request initiated',
+          'azure-responses-client',
+          {
+            url: requestConfig.url,
+            method: requestConfig.method,
+            hasData,
+          }
+        );
         return requestConfig;
       },
       (error: unknown) => {
@@ -127,10 +140,14 @@ export class EnhancedAzureResponsesClient {
     this.axiosClient.interceptors.response.use(
       (response) => {
         const hasData = response.data !== undefined && response.data !== null;
-        logger.debug('Azure OpenAI response received', 'azure-responses-client', {
-          status: response.status,
-          hasData,
-        });
+        logger.debug(
+          'Azure OpenAI response received',
+          'azure-responses-client',
+          {
+            status: response.status,
+            hasData,
+          }
+        );
         return response;
       },
       (error: unknown) => {
@@ -148,11 +165,9 @@ export class EnhancedAzureResponsesClient {
             ? error
             : new Error('Unknown Azure OpenAI response error');
 
-        logger.warn(
-          'Azure OpenAI response error',
-          'azure-responses-client',
-          { message: normalizedError.message }
-        );
+        logger.warn('Azure OpenAI response error', 'azure-responses-client', {
+          message: normalizedError.message,
+        });
 
         return Promise.reject(normalizedError);
       }
@@ -215,7 +230,7 @@ export class EnhancedAzureResponsesClient {
         };
 
         const mappedError = AzureErrorMapper.mapError(mappingContext);
-        
+
         return {
           success: false,
           error: mappedError.clientResponse,
@@ -294,7 +309,7 @@ export class EnhancedAzureResponsesClient {
       };
 
       const mappedError = AzureErrorMapper.mapError(mappingContext);
-      
+
       return {
         success: false,
         error: mappedError.clientResponse,
@@ -310,8 +325,11 @@ export class EnhancedAzureResponsesClient {
 
     // Direct execution without retry
     try {
-      const response = await this.executeCompletionRequest(params, correlationId);
-      
+      const response = await this.executeCompletionRequest(
+        params,
+        correlationId
+      );
+
       return {
         success: true,
         data: response,
@@ -348,7 +366,7 @@ export class EnhancedAzureResponsesClient {
       };
 
       const mappedError = AzureErrorMapper.mapError(mappingContext);
-      
+
       return {
         success: false,
         error: mappedError.clientResponse,
@@ -380,9 +398,8 @@ export class EnhancedAzureResponsesClient {
     };
 
     try {
-      const response: AxiosResponse<ResponsesResponse> = await this.axiosClient.request(
-        requestConfig
-      );
+      const response: AxiosResponse<ResponsesResponse> =
+        await this.axiosClient.request(requestConfig);
 
       logger.info('Azure OpenAI completion successful', correlationId, {
         responseId: response.data.id,
@@ -439,10 +456,14 @@ export class EnhancedAzureResponsesClient {
     context: FallbackContext,
     startTime: number
   ): Promise<ClientResponse<ResponsesResponse>> {
-    logger.warn('Executing fallback for Azure OpenAI request', context.correlationId, {
-      operation: context.operation,
-      attempt: context.attempt,
-    });
+    logger.warn(
+      'Executing fallback for Azure OpenAI request',
+      context.correlationId,
+      {
+        operation: context.operation,
+        attempt: context.attempt,
+      }
+    );
 
     try {
       const fallbackResult = await FallbackHandler.executeFallback(context);
@@ -482,10 +503,14 @@ export class EnhancedAzureResponsesClient {
       };
     } catch (fallbackError) {
       logger.error('Fallback execution failed', context.correlationId, {
-        error: fallbackError instanceof Error ? fallbackError.message : 'Unknown error',
+        error:
+          fallbackError instanceof Error
+            ? fallbackError.message
+            : 'Unknown error',
       });
 
-      const fallbackErrorResponse = FallbackHandler.createFallbackError(context);
+      const fallbackErrorResponse =
+        FallbackHandler.createFallbackError(context);
 
       return {
         success: false,
@@ -562,7 +587,8 @@ export class EnhancedAzureResponsesClient {
       };
     } catch (error) {
       const responseTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
 
       logger.warn('Azure OpenAI health check failed', correlationId, {
         responseTime,
@@ -583,7 +609,9 @@ export class EnhancedAzureResponsesClient {
   public getMetrics() {
     const retryMetrics = this.retryStrategy.getMetrics();
     const circuitBreakerMetrics = this.clientConfig.enableCircuitBreaker
-      ? circuitBreakerRegistry.getCircuitBreaker(this.circuitBreakerName).getMetrics()
+      ? circuitBreakerRegistry
+          .getCircuitBreaker(this.circuitBreakerName)
+          .getMetrics()
       : null;
 
     return {
@@ -604,7 +632,7 @@ export class EnhancedAzureResponsesClient {
    */
   public resetMetrics(): void {
     this.retryStrategy.resetMetrics();
-    
+
     if (this.clientConfig.enableCircuitBreaker) {
       circuitBreakerRegistry.getCircuitBreaker(this.circuitBreakerName).reset();
     }
