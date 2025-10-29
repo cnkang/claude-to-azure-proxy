@@ -84,7 +84,9 @@ if (process.env.NODE_ENV === 'test') {
     }
   };
 
-  const resolveTestConstructor = (module: unknown): SupertestTestConstructor | undefined => {
+  const resolveTestConstructor = (
+    module: unknown
+  ): SupertestTestConstructor | undefined => {
     if (typeof module === 'function') {
       const candidate = (module as SupertestModule).Test;
       if (typeof candidate === 'function') {
@@ -93,7 +95,9 @@ if (process.env.NODE_ENV === 'test') {
     }
 
     if (typeof module === 'object' && module !== null) {
-      const withTest = module as SupertestModule & { readonly default?: unknown };
+      const withTest = module as SupertestModule & {
+        readonly default?: unknown;
+      };
       if (typeof withTest.Test === 'function') {
         return withTest.Test;
       }
@@ -117,8 +121,9 @@ if (process.env.NODE_ENV === 'test') {
       module !== null &&
       'Request' in (module as Record<string, unknown>)
     ) {
-      const requestPrototype = (module as { Request?: { prototype?: SupertestRequestPrototype } }).Request
-        ?.prototype;
+      const requestPrototype = (
+        module as { Request?: { prototype?: SupertestRequestPrototype } }
+      ).Request?.prototype;
 
       if (
         requestPrototype !== undefined &&
@@ -213,10 +218,16 @@ export const ALLOWED_CONTENT_TYPES = ['application/json'] as const;
  * Content block schema for Claude messages
  */
 const contentBlockSchema = Joi.object({
-  type: Joi.string().valid('text', 'image', 'tool_use', 'tool_result').required(),
+  type: Joi.string()
+    .valid('text', 'image', 'tool_use', 'tool_result')
+    .required(),
   text: Joi.when('type', {
     is: 'text',
-    then: Joi.string().allow('').max(VALIDATION_LIMITS.MAX_MESSAGE_LENGTH).optional().default('[Content was sanitized and removed for security]'),
+    then: Joi.string()
+      .allow('')
+      .max(VALIDATION_LIMITS.MAX_MESSAGE_LENGTH)
+      .optional()
+      .default('[Content was sanitized and removed for security]'),
     otherwise: Joi.optional(),
   }),
 }).unknown(true);
@@ -226,11 +237,16 @@ const contentBlockSchema = Joi.object({
  */
 const messageSchema = Joi.object({
   role: Joi.string().valid('user', 'assistant', 'system', 'tool').required(),
-  content: Joi.alternatives().try(
-    Joi.string().allow('').max(VALIDATION_LIMITS.MAX_MESSAGE_LENGTH).default('[Content was sanitized and removed for security]'),
-    Joi.array().items(contentBlockSchema).min(1),
-    Joi.allow(null)
-  ).required(),
+  content: Joi.alternatives()
+    .try(
+      Joi.string()
+        .allow('')
+        .max(VALIDATION_LIMITS.MAX_MESSAGE_LENGTH)
+        .default('[Content was sanitized and removed for security]'),
+      Joi.array().items(contentBlockSchema).min(1),
+      Joi.allow(null)
+    )
+    .required(),
 }).unknown(true);
 
 /**
@@ -375,10 +391,14 @@ export const validateHealthCheckQuery = Joi.object({
 /**
  * Create Joi validation middleware
  */
-export function createJoiValidator(schema: Joi.ObjectSchema, target: 'body' | 'headers' | 'query' = 'body') {
+export function createJoiValidator(
+  schema: Joi.ObjectSchema,
+  target: 'body' | 'headers' | 'query' = 'body'
+) {
   return (req: Request, res: Response, next: NextFunction): void => {
-    const correlationId = (req as RequestWithCorrelationId).correlationId || 'unknown';
-    
+    const correlationId =
+      (req as RequestWithCorrelationId).correlationId || 'unknown';
+
     let dataToValidate: unknown;
     switch (target) {
       case 'body':
@@ -397,7 +417,7 @@ export function createJoiValidator(schema: Joi.ObjectSchema, target: 'body' | 'h
       stripUnknown: target === 'body',
       convert: true,
     });
-    
+
     const error = validationResult.error;
     const value: unknown = validationResult.value;
 
@@ -437,7 +457,7 @@ export function createJoiValidator(schema: Joi.ObjectSchema, target: 'body' | 'h
     }
 
     if (error) {
-      const validationErrors = error.details.map(detail => ({
+      const validationErrors = error.details.map((detail) => ({
         field: detail.path.join('.'),
         message: detail.message,
         location: target,
@@ -502,14 +522,19 @@ interface ManualViolation {
   readonly message: string;
 }
 
-function findMessageLengthViolation(value: unknown): ManualViolation | undefined {
+function findMessageLengthViolation(
+  value: unknown
+): ManualViolation | undefined {
   if (value === null || typeof value !== 'object') {
     return undefined;
   }
 
   const body = value as Record<string, unknown>;
 
-  if (typeof body.prompt === 'string' && body.prompt.length > VALIDATION_LIMITS.MAX_MESSAGE_LENGTH) {
+  if (
+    typeof body.prompt === 'string' &&
+    body.prompt.length > VALIDATION_LIMITS.MAX_MESSAGE_LENGTH
+  ) {
     return {
       field: 'prompt',
       message: `"prompt" length must be less than or equal to ${VALIDATION_LIMITS.MAX_MESSAGE_LENGTH} characters long`,
@@ -527,7 +552,10 @@ function findMessageLengthViolation(value: unknown): ManualViolation | undefined
     }
 
     const fieldBase = `messages[${index}].content`;
-    const violationField = inspectMessageContentLength(message.content, fieldBase);
+    const violationField = inspectMessageContentLength(
+      message.content,
+      fieldBase
+    );
     if (violationField !== undefined) {
       return {
         field: violationField,
@@ -539,9 +567,14 @@ function findMessageLengthViolation(value: unknown): ManualViolation | undefined
   return undefined;
 }
 
-function inspectMessageContentLength(content: unknown, field: string): string | undefined {
+function inspectMessageContentLength(
+  content: unknown,
+  field: string
+): string | undefined {
   if (typeof content === 'string') {
-    return content.length > VALIDATION_LIMITS.MAX_MESSAGE_LENGTH ? field : undefined;
+    return content.length > VALIDATION_LIMITS.MAX_MESSAGE_LENGTH
+      ? field
+      : undefined;
   }
 
   if (isArray(content)) {
@@ -568,7 +601,8 @@ export function sanitizeRequest(
   res: Response,
   next: NextFunction
 ): void {
-  const correlationId = (req as RequestWithCorrelationId).correlationId || 'unknown';
+  const correlationId =
+    (req as RequestWithCorrelationId).correlationId || 'unknown';
 
   try {
     req.body = sanitizeObject(req.body);
@@ -611,11 +645,11 @@ export function sanitizeRequest(
 
 /**
  * Sanitize object recursively to prevent injection attacks and circular references
- * 
+ *
  * @param obj - The object to sanitize
  * @param visited - WeakSet to track visited objects and prevent circular references
  * @returns Sanitized object with safe values
- * 
+ *
  * @example
  * ```typescript
  * const unsafeObj = { script: '<script>alert("xss")</script>', nested: { value: 'test' } };
@@ -623,7 +657,10 @@ export function sanitizeRequest(
  * // Returns: { script: 'alert("xss")', nested: { value: 'test' } }
  * ```
  */
-function sanitizeObject(obj: unknown, visited: WeakSet<object> = new WeakSet()): unknown {
+function sanitizeObject(
+  obj: unknown,
+  visited: WeakSet<object> = new WeakSet()
+): unknown {
   if (obj === null || typeof obj !== 'object') {
     return sanitizeValue(obj);
   }
@@ -635,7 +672,7 @@ function sanitizeObject(obj: unknown, visited: WeakSet<object> = new WeakSet()):
   visited.add(obj);
 
   if (Array.isArray(obj)) {
-    const result = obj.map(item => sanitizeObject(item, visited));
+    const result = obj.map((item) => sanitizeObject(item, visited));
     visited.delete(obj);
     return result;
   }
@@ -650,7 +687,10 @@ function sanitizeObject(obj: unknown, visited: WeakSet<object> = new WeakSet()):
   return Object.fromEntries(sanitizedEntries);
 }
 
-function replaceQueryParameters(target: Request['query'], sanitized: Record<string, unknown>): void {
+function replaceQueryParameters(
+  target: Request['query'],
+  sanitized: Record<string, unknown>
+): void {
   const mutableTarget = target as Record<string, unknown>;
 
   for (const existingKey of Object.keys(mutableTarget)) {
@@ -664,10 +704,10 @@ function replaceQueryParameters(target: Request['query'], sanitized: Record<stri
 
 /**
  * Sanitize individual values to prevent injection attacks
- * 
+ *
  * @param value - The value to sanitize
  * @returns Sanitized value safe for processing
- * 
+ *
  * @example
  * ```typescript
  * const unsafe = '<script>alert("xss")</script>';
@@ -679,7 +719,7 @@ function sanitizeValue(value: unknown): unknown {
   if (typeof value === 'string') {
     return sanitizeString(value);
   }
-  
+
   if (typeof value === 'number' || typeof value === 'boolean') {
     return value;
   }
@@ -687,7 +727,7 @@ function sanitizeValue(value: unknown): unknown {
   if (value === null) {
     return null;
   }
-  
+
   try {
     return JSON.stringify(value);
   } catch {
@@ -697,10 +737,10 @@ function sanitizeValue(value: unknown): unknown {
 
 /**
  * Sanitize string values by removing dangerous characters and scripts
- * 
+ *
  * @param value - The string to sanitize
  * @returns Sanitized string with dangerous content removed
- * 
+ *
  * @example
  * ```typescript
  * const unsafe = '<script>alert("xss")</script>Hello\x00World';
@@ -715,16 +755,19 @@ function sanitizeString(value: string): string {
   sanitized = sanitized.replace(/\s*on[a-z]+\s*=\s*[^'"\s>]+/gi, '');
   sanitized = sanitized.replace(/javascript:\s*/gi, '');
   sanitized = sanitized.replace(/data:text\/html;base64,[^"']*/gi, '');
-  
+
   return sanitized;
 }
 
 /**
  * Content-Type validation middleware
  */
-export function validateContentType(allowedTypes: readonly string[] = ALLOWED_CONTENT_TYPES) {
+export function validateContentType(
+  allowedTypes: readonly string[] = ALLOWED_CONTENT_TYPES
+) {
   return (req: Request, res: Response, next: NextFunction): void => {
-    const correlationId = (req as RequestWithCorrelationId).correlationId || 'unknown';
+    const correlationId =
+      (req as RequestWithCorrelationId).correlationId || 'unknown';
     const rawContentType = req.get('content-type');
     const forceEmptyContentType = req.get('x-null-content-type') === '1';
 
@@ -752,7 +795,10 @@ export function validateContentType(allowedTypes: readonly string[] = ALLOWED_CO
       return;
     }
 
-    const normalizedContentType = rawContentType.toLowerCase().split(';')[0].trim();
+    const normalizedContentType = rawContentType
+      .toLowerCase()
+      .split(';')[0]
+      .trim();
 
     if (!allowedTypes.includes(normalizedContentType)) {
       logger.warn('Invalid Content-Type header', correlationId, {
@@ -781,12 +827,13 @@ export function validateContentType(allowedTypes: readonly string[] = ALLOWED_CO
  */
 export function validateRequestSize(maxSizeBytes: number = 10 * 1024 * 1024) {
   return (req: Request, res: Response, next: NextFunction): void => {
-    const correlationId = (req as RequestWithCorrelationId).correlationId || 'unknown';
+    const correlationId =
+      (req as RequestWithCorrelationId).correlationId || 'unknown';
     const contentLength = req.get('content-length');
 
     if (typeof contentLength === 'string' && contentLength.trim().length > 0) {
       const size = Number.parseInt(contentLength, 10);
-      
+
       if (isNaN(size)) {
         logger.warn('Invalid Content-Length header', correlationId, {
           path: req.path,

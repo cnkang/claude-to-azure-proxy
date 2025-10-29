@@ -50,21 +50,32 @@ export const ALLOWED_CONTENT_TYPES = ['application/json'] as const;
  * Joi schemas for validation
  */
 const contentBlockSchema = Joi.object({
-  type: Joi.string().valid('text', 'image', 'tool_use', 'tool_result').required(),
+  type: Joi.string()
+    .valid('text', 'image', 'tool_use', 'tool_result')
+    .required(),
   text: Joi.when('type', {
     is: 'text',
-    then: Joi.string().allow('').max(VALIDATION_LIMITS.MAX_MESSAGE_LENGTH).optional().default('[Content was sanitized and removed for security]'),
+    then: Joi.string()
+      .allow('')
+      .max(VALIDATION_LIMITS.MAX_MESSAGE_LENGTH)
+      .optional()
+      .default('[Content was sanitized and removed for security]'),
     otherwise: Joi.optional(),
   }),
 }).unknown(true);
 
 const messageSchema = Joi.object({
   role: Joi.string().valid('user', 'assistant', 'system', 'tool').required(),
-  content: Joi.alternatives().try(
-    Joi.string().allow('').max(VALIDATION_LIMITS.MAX_MESSAGE_LENGTH).default('[Content was sanitized and removed for security]'),
-    Joi.array().items(contentBlockSchema).min(1),
-    Joi.allow(null)
-  ).required(),
+  content: Joi.alternatives()
+    .try(
+      Joi.string()
+        .allow('')
+        .max(VALIDATION_LIMITS.MAX_MESSAGE_LENGTH)
+        .default('[Content was sanitized and removed for security]'),
+      Joi.array().items(contentBlockSchema).min(1),
+      Joi.allow(null)
+    )
+    .required(),
 }).unknown(true);
 
 const toolSchema = Joi.object({
@@ -196,10 +207,14 @@ export const headersSchema = Joi.object({
 /**
  * Create Joi validation middleware
  */
-export function createJoiValidator(schema: Joi.ObjectSchema, target: 'body' | 'headers' | 'query' = 'body') {
+export function createJoiValidator(
+  schema: Joi.ObjectSchema,
+  target: 'body' | 'headers' | 'query' = 'body'
+) {
   return (req: Request, res: Response, next: NextFunction): void => {
-    const correlationId = (req as RequestWithCorrelationId).correlationId || 'unknown';
-    
+    const correlationId =
+      (req as RequestWithCorrelationId).correlationId || 'unknown';
+
     let dataToValidate: unknown;
     switch (target) {
       case 'body':
@@ -218,12 +233,12 @@ export function createJoiValidator(schema: Joi.ObjectSchema, target: 'body' | 'h
       stripUnknown: target === 'body', // Only strip unknown for body validation
       convert: true,
     });
-    
+
     const error = validationResult.error;
     const value: unknown = validationResult.value;
 
     if (error) {
-      const validationErrors = error.details.map(detail => ({
+      const validationErrors = error.details.map((detail) => ({
         field: detail.path.join('.'),
         message: detail.message,
         location: target,
@@ -273,6 +288,15 @@ export function createJoiValidator(schema: Joi.ObjectSchema, target: 'body' | 'h
 /**
  * Pre-configured validators
  */
-export const validateClaudeRequestWithJoi = createJoiValidator(claudeCompletionSchema, 'body');
-export const validateOpenAIRequestWithJoi = createJoiValidator(openaiCompletionSchema, 'body');
-export const validateHeadersWithJoi = createJoiValidator(headersSchema, 'headers');
+export const validateClaudeRequestWithJoi = createJoiValidator(
+  claudeCompletionSchema,
+  'body'
+);
+export const validateOpenAIRequestWithJoi = createJoiValidator(
+  openaiCompletionSchema,
+  'body'
+);
+export const validateHeadersWithJoi = createJoiValidator(
+  headersSchema,
+  'headers'
+);
