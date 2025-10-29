@@ -29,7 +29,8 @@ describe('LanguageDetectionService', () => {
     });
 
     it('should detect Java from content', () => {
-      const content = 'public class Main { public static void main(String[] args) {} }';
+      const content =
+        'public class Main { public static void main(String[] args) {} }';
       expect(service.detectPrimaryLanguage(content)).toBe('java');
     });
 
@@ -39,12 +40,14 @@ describe('LanguageDetectionService', () => {
     });
 
     it('should detect TypeScript from content', () => {
-      const content = 'interface User { name: string; } const user: User = { name: "John" };';
+      const content =
+        'interface User { name: string; } const user: User = { name: "John" };';
       expect(service.detectPrimaryLanguage(content)).toBe('typescript');
     });
 
     it('should detect Swift from content', () => {
-      const content = 'import SwiftUI\nstruct ContentView: View { var body: some View {} }';
+      const content =
+        'import SwiftUI\nstruct ContentView: View { var body: some View {} }';
       expect(service.detectPrimaryLanguage(content)).toBe('swift');
     });
 
@@ -54,7 +57,8 @@ describe('LanguageDetectionService', () => {
     });
 
     it('should detect Go from content', () => {
-      const content = 'package main\nfunc main() { fmt.Println("Hello, World!") }';
+      const content =
+        'package main\nfunc main() { fmt.Println("Hello, World!") }';
       expect(service.detectPrimaryLanguage(content)).toBe('go');
     });
 
@@ -71,7 +75,8 @@ describe('LanguageDetectionService', () => {
 
   describe('detectFrameworks', () => {
     it('should detect Django framework in Python', () => {
-      const content = 'from django.db import models\nclass User(models.Model): pass';
+      const content =
+        'from django.db import models\nclass User(models.Model): pass';
       const frameworks = service.detectFrameworks(content, 'python');
       expect(frameworks).toContain('django');
     });
@@ -89,19 +94,22 @@ describe('LanguageDetectionService', () => {
     });
 
     it('should detect React framework in TypeScript', () => {
-      const content = 'import React, { useState } from "react";\nconst Component = () => {};';
+      const content =
+        'import React, { useState } from "react";\nconst Component = () => {};';
       const frameworks = service.detectFrameworks(content, 'typescript');
       expect(frameworks).toContain('react');
     });
 
     it('should detect Vue framework in TypeScript', () => {
-      const content = 'import { ref, computed } from "vue";\nconst count = ref(0);';
+      const content =
+        'import { ref, computed } from "vue";\nconst count = ref(0);';
       const frameworks = service.detectFrameworks(content, 'typescript');
       expect(frameworks).toContain('vue');
     });
 
     it('should detect Android SDK in Kotlin', () => {
-      const content = 'class MainActivity : AppCompatActivity() { override fun onCreate() {} }';
+      const content =
+        'class MainActivity : AppCompatActivity() { override fun onCreate() {} }';
       const frameworks = service.detectFrameworks(content, 'kotlin');
       expect(frameworks).toContain('android-sdk');
     });
@@ -121,7 +129,8 @@ describe('LanguageDetectionService', () => {
     });
 
     it('should detect algorithmic complexity', () => {
-      const content = 'implement a binary search algorithm with O(log n) complexity';
+      const content =
+        'implement a binary search algorithm with O(log n) complexity';
       const complexity = service.analyzeTaskComplexity(content, 'unknown');
       expect(complexity).toBe('complex');
     });
@@ -189,9 +198,7 @@ describe('ComplexityAnalysisService', () => {
     it('should analyze simple request complexity', () => {
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
-        messages: [
-          { role: 'user', content: 'print hello world' }
-        ]
+        messages: [{ role: 'user', content: 'print hello world' }],
       };
 
       const factors = service.analyzeContentComplexity(request);
@@ -207,8 +214,8 @@ describe('ComplexityAnalysisService', () => {
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { 
-            role: 'user', 
+          {
+            role: 'user',
             content: `Create a microservices architecture with the following components:
             
 \`\`\`python
@@ -223,9 +230,9 @@ def create_order_service():
     pass
 \`\`\`
 
-Include load balancing and database design.`
-          }
-        ]
+Include load balancing and database design.`,
+          },
+        ],
       };
 
       const factors = service.analyzeContentComplexity(request);
@@ -242,8 +249,11 @@ Include load balancing and database design.`
         messages: [
           { role: 'user', content: 'Create a Python backend with FastAPI' },
           { role: 'assistant', content: 'Here is the Python code...' },
-          { role: 'user', content: 'Now create a React frontend in TypeScript' }
-        ]
+          {
+            role: 'user',
+            content: 'Now create a React frontend in TypeScript',
+          },
+        ],
       };
 
       const factors = service.analyzeContentComplexity(request);
@@ -397,14 +407,15 @@ Include load balancing and database design.`
   describe('countCodeBlocks', () => {
     it('should count code blocks correctly', () => {
       const messages = [
-        { 
-          role: 'user' as const, 
-          content: 'Here is some code:\n```python\nprint("hello")\n```\nAnd inline `code` here.' 
+        {
+          role: 'user' as const,
+          content:
+            'Here is some code:\n```python\nprint("hello")\n```\nAnd inline `code` here.',
         },
-        { 
-          role: 'assistant' as const, 
-          content: 'Another block:\n```javascript\nconsole.log("world");\n```' 
-        }
+        {
+          role: 'assistant' as const,
+          content: 'Another block:\n```javascript\nconsole.log("world");\n```',
+        },
       ];
 
       const count = service.countCodeBlocks(messages);
@@ -413,13 +424,19 @@ Include load balancing and database design.`
 
     it('should handle messages with content blocks', () => {
       const messages = [
-        { 
-          role: 'user' as const, 
+        {
+          role: 'user' as const,
           content: [
-            { type: 'text' as const, text: 'Code example:\n```python\nprint("test")\n```' },
-            { type: 'text' as const, text: 'More code:\n```java\nSystem.out.println("test");\n```' }
-          ]
-        }
+            {
+              type: 'text' as const,
+              text: 'Code example:\n```python\nprint("test")\n```',
+            },
+            {
+              type: 'text' as const,
+              text: 'More code:\n```java\nSystem.out.println("test");\n```',
+            },
+          ],
+        },
       ];
 
       const count = service.countCodeBlocks(messages);
@@ -441,7 +458,8 @@ Include load balancing and database design.`
 
   describe('detectAlgorithmicComplexity', () => {
     it('should detect algorithmic keywords', () => {
-      const content = 'implement a binary search algorithm with O(log n) complexity';
+      const content =
+        'implement a binary search algorithm with O(log n) complexity';
       expect(service.detectAlgorithmicComplexity(content)).toBe(true);
     });
 
@@ -577,9 +595,7 @@ describe('ReasoningEffortAnalysisService', () => {
     it('should return undefined for simple requests', () => {
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
-        messages: [
-          { role: 'user', content: 'hello world' }
-        ]
+        messages: [{ role: 'user', content: 'hello world' }],
       };
 
       expect(service.analyzeRequest(request)).toBeUndefined();
@@ -589,8 +605,8 @@ describe('ReasoningEffortAnalysisService', () => {
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { 
-            role: 'user', 
+          {
+            role: 'user',
             content: `Design a microservices architecture for an e-commerce platform with the following requirements:
             
 1. User management service with authentication
@@ -618,9 +634,9 @@ class UserService:
         pass
 \`\`\`
 
-Please provide detailed implementation guidance.`
-          }
-        ]
+Please provide detailed implementation guidance.`,
+          },
+        ],
       };
 
       const result = service.analyzeRequest(request);
@@ -631,8 +647,8 @@ Please provide detailed implementation guidance.`
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { role: 'user', content: 'Create a simple React component' }
-        ]
+          { role: 'user', content: 'Create a simple React component' },
+        ],
       };
 
       const context: ConversationContext = {
@@ -652,9 +668,7 @@ Please provide detailed implementation guidance.`
     it('should return false for very simple requests', () => {
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
-        messages: [
-          { role: 'user', content: 'hi' }
-        ]
+        messages: [{ role: 'user', content: 'hi' }],
       };
 
       expect(service.shouldApplyReasoning(request)).toBe(false);
@@ -664,11 +678,12 @@ Please provide detailed implementation guidance.`
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { 
-            role: 'user', 
-            content: 'Implement a distributed caching system with Redis clustering and automatic failover mechanisms'
-          }
-        ]
+          {
+            role: 'user',
+            content:
+              'Implement a distributed caching system with Redis clustering and automatic failover mechanisms',
+          },
+        ],
       };
 
       expect(service.shouldApplyReasoning(request)).toBe(true);
@@ -680,11 +695,12 @@ Please provide detailed implementation guidance.`
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { 
-            role: 'user', 
-            content: 'Create a Django REST API with user authentication and PostgreSQL database'
-          }
-        ]
+          {
+            role: 'user',
+            content:
+              'Create a Django REST API with user authentication and PostgreSQL database',
+          },
+        ],
       };
 
       const context = service.detectLanguageContext(request);
@@ -697,11 +713,12 @@ Please provide detailed implementation guidance.`
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { 
-            role: 'user', 
-            content: '@RestController class UserController with Spring Boot and JPA repositories'
-          }
-        ]
+          {
+            role: 'user',
+            content:
+              '@RestController class UserController with Spring Boot and JPA repositories',
+          },
+        ],
       };
 
       const context = service.detectLanguageContext(request);
@@ -713,11 +730,12 @@ Please provide detailed implementation guidance.`
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { 
-            role: 'user', 
-            content: 'Create an Android Activity with Jetpack Compose and Room database in Kotlin'
-          }
-        ]
+          {
+            role: 'user',
+            content:
+              'Create an Android Activity with Jetpack Compose and Room database in Kotlin',
+          },
+        ],
       };
 
       const context = service.detectLanguageContext(request);
@@ -729,11 +747,12 @@ Please provide detailed implementation guidance.`
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { 
-            role: 'user', 
-            content: 'Build a React component with TypeScript, useState hooks, and Material-UI'
-          }
-        ]
+          {
+            role: 'user',
+            content:
+              'Build a React component with TypeScript, useState hooks, and Material-UI',
+          },
+        ],
       };
 
       const context = service.detectLanguageContext(request);
@@ -745,11 +764,12 @@ Please provide detailed implementation guidance.`
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { 
-            role: 'user', 
-            content: 'Create a Vue 3 component using Composition API with TypeScript'
-          }
-        ]
+          {
+            role: 'user',
+            content:
+              'Create a Vue 3 component using Composition API with TypeScript',
+          },
+        ],
       };
 
       const context = service.detectLanguageContext(request);
@@ -761,11 +781,12 @@ Please provide detailed implementation guidance.`
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { 
-            role: 'user', 
-            content: 'Write a bash script for Docker deployment with Kubernetes orchestration'
-          }
-        ]
+          {
+            role: 'user',
+            content:
+              'Write a bash script for Docker deployment with Kubernetes orchestration',
+          },
+        ],
       };
 
       const context = service.detectLanguageContext(request);
@@ -780,12 +801,12 @@ describe('Factory functions and utilities', () => {
     it('should create a working analyzer instance', () => {
       const analyzer = createReasoningEffortAnalyzer();
       expect(analyzer).toBeInstanceOf(ReasoningEffortAnalysisService);
-      
+
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
-        messages: [{ role: 'user', content: 'test' }]
+        messages: [{ role: 'user', content: 'test' }],
       };
-      
+
       const result = analyzer.analyzeRequest(request);
       expect(result).toBeUndefined(); // Simple request should not need reasoning
     });
@@ -796,11 +817,12 @@ describe('Factory functions and utilities', () => {
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { 
-            role: 'user', 
-            content: 'Implement a complex distributed system with microservices architecture, load balancing, and database sharding'
-          }
-        ]
+          {
+            role: 'user',
+            content:
+              'Implement a complex distributed system with microservices architecture, load balancing, and database sharding',
+          },
+        ],
       };
 
       const result = analyzeReasoningEffort(request);
@@ -820,11 +842,27 @@ describe('TASK_COMPLEXITY_INDICATORS', () => {
   });
 
   it('should have language-specific indicators for all supported languages', () => {
-    const languages = ['python', 'java', 'kotlin', 'typescript', 'javascript', 'shell', 'bash', 'swift', 'go', 'rust'];
-    
+    const languages = [
+      'python',
+      'java',
+      'kotlin',
+      'typescript',
+      'javascript',
+      'shell',
+      'bash',
+      'swift',
+      'go',
+      'rust',
+    ];
+
     for (const language of languages) {
-      expect(TASK_COMPLEXITY_INDICATORS.languageSpecific).toHaveProperty(language);
-      const indicators = TASK_COMPLEXITY_INDICATORS.languageSpecific[language as keyof typeof TASK_COMPLEXITY_INDICATORS.languageSpecific];
+      expect(TASK_COMPLEXITY_INDICATORS.languageSpecific).toHaveProperty(
+        language
+      );
+      const indicators =
+        TASK_COMPLEXITY_INDICATORS.languageSpecific[
+          language as keyof typeof TASK_COMPLEXITY_INDICATORS.languageSpecific
+        ];
       expect(indicators).toHaveProperty('complexityKeywords');
       expect(indicators).toHaveProperty('frameworkKeywords');
       expect(indicators).toHaveProperty('simplePatterns');
@@ -833,9 +871,17 @@ describe('TASK_COMPLEXITY_INDICATORS', () => {
   });
 
   it('should have meaningful keywords for each category', () => {
-    expect(TASK_COMPLEXITY_INDICATORS.algorithmKeywords.length).toBeGreaterThan(10);
-    expect(TASK_COMPLEXITY_INDICATORS.architectureKeywords.length).toBeGreaterThan(10);
-    expect(TASK_COMPLEXITY_INDICATORS.debuggingKeywords.length).toBeGreaterThan(5);
-    expect(TASK_COMPLEXITY_INDICATORS.simpleTaskKeywords.length).toBeGreaterThan(5);
+    expect(TASK_COMPLEXITY_INDICATORS.algorithmKeywords.length).toBeGreaterThan(
+      10
+    );
+    expect(
+      TASK_COMPLEXITY_INDICATORS.architectureKeywords.length
+    ).toBeGreaterThan(10);
+    expect(TASK_COMPLEXITY_INDICATORS.debuggingKeywords.length).toBeGreaterThan(
+      5
+    );
+    expect(
+      TASK_COMPLEXITY_INDICATORS.simpleTaskKeywords.length
+    ).toBeGreaterThan(5);
   });
 });

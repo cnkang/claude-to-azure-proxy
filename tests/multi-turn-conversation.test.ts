@@ -8,10 +8,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import type {
-  ClaudeRequest,
-  ResponsesResponse,
-} from '../src/types/index.js';
+import type { ClaudeRequest, ResponsesResponse } from '../src/types/index.js';
 import type {
   MultiTurnConversationHandler,
   MultiTurnConversationConfig,
@@ -43,7 +40,10 @@ describe('MultiTurnConversationHandler', () => {
       maxStoredConversations: 5,
     });
 
-    handler = new MultiTurnConversationHandlerImpl(mockConfig, conversationManager);
+    handler = new MultiTurnConversationHandlerImpl(
+      mockConfig,
+      conversationManager
+    );
   });
 
   afterEach(() => {
@@ -51,10 +51,13 @@ describe('MultiTurnConversationHandler', () => {
   });
 
   // Helper function to create mock request
-  const createMockRequest = (content: string, messageCount = 1): ClaudeRequest => ({
+  const createMockRequest = (
+    content: string,
+    messageCount = 1
+  ): ClaudeRequest => ({
     model: 'claude-3-5-sonnet-20241022',
     messages: Array.from({ length: messageCount }, (_, i) => ({
-      role: i % 2 === 0 ? 'user' as const : 'assistant' as const,
+      role: i % 2 === 0 ? ('user' as const) : ('assistant' as const),
       content: `${content} - message ${i + 1}`,
     })),
     max_tokens: 1000,
@@ -62,7 +65,10 @@ describe('MultiTurnConversationHandler', () => {
   });
 
   // Helper function to create mock response
-  const createMockResponse = (id: string, totalTokens = 100): ResponsesResponse => ({
+  const createMockResponse = (
+    id: string,
+    totalTokens = 100
+  ): ResponsesResponse => ({
     id,
     object: 'response',
     created: Date.now(),
@@ -87,7 +93,11 @@ describe('MultiTurnConversationHandler', () => {
       const correlationId = 'corr-123';
       const request = createMockRequest('Hello, how are you?');
 
-      const result = await handler.processRequest(request, conversationId, correlationId);
+      const result = await handler.processRequest(
+        request,
+        conversationId,
+        correlationId
+      );
 
       expect(result.conversationId).toBe(conversationId);
       expect(result.previousResponseId).toBeUndefined();
@@ -118,7 +128,11 @@ describe('MultiTurnConversationHandler', () => {
       );
 
       // Process second request
-      const result = await handler.processRequest(request2, conversationId, correlationId);
+      const result = await handler.processRequest(
+        request2,
+        conversationId,
+        correlationId
+      );
 
       expect(result.conversationId).toBe(conversationId);
       expect(result.previousResponseId).toBe('resp-1');
@@ -134,7 +148,11 @@ describe('MultiTurnConversationHandler', () => {
         'Can you help me design a complex microservices architecture with event sourcing and CQRS patterns?'
       );
 
-      const result = await handler.processRequest(complexRequest, conversationId, correlationId);
+      const result = await handler.processRequest(
+        complexRequest,
+        conversationId,
+        correlationId
+      );
 
       expect(result.contextComplexity).toBeOneOf(['medium', 'complex']);
     });
@@ -163,7 +181,11 @@ describe('MultiTurnConversationHandler', () => {
       Date.now = vi.fn(() => originalNow() + 400000); // 6+ minutes later
 
       // Process second request
-      const result = await handler.processRequest(request2, conversationId, correlationId);
+      const result = await handler.processRequest(
+        request2,
+        conversationId,
+        correlationId
+      );
 
       expect(result.shouldUsePreviousResponse).toBe(false);
       expect(result.enhancedRequest.previous_response_id).toBeUndefined();
@@ -247,7 +269,13 @@ describe('MultiTurnConversationHandler', () => {
       const response = createMockResponse('resp-123');
 
       await expect(
-        handler.recordConversationTurn(conversationId, request, response, 1000, correlationId)
+        handler.recordConversationTurn(
+          conversationId,
+          request,
+          response,
+          1000,
+          correlationId
+        )
       ).resolves.not.toThrow();
 
       const history = handler.getConversationHistory(conversationId);
@@ -262,7 +290,11 @@ describe('MultiTurnConversationHandler', () => {
 
       // Process initial request
       const initialRequest = createMockRequest('Initial message');
-      await handler.processRequest(initialRequest, conversationId, correlationId);
+      await handler.processRequest(
+        initialRequest,
+        conversationId,
+        correlationId
+      );
 
       // Record multiple turns
       for (let i = 1; i <= 5; i++) {
@@ -297,7 +329,11 @@ describe('MultiTurnConversationHandler', () => {
 
       // Process initial request
       const initialRequest = createMockRequest('Initial message');
-      await handler.processRequest(initialRequest, conversationId, correlationId);
+      await handler.processRequest(
+        initialRequest,
+        conversationId,
+        correlationId
+      );
 
       // Record more turns than the limit (10)
       for (let i = 1; i <= 15; i++) {
@@ -327,7 +363,11 @@ describe('MultiTurnConversationHandler', () => {
 
       // Process initial request
       const initialRequest = createMockRequest('Initial message');
-      await handler.processRequest(initialRequest, conversationId, correlationId);
+      await handler.processRequest(
+        initialRequest,
+        conversationId,
+        correlationId
+      );
 
       // Record multiple turns
       for (let i = 1; i <= 5; i++) {
@@ -347,8 +387,12 @@ describe('MultiTurnConversationHandler', () => {
       expect(limitedHistory).toHaveLength(3);
 
       // Should return most recent entries
-      expect(limitedHistory.length > 0 ? limitedHistory[0]?.messageId : null).toBe('resp-3');
-      expect(limitedHistory.length > 2 ? limitedHistory[2]?.messageId : null).toBe('resp-5');
+      expect(
+        limitedHistory.length > 0 ? limitedHistory[0]?.messageId : null
+      ).toBe('resp-3');
+      expect(
+        limitedHistory.length > 2 ? limitedHistory[2]?.messageId : null
+      ).toBe('resp-5');
     });
 
     it('should return empty history for non-existent conversation', () => {
@@ -419,7 +463,11 @@ describe('MultiTurnConversationHandler', () => {
 
       // Process initial request
       const initialRequest = createMockRequest('Initial message');
-      await handler.processRequest(initialRequest, conversationId, correlationId);
+      await handler.processRequest(
+        initialRequest,
+        conversationId,
+        correlationId
+      );
 
       // Record turns with different timestamps
       const originalNow = Date.now;
@@ -443,7 +491,8 @@ describe('MultiTurnConversationHandler', () => {
       // Move time forward to make some entries old
       Date.now = vi.fn(() => baseTime + 120000); // 2 minutes later
 
-      const cleanedCount = await handler.cleanupConversationHistory(conversationId);
+      const cleanedCount =
+        await handler.cleanupConversationHistory(conversationId);
       expect(cleanedCount).toBeGreaterThan(0);
 
       const history = handler.getConversationHistory(conversationId);
@@ -463,7 +512,13 @@ describe('MultiTurnConversationHandler', () => {
         await handler.processRequest(request, id, correlationId);
 
         const response = createMockResponse(`resp-${id}`);
-        await handler.recordConversationTurn(id, request, response, 1000, correlationId);
+        await handler.recordConversationTurn(
+          id,
+          request,
+          response,
+          1000,
+          correlationId
+        );
       }
 
       // Mock time to make conversations old
@@ -522,7 +577,13 @@ describe('MultiTurnConversationHandler', () => {
           for (let j = 1; j <= i + 2; j++) {
             const turnRequest = createMockRequest(`Turn ${j} for ${id}`);
             const response = createMockResponse(`resp-${id}-${j}`);
-            await handler.recordConversationTurn(id, turnRequest, response, 1000, correlationId);
+            await handler.recordConversationTurn(
+              id,
+              turnRequest,
+              response,
+              1000,
+              correlationId
+            );
           }
         }
       }
@@ -573,7 +634,11 @@ describe('MultiTurnConversationHandler', () => {
 
       // Process initial request
       const initialRequest = createMockRequest('Initial message');
-      await handler.processRequest(initialRequest, conversationId, correlationId);
+      await handler.processRequest(
+        initialRequest,
+        conversationId,
+        correlationId
+      );
 
       const startTime = Date.now();
 
@@ -609,20 +674,23 @@ describe('MultiTurnConversationHandler', () => {
       const startTime = Date.now();
 
       // Process multiple conversations concurrently
-      const promises = Array.from({ length: conversationCount }, async (_, i) => {
-        const conversationId = `concurrent-conv-${i}`;
-        const request = createMockRequest(`Message for conversation ${i}`);
-        const response = createMockResponse(`resp-${i}`);
+      const promises = Array.from(
+        { length: conversationCount },
+        async (_, i) => {
+          const conversationId = `concurrent-conv-${i}`;
+          const request = createMockRequest(`Message for conversation ${i}`);
+          const response = createMockResponse(`resp-${i}`);
 
-        await handler.processRequest(request, conversationId, correlationId);
-        await handler.recordConversationTurn(
-          conversationId,
-          request,
-          response,
-          1000,
-          correlationId
-        );
-      });
+          await handler.processRequest(request, conversationId, correlationId);
+          await handler.recordConversationTurn(
+            conversationId,
+            request,
+            response,
+            1000,
+            correlationId
+          );
+        }
+      );
 
       await Promise.all(promises);
 

@@ -339,7 +339,9 @@ describe('OpenAIToResponsesTransformer', () => {
       // Missing content is now handled with default sanitization
       const result = transformer.transformRequest(requestWithMissingContent);
       expect(result).toBeDefined();
-      expect(result.input).toContain('[Content was sanitized and removed for security]');
+      expect(result.input).toContain(
+        '[Content was sanitized and removed for security]'
+      );
     });
 
     it('should throw ValidationError for invalid tool call structure', () => {

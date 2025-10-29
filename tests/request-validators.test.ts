@@ -75,7 +75,9 @@ describe('Request Validators', () => {
       method: 'POST',
       correlationId: 'test-correlation-id',
       get: vi.fn((headerName: string) => {
-        return (mockReq.headers as Record<string, string>)[headerName.toLowerCase()];
+        return (mockReq.headers as Record<string, string>)[
+          headerName.toLowerCase()
+        ];
       }),
     };
 
@@ -118,14 +120,10 @@ describe('Request Validators', () => {
         isEmpty: vi.fn().mockReturnValue(true),
         array: vi.fn().mockReturnValue([]),
       };
-      
+
       (validationResult as any).mockReturnValue(mockValidationResult);
 
-      handleValidationErrors(
-        mockReq as Request,
-        mockRes as Response,
-        mockNext
-      );
+      handleValidationErrors(mockReq as Request, mockRes as Response, mockNext);
 
       expect(mockNext).toHaveBeenCalled();
       expect(mockRes.status).not.toHaveBeenCalled();
@@ -146,14 +144,10 @@ describe('Request Validators', () => {
         isEmpty: vi.fn().mockReturnValue(false),
         array: vi.fn().mockReturnValue(mockValidationErrors),
       };
-      
+
       (validationResult as any).mockReturnValue(mockValidationResult);
 
-      handleValidationErrors(
-        mockReq as Request,
-        mockRes as Response,
-        mockNext
-      );
+      handleValidationErrors(mockReq as Request, mockRes as Response, mockNext);
 
       // handleValidationErrors is now a no-op, just calls next()
       expect(mockNext).toHaveBeenCalled();
@@ -174,14 +168,10 @@ describe('Request Validators', () => {
         isEmpty: vi.fn().mockReturnValue(false),
         array: vi.fn().mockReturnValue(mockValidationErrors),
       };
-      
+
       (validationResult as any).mockReturnValue(mockValidationResult);
 
-      handleValidationErrors(
-        mockReq as Request,
-        mockRes as Response,
-        mockNext
-      );
+      handleValidationErrors(mockReq as Request, mockRes as Response, mockNext);
 
       // handleValidationErrors is now a no-op, just calls next()
       expect(mockNext).toHaveBeenCalled();
@@ -202,11 +192,7 @@ describe('Request Validators', () => {
         ],
       };
 
-      sanitizeRequest(
-        mockReq as Request,
-        mockRes as Response,
-        mockNext
-      );
+      sanitizeRequest(mockReq as Request, mockRes as Response, mockNext);
 
       expect(mockNext).toHaveBeenCalled();
       expect(mockReq.body.messages[0].content).not.toContain('<script>');
@@ -218,11 +204,7 @@ describe('Request Validators', () => {
         malicious: '<script>alert("xss")</script>',
       };
 
-      sanitizeRequest(
-        mockReq as Request,
-        mockRes as Response,
-        mockNext
-      );
+      sanitizeRequest(mockReq as Request, mockRes as Response, mockNext);
 
       expect(mockNext).toHaveBeenCalled();
       expect(mockReq.query.malicious).not.toContain('<script>');
@@ -234,11 +216,7 @@ describe('Request Validators', () => {
       circular.self = circular;
       mockReq.body = circular;
 
-      sanitizeRequest(
-        mockReq as Request,
-        mockRes as Response,
-        mockNext
-      );
+      sanitizeRequest(mockReq as Request, mockRes as Response, mockNext);
 
       // Should handle the circular reference gracefully
       expect(mockReq.body.self).toBe('[Circular Reference]');
@@ -254,11 +232,7 @@ describe('Request Validators', () => {
         configurable: true,
       });
 
-      sanitizeRequest(
-        mockReq as Request,
-        mockRes as Response,
-        mockNext
-      );
+      sanitizeRequest(mockReq as Request, mockRes as Response, mockNext);
 
       expect(mockRes.status).toHaveBeenCalledWith(400);
       expect(mockRes.json).toHaveBeenCalledWith({
@@ -450,11 +424,7 @@ describe('Request Validators', () => {
     it('should handle empty request body', () => {
       mockReq.body = {};
 
-      sanitizeRequest(
-        mockReq as Request,
-        mockRes as Response,
-        mockNext
-      );
+      sanitizeRequest(mockReq as Request, mockRes as Response, mockNext);
 
       expect(mockNext).toHaveBeenCalled();
     });
@@ -462,11 +432,7 @@ describe('Request Validators', () => {
     it('should handle null request body', () => {
       mockReq.body = null;
 
-      sanitizeRequest(
-        mockReq as Request,
-        mockRes as Response,
-        mockNext
-      );
+      sanitizeRequest(mockReq as Request, mockRes as Response, mockNext);
 
       expect(mockNext).toHaveBeenCalled();
     });
@@ -488,14 +454,10 @@ describe('Request Validators', () => {
         isEmpty: vi.fn().mockReturnValue(false),
         array: vi.fn().mockReturnValue(mockValidationErrors),
       };
-      
+
       (validationResult as any).mockReturnValue(mockValidationResult);
 
-      handleValidationErrors(
-        mockReq as Request,
-        mockRes as Response,
-        mockNext
-      );
+      handleValidationErrors(mockReq as Request, mockRes as Response, mockNext);
 
       // handleValidationErrors is now a no-op, just calls next()
       expect(mockNext).toHaveBeenCalled();

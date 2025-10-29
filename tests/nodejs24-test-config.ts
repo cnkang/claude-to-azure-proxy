@@ -31,16 +31,19 @@ export const setupNodeJS24TestEnvironment = (): void => {
   // Set Node.js 24 specific environment variables
   process.env.NODE_VERSION = nodejs24TestConfig.NODE_VERSION;
   process.env.V8_VERSION = nodejs24TestConfig.V8_VERSION;
-  process.env.ENABLE_GC_MONITORING = nodejs24TestConfig.ENABLE_GC_MONITORING.toString();
-  process.env.ENABLE_PERFORMANCE_PROFILING = nodejs24TestConfig.ENABLE_PERFORMANCE_PROFILING.toString();
-  process.env.MEMORY_LEAK_DETECTION = nodejs24TestConfig.MEMORY_LEAK_DETECTION.toString();
-  
+  process.env.ENABLE_GC_MONITORING =
+    nodejs24TestConfig.ENABLE_GC_MONITORING.toString();
+  process.env.ENABLE_PERFORMANCE_PROFILING =
+    nodejs24TestConfig.ENABLE_PERFORMANCE_PROFILING.toString();
+  process.env.MEMORY_LEAK_DETECTION =
+    nodejs24TestConfig.MEMORY_LEAK_DETECTION.toString();
+
   // Configure Node.js 24 specific flags
   if (nodejs24TestConfig.ENABLE_GC_MONITORING) {
     // Note: --trace-gc is not allowed in NODE_OPTIONS, so we skip this for now
     // GC monitoring will be handled through PerformanceObserver instead
   }
-  
+
   // Set up base test environment
   Object.entries(testConfig).forEach(([key, value]) => {
     if (typeof value === 'string' || typeof value === 'number') {
@@ -94,7 +97,7 @@ export const nodejs24TestUtils = {
     if (!this.isNodeJS24()) {
       throw new Error(`Node.js 24+ required, but running ${process.version}`);
     }
-    
+
     if (!this.isV8Compatible()) {
       throw new Error(`V8 13.6+ required, but running ${process.versions.v8}`);
     }
@@ -115,7 +118,7 @@ export const nodejs24TestUtils = {
       improvedAsyncPerformance: this.isNodeJS24(),
       betterErrorHandling: this.isNodeJS24(),
     };
-  }
+  },
 };
 
 /**
@@ -127,13 +130,14 @@ export const cleanupNodeJS24TestEnvironment = (): void => {
   delete process.env.ENABLE_GC_MONITORING;
   delete process.env.ENABLE_PERFORMANCE_PROFILING;
   delete process.env.MEMORY_LEAK_DETECTION;
-  
+
   // Clean up Node.js options
   if (process.env.NODE_OPTIONS) {
-    process.env.NODE_OPTIONS = process.env.NODE_OPTIONS
-      .replace(/\s*--trace-gc\s*/g, '')
-      .trim();
-    
+    process.env.NODE_OPTIONS = process.env.NODE_OPTIONS.replace(
+      /\s*--trace-gc\s*/g,
+      ''
+    ).trim();
+
     if (!process.env.NODE_OPTIONS) {
       delete process.env.NODE_OPTIONS;
     }

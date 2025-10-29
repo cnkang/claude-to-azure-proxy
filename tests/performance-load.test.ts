@@ -1,28 +1,30 @@
 /**
  * @fileoverview Performance and load testing for Azure OpenAI Responses API migration
- * 
+ *
  * This test suite validates concurrent request handling, measures reasoning token
  * consumption and costs, tests memory usage under sustained load, and validates
  * response time requirements.
- * 
+ *
  * Requirements covered: 8.2
  */
 
-import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  beforeEach,
+  afterEach,
+  vi,
+} from 'vitest';
 import request from 'supertest';
 import express from 'express';
 import { json } from 'express';
 import { performance } from 'perf_hooks';
 import { UniversalRequestProcessor } from '../src/utils/universal-request-processor.js';
 import { createConversationManager } from '../src/utils/conversation-manager.js';
-import type {
-  ClaudeRequest,
-  ResponsesResponse,
-} from '../src/types/index.js';
-import {
-  ClaudeRequestFactory,
-  TestDataUtils,
-} from './test-factories.js';
+import type { ClaudeRequest, ResponsesResponse } from '../src/types/index.js';
+import { ClaudeRequestFactory, TestDataUtils } from './test-factories.js';
 
 // Mock Azure Responses Client
 const mockAzureClient = {
@@ -78,27 +80,34 @@ class PerformanceMetrics {
   }
 
   public getAverageResponseTime(operation?: string): number {
-    const filteredMetrics = (operation !== undefined && operation.trim() !== '') 
-      ? this.metrics.filter(m => m.operation === operation)
-      : this.metrics;
-    
-    if (filteredMetrics.length === 0) {return 0;}
-    
-    const totalDuration = filteredMetrics.reduce((sum, m) => sum + m.duration, 0);
+    const filteredMetrics =
+      operation !== undefined && operation.trim() !== ''
+        ? this.metrics.filter((m) => m.operation === operation)
+        : this.metrics;
+
+    if (filteredMetrics.length === 0) {
+      return 0;
+    }
+
+    const totalDuration = filteredMetrics.reduce(
+      (sum, m) => sum + m.duration,
+      0
+    );
     return totalDuration / filteredMetrics.length;
   }
 
   public getPercentile(percentile: number, operation?: string): number {
-    const filteredMetrics = (operation !== undefined && operation.trim() !== '') 
-      ? this.metrics.filter(m => m.operation === operation)
-      : this.metrics;
-    
-    if (filteredMetrics.length === 0) {return 0;}
-    
-    const sorted = filteredMetrics
-      .map(m => m.duration)
-      .sort((a, b) => a - b);
-    
+    const filteredMetrics =
+      operation !== undefined && operation.trim() !== ''
+        ? this.metrics.filter((m) => m.operation === operation)
+        : this.metrics;
+
+    if (filteredMetrics.length === 0) {
+      return 0;
+    }
+
+    const sorted = filteredMetrics.map((m) => m.duration).sort((a, b) => a - b);
+
     const index = Math.ceil((percentile / 100) * sorted.length) - 1;
     const value = sorted.at(index);
     return value ?? 0;
@@ -120,7 +129,12 @@ class PerformanceMetrics {
         }
         return total;
       },
-      { promptTokens: 0, completionTokens: 0, reasoningTokens: 0, totalTokens: 0 }
+      {
+        promptTokens: 0,
+        completionTokens: 0,
+        reasoningTokens: 0,
+        totalTokens: 0,
+      }
     );
   }
 
@@ -134,13 +148,14 @@ class PerformanceMetrics {
       return { maxHeapUsed: 0, maxRss: 0, avgHeapUsed: 0, avgRss: 0 };
     }
 
-    const heapUsed = this.metrics.map(m => m.memoryUsage.heapUsed);
-    const rss = this.metrics.map(m => m.memoryUsage.rss);
+    const heapUsed = this.metrics.map((m) => m.memoryUsage.heapUsed);
+    const rss = this.metrics.map((m) => m.memoryUsage.rss);
 
     return {
       maxHeapUsed: Math.max(...heapUsed),
       maxRss: Math.max(...rss),
-      avgHeapUsed: heapUsed.reduce((sum, val) => sum + val, 0) / heapUsed.length,
+      avgHeapUsed:
+        heapUsed.reduce((sum, val) => sum + val, 0) / heapUsed.length,
       avgRss: rss.reduce((sum, val) => sum + val, 0) / rss.length,
     };
   }
@@ -163,9 +178,13 @@ class LoadTestScenario {
     complexity: 'simple' | 'medium' | 'complex' = 'medium'
   ): ClaudeRequest[] {
     return Array.from({ length: count }, (_, i) => {
-      const size = complexity === 'simple' ? 'small' : 
-                   complexity === 'medium' ? 'medium' : 'large';
-      
+      const size =
+        complexity === 'simple'
+          ? 'small'
+          : complexity === 'medium'
+            ? 'medium'
+            : 'large';
+
       return ClaudeRequestFactory.create({
         size,
         includeOptional: complexity !== 'simple',
@@ -174,7 +193,9 @@ class LoadTestScenario {
     });
   }
 
-  public static generateReasoningIntensiveRequests(count: number): ClaudeRequest[] {
+  public static generateReasoningIntensiveRequests(
+    count: number
+  ): ClaudeRequest[] {
     const reasoningPrompts = [
       'Design a scalable microservices architecture for an e-commerce platform',
       'Implement a complex algorithm for real-time fraud detection',
@@ -188,7 +209,9 @@ class LoadTestScenario {
       messages: [
         {
           role: 'user',
-          content: reasoningPrompts[i % reasoningPrompts.length] + ` (Request ${i + 1})`,
+          content:
+            reasoningPrompts[i % reasoningPrompts.length] +
+            ` (Request ${i + 1})`,
         },
       ],
       max_tokens: 2000,
@@ -196,7 +219,9 @@ class LoadTestScenario {
     }));
   }
 
-  public static generateMemoryIntensiveRequests(count: number): ClaudeRequest[] {
+  public static generateMemoryIntensiveRequests(
+    count: number
+  ): ClaudeRequest[] {
     return Array.from({ length: count }, (_, i) => ({
       model: 'claude-3-5-sonnet-20241022',
       messages: [
@@ -214,12 +239,14 @@ class LoadTestScenario {
  * Response factory for performance tests
  */
 class PerformanceResponseFactory {
-  public static createResponseWithTokens(options: {
-    promptTokens?: number;
-    completionTokens?: number;
-    reasoningTokens?: number;
-    responseTime?: number;
-  } = {}): ResponsesResponse {
+  public static createResponseWithTokens(
+    options: {
+      promptTokens?: number;
+      completionTokens?: number;
+      reasoningTokens?: number;
+      responseTime?: number;
+    } = {}
+  ): ResponsesResponse {
     const {
       promptTokens = 100,
       completionTokens = 200,
@@ -233,13 +260,17 @@ class PerformanceResponseFactory {
       created: Math.floor(Date.now() / 1000),
       model: 'gpt-5-codex',
       output: [
-        ...(reasoningTokens > 0 ? [{
-          type: 'reasoning' as const,
-          reasoning: {
-            content: 'Performance test reasoning content',
-            status: 'completed' as const,
-          },
-        }] : []),
+        ...(reasoningTokens > 0
+          ? [
+              {
+                type: 'reasoning' as const,
+                reasoning: {
+                  content: 'Performance test reasoning content',
+                  status: 'completed' as const,
+                },
+              },
+            ]
+          : []),
         {
           type: 'text' as const,
           text: `Performance test response (${responseTime}ms)`,
@@ -259,15 +290,17 @@ class PerformanceResponseFactory {
     maxLatency: number
   ): Promise<ResponsesResponse> {
     const latency = Math.random() * (maxLatency - minLatency) + minLatency;
-    
+
     return new Promise((resolve) => {
       setTimeout(() => {
-        resolve(this.createResponseWithTokens({
-          responseTime: latency,
-          promptTokens: Math.floor(Math.random() * 200) + 50,
-          completionTokens: Math.floor(Math.random() * 500) + 100,
-          reasoningTokens: Math.floor(Math.random() * 100) + 25,
-        }));
+        resolve(
+          this.createResponseWithTokens({
+            responseTime: latency,
+            promptTokens: Math.floor(Math.random() * 200) + 50,
+            completionTokens: Math.floor(Math.random() * 500) + 100,
+            reasoningTokens: Math.floor(Math.random() * 100) + 25,
+          })
+        );
       }, latency);
     });
   }
@@ -297,7 +330,13 @@ describe('Performance and Load Testing', () => {
           {
             provider: 'azure',
             backendModel: 'gpt-5-codex',
-            aliases: ['gpt-5-codex', 'gpt-4', 'gpt-4o', 'gpt-4-turbo', 'claude-3-5-sonnet-20241022'],
+            aliases: [
+              'gpt-5-codex',
+              'gpt-4',
+              'gpt-4o',
+              'gpt-4-turbo',
+              'claude-3-5-sonnet-20241022',
+            ],
           },
         ],
       },
@@ -318,22 +357,19 @@ describe('Performance and Load Testing', () => {
     // Add performance monitoring middleware
     app.use((req, res, next) => {
       const startTime = performance.now();
-      
+
       res.on('finish', () => {
         const duration = performance.now() - startTime;
-        performanceMetrics.recordMetric(
-          `${req.method} ${req.path}`,
-          duration
-        );
+        performanceMetrics.recordMetric(`${req.method} ${req.path}`, duration);
       });
-      
+
       next();
     });
 
     // Add test routes
     app.post('/v1/messages', async (req, res) => {
       const startTime = performance.now();
-      
+
       try {
         const result = await universalProcessor.processRequest({
           headers: req.headers as Record<string, string>,
@@ -342,28 +378,26 @@ describe('Performance and Load Testing', () => {
           userAgent: req.get('User-Agent'),
         });
 
-        const responsesResponse = await mockAzureClient.createResponse(result.responsesParams);
-        
-        const duration = performance.now() - startTime;
-        performanceMetrics.recordMetric(
-          'claude_request',
-          duration,
-          {
-            promptTokens: responsesResponse.usage.prompt_tokens,
-            completionTokens: responsesResponse.usage.completion_tokens,
-            reasoningTokens: responsesResponse.usage.reasoning_tokens,
-            totalTokens: responsesResponse.usage.total_tokens,
-          }
+        const responsesResponse = await mockAzureClient.createResponse(
+          result.responsesParams
         );
-        
+
+        const duration = performance.now() - startTime;
+        performanceMetrics.recordMetric('claude_request', duration, {
+          promptTokens: responsesResponse.usage.prompt_tokens,
+          completionTokens: responsesResponse.usage.completion_tokens,
+          reasoningTokens: responsesResponse.usage.reasoning_tokens,
+          totalTokens: responsesResponse.usage.total_tokens,
+        });
+
         // Transform back to Claude format
         const claudeResponse = {
           id: responsesResponse.id,
           type: 'message',
           role: 'assistant',
           content: responsesResponse.output
-            .filter(output => output.type === 'text')
-            .map(output => ({
+            .filter((output) => output.type === 'text')
+            .map((output) => ({
               type: 'text',
               text: output.text,
             })),
@@ -389,7 +423,7 @@ describe('Performance and Load Testing', () => {
 
     app.post('/v1/chat/completions', async (req, res) => {
       const startTime = performance.now();
-      
+
       try {
         const result = await universalProcessor.processRequest({
           headers: req.headers as Record<string, string>,
@@ -398,20 +432,18 @@ describe('Performance and Load Testing', () => {
           userAgent: req.get('User-Agent'),
         });
 
-        const responsesResponse = await mockAzureClient.createResponse(result.responsesParams);
-        
-        const duration = performance.now() - startTime;
-        performanceMetrics.recordMetric(
-          'openai_request',
-          duration,
-          {
-            promptTokens: responsesResponse.usage.prompt_tokens,
-            completionTokens: responsesResponse.usage.completion_tokens,
-            reasoningTokens: responsesResponse.usage.reasoning_tokens,
-            totalTokens: responsesResponse.usage.total_tokens,
-          }
+        const responsesResponse = await mockAzureClient.createResponse(
+          result.responsesParams
         );
-        
+
+        const duration = performance.now() - startTime;
+        performanceMetrics.recordMetric('openai_request', duration, {
+          promptTokens: responsesResponse.usage.prompt_tokens,
+          completionTokens: responsesResponse.usage.completion_tokens,
+          reasoningTokens: responsesResponse.usage.reasoning_tokens,
+          totalTokens: responsesResponse.usage.total_tokens,
+        });
+
         // Transform back to OpenAI format
         const openaiResponse = {
           id: responsesResponse.id,
@@ -424,8 +456,8 @@ describe('Performance and Load Testing', () => {
               message: {
                 role: 'assistant',
                 content: responsesResponse.output
-                  .filter(output => output.type === 'text')
-                  .map(output => output.text)
+                  .filter((output) => output.type === 'text')
+                  .map((output) => output.text)
                   .join(''),
               },
               finish_reason: 'stop',
@@ -457,7 +489,7 @@ describe('Performance and Load Testing', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     performanceMetrics.clear();
-    
+
     // Default response with realistic timing
     mockAzureClient.createResponse.mockImplementation(() =>
       PerformanceResponseFactory.createVariableLatencyResponse(100, 500)
@@ -470,65 +502,81 @@ describe('Performance and Load Testing', () => {
 
   describe('Concurrent Request Handling', () => {
     it('should handle 10 concurrent simple requests efficiently', async () => {
-      const concurrentRequests = LoadTestScenario.generateConcurrentRequests(10, 'simple');
-      
+      const concurrentRequests = LoadTestScenario.generateConcurrentRequests(
+        10,
+        'simple'
+      );
+
       const startTime = performance.now();
-      
-      const promises = concurrentRequests.map(claudeRequest =>
-        request(app)
-          .post('/v1/messages')
-          .send(claudeRequest)
+
+      const promises = concurrentRequests.map((claudeRequest) =>
+        request(app).post('/v1/messages').send(claudeRequest)
       );
 
       const responses = await Promise.all(promises);
       const totalTime = performance.now() - startTime;
 
       // Verify all requests succeeded
-      responses.forEach(response => {
+      responses.forEach((response) => {
         expect(response.status).toBe(200);
         expect(response.body.type).toBe('message');
       });
 
       // Performance assertions
       expect(totalTime).toBeLessThan(2000); // Should complete within 2 seconds
-      expect(performanceMetrics.getAverageResponseTime('claude_request')).toBeLessThan(1000);
-      
+      expect(
+        performanceMetrics.getAverageResponseTime('claude_request')
+      ).toBeLessThan(1000);
+
       // Verify concurrent processing (should be faster than sequential)
-      const avgResponseTime = performanceMetrics.getAverageResponseTime('claude_request');
+      const avgResponseTime =
+        performanceMetrics.getAverageResponseTime('claude_request');
       expect(totalTime).toBeLessThan(avgResponseTime * 10 * 0.8); // At least 20% faster than sequential
     });
 
     it('should handle 25 concurrent medium complexity requests', async () => {
-      const concurrentRequests = LoadTestScenario.generateConcurrentRequests(25, 'medium');
-      
+      const concurrentRequests = LoadTestScenario.generateConcurrentRequests(
+        25,
+        'medium'
+      );
+
       const startTime = performance.now();
-      
-      const promises = concurrentRequests.map(claudeRequest =>
-        request(app)
-          .post('/v1/messages')
-          .send(claudeRequest)
+
+      const promises = concurrentRequests.map((claudeRequest) =>
+        request(app).post('/v1/messages').send(claudeRequest)
       );
 
       const responses = await Promise.all(promises);
       const totalTime = performance.now() - startTime;
 
       // Verify all requests succeeded
-      responses.forEach(response => {
+      responses.forEach((response) => {
         expect(response.status).toBe(200);
         expect(response.body.type).toBe('message');
       });
 
       // Performance assertions
       expect(totalTime).toBeLessThan(5000); // Should complete within 5 seconds
-      expect(performanceMetrics.getPercentile(95, 'claude_request')).toBeLessThan(2000); // 95th percentile under 2s
-      
-      console.log(`25 concurrent requests completed in ${totalTime.toFixed(2)}ms`);
-      console.log(`Average response time: ${performanceMetrics.getAverageResponseTime('claude_request').toFixed(2)}ms`);
-      console.log(`95th percentile: ${performanceMetrics.getPercentile(95, 'claude_request').toFixed(2)}ms`);
+      expect(
+        performanceMetrics.getPercentile(95, 'claude_request')
+      ).toBeLessThan(2000); // 95th percentile under 2s
+
+      console.log(
+        `25 concurrent requests completed in ${totalTime.toFixed(2)}ms`
+      );
+      console.log(
+        `Average response time: ${performanceMetrics.getAverageResponseTime('claude_request').toFixed(2)}ms`
+      );
+      console.log(
+        `95th percentile: ${performanceMetrics.getPercentile(95, 'claude_request').toFixed(2)}ms`
+      );
     });
 
     it('should handle mixed Claude and OpenAI requests concurrently', async () => {
-      const claudeRequests = LoadTestScenario.generateConcurrentRequests(10, 'medium');
+      const claudeRequests = LoadTestScenario.generateConcurrentRequests(
+        10,
+        'medium'
+      );
       const openaiRequests = Array.from({ length: 10 }, (_, i) => ({
         model: 'gpt-4',
         messages: [
@@ -541,12 +589,12 @@ describe('Performance and Load Testing', () => {
       }));
 
       const startTime = performance.now();
-      
-      const claudePromises = claudeRequests.map(req =>
+
+      const claudePromises = claudeRequests.map((req) =>
         request(app).post('/v1/messages').send(req)
       );
-      
-      const openaiPromises = openaiRequests.map(req =>
+
+      const openaiPromises = openaiRequests.map((req) =>
         request(app).post('/v1/chat/completions').send(req)
       );
 
@@ -554,24 +602,28 @@ describe('Performance and Load Testing', () => {
         Promise.all(claudePromises),
         Promise.all(openaiPromises),
       ]);
-      
+
       const totalTime = performance.now() - startTime;
 
       // Verify all requests succeeded
-      claudeResponses.forEach(response => {
+      claudeResponses.forEach((response) => {
         expect(response.status).toBe(200);
         expect(response.body.type).toBe('message');
       });
 
-      openaiResponses.forEach(response => {
+      openaiResponses.forEach((response) => {
         expect(response.status).toBe(200);
         expect(response.body.object).toBe('chat.completion');
       });
 
       // Performance assertions
       expect(totalTime).toBeLessThan(3000);
-      expect(performanceMetrics.getAverageResponseTime('claude_request')).toBeLessThan(1500);
-      expect(performanceMetrics.getAverageResponseTime('openai_request')).toBeLessThan(1500);
+      expect(
+        performanceMetrics.getAverageResponseTime('claude_request')
+      ).toBeLessThan(1500);
+      expect(
+        performanceMetrics.getAverageResponseTime('openai_request')
+      ).toBeLessThan(1500);
     });
 
     it('should maintain performance under sustained load', async () => {
@@ -580,14 +632,15 @@ describe('Performance and Load Testing', () => {
       const batchResults: number[] = [];
 
       for (let batch = 0; batch < batchCount; batch++) {
-        const requests = LoadTestScenario.generateConcurrentRequests(batchSize, 'medium');
-        
+        const requests = LoadTestScenario.generateConcurrentRequests(
+          batchSize,
+          'medium'
+        );
+
         const batchStartTime = performance.now();
-        
-        const promises = requests.map(claudeRequest =>
-          request(app)
-            .post('/v1/messages')
-            .send(claudeRequest)
+
+        const promises = requests.map((claudeRequest) =>
+          request(app).post('/v1/messages').send(claudeRequest)
         );
 
         const responses = await Promise.all(promises);
@@ -595,21 +648,24 @@ describe('Performance and Load Testing', () => {
         batchResults.push(batchTime);
 
         // Verify all requests succeeded
-        responses.forEach(response => {
+        responses.forEach((response) => {
           expect(response.status).toBe(200);
         });
 
         // Small delay between batches
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
       // Performance should remain consistent across batches
-      const avgBatchTime = batchResults.reduce((sum, time) => sum + time, 0) / batchResults.length;
+      const avgBatchTime =
+        batchResults.reduce((sum, time) => sum + time, 0) / batchResults.length;
       const maxBatchTime = Math.max(...batchResults);
-      
+
       expect(maxBatchTime).toBeLessThan(avgBatchTime * 1.5); // No batch should be 50% slower than average
-      
-      console.log(`Sustained load test - Average batch time: ${avgBatchTime.toFixed(2)}ms`);
+
+      console.log(
+        `Sustained load test - Average batch time: ${avgBatchTime.toFixed(2)}ms`
+      );
       console.log(`Max batch time: ${maxBatchTime.toFixed(2)}ms`);
     });
   });
@@ -624,7 +680,7 @@ describe('Performance and Load Testing', () => {
 
       for (const scenario of scenarios) {
         performanceMetrics.clear();
-        
+
         // Configure mock to return appropriate reasoning tokens
         mockAzureClient.createResponse.mockResolvedValue(
           PerformanceResponseFactory.createResponseWithTokens({
@@ -634,23 +690,24 @@ describe('Performance and Load Testing', () => {
           })
         );
 
-        const requests = LoadTestScenario.generateConcurrentRequests(5, scenario.complexity);
-        
-        const promises = requests.map(claudeRequest =>
-          request(app)
-            .post('/v1/messages')
-            .send(claudeRequest)
+        const requests = LoadTestScenario.generateConcurrentRequests(
+          5,
+          scenario.complexity
+        );
+
+        const promises = requests.map((claudeRequest) =>
+          request(app).post('/v1/messages').send(claudeRequest)
         );
 
         const responses = await Promise.all(promises);
-        
+
         // Verify all requests succeeded
-        responses.forEach(response => {
+        responses.forEach((response) => {
           expect(response.status).toBe(200);
         });
 
         const tokenUsage = performanceMetrics.getTotalTokenUsage();
-        
+
         console.log(`${scenario.complexity} complexity - Token usage:`, {
           promptTokens: tokenUsage.promptTokens,
           completionTokens: tokenUsage.completionTokens,
@@ -659,7 +716,9 @@ describe('Performance and Load Testing', () => {
         });
 
         // Verify reasoning token usage matches complexity
-        expect(tokenUsage.reasoningTokens).toBe(scenario.expectedReasoningTokens * 5);
+        expect(tokenUsage.reasoningTokens).toBe(
+          scenario.expectedReasoningTokens * 5
+        );
         expect(tokenUsage.totalTokens).toBe(
           tokenUsage.promptTokens + tokenUsage.completionTokens
         );
@@ -667,36 +726,38 @@ describe('Performance and Load Testing', () => {
     });
 
     it('should track reasoning token costs for architectural tasks', async () => {
-      const architecturalRequests = LoadTestScenario.generateReasoningIntensiveRequests(10);
-      
+      const architecturalRequests =
+        LoadTestScenario.generateReasoningIntensiveRequests(10);
+
       // Configure mock for high reasoning token usage
       mockAzureClient.createResponse.mockImplementation(() =>
-        Promise.resolve(PerformanceResponseFactory.createResponseWithTokens({
-          promptTokens: 200,
-          completionTokens: 800,
-          reasoningTokens: 300, // High reasoning for architectural tasks
-        }))
+        Promise.resolve(
+          PerformanceResponseFactory.createResponseWithTokens({
+            promptTokens: 200,
+            completionTokens: 800,
+            reasoningTokens: 300, // High reasoning for architectural tasks
+          })
+        )
       );
 
-      const promises = architecturalRequests.map(claudeRequest =>
-        request(app)
-          .post('/v1/messages')
-          .send(claudeRequest)
+      const promises = architecturalRequests.map((claudeRequest) =>
+        request(app).post('/v1/messages').send(claudeRequest)
       );
 
       const responses = await Promise.all(promises);
-      
-      responses.forEach(response => {
+
+      responses.forEach((response) => {
         expect(response.status).toBe(200);
       });
 
       const tokenUsage = performanceMetrics.getTotalTokenUsage();
-      
+
       // Calculate estimated costs (example rates)
       const promptTokenCost = tokenUsage.promptTokens * 0.00001; // $0.01 per 1K tokens
       const completionTokenCost = tokenUsage.completionTokens * 0.00003; // $0.03 per 1K tokens
       const reasoningTokenCost = tokenUsage.reasoningTokens * 0.00005; // $0.05 per 1K tokens
-      const totalCost = promptTokenCost + completionTokenCost + reasoningTokenCost;
+      const totalCost =
+        promptTokenCost + completionTokenCost + reasoningTokenCost;
 
       console.log('Architectural tasks token costs:', {
         promptTokens: tokenUsage.promptTokens,
@@ -706,8 +767,12 @@ describe('Performance and Load Testing', () => {
       });
 
       // Verify high reasoning token usage for architectural tasks
-      expect(tokenUsage.reasoningTokens).toBeGreaterThan(tokenUsage.promptTokens);
-      expect(tokenUsage.reasoningTokens / tokenUsage.totalTokens).toBeGreaterThan(0.2); // At least 20% reasoning tokens
+      expect(tokenUsage.reasoningTokens).toBeGreaterThan(
+        tokenUsage.promptTokens
+      );
+      expect(
+        tokenUsage.reasoningTokens / tokenUsage.totalTokens
+      ).toBeGreaterThan(0.2); // At least 20% reasoning tokens
     });
 
     it('should optimize reasoning token usage for simple tasks', async () => {
@@ -724,27 +789,27 @@ describe('Performance and Load Testing', () => {
 
       // Configure mock for minimal reasoning
       mockAzureClient.createResponse.mockImplementation(() =>
-        Promise.resolve(PerformanceResponseFactory.createResponseWithTokens({
-          promptTokens: 20,
-          completionTokens: 30,
-          reasoningTokens: 0, // No reasoning for simple tasks
-        }))
+        Promise.resolve(
+          PerformanceResponseFactory.createResponseWithTokens({
+            promptTokens: 20,
+            completionTokens: 30,
+            reasoningTokens: 0, // No reasoning for simple tasks
+          })
+        )
       );
 
-      const promises = simpleRequests.map(claudeRequest =>
-        request(app)
-          .post('/v1/messages')
-          .send(claudeRequest)
+      const promises = simpleRequests.map((claudeRequest) =>
+        request(app).post('/v1/messages').send(claudeRequest)
       );
 
       const responses = await Promise.all(promises);
-      
-      responses.forEach(response => {
+
+      responses.forEach((response) => {
         expect(response.status).toBe(200);
       });
 
       const tokenUsage = performanceMetrics.getTotalTokenUsage();
-      
+
       console.log('Simple tasks token usage:', tokenUsage);
 
       // Verify minimal reasoning token usage for simple tasks
@@ -763,24 +828,22 @@ describe('Performance and Load Testing', () => {
       // Run sustained load test
       for (let round = 0; round < 5; round++) {
         const requests = LoadTestScenario.generateMemoryIntensiveRequests(10);
-        
-        const promises = requests.map(claudeRequest =>
-          request(app)
-            .post('/v1/messages')
-            .send(claudeRequest)
+
+        const promises = requests.map((claudeRequest) =>
+          request(app).post('/v1/messages').send(claudeRequest)
         );
 
         await Promise.all(promises);
-        
+
         // Force garbage collection if available
         if (global.gc) {
           global.gc();
         }
-        
+
         memorySnapshots.push(process.memoryUsage());
-        
+
         // Small delay between rounds
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
       const memoryStats = performanceMetrics.getMemoryStats();
@@ -796,16 +859,16 @@ describe('Performance and Load Testing', () => {
       // Memory should not grow excessively
       const memoryGrowth = finalMemory.heapUsed - initialMemory.heapUsed;
       const memoryGrowthMB = memoryGrowth / 1024 / 1024;
-      
+
       expect(memoryGrowthMB).toBeLessThan(100); // Should not grow more than 100MB
       expect(memoryStats.maxHeapUsed).toBeLessThan(500 * 1024 * 1024); // Max 500MB heap
     });
 
     it('should handle memory cleanup for conversation management', async () => {
       const initialMemory = process.memoryUsage();
-      
+
       // Create many conversations
-      const conversationIds = Array.from({ length: 100 }, () => 
+      const conversationIds = Array.from({ length: 100 }, () =>
         TestDataUtils.createCorrelationId()
       );
 
@@ -822,7 +885,7 @@ describe('Performance and Load Testing', () => {
 
       for (const conversationId of conversationIds) {
         const claudeRequest = ClaudeRequestFactory.create({ size: 'medium' });
-        
+
         await request(app)
           .post('/v1/messages')
           .set('X-Conversation-ID', conversationId)
@@ -830,15 +893,15 @@ describe('Performance and Load Testing', () => {
       }
 
       const beforeCleanupMemory = process.memoryUsage();
-      
+
       // Trigger conversation cleanup
       conversationManager.cleanupOldConversations();
-      
+
       // Force garbage collection if available
       if (global.gc) {
         global.gc();
       }
-      
+
       const afterCleanupMemory = process.memoryUsage();
 
       console.log('Memory usage for conversation management:', {
@@ -848,7 +911,8 @@ describe('Performance and Load Testing', () => {
       });
 
       // Memory should be cleaned up after conversation cleanup
-      const memoryReduction = beforeCleanupMemory.heapUsed - afterCleanupMemory.heapUsed;
+      const memoryReduction =
+        beforeCleanupMemory.heapUsed - afterCleanupMemory.heapUsed;
       expect(memoryReduction).toBeGreaterThanOrEqual(-1024 * 4); // Allow small fluctuation after cleanup
     });
 
@@ -865,25 +929,25 @@ describe('Performance and Load Testing', () => {
       }));
 
       const initialMemory = process.memoryUsage();
-      
-      const promises = largeRequests.map(claudeRequest =>
-        request(app)
-          .post('/v1/messages')
-          .send(claudeRequest)
+
+      const promises = largeRequests.map((claudeRequest) =>
+        request(app).post('/v1/messages').send(claudeRequest)
       );
 
       const responses = await Promise.all(promises);
-      
+
       const finalMemory = process.memoryUsage();
 
-      responses.forEach(response => {
+      responses.forEach((response) => {
         expect(response.status).toBe(200);
       });
 
       const memoryGrowth = finalMemory.heapUsed - initialMemory.heapUsed;
       const memoryGrowthMB = memoryGrowth / 1024 / 1024;
 
-      console.log(`Large payload memory growth: ${memoryGrowthMB.toFixed(2)} MB`);
+      console.log(
+        `Large payload memory growth: ${memoryGrowthMB.toFixed(2)} MB`
+      );
 
       // Memory growth should be reasonable for large payloads
       expect(memoryGrowthMB).toBeLessThan(50); // Should not grow more than 50MB for 5 large requests
@@ -892,28 +956,36 @@ describe('Performance and Load Testing', () => {
 
   describe('Response Time Requirements', () => {
     it('should meet response time requirements for simple requests', async () => {
-      const simpleRequests = LoadTestScenario.generateConcurrentRequests(20, 'simple');
-      
+      const simpleRequests = LoadTestScenario.generateConcurrentRequests(
+        20,
+        'simple'
+      );
+
       // Configure fast responses for simple requests
       mockAzureClient.createResponse.mockImplementation(() =>
         PerformanceResponseFactory.createVariableLatencyResponse(50, 200)
       );
 
-      const promises = simpleRequests.map(claudeRequest =>
-        request(app)
-          .post('/v1/messages')
-          .send(claudeRequest)
+      const promises = simpleRequests.map((claudeRequest) =>
+        request(app).post('/v1/messages').send(claudeRequest)
       );
 
       const responses = await Promise.all(promises);
-      
-      responses.forEach(response => {
+
+      responses.forEach((response) => {
         expect(response.status).toBe(200);
       });
 
-      const avgResponseTime = performanceMetrics.getAverageResponseTime('claude_request');
-      const p95ResponseTime = performanceMetrics.getPercentile(95, 'claude_request');
-      const p99ResponseTime = performanceMetrics.getPercentile(99, 'claude_request');
+      const avgResponseTime =
+        performanceMetrics.getAverageResponseTime('claude_request');
+      const p95ResponseTime = performanceMetrics.getPercentile(
+        95,
+        'claude_request'
+      );
+      const p99ResponseTime = performanceMetrics.getPercentile(
+        99,
+        'claude_request'
+      );
 
       console.log('Simple requests response times:', {
         average: `${avgResponseTime.toFixed(2)}ms`,
@@ -928,27 +1000,30 @@ describe('Performance and Load Testing', () => {
     });
 
     it('should meet response time requirements for complex requests', async () => {
-      const complexRequests = LoadTestScenario.generateReasoningIntensiveRequests(10);
-      
+      const complexRequests =
+        LoadTestScenario.generateReasoningIntensiveRequests(10);
+
       // Configure realistic response times for complex requests
       mockAzureClient.createResponse.mockImplementation(() =>
         PerformanceResponseFactory.createVariableLatencyResponse(500, 2000)
       );
 
-      const promises = complexRequests.map(claudeRequest =>
-        request(app)
-          .post('/v1/messages')
-          .send(claudeRequest)
+      const promises = complexRequests.map((claudeRequest) =>
+        request(app).post('/v1/messages').send(claudeRequest)
       );
 
       const responses = await Promise.all(promises);
-      
-      responses.forEach(response => {
+
+      responses.forEach((response) => {
         expect(response.status).toBe(200);
       });
 
-      const avgResponseTime = performanceMetrics.getAverageResponseTime('claude_request');
-      const p95ResponseTime = performanceMetrics.getPercentile(95, 'claude_request');
+      const avgResponseTime =
+        performanceMetrics.getAverageResponseTime('claude_request');
+      const p95ResponseTime = performanceMetrics.getPercentile(
+        95,
+        'claude_request'
+      );
 
       console.log('Complex requests response times:', {
         average: `${avgResponseTime.toFixed(2)}ms`,
@@ -961,8 +1036,11 @@ describe('Performance and Load Testing', () => {
     });
 
     it('should validate proxy overhead is minimal', async () => {
-      const requests = LoadTestScenario.generateConcurrentRequests(10, 'medium');
-      
+      const requests = LoadTestScenario.generateConcurrentRequests(
+        10,
+        'medium'
+      );
+
       // Configure known Azure API response time
       const azureApiLatency = 800;
       mockAzureClient.createResponse.mockImplementation(() =>
@@ -972,19 +1050,18 @@ describe('Performance and Load Testing', () => {
         )
       );
 
-      const promises = requests.map(claudeRequest =>
-        request(app)
-          .post('/v1/messages')
-          .send(claudeRequest)
+      const promises = requests.map((claudeRequest) =>
+        request(app).post('/v1/messages').send(claudeRequest)
       );
 
       const responses = await Promise.all(promises);
-      
-      responses.forEach(response => {
+
+      responses.forEach((response) => {
         expect(response.status).toBe(200);
       });
 
-      const avgTotalResponseTime = performanceMetrics.getAverageResponseTime('claude_request');
+      const avgTotalResponseTime =
+        performanceMetrics.getAverageResponseTime('claude_request');
       const proxyOverhead = avgTotalResponseTime - azureApiLatency;
 
       console.log('Proxy overhead analysis:', {
@@ -1001,37 +1078,40 @@ describe('Performance and Load Testing', () => {
 
     it('should handle timeout scenarios gracefully', async () => {
       const requests = LoadTestScenario.generateConcurrentRequests(5, 'medium');
-      
+
       // Configure some requests to timeout
       let requestCount = 0;
       mockAzureClient.createResponse.mockImplementation(() => {
         requestCount++;
         if (requestCount % 3 === 0) {
           // Every 3rd request times out
-          return new Promise((_, reject) => 
+          return new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Request timeout')), 100)
           );
         }
-        return PerformanceResponseFactory.createVariableLatencyResponse(200, 500);
+        return PerformanceResponseFactory.createVariableLatencyResponse(
+          200,
+          500
+        );
       });
 
-      const promises = requests.map(claudeRequest =>
-        request(app)
-          .post('/v1/messages')
-          .send(claudeRequest)
+      const promises = requests.map((claudeRequest) =>
+        request(app).post('/v1/messages').send(claudeRequest)
       );
 
       const responses = await Promise.all(promises);
-      
+
       // Some requests should succeed, some should fail
-      const successCount = responses.filter(r => r.status === 200).length;
-      const errorCount = responses.filter(r => r.status === 500).length;
-      
+      const successCount = responses.filter((r) => r.status === 200).length;
+      const errorCount = responses.filter((r) => r.status === 500).length;
+
       expect(successCount).toBeGreaterThan(0);
       expect(errorCount).toBeGreaterThan(0);
       expect(successCount + errorCount).toBe(requests.length);
 
-      console.log(`Timeout handling: ${successCount} succeeded, ${errorCount} failed`);
+      console.log(
+        `Timeout handling: ${successCount} succeeded, ${errorCount} failed`
+      );
     });
   });
 });
