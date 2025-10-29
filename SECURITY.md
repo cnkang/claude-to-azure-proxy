@@ -58,7 +58,7 @@ make all
    - Regular security updates applied
 
 3. **Signal Handling**:
-   - `dumb-init` for proper process management
+   - Docker's built-in `--init` flag for proper process management
    - Graceful shutdown on SIGTERM
 
 4. **Multi-stage Build**:

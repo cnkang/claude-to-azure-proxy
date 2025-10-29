@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-10-29T08:33:55.775Z",
+  "timestamp": "2025-10-29T09:35:20.632Z",
   "nodeVersion": "v24.10.0",
   "alertConfigs": [
     [
@@ -45,17 +45,17 @@
   ],
   "metricsHistory": [
     {
-      "timestamp": "2025-10-29T08:33:54.773Z",
+      "timestamp": "2025-10-29T09:35:19.631Z",
       "responseTime": {
         "average": 100,
         "p95": 100,
         "p99": 100
       },
       "memoryUsage": {
-        "heapUsed": 12441080,
-        "heapTotal": 13811712,
+        "heapUsed": 12455344,
+        "heapTotal": 14336000,
         "external": 3280977,
-        "rss": 245727232
+        "rss": 231014400
       },
       "gcMetrics": {
         "totalDuration": 0,
