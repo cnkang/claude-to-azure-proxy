@@ -11,3 +11,4 @@
  */
 
 export { AzureResponsesClient } from './azure-responses-client.js';
+export { AWSBedrockClient } from './aws-bedrock-client.js';

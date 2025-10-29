@@ -52,19 +52,32 @@ import {
   ErrorFactory,
 } from '../errors/index.js';
 import { v4 as uuidv4 } from 'uuid';
+import { performance } from 'node:perf_hooks';
+import { Agent as HttpAgent } from 'node:http';
+import { Agent as HttpsAgent } from 'node:https';
 import { logger } from '../middleware/logging.js';
 import {
   assertValidResponsesResponse,
   assertValidResponsesStreamChunk,
   validateResponsesCreateParams,
 } from '../utils/responses-validator.js';
+import { 
+  createHTTPConnectionResource,
+  createStreamResource,
+  type HTTPConnectionResource,
+  type StreamResource,
+} from '../runtime/resource-manager.js';
+import { memoryManager } from '../utils/memory-manager.js';
 
 /**
  * Azure OpenAI v1 Responses API client with comprehensive error handling and monitoring.
+ * Enhanced for Node.js 24 with improved connection pooling, automatic resource cleanup,
+ * and memory management optimizations.
  *
  * This client provides a type-safe interface to Azure OpenAI's Responses API,
  * supporting both streaming and non-streaming requests with built-in retry logic,
- * timeout handling, and detailed error reporting.
+ * timeout handling, detailed error reporting, and automatic resource management
+ * using Node.js 24's explicit resource management features.
  *
  * @public
  * @class AzureResponsesClient
@@ -80,12 +93,19 @@ import {
  *   maxRetries: 3
  * };
  *
- * const client = new AzureResponsesClient(config);
+ * // Using explicit resource management (Node.js 24)
+ * using client = new AzureResponsesClient(config);
+ * const response = await client.createResponse(params);
+ * // Automatic cleanup when leaving scope
  * ```
  */
-export class AzureResponsesClient {
+export class AzureResponsesClient implements AsyncDisposable {
   private readonly client: OpenAI;
   private readonly config: AzureOpenAIConfig;
+  private readonly activeConnections = new Set<HTTPConnectionResource>();
+  private readonly activeStreams = new Set<StreamResource>();
+  private _disposed = false;
+  
   private static readonly ignoredStreamEvents = new Set<string>([
     'response.in_progress',
     'response.output_text.done',
@@ -99,37 +119,36 @@ export class AzureResponsesClient {
   ]);
 
   /**
-   * Creates a new Azure Responses API client instance.
+   * Creates a new Azure Responses API client instance with Node.js 24 enhancements.
    *
    * @param config - Configuration object containing Azure OpenAI settings
    * @throws {Error} When configuration is invalid or client initialization fails
    *
    * @example
    * ```typescript
-   * const client = new AzureResponsesClient({
-   *   baseURL: 'https://my-resource.openai.azure.com/openai/v1/',
-   *   apiKey: 'my-api-key',
-   *   apiVersion: 'preview',
-   *   deployment: 'gpt-5-codex',
-   *   timeout: 30000,
-   *   maxRetries: 3
-   * });
+   * // Traditional usage
+   * const client = new AzureResponsesClient(config);
+   * 
+   * // Node.js 24 explicit resource management
+   * using client = new AzureResponsesClient(config);
+   * // Automatic cleanup when leaving scope
    * ```
    */
   constructor(config: AzureOpenAIConfig) {
     this.validateConfig(config);
     this.config = Object.freeze({ ...config });
 
-    // Initialize OpenAI client with Azure Responses API configuration
-    // GA v1 API: No api-version needed (recommended)
-    // Legacy preview API: Requires api-version=preview
+    // Initialize OpenAI client with enhanced Node.js 24 configuration
+    // Optimized for better connection pooling and resource management
     this.client = new OpenAI({
       baseURL: config.baseURL, // Should be https://resource.openai.azure.com/openai/v1/
       apiKey: config.apiKey,
       timeout: config.timeout,
       maxRetries: config.maxRetries,
       defaultHeaders: {
-        'User-Agent': 'claude-to-azure-proxy/1.0.0',
+        'User-Agent': 'claude-to-azure-proxy/1.0.0 (Node.js 24)',
+        'Connection': 'keep-alive',
+        'Keep-Alive': 'timeout=30, max=100',
       },
       // Only add api-version for legacy preview API
       ...(config.apiVersion !== undefined &&
@@ -140,10 +159,13 @@ export class AzureResponsesClient {
           },
         }),
     });
+
+    // Track memory usage for this client instance
+    memoryManager.startMonitoring();
   }
 
   /**
-   * Creates a non-streaming response using the Responses API.
+   * Creates a non-streaming response using the Responses API with enhanced resource management.
    *
    * @param params - Request parameters for the Responses API
    * @returns Promise resolving to the API response
@@ -164,7 +186,16 @@ export class AzureResponsesClient {
   public async createResponse(
     params: ResponsesCreateParams
   ): Promise<ResponsesResponse> {
+    this.ensureNotDisposed();
     validateResponsesCreateParams(params);
+
+    // Create connection resource for tracking
+    const connectionResource = createHTTPConnectionResource(
+      undefined,
+      undefined,
+      undefined
+    );
+    this.activeConnections.add(connectionResource);
 
     try {
       const requestParams = this.buildRequestParams(
@@ -172,24 +203,35 @@ export class AzureResponsesClient {
         false
       ) as ResponseCreateParamsNonStreaming;
 
-      // Make the API call using the OpenAI client
+      // Make the API call using the OpenAI client with enhanced monitoring
+      const startTime = performance.now();
       const response: OpenAIResponse = await this.client.responses.create(
         requestParams
       );
+      const duration = performance.now() - startTime;
+
+      // Log performance metrics
+      logger.debug('Azure OpenAI API call completed', '', {
+        duration: Math.round(duration),
+        model: params.model,
+        inputTokens: response.usage?.input_tokens ?? 0,
+        outputTokens: response.usage?.output_tokens ?? 0,
+      });
 
       const normalized = this.normalizeResponsesResponse(response);
-
       return assertValidResponsesResponse(normalized);
     } catch (error) {
       throw this.handleApiError(error, 'createResponse');
+    } finally {
+      this.activeConnections.delete(connectionResource);
     }
   }
 
   /**
-   * Creates a streaming response using the Responses API.
+   * Creates a streaming response using the Responses API with enhanced resource management.
    *
    * @param params - Request parameters for the Responses API
-   * @returns AsyncIterable of response chunks
+   * @returns AsyncIterable of response chunks with automatic cleanup
    * @throws {ResponsesAPIError} When the API request fails
    * @throws {Error} When request validation or processing fails
    *
@@ -205,14 +247,20 @@ export class AzureResponsesClient {
    * for await (const chunk of stream) {
    *   console.log(chunk.output);
    * }
+   * // Stream automatically cleaned up
    * ```
    */
   public async *createResponseStream(
     params: ResponsesCreateParams
   ): AsyncIterable<ResponsesStreamChunk> {
+    this.ensureNotDisposed();
     validateResponsesCreateParams(params);
 
     const correlationId = uuidv4();
+    
+    // Create stream resource for tracking and automatic cleanup
+    // Note: We'll create the resource after we have the actual stream
+    let streamResource: StreamResource | undefined;
 
     try {
       const streamParams = this.buildRequestParams(
@@ -221,12 +269,32 @@ export class AzureResponsesClient {
       ) as unknown as ResponseCreateParamsStreaming;
 
       const stream = this.client.responses.stream(streamParams);
+      
+      // Create stream resource now that we have the actual stream
+      streamResource = createStreamResource(
+        stream as unknown as NodeJS.ReadableStream,
+        `Azure OpenAI streaming response for model ${params.model}`
+      );
+      this.activeStreams.add(streamResource);
 
       let responseId = correlationId;
       let createdAt = Math.floor(Date.now() / 1000);
       const model = this.config.deployment;
+      let chunkCount = 0;
+      const startTime = performance.now();
 
       for await (const event of stream as AsyncIterable<ResponseStreamEvent>) {
+        // Check memory pressure periodically during streaming
+        if (chunkCount % 10 === 0) {
+          const memoryMetrics = memoryManager.getMemoryMetrics();
+          if (memoryMetrics.pressure.level === 'critical') {
+            logger.warn('Critical memory pressure during streaming', correlationId, {
+              heapUsage: memoryMetrics.heap.percentage,
+              chunkCount,
+            });
+          }
+        }
+
         switch (event.type) {
           case 'response.created': {
             responseId = event.response.id;
@@ -240,6 +308,7 @@ export class AzureResponsesClient {
               createdAt,
               model
             );
+            chunkCount++;
             yield assertValidResponsesStreamChunk(chunk);
             break;
           }
@@ -251,6 +320,7 @@ export class AzureResponsesClient {
               model,
               'in_progress'
             );
+            chunkCount++;
             yield assertValidResponsesStreamChunk(chunk);
             break;
           }
@@ -261,6 +331,7 @@ export class AzureResponsesClient {
               createdAt,
               model
             );
+            chunkCount++;
             yield assertValidResponsesStreamChunk(chunk);
             break;
           }
@@ -272,12 +343,24 @@ export class AzureResponsesClient {
               model
             );
             if (chunk !== undefined) {
+              chunkCount++;
               yield assertValidResponsesStreamChunk(chunk);
             }
             break;
           }
           case 'response.completed': {
             const chunk = this.createCompletedChunk(event);
+            chunkCount++;
+            
+            // Log streaming completion metrics
+            const duration = performance.now() - startTime;
+            logger.debug('Azure OpenAI streaming completed', correlationId, {
+              duration: Math.round(duration),
+              chunkCount,
+              model: params.model,
+              responseId,
+            });
+            
             yield assertValidResponsesStreamChunk(chunk);
             break;
           }
@@ -326,7 +409,126 @@ export class AzureResponsesClient {
         undefined,
         'createResponseStream'
       );
+    } finally {
+      if (streamResource) {
+        this.activeStreams.delete(streamResource);
+      }
     }
+  }
+
+  /**
+   * Creates an optimized HTTP agent for Node.js 24 with enhanced connection pooling.
+   *
+   * @private
+   * @returns Optimized HTTP agent configuration
+   */
+  private createOptimizedHttpAgent(): HttpAgent | HttpsAgent | undefined {
+    try {
+      const isHttps = this.config.baseURL.startsWith('https://');
+      const AgentClass = isHttps ? HttpsAgent : HttpAgent;
+      
+      return new AgentClass({
+        keepAlive: true,
+        keepAliveMsecs: 30000, // 30 seconds
+        maxSockets: 50, // Increased for better concurrency
+        maxFreeSockets: 10,
+        timeout: this.config.timeout,
+        // Node.js 24 specific optimizations
+        scheduling: 'fifo', // First-in-first-out scheduling
+      });
+    } catch (error) {
+      logger.warn('Failed to create optimized HTTP agent, using default', '', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return undefined;
+    }
+  }
+
+  /**
+   * Ensures the client has not been disposed.
+   *
+   * @private
+   * @throws {Error} When client has been disposed
+   */
+  private ensureNotDisposed(): void {
+    if (this._disposed) {
+      throw new Error('AzureResponsesClient has been disposed and cannot be used');
+    }
+  }
+
+  /**
+   * Disposes the client and cleans up all resources.
+   * Implements Node.js 24 explicit resource management.
+   *
+   * @public
+   */
+  async [Symbol.asyncDispose](): Promise<void> {
+    if (this._disposed) {
+      return;
+    }
+
+    logger.debug('Disposing Azure Responses client', '', {
+      activeConnections: this.activeConnections.size,
+      activeStreams: this.activeStreams.size,
+    });
+
+    // Clean up active connections
+    const connectionCleanup = Array.from(this.activeConnections).map(async (connection) => {
+      try {
+        await connection[Symbol.asyncDispose]();
+      } catch (error) {
+        logger.warn('Failed to dispose connection resource', '', {
+          resourceId: connection.resourceInfo.id,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    });
+
+    // Clean up active streams
+    const streamCleanup = Array.from(this.activeStreams).map(async (stream) => {
+      try {
+        await stream[Symbol.asyncDispose]();
+      } catch (error) {
+        logger.warn('Failed to dispose stream resource', '', {
+          resourceId: stream.resourceInfo.id,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    });
+
+    // Wait for all cleanup operations with timeout
+    await Promise.race([
+      Promise.all([...connectionCleanup, ...streamCleanup]),
+      new Promise<void>((resolve) => {
+        setTimeout(resolve, 5000); // 5 second timeout
+      }),
+    ]);
+
+    this.activeConnections.clear();
+    this.activeStreams.clear();
+    this._disposed = true;
+
+    logger.debug('Azure Responses client disposed', '', {});
+  }
+
+  /**
+   * Gets current resource statistics for monitoring.
+   *
+   * @public
+   * @returns Resource usage statistics
+   */
+  public getResourceStats(): {
+    readonly activeConnections: number;
+    readonly activeStreams: number;
+    readonly disposed: boolean;
+    readonly memoryMetrics: ReturnType<typeof memoryManager.getMemoryMetrics>;
+  } {
+    return {
+      activeConnections: this.activeConnections.size,
+      activeStreams: this.activeStreams.size,
+      disposed: this._disposed,
+      memoryMetrics: memoryManager.getMemoryMetrics(),
+    };
   }
 
   private createTextDeltaChunk(

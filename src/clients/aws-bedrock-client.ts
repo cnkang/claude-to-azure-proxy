@@ -13,6 +13,9 @@ import axios, {
   type InternalAxiosRequestConfig,
 } from 'axios';
 import { v4 as uuidv4 } from 'uuid';
+import { performance } from 'node:perf_hooks';
+import { Agent as HttpAgent } from 'node:http';
+import { Agent as HttpsAgent } from 'node:https';
 
 import type {
   AWSBedrockConfig,
@@ -45,13 +48,25 @@ import {
   assertValidResponsesStreamChunk,
   validateResponsesCreateParams,
 } from '../utils/responses-validator.js';
+import { 
+  createHTTPConnectionResource,
+  createStreamResource,
+  type HTTPConnectionResource,
+  type StreamResource,
+} from '../runtime/resource-manager.js';
+import { memoryManager } from '../utils/memory-manager.js';
 
 /**
  * AWS Bedrock Converse API client with validation shared with the Azure client.
+ * Enhanced for Node.js 24 with improved streaming response handling, automatic
+ * resource cleanup, and optimized error handling.
  */
-export class AWSBedrockClient {
+export class AWSBedrockClient implements AsyncDisposable {
   private readonly client: AxiosInstance;
   private readonly config: AWSBedrockConfig;
+  private readonly activeConnections = new Set<HTTPConnectionResource>();
+  private readonly activeStreams = new Set<StreamResource>();
+  private _disposed = false;
 
   private static readonly ignoredStreamEvents = new Set<string>([
     'messageStart',
@@ -69,29 +84,60 @@ export class AWSBedrockClient {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${config.apiKey}`,
-        'User-Agent': 'claude-to-azure-proxy/1.0.0',
+        'User-Agent': 'claude-to-azure-proxy/1.0.0 (Node.js 24)',
         'X-Amzn-Bedrock-Accept': 'application/json',
         'X-Amzn-Bedrock-Region': config.region,
+        'Connection': 'keep-alive',
+        'Keep-Alive': 'timeout=30, max=100',
       },
+      // Enhanced HTTP agent configuration for Node.js 24
+      httpAgent: this.createOptimizedHttpAgent(),
+      httpsAgent: this.createOptimizedHttpsAgent(),
     });
 
     this.setupRetryInterceptor();
+    
+    // Track memory usage for this client instance
+    memoryManager.startMonitoring();
   }
 
   /**
-   * Creates a non-streaming response using the Converse API.
+   * Creates a non-streaming response using the Converse API with enhanced resource management.
    */
   public async createResponse(
     params: ResponsesCreateParams
   ): Promise<ResponsesResponse> {
+    this.ensureNotDisposed();
     validateResponsesCreateParams(params);
+
+    // Create connection resource for tracking
+    const connectionResource = createHTTPConnectionResource(
+      undefined,
+      undefined,
+      undefined
+    );
+    this.activeConnections.add(connectionResource);
 
     try {
       const modelId = this.getBedrockModelId(params.model);
       const request = this.buildBedrockRequest(params);
 
+      // Make the API call with enhanced monitoring
+      const startTime = performance.now();
       const response: AxiosResponse<BedrockConverseResponse> =
         await this.client.post(`/model/${modelId}/converse`, request);
+      const duration = performance.now() - startTime;
+
+      // Log performance metrics
+      const { inputTokens, outputTokens } = response.data.usage;
+
+      logger.debug('AWS Bedrock API call completed', '', {
+        duration: Math.round(duration),
+        model: params.model,
+        modelId,
+        inputTokens,
+        outputTokens,
+      });
 
       const normalized = this.transformBedrockResponse(
         response.data,
@@ -101,18 +147,25 @@ export class AWSBedrockClient {
       return assertValidResponsesResponse(normalized);
     } catch (error) {
       throw this.handleApiError(error, 'createResponse');
+    } finally {
+      this.activeConnections.delete(connectionResource);
     }
   }
 
   /**
-   * Creates a streaming response using the Converse API.
+   * Creates a streaming response using the Converse API with optimized streaming handling.
    */
   public async *createResponseStream(
     params: ResponsesCreateParams
   ): AsyncIterable<ResponsesStreamChunk> {
+    this.ensureNotDisposed();
     validateResponsesCreateParams(params);
 
     const correlationId = uuidv4();
+    
+    // Create stream resource for tracking and automatic cleanup
+    // Note: We'll create the resource after we have the actual stream
+    let streamResource: StreamResource | undefined;
 
     try {
       const modelId = this.getBedrockModelId(params.model);
@@ -129,14 +182,34 @@ export class AWSBedrockClient {
         }
       );
 
+      // Create stream resource now that we have the actual stream
+      streamResource = createStreamResource(
+        response.data,
+        `AWS Bedrock streaming response for model ${params.model}`
+      );
+      this.activeStreams.add(streamResource);
+
       let responseId = correlationId;
       let createdAt = Math.floor(Date.now() / 1000);
       const model = params.model;
+      let chunkCount = 0;
+      const startTime = performance.now();
 
       for await (const event of this.parseEventStream(
         response.data,
         correlationId
       )) {
+        // Check memory pressure periodically during streaming
+        if (chunkCount % 10 === 0) {
+          const memoryMetrics = memoryManager.getMemoryMetrics();
+          if (memoryMetrics.pressure.level === 'critical') {
+            logger.warn('Critical memory pressure during Bedrock streaming', correlationId, {
+              heapUsage: memoryMetrics.heap.percentage,
+              chunkCount,
+            });
+          }
+        }
+
         if (event.messageStart) {
           responseId = correlationId;
           createdAt = Math.floor(Date.now() / 1000);
@@ -150,6 +223,7 @@ export class AWSBedrockClient {
             createdAt,
             model
           );
+          chunkCount++;
           yield assertValidResponsesStreamChunk(chunk, correlationId);
           continue;
         }
@@ -161,6 +235,7 @@ export class AWSBedrockClient {
             createdAt,
             model
           );
+          chunkCount++;
           yield assertValidResponsesStreamChunk(chunk, correlationId);
           continue;
         }
@@ -172,6 +247,7 @@ export class AWSBedrockClient {
             createdAt,
             model
           );
+          chunkCount++;
           yield assertValidResponsesStreamChunk(chunk, correlationId);
           continue;
         }
@@ -184,6 +260,18 @@ export class AWSBedrockClient {
             event.metadata?.usage,
             event.messageStop.stopReason
           );
+          chunkCount++;
+          
+          // Log streaming completion metrics
+          const duration = performance.now() - startTime;
+          logger.debug('AWS Bedrock streaming completed', correlationId, {
+            duration: Math.round(duration),
+            chunkCount,
+            model: params.model,
+            modelId,
+            responseId,
+          });
+          
           yield assertValidResponsesStreamChunk(chunk, correlationId);
           continue;
         }
@@ -200,6 +288,7 @@ export class AWSBedrockClient {
               model,
               output: outputs,
             };
+            chunkCount++;
             yield assertValidResponsesStreamChunk(chunk, correlationId);
           }
           continue;
@@ -215,7 +304,146 @@ export class AWSBedrockClient {
       }
     } catch (error) {
       throw this.handleApiError(error, 'createResponseStream');
+    } finally {
+      if (streamResource) {
+        this.activeStreams.delete(streamResource);
+      }
     }
+  }
+
+  /**
+   * Creates an optimized HTTP agent for Node.js 24.
+   *
+   * @private
+   * @returns Optimized HTTP agent
+   */
+  private createOptimizedHttpAgent(): HttpAgent | undefined {
+    try {
+      return new HttpAgent({
+        keepAlive: true,
+        keepAliveMsecs: 30000,
+        maxSockets: 50,
+        maxFreeSockets: 10,
+        timeout: this.config.timeout,
+        scheduling: 'fifo',
+      });
+    } catch (error) {
+      logger.warn('Failed to create optimized HTTP agent', '', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return undefined;
+    }
+  }
+
+  /**
+   * Creates an optimized HTTPS agent for Node.js 24.
+   *
+   * @private
+   * @returns Optimized HTTPS agent
+   */
+  private createOptimizedHttpsAgent(): HttpsAgent | undefined {
+    try {
+      return new HttpsAgent({
+        keepAlive: true,
+        keepAliveMsecs: 30000,
+        maxSockets: 50,
+        maxFreeSockets: 10,
+        timeout: this.config.timeout,
+        scheduling: 'fifo',
+      });
+    } catch (error) {
+      logger.warn('Failed to create optimized HTTPS agent', '', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return undefined;
+    }
+  }
+
+  /**
+   * Ensures the client has not been disposed.
+   *
+   * @private
+   * @throws {Error} When client has been disposed
+   */
+  private ensureNotDisposed(): void {
+    if (this._disposed) {
+      throw new Error('AWSBedrockClient has been disposed and cannot be used');
+    }
+  }
+
+  /**
+   * Disposes the client and cleans up all resources.
+   * Implements Node.js 24 explicit resource management.
+   *
+   * @public
+   */
+  async [Symbol.asyncDispose](): Promise<void> {
+    if (this._disposed) {
+      return;
+    }
+
+    logger.debug('Disposing AWS Bedrock client', '', {
+      activeConnections: this.activeConnections.size,
+      activeStreams: this.activeStreams.size,
+    });
+
+    // Clean up active connections
+    const connectionCleanup = Array.from(this.activeConnections).map(async (connection) => {
+      try {
+        await connection[Symbol.asyncDispose]();
+      } catch (error) {
+        logger.warn('Failed to dispose Bedrock connection resource', '', {
+          resourceId: connection.resourceInfo.id,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    });
+
+    // Clean up active streams
+    const streamCleanup = Array.from(this.activeStreams).map(async (stream) => {
+      try {
+        await stream[Symbol.asyncDispose]();
+      } catch (error) {
+        logger.warn('Failed to dispose Bedrock stream resource', '', {
+          resourceId: stream.resourceInfo.id,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    });
+
+    // Wait for all cleanup operations with timeout
+    await Promise.race([
+      Promise.all([...connectionCleanup, ...streamCleanup]),
+      new Promise<void>((resolve) => {
+        setTimeout(resolve, 5000); // 5 second timeout
+      }),
+    ]);
+
+    this.activeConnections.clear();
+    this.activeStreams.clear();
+    this._disposed = true;
+
+    logger.debug('AWS Bedrock client disposed', '', {});
+  }
+
+  /**
+   * Gets current resource statistics for monitoring.
+   *
+   * @public
+   * @returns Resource usage statistics
+   */
+  public getResourceStats(): {
+    readonly activeConnections: number;
+    readonly activeStreams: number;
+    readonly disposed: boolean;
+    readonly memoryMetrics: ReturnType<typeof memoryManager.getMemoryMetrics>;
+  } {
+    return {
+      activeConnections: this.activeConnections.size,
+      activeStreams: this.activeStreams.size,
+      disposed: this._disposed,
+      memoryMetrics: memoryManager.getMemoryMetrics(),
+    };
   }
 
   private buildBedrockRequest(
