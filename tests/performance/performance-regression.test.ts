@@ -6,7 +6,11 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { performance } from 'node:perf_hooks';
 import { writeFile, readFile, unlink } from 'node:fs/promises';
-import { measurePerformance, takeMemorySnapshot, GCMonitor } from '../utils/nodejs24-test-utils.js';
+import {
+  measurePerformance,
+  takeMemorySnapshot,
+  GCMonitor,
+} from '../utils/nodejs24-test-utils.js';
 import { runStartupBenchmarks } from './startup-benchmark.js';
 import { runMemoryBenchmarks } from './memory-benchmark.js';
 
@@ -17,23 +21,23 @@ const PERFORMANCE_THRESHOLDS = {
   startup: {
     maxStartupTime: 2000, // 2 seconds
     maxModuleLoadTime: 500, // 500ms
-    maxMemoryUsage: 100 * 1024 * 1024 // 100MB
+    maxMemoryUsage: 100 * 1024 * 1024, // 100MB
   },
   http: {
     maxResponseTime: 1000, // 1 second
     minThroughput: 100, // requests per second
-    maxMemoryPerRequest: 10 * 1024 * 1024 // 10MB per request
+    maxMemoryPerRequest: 10 * 1024 * 1024, // 10MB per request
   },
   memory: {
     maxMemoryLeak: 50 * 1024 * 1024, // 50MB
     minCleanupEfficiency: -50, // Allow negative efficiency due to GC unpredictability
-    maxGCPause: 100 // 100ms
+    maxGCPause: 100, // 100ms
   },
   streaming: {
     maxLatency: 100, // 100ms
     minThroughput: 1024 * 1024, // 1MB/s
-    maxBackpressureEvents: 100 // More realistic threshold
-  }
+    maxBackpressureEvents: 100, // More realistic threshold
+  },
 };
 
 /**
@@ -93,27 +97,44 @@ describe('Performance Regression Tests', () => {
       const results = await runStartupBenchmarks();
       expect(results.length).toBeGreaterThan(0);
 
-      const avgStartupTime = results.reduce((sum, r) => sum + r.startupTime, 0) / results.length;
-      const avgModuleLoadTime = results.reduce((sum, r) => sum + r.moduleLoadTime, 0) / results.length;
-      const avgMemoryUsage = results.reduce((sum, r) => sum + r.memoryUsage.heapUsed, 0) / results.length;
+      const avgStartupTime =
+        results.reduce((sum, r) => sum + r.startupTime, 0) / results.length;
+      const avgModuleLoadTime =
+        results.reduce((sum, r) => sum + r.moduleLoadTime, 0) / results.length;
+      const avgMemoryUsage =
+        results.reduce((sum, r) => sum + r.memoryUsage.heapUsed, 0) /
+        results.length;
 
       // Check against thresholds
-      expect(avgStartupTime).toBeLessThan(PERFORMANCE_THRESHOLDS.startup.maxStartupTime);
-      expect(avgModuleLoadTime).toBeLessThan(PERFORMANCE_THRESHOLDS.startup.maxModuleLoadTime);
-      expect(avgMemoryUsage).toBeLessThan(PERFORMANCE_THRESHOLDS.startup.maxMemoryUsage);
+      expect(avgStartupTime).toBeLessThan(
+        PERFORMANCE_THRESHOLDS.startup.maxStartupTime
+      );
+      expect(avgModuleLoadTime).toBeLessThan(
+        PERFORMANCE_THRESHOLDS.startup.maxModuleLoadTime
+      );
+      expect(avgMemoryUsage).toBeLessThan(
+        PERFORMANCE_THRESHOLDS.startup.maxMemoryUsage
+      );
 
       // Check against baseline if available
       if (baseline) {
-        expect(avgStartupTime).toBeLessThanOrEqual(baseline.startup.startupTime * 1.1); // Allow 10% regression
-        expect(avgModuleLoadTime).toBeLessThanOrEqual(baseline.startup.moduleLoadTime * 1.1);
-        expect(avgMemoryUsage).toBeLessThanOrEqual(baseline.startup.memoryUsage * 1.1);
+        expect(avgStartupTime).toBeLessThanOrEqual(
+          baseline.startup.startupTime * 1.1
+        ); // Allow 10% regression
+        expect(avgModuleLoadTime).toBeLessThanOrEqual(
+          baseline.startup.moduleLoadTime * 1.1
+        );
+        expect(avgMemoryUsage).toBeLessThanOrEqual(
+          baseline.startup.memoryUsage * 1.1
+        );
       }
     }, 60000);
 
     it('should show improvement over Node.js 22 baseline', async () => {
       // This test validates that Node.js 24 shows improvements
       const results = await runStartupBenchmarks();
-      const avgStartupTime = results.reduce((sum, r) => sum + r.startupTime, 0) / results.length;
+      const avgStartupTime =
+        results.reduce((sum, r) => sum + r.startupTime, 0) / results.length;
 
       // Node.js 24 should have better startup performance
       if (process.version.startsWith('v24.')) {
@@ -129,19 +150,29 @@ describe('Performance Regression Tests', () => {
 
       for (const result of results) {
         const memoryLeak = result.memoryDelta;
-        const memoryIncrease = result.peakMemory.heapUsed - result.initialMemory.heapUsed;
-        const memoryCleanup = result.peakMemory.heapUsed - result.finalMemory.heapUsed;
+        const memoryIncrease =
+          result.peakMemory.heapUsed - result.initialMemory.heapUsed;
+        const memoryCleanup =
+          result.peakMemory.heapUsed - result.finalMemory.heapUsed;
         const cleanupEfficiency = (memoryCleanup / memoryIncrease) * 100;
 
         // Check against thresholds
-        expect(Math.abs(memoryLeak)).toBeLessThan(PERFORMANCE_THRESHOLDS.memory.maxMemoryLeak);
-        expect(cleanupEfficiency).toBeGreaterThan(PERFORMANCE_THRESHOLDS.memory.minCleanupEfficiency);
+        expect(Math.abs(memoryLeak)).toBeLessThan(
+          PERFORMANCE_THRESHOLDS.memory.maxMemoryLeak
+        );
+        expect(cleanupEfficiency).toBeGreaterThan(
+          PERFORMANCE_THRESHOLDS.memory.minCleanupEfficiency
+        );
 
         // Check GC performance
-        const avgGCDuration = result.gcEvents.length > 0
-          ? result.gcEvents.reduce((sum, gc) => sum + gc.duration, 0) / result.gcEvents.length
-          : 0;
-        expect(avgGCDuration).toBeLessThan(PERFORMANCE_THRESHOLDS.memory.maxGCPause);
+        const avgGCDuration =
+          result.gcEvents.length > 0
+            ? result.gcEvents.reduce((sum, gc) => sum + gc.duration, 0) /
+              result.gcEvents.length
+            : 0;
+        expect(avgGCDuration).toBeLessThan(
+          PERFORMANCE_THRESHOLDS.memory.maxGCPause
+        );
       }
     }, 120000);
 
@@ -150,12 +181,12 @@ describe('Performance Regression Tests', () => {
       gcMonitor.start();
 
       const initialMemory = takeMemorySnapshot();
-      
+
       // Simulate long-running operation
       const operations = [];
       for (let i = 0; i < 1000; i++) {
         operations.push(
-          new Promise(resolve => {
+          new Promise((resolve) => {
             const data = new Array(1000).fill(i);
             setTimeout(() => {
               data.length = 0; // Clear data
@@ -172,16 +203,16 @@ describe('Performance Regression Tests', () => {
         global.gc();
       }
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const finalMemory = takeMemorySnapshot();
       const gcEvents = gcMonitor.stop();
 
       const memoryDelta = finalMemory.heapUsed - initialMemory.heapUsed;
-      
+
       // Should not leak significant memory
       expect(Math.abs(memoryDelta)).toBeLessThan(25 * 1024 * 1024); // 25MB threshold
-      
+
       // GC events might be 0 if no GC was triggered during the test
       expect(gcEvents.length).toBeGreaterThanOrEqual(0);
     }, 30000);
@@ -194,7 +225,7 @@ describe('Performance Regression Tests', () => {
         const requests = [];
         for (let i = 0; i < 100; i++) {
           requests.push(
-            new Promise(resolve => {
+            new Promise((resolve) => {
               const startTime = performance.now();
               // Simulate HTTP request processing
               setTimeout(() => {
@@ -208,41 +239,57 @@ describe('Performance Regression Tests', () => {
       });
 
       const responseTimes = result as number[];
-      const avgResponseTime = responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length;
+      const avgResponseTime =
+        responseTimes.reduce((sum, time) => sum + time, 0) /
+        responseTimes.length;
       const maxResponseTime = Math.max(...responseTimes);
 
       // Check against thresholds
-      expect(avgResponseTime).toBeLessThan(PERFORMANCE_THRESHOLDS.http.maxResponseTime);
-      expect(maxResponseTime).toBeLessThan(PERFORMANCE_THRESHOLDS.http.maxResponseTime * 2);
+      expect(avgResponseTime).toBeLessThan(
+        PERFORMANCE_THRESHOLDS.http.maxResponseTime
+      );
+      expect(maxResponseTime).toBeLessThan(
+        PERFORMANCE_THRESHOLDS.http.maxResponseTime * 2
+      );
 
       // Check memory usage during HTTP processing
-      expect(metrics.memoryDelta).toBeLessThan(PERFORMANCE_THRESHOLDS.http.maxMemoryPerRequest);
+      expect(metrics.memoryDelta).toBeLessThan(
+        PERFORMANCE_THRESHOLDS.http.maxMemoryPerRequest
+      );
     }, 30000);
 
     it('should handle concurrent requests efficiently', async () => {
       const concurrentRequests = 50;
       const { result, metrics } = await measurePerformance(async () => {
-        const requests = Array.from({ length: concurrentRequests }, async (_, i) => {
-          const startTime = performance.now();
-          
-          // Simulate concurrent request processing
-          await new Promise(resolve => setTimeout(resolve, Math.random() * 100));
-          
-          return {
-            id: i,
-            duration: performance.now() - startTime
-          };
-        });
+        const requests = Array.from(
+          { length: concurrentRequests },
+          async (_, i) => {
+            const startTime = performance.now();
+
+            // Simulate concurrent request processing
+            await new Promise((resolve) =>
+              setTimeout(resolve, Math.random() * 100)
+            );
+
+            return {
+              id: i,
+              duration: performance.now() - startTime,
+            };
+          }
+        );
 
         return Promise.all(requests);
       });
 
       const results = result as Array<{ id: number; duration: number }>;
-      const avgDuration = results.reduce((sum, r) => sum + r.duration, 0) / results.length;
+      const avgDuration =
+        results.reduce((sum, r) => sum + r.duration, 0) / results.length;
       const throughput = concurrentRequests / (metrics.duration / 1000); // requests per second
 
       expect(avgDuration).toBeLessThan(200); // 200ms average
-      expect(throughput).toBeGreaterThan(PERFORMANCE_THRESHOLDS.http.minThroughput);
+      expect(throughput).toBeGreaterThan(
+        PERFORMANCE_THRESHOLDS.http.minThroughput
+      );
     }, 30000);
   });
 
@@ -255,15 +302,17 @@ describe('Performance Regression Tests', () => {
 
         for (let i = 0; i < totalChunks; i++) {
           const startTime = performance.now();
-          
+
           // Simulate chunk processing
           const chunk = Buffer.alloc(chunkSize, i % 256);
           chunks.push(chunk);
-          
+
           const processingTime = performance.now() - startTime;
-          
+
           // Check individual chunk latency
-          expect(processingTime).toBeLessThan(PERFORMANCE_THRESHOLDS.streaming.maxLatency);
+          expect(processingTime).toBeLessThan(
+            PERFORMANCE_THRESHOLDS.streaming.maxLatency
+          );
         }
 
         return chunks;
@@ -273,30 +322,32 @@ describe('Performance Regression Tests', () => {
       const totalSize = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
       const throughput = totalSize / (metrics.duration / 1000); // bytes per second
 
-      expect(throughput).toBeGreaterThan(PERFORMANCE_THRESHOLDS.streaming.minThroughput);
+      expect(throughput).toBeGreaterThan(
+        PERFORMANCE_THRESHOLDS.streaming.minThroughput
+      );
     }, 30000);
 
     it('should handle backpressure efficiently', async () => {
       let backpressureEvents = 0;
-      
+
       await measurePerformance(async () => {
         const chunks = [];
         const slowConsumer = async (chunk: Buffer) => {
           // Simulate slow consumer
-          await new Promise(resolve => setTimeout(resolve, 10));
+          await new Promise((resolve) => setTimeout(resolve, 10));
           return chunk;
         };
 
         for (let i = 0; i < 100; i++) {
           const chunk = Buffer.alloc(1024, i % 256);
-          
+
           // Simulate backpressure
           if (chunks.length > 10) {
             backpressureEvents++;
             // Wait for consumer to catch up
             await slowConsumer(chunks.shift()!);
           }
-          
+
           chunks.push(chunk);
         }
 
@@ -304,10 +355,11 @@ describe('Performance Regression Tests', () => {
         while (chunks.length > 0) {
           await slowConsumer(chunks.shift()!);
         }
-
       });
 
-      expect(backpressureEvents).toBeLessThan(PERFORMANCE_THRESHOLDS.streaming.maxBackpressureEvents);
+      expect(backpressureEvents).toBeLessThan(
+        PERFORMANCE_THRESHOLDS.streaming.maxBackpressureEvents
+      );
     }, 30000);
   });
 
@@ -316,32 +368,41 @@ describe('Performance Regression Tests', () => {
       // Run all performance tests to create baseline
       const [startupResults, memoryResults] = await Promise.all([
         runStartupBenchmarks(),
-        runMemoryBenchmarks()
+        runMemoryBenchmarks(),
       ]);
 
       const newBaseline: PerformanceBaseline = {
         nodeVersion: process.version,
         timestamp: new Date().toISOString(),
         startup: {
-          startupTime: startupResults.reduce((sum, r) => sum + r.startupTime, 0) / startupResults.length,
-          moduleLoadTime: startupResults.reduce((sum, r) => sum + r.moduleLoadTime, 0) / startupResults.length,
-          memoryUsage: startupResults.reduce((sum, r) => sum + r.memoryUsage.heapUsed, 0) / startupResults.length
+          startupTime:
+            startupResults.reduce((sum, r) => sum + r.startupTime, 0) /
+            startupResults.length,
+          moduleLoadTime:
+            startupResults.reduce((sum, r) => sum + r.moduleLoadTime, 0) /
+            startupResults.length,
+          memoryUsage:
+            startupResults.reduce((sum, r) => sum + r.memoryUsage.heapUsed, 0) /
+            startupResults.length,
         },
         http: {
           averageResponseTime: 50, // Mock value
           throughput: 200, // Mock value
-          memoryPerRequest: 1024 * 1024 // Mock value
+          memoryPerRequest: 1024 * 1024, // Mock value
         },
         memory: {
-          memoryLeak: Math.abs(memoryResults.reduce((sum, r) => sum + r.memoryDelta, 0) / memoryResults.length),
+          memoryLeak: Math.abs(
+            memoryResults.reduce((sum, r) => sum + r.memoryDelta, 0) /
+              memoryResults.length
+          ),
           cleanupEfficiency: 85, // Mock value
-          gcPause: 50 // Mock value
+          gcPause: 50, // Mock value
         },
         streaming: {
           latency: 10, // Mock value
           throughput: 2 * 1024 * 1024, // Mock value
-          backpressureEvents: 2 // Mock value
-        }
+          backpressureEvents: 2, // Mock value
+        },
       };
 
       // Save baseline for future comparisons
@@ -399,14 +460,16 @@ describe('Performance Regression Tests', () => {
       global.gc();
 
       const gcEvents = gcMonitor.stop();
-      
+
       // Clear arrays
       arrays.length = 0;
 
       expect(gcEvents.length).toBeGreaterThan(0);
-      
+
       // Check GC efficiency (Node.js 24 should have faster GC)
-      const avgGCDuration = gcEvents.reduce((sum, event) => sum + event.duration, 0) / gcEvents.length;
+      const avgGCDuration =
+        gcEvents.reduce((sum, event) => sum + event.duration, 0) /
+        gcEvents.length;
       expect(avgGCDuration).toBeLessThan(100); // 100ms max average GC pause
     }, 30000);
   });

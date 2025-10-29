@@ -21,14 +21,15 @@ interface StartupMetrics {
 async function measureStartupTime(): Promise<number> {
   return new Promise((resolve, reject) => {
     const startTime = performance.now();
-    
-    const child = spawn(process.execPath, [
-      '-e', 
-      'console.log("startup-complete")'
-    ], {
-      stdio: 'pipe'
-    });
-    
+
+    const child = spawn(
+      process.execPath,
+      ['-e', 'console.log("startup-complete")'],
+      {
+        stdio: 'pipe',
+      }
+    );
+
     child.stdout.on('data', (data) => {
       if (data.toString().includes('startup-complete')) {
         const endTime = performance.now();
@@ -36,9 +37,9 @@ async function measureStartupTime(): Promise<number> {
         resolve(endTime - startTime);
       }
     });
-    
+
     child.on('error', reject);
-    
+
     // Timeout after 10 seconds
     setTimeout(() => {
       child.kill();
@@ -52,7 +53,7 @@ async function measureStartupTime(): Promise<number> {
  */
 async function measureModuleLoadTime(): Promise<number> {
   const startTime = performance.now();
-  
+
   // Load common modules used by the application
   await Promise.all([
     import('node:fs/promises'),
@@ -64,9 +65,9 @@ async function measureModuleLoadTime(): Promise<number> {
     import('node:https'),
     import('node:url'),
     import('node:querystring'),
-    import('node:buffer')
+    import('node:buffer'),
   ]);
-  
+
   return performance.now() - startTime;
 }
 
@@ -76,11 +77,13 @@ async function measureModuleLoadTime(): Promise<number> {
 async function measureApplicationStartup(): Promise<number> {
   return new Promise((resolve, reject) => {
     const startTime = performance.now();
-    
-    const child = spawn(process.execPath, [
-      '--enable-source-maps',
-      '-e',
-      `
+
+    const child = spawn(
+      process.execPath,
+      [
+        '--enable-source-maps',
+        '-e',
+        `
         import('./dist/index.js')
           .then(() => {
             console.log('app-ready');
@@ -90,12 +93,14 @@ async function measureApplicationStartup(): Promise<number> {
             console.error('app-error:', error.message);
             process.exit(1);
           });
-      `
-    ], {
-      stdio: 'pipe',
-      cwd: process.cwd()
-    });
-    
+      `,
+      ],
+      {
+        stdio: 'pipe',
+        cwd: process.cwd(),
+      }
+    );
+
     child.stdout.on('data', (data) => {
       if (data.toString().includes('app-ready')) {
         const endTime = performance.now();
@@ -103,16 +108,16 @@ async function measureApplicationStartup(): Promise<number> {
         resolve(endTime - startTime);
       }
     });
-    
+
     child.stderr.on('data', (data) => {
       if (data.toString().includes('app-error')) {
         child.kill();
         reject(new Error(`Application startup failed: ${data.toString()}`));
       }
     });
-    
+
     child.on('error', reject);
-    
+
     // Timeout after 30 seconds
     setTimeout(() => {
       child.kill();
@@ -127,37 +132,36 @@ async function measureApplicationStartup(): Promise<number> {
 async function runStartupBenchmarks(): Promise<StartupMetrics[]> {
   const results: StartupMetrics[] = [];
   const iterations = 10;
-  
+
   console.log(`Running startup benchmarks (${iterations} iterations)...`);
   console.log(`Node.js version: ${process.version}`);
-  
+
   for (let i = 0; i < iterations; i++) {
     console.log(`Iteration ${i + 1}/${iterations}`);
-    
+
     try {
       const [startupTime, moduleLoadTime] = await Promise.all([
         measureStartupTime(),
-        measureModuleLoadTime()
+        measureModuleLoadTime(),
       ]);
-      
+
       const metrics: StartupMetrics = {
         nodeVersion: process.version,
         startupTime,
         moduleLoadTime,
         memoryUsage: process.memoryUsage(),
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
-      
+
       results.push(metrics);
-      
+
       // Brief pause between iterations
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
+      await new Promise((resolve) => setTimeout(resolve, 100));
     } catch (error) {
       console.error(`Iteration ${i + 1} failed:`, error);
     }
   }
-  
+
   return results;
 }
 
@@ -176,10 +180,12 @@ function calculateStats(values: number[]): {
   const median = sorted[Math.floor(sorted.length / 2)];
   const min = sorted[0];
   const max = sorted[sorted.length - 1];
-  
-  const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length;
+
+  const variance =
+    values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) /
+    values.length;
   const stdDev = Math.sqrt(variance);
-  
+
   return { mean, median, min, max, stdDev };
 }
 
@@ -190,15 +196,15 @@ function generateReport(results: StartupMetrics[]): string {
   if (results.length === 0) {
     return 'No benchmark results available';
   }
-  
-  const startupTimes = results.map(r => r.startupTime);
-  const moduleLoadTimes = results.map(r => r.moduleLoadTime);
-  const heapUsed = results.map(r => r.memoryUsage.heapUsed);
-  
+
+  const startupTimes = results.map((r) => r.startupTime);
+  const moduleLoadTimes = results.map((r) => r.moduleLoadTime);
+  const heapUsed = results.map((r) => r.memoryUsage.heapUsed);
+
   const startupStats = calculateStats(startupTimes);
   const moduleStats = calculateStats(moduleLoadTimes);
   const memoryStats = calculateStats(heapUsed);
-  
+
   return `
 # Node.js Startup Performance Benchmark Report
 
@@ -231,9 +237,10 @@ function generateReport(results: StartupMetrics[]): string {
 
 ## Performance Insights
 
-${results[0].nodeVersion.startsWith('v24.') ? 
-  '✅ Running on Node.js 24 - Expected performance improvements in startup time and memory efficiency' :
-  '⚠️  Not running on Node.js 24 - Consider upgrading for better performance'
+${
+  results[0].nodeVersion.startsWith('v24.')
+    ? '✅ Running on Node.js 24 - Expected performance improvements in startup time and memory efficiency'
+    : '⚠️  Not running on Node.js 24 - Consider upgrading for better performance'
 }
 
 ## Raw Data
@@ -274,5 +281,5 @@ export {
   measureModuleLoadTime,
   measureApplicationStartup,
   runStartupBenchmarks,
-  generateReport
+  generateReport,
 };
