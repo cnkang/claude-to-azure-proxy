@@ -371,6 +371,46 @@ export class PerformanceProfiler {
   }
 
   /**
+   * Gets Node.js 24 specific performance metrics.
+   *
+   * @public
+   * @returns Enhanced performance metrics
+   */
+  public getNodeJS24Metrics(): Record<string, unknown> {
+    const eventLoopUtilization = performance.eventLoopUtilization();
+    const resourceUsage = process.resourceUsage();
+    
+    return {
+      nodeVersion: process.version,
+      v8Version: process.versions.v8,
+      eventLoopUtilization: {
+        idle: eventLoopUtilization.idle,
+        active: eventLoopUtilization.active,
+        utilization: eventLoopUtilization.utilization,
+      },
+      resourceUsage: {
+        userCPUTime: resourceUsage.userCPUTime,
+        systemCPUTime: resourceUsage.systemCPUTime,
+        maxRSS: resourceUsage.maxRSS,
+        sharedMemorySize: resourceUsage.sharedMemorySize,
+        unsharedDataSize: resourceUsage.unsharedDataSize,
+        unsharedStackSize: resourceUsage.unsharedStackSize,
+        minorPageFault: resourceUsage.minorPageFault,
+        majorPageFault: resourceUsage.majorPageFault,
+        swappedOut: resourceUsage.swappedOut,
+        fsRead: resourceUsage.fsRead,
+        fsWrite: resourceUsage.fsWrite,
+        ipcSent: resourceUsage.ipcSent,
+        ipcReceived: resourceUsage.ipcReceived,
+        signalsCount: resourceUsage.signalsCount,
+        voluntaryContextSwitches: resourceUsage.voluntaryContextSwitches,
+        involuntaryContextSwitches: resourceUsage.involuntaryContextSwitches,
+      },
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  /**
    * Sets up performance observer for marks and measures.
    *
    * @private
@@ -392,7 +432,7 @@ export class PerformanceProfiler {
   }
 
   /**
-   * Sets up garbage collection observer.
+   * Sets up garbage collection observer with Node.js 24 enhancements.
    *
    * @private
    */
@@ -403,11 +443,18 @@ export class PerformanceProfiler {
         for (const entry of entries) {
           const gcEntry = entry as PerformanceEntry & {
             readonly kind?: number;
+            readonly detail?: {
+              readonly kind?: number;
+              readonly startTime?: number;
+              readonly duration?: number;
+            };
           };
+          
+          // Enhanced GC profiling with Node.js 24 features
           const gcProfile: GCProfile = {
-            kind: gcEntry.kind ?? 0,
-            duration: gcEntry.duration * 1_000_000, // Convert to nanoseconds
-            timestamp: gcEntry.startTime,
+            kind: gcEntry.kind ?? gcEntry.detail?.kind ?? 0,
+            duration: entry.duration * 1_000_000, // Convert to nanoseconds
+            timestamp: gcEntry.detail?.startTime ?? entry.startTime,
           };
 
           this.gcProfiles.push(gcProfile);
@@ -417,11 +464,36 @@ export class PerformanceProfiler {
             this.gcProfiles.shift();
           }
 
-          logger.debug('GC event recorded', '', {
-            kind: gcProfile.kind,
-            duration: gcProfile.duration,
-            timestamp: gcProfile.timestamp,
-          });
+          // Enhanced logging with GC type names
+          const gcTypeNames: Record<number, string> = {
+            1: 'Scavenge',
+            2: 'Mark-Sweep-Compact',
+            4: 'Incremental Marking',
+            8: 'Weak Callbacks',
+            15: 'All',
+          };
+
+          const gcTypeName = gcTypeNames[gcProfile.kind] || 'Unknown';
+          const durationMs = gcProfile.duration / 1_000_000;
+
+          if (durationMs > 100) {
+            logger.warn('Long GC pause detected', '', {
+              kind: gcProfile.kind,
+              typeName: gcTypeName,
+              duration: gcProfile.duration,
+              durationMs,
+              timestamp: gcProfile.timestamp,
+              threshold: 100,
+            });
+          } else {
+            logger.debug('GC event recorded', '', {
+              kind: gcProfile.kind,
+              typeName: gcTypeName,
+              duration: gcProfile.duration,
+              durationMs,
+              timestamp: gcProfile.timestamp,
+            });
+          }
         }
       });
 
@@ -429,12 +501,13 @@ export class PerformanceProfiler {
     } catch (error) {
       logger.warn('GC observer not available', '', {
         error: error instanceof Error ? error.message : 'Unknown error',
+        nodeVersion: process.version,
       });
     }
   }
 
   /**
-   * Starts memory monitoring with periodic sampling.
+   * Starts memory monitoring with periodic sampling and Node.js 24 enhancements.
    *
    * @private
    */
@@ -455,14 +528,47 @@ export class PerformanceProfiler {
         this.memorySamples.shift();
       }
 
-      // Log memory usage if it's high
-      const heapUsagePercent =
-        (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
-      if (heapUsagePercent > 80) {
+      // Enhanced memory monitoring with Node.js 24 features
+      const heapUsagePercent = (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
+      const externalPercent = (memoryUsage.external / memoryUsage.rss) * 100;
+      
+      const memoryData = {
+        heapUsagePercent: Math.round(heapUsagePercent * 100) / 100,
+        externalPercent: Math.round(externalPercent * 100) / 100,
+        heapUsed: memoryUsage.heapUsed,
+        heapTotal: memoryUsage.heapTotal,
+        external: memoryUsage.external,
+        arrayBuffers: memoryUsage.arrayBuffers,
+        rss: memoryUsage.rss,
+        timestamp: new Date().toISOString(),
+      };
+
+      // Enhanced thresholds and logging
+      if (heapUsagePercent > 90) {
+        logger.error('Critical memory usage detected', '', {
+          ...memoryData,
+          severity: 'critical',
+          threshold: 90,
+        });
+      } else if (heapUsagePercent > 80) {
         logger.warn('High memory usage detected', '', {
-          heapUsagePercent: heapUsagePercent.toFixed(1),
-          heapUsed: memoryUsage.heapUsed,
-          heapTotal: memoryUsage.heapTotal,
+          ...memoryData,
+          severity: 'high',
+          threshold: 80,
+        });
+      } else if (heapUsagePercent > 60) {
+        logger.info('Elevated memory usage', '', {
+          ...memoryData,
+          severity: 'elevated',
+          threshold: 60,
+        });
+      }
+
+      // Monitor external memory usage
+      if (externalPercent > 50) {
+        logger.warn('High external memory usage detected', '', {
+          ...memoryData,
+          externalThreshold: 50,
         });
       }
     }, this.sampleInterval);

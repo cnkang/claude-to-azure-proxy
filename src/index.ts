@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import { json, urlencoded } from 'express';
+import { performance } from 'node:perf_hooks';
+import { getHeapStatistics } from 'node:v8';
 import type { Request, Response } from 'express';
 import type { ServerConfig, RequestWithCorrelationId } from './types/index.js';
 import loadedConfig, {
@@ -20,7 +22,10 @@ import {
   errorLoggingMiddleware,
   logger,
 } from './middleware/logging.js';
-import { enhancedErrorHandler } from './middleware/error-handler.js';
+import { 
+  enhancedErrorHandler,
+  memoryManagementMiddleware,
+} from './middleware/index.js';
 import { secureAuthenticationMiddleware } from './middleware/authentication.js';
 import { healthCheckHandler } from './routes/health.js';
 import { modelsHandler } from './routes/models.js';
@@ -31,6 +36,16 @@ import {
 } from './routes/completions.js';
 import { getHealthMonitor } from './monitoring/health-monitor.js';
 import { checkFeatureAvailability } from './resilience/graceful-degradation.js';
+import { memoryManager, startMemoryMonitoring } from './utils/memory-manager.js';
+import { resourceManager, createHTTPConnectionResource } from './runtime/resource-manager.js';
+import { 
+  initializePerformanceOptimizations, 
+  performanceMonitor,
+  memoryPressureHandler 
+} from './config/performance.js';
+import { getOptimizedHTTPClient, cleanupGlobalHTTPClient } from './runtime/optimized-http-client.js';
+import { getOptimizedSSEHandler, cleanupGlobalSSEHandler } from './runtime/optimized-streaming-handler.js';
+import { getPerformanceAlertSystem, cleanupGlobalPerformanceAlerts, type PerformanceAlert } from './monitoring/performance-alerts.js';
 
 /**
  * @fileoverview Main application entry point for the Claude-to-Azure OpenAI Proxy Server.
@@ -117,6 +132,12 @@ export class ProxyServer {
   private server: import('http').Server | null = null;
 
   /**
+   * Server startup timestamp for performance monitoring.
+   * @private
+   */
+  private readonly startupTime: number;
+
+  /**
    * Creates a new ProxyServer instance with the provided configuration.
    *
    * Initializes the Express application and sets up all middleware, routes,
@@ -143,10 +164,12 @@ export class ProxyServer {
    */
   constructor(config: ServerConfig) {
     this.config = config;
+    this.startupTime = performance.now();
     this.app = express();
     this.setupMiddleware();
     this.setupRoutes();
     this.setupErrorHandling();
+    this.setupNodeJS24Optimizations();
   }
 
   /**
@@ -156,8 +179,9 @@ export class ProxyServer {
    * 1. Trust proxy settings for AWS App Runner
    * 2. Security middleware (Helmet, CORS)
    * 3. Request processing (correlation ID, timeout, rate limiting)
-   * 4. Body parsing with size limits
-   * 5. Request logging
+   * 4. Resource management middleware
+   * 5. Body parsing with size limits
+   * 6. Request logging
    *
    * @private
    * @throws {Error} If middleware configuration fails
@@ -168,7 +192,7 @@ export class ProxyServer {
     // This is more secure than 'trust proxy: true'
     this.app.set('trust proxy', ['loopback', 'linklocal', 'uniquelocal']);
 
-    // Disable unnecessary Express features
+    // Disable unnecessary Express features for Node.js 24 optimization
     this.app.disable('x-powered-by');
     this.app.disable('etag');
 
@@ -184,6 +208,12 @@ export class ProxyServer {
         : parseInt(String(this.config.azureOpenAI?.timeout ?? '120000'), 10)
     )); // Use configured timeout
     this.app.use(globalRateLimit);
+
+    // Memory management middleware for Node.js 24
+    this.app.use(memoryManagementMiddleware);
+
+    // Resource management middleware for Node.js 24
+    this.app.use(this.resourceManagementMiddleware);
 
     // Body parsing with size limits
     this.app.use(
@@ -327,13 +357,304 @@ export class ProxyServer {
   }
 
   /**
-   * Starts the HTTP server and begins accepting connections.
+   * Sets up Node.js 24 specific optimizations and features.
+   *
+   * @private
+   */
+  private setupNodeJS24Optimizations(): void {
+    // Configure Node.js 24 specific settings
+    if (process.versions.node.startsWith('24.')) {
+      // Initialize comprehensive performance optimizations
+      const perfConfig = initializePerformanceOptimizations();
+      
+      // Mark application initialization start
+      performanceMonitor.mark('app-init-start');
+      
+      // Enable enhanced performance monitoring
+      this.enablePerformanceMonitoring();
+      
+      // Start memory monitoring with Node.js 24 features
+      this.startMemoryManagement();
+      
+      // Configure optimal garbage collection settings
+      this.configureGarbageCollection();
+      
+      // Initialize optimized HTTP client
+      getOptimizedHTTPClient();
+      
+      // Initialize optimized SSE handler
+      getOptimizedSSEHandler();
+      
+      // Set up memory pressure monitoring
+      this.setupMemoryPressureMonitoring();
+      
+      // Initialize performance alert system
+      this.setupPerformanceAlerts();
+      
+      logger.info('Node.js 24 performance optimizations initialized', '', {
+        nodeVersion: process.version,
+        gcConfig: perfConfig.gc,
+        httpConfig: perfConfig.http,
+        streamingConfig: perfConfig.streaming
+      });
+    } else {
+      logger.warn('Node.js 24 optimizations not available', '', {
+        currentVersion: process.version,
+        recommendedVersion: '24.x.x'
+      });
+    }
+  }
+
+  /**
+   * Resource management middleware for automatic cleanup.
+   *
+   * @private
+   */
+  private readonly resourceManagementMiddleware = (
+    req: Request,
+    res: Response,
+    next: () => void
+  ): void => {
+    // Create HTTP connection resource for automatic cleanup
+    const connectionResource = createHTTPConnectionResource(
+      req,
+      res,
+      req.socket
+    );
+
+    // Clean up resource when response finishes
+    res.on('finish', () => {
+      if (!connectionResource.disposed) {
+        connectionResource[Symbol.asyncDispose]().catch((error: unknown) => {
+          logger.warn('HTTP connection resource cleanup failed', '', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+        });
+      }
+    });
+
+    // Clean up resource on connection close
+    res.on('close', () => {
+      if (!connectionResource.disposed) {
+        connectionResource[Symbol.asyncDispose]().catch((error: unknown) => {
+          logger.warn('HTTP connection resource cleanup failed on close', '', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+        });
+      }
+    });
+
+    next();
+  };
+
+  /**
+   * Enables performance monitoring using Node.js 24 features.
+   *
+   * @private
+   */
+  private enablePerformanceMonitoring(): void {
+    // Mark server startup performance
+    performance.mark('server-startup-begin');
+    
+    // Monitor HTTP request performance
+    this.app.use((req: Request, res: Response, next: () => void) => {
+      const startTime = performance.now();
+      const correlationId = (req as RequestWithCorrelationId).correlationId;
+      
+      res.on('finish', () => {
+        const duration = performance.now() - startTime;
+        
+        // Log slow requests
+        if (duration > 1000) { // Log requests slower than 1 second
+          logger.warn('Slow request detected', correlationId, {
+            method: req.method,
+            url: req.originalUrl,
+            duration: Math.round(duration),
+            statusCode: res.statusCode,
+          });
+        }
+        
+        // Track performance metrics
+        performance.measure(`request-${correlationId}`, {
+          start: startTime,
+          duration,
+        });
+      });
+      
+      next();
+    });
+
+    logger.info('Performance monitoring enabled with Node.js 24 features', '', {});
+  }
+
+  /**
+   * Starts memory management with Node.js 24 enhanced features.
+   *
+   * @private
+   */
+  private startMemoryManagement(): void {
+    const config = loadedConfig;
+    
+    if (!config.ENABLE_MEMORY_MANAGEMENT) {
+      logger.info('Memory management disabled by configuration', '', {});
+      return;
+    }
+
+    // Start memory monitoring with Node.js 24 GC features using configuration
+    startMemoryMonitoring({
+      maxSamples: 200,
+      sampleInterval: config.MEMORY_SAMPLE_INTERVAL,
+      enableLeakDetection: config.ENABLE_RESOURCE_MONITORING,
+      enableGCSuggestions: config.ENABLE_AUTO_GC,
+      pressureThresholds: {
+        medium: Math.max(50, config.MEMORY_PRESSURE_THRESHOLD - 10),
+        high: config.MEMORY_PRESSURE_THRESHOLD,
+        critical: Math.min(95, config.MEMORY_PRESSURE_THRESHOLD + 10),
+      },
+    });
+
+    logger.info('Memory management started with Node.js 24 features', '', {
+      sampleInterval: config.MEMORY_SAMPLE_INTERVAL,
+      pressureThreshold: config.MEMORY_PRESSURE_THRESHOLD,
+      autoGcEnabled: config.ENABLE_AUTO_GC,
+      resourceMonitoringEnabled: config.ENABLE_RESOURCE_MONITORING,
+    });
+  }
+
+  /**
+   * Configures optimal garbage collection settings for Node.js 24.
+   *
+   * @private
+   */
+  private configureGarbageCollection(): void {
+    const config = loadedConfig;
+    
+    // Log GC configuration
+    logger.info('Garbage collection configured for Node.js 24', '', {
+      heapSizeLimit: this.getHeapSizeLimit(),
+      gcExposed: typeof global.gc === 'function',
+      autoGcEnabled: config.ENABLE_AUTO_GC,
+      memoryPressureThreshold: config.MEMORY_PRESSURE_THRESHOLD,
+    });
+
+    if (!config.ENABLE_AUTO_GC) {
+      logger.info('Automatic garbage collection disabled by configuration', '', {});
+      return;
+    }
+
+    // Set up periodic GC suggestions based on memory pressure
+    setInterval(() => {
+      const memoryMetrics = memoryManager.getMemoryMetrics();
+      
+      if (memoryMetrics.pressure.level === 'high' || memoryMetrics.pressure.level === 'critical') {
+        if (typeof global.gc === 'function') {
+          logger.info('Triggering garbage collection due to memory pressure', '', {
+            pressureLevel: memoryMetrics.pressure.level,
+            heapUsage: memoryMetrics.heap.percentage,
+            threshold: config.MEMORY_PRESSURE_THRESHOLD,
+          });
+          
+          global.gc();
+        } else {
+          logger.warn('High memory pressure detected but GC not available', '', {
+            pressureLevel: memoryMetrics.pressure.level,
+            heapUsage: memoryMetrics.heap.percentage,
+            threshold: config.MEMORY_PRESSURE_THRESHOLD,
+            suggestion: 'Consider running with --expose-gc flag',
+          });
+        }
+      }
+    }, 30000); // Check every 30 seconds
+  }
+
+  /**
+   * Sets up memory pressure monitoring with Node.js 24 optimizations.
+   *
+   * @private
+   */
+  private setupMemoryPressureMonitoring(): void {
+    // Set up periodic memory pressure monitoring
+    setInterval(() => {
+      memoryPressureHandler.handleMemoryPressure().catch((error: unknown) => {
+        logger.error('Memory pressure handling failed', '', {
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      });
+    }, 15000); // Check every 15 seconds
+
+    logger.info('Memory pressure monitoring initialized', '', {
+      checkInterval: '15s',
+      nodeVersion: process.version
+    });
+  }
+
+  /**
+   * Sets up performance alert system with Node.js 24 optimizations.
+   *
+   * @private
+   */
+  private setupPerformanceAlerts(): void {
+    const alertSystem = getPerformanceAlertSystem();
+    
+    // Start monitoring
+    alertSystem.startMonitoring();
+    
+    // Set up request tracking middleware
+    this.app.use((req: Request, res: Response, next: () => void) => {
+      const startTime = performance.now();
+      
+      res.on('finish', () => {
+        const responseTime = performance.now() - startTime;
+        const isError = res.statusCode >= 400;
+        
+        alertSystem.recordRequest(responseTime, isError);
+      });
+      
+      next();
+    });
+    
+    // Handle performance alerts
+    alertSystem.on('alert', (alert: PerformanceAlert) => {
+      logger.warn('Performance alert', '', {
+        metric: alert.metric,
+        level: alert.level,
+        value: alert.value,
+        threshold: alert.threshold,
+        message: alert.message
+      });
+    });
+    
+    logger.info('Performance alert system initialized', '', {
+      nodeVersion: process.version,
+      alertsEnabled: true
+    });
+  }
+
+  /**
+   * Gets the current heap size limit.
+   *
+   * @private
+   * @returns Heap size limit in bytes
+   */
+  private getHeapSizeLimit(): number {
+    try {
+      const heapStats = getHeapStatistics();
+      return heapStats.heap_size_limit;
+    } catch {
+      // Fallback to default Node.js heap limit
+      return 1.4 * 1024 * 1024 * 1024; // ~1.4GB default for 64-bit systems
+    }
+  }
+
+  /**
+   * Starts the HTTP server and begins accepting connections with Node.js 24 optimizations.
    *
    * This method:
-   * 1. Binds the server to the configured port on all interfaces (0.0.0.0)
-   * 2. Sets up error handling for server startup failures
-   * 3. Initializes health monitoring
-   * 4. Logs successful startup with configuration details
+   * 1. Creates optimized HTTP server using Node.js 24 features
+   * 2. Binds the server to the configured port on all interfaces (0.0.0.0)
+   * 3. Sets up error handling for server startup failures
+   * 4. Initializes health monitoring
+   * 5. Logs successful startup with performance metrics
    *
    * @public
    * @async
@@ -358,15 +679,25 @@ export class ProxyServer {
           this.config.port,
           '0.0.0.0',
           () => {
-            logger.info('Server started successfully', '', {
+            const startupDuration = performance.now() - this.startupTime;
+            performance.mark('server-startup-complete');
+            performance.measure(
+              'server-startup-total',
+              'server-startup-begin',
+              'server-startup-complete'
+            );
+
+            logger.info('Server started successfully with Node.js 24 optimizations', '', {
               port: this.config.port,
               nodeEnv: this.config.nodeEnv,
-              azureEndpoint:
-                this.config.azureOpenAI?.endpoint ?? 'not-configured',
+              nodeVersion: process.version,
+              startupTime: Math.round(startupDuration),
+              azureEndpoint: this.config.azureOpenAI?.endpoint ?? 'not-configured',
               model: this.config.azureOpenAI?.model ?? 'not-configured',
+              memoryMonitoring: true,
+              resourceManagement: true,
             });
 
-            // Start health monitoring
             this.setupHealthMonitoring();
 
             resolve();
@@ -374,11 +705,36 @@ export class ProxyServer {
         );
 
         this.server = serverInstance;
+        this.configureServerOptimizations(serverInstance);
 
-        // Handle server errors
         serverInstance.on('error', (error: Readonly<Error>) => {
-          logger.error('Server error', '', { error: error.message });
+          logger.error('Server error', '', {
+            error: error.message,
+            stack: error.stack,
+            nodeVersion: process.version,
+          });
           reject(error);
+        });
+
+        serverInstance.on('connection', (socket) => {
+          const connectionResource = createHTTPConnectionResource(
+            undefined,
+            undefined,
+            socket
+          );
+
+          socket.on('close', () => {
+            if (!connectionResource.disposed) {
+              connectionResource[Symbol.asyncDispose]().catch((cleanupError: unknown) => {
+                logger.debug('Socket connection resource cleanup failed', '', {
+                  error:
+                    cleanupError instanceof Error
+                      ? cleanupError.message
+                      : 'Unknown error',
+                });
+              });
+            }
+          });
         });
       } catch (error) {
         const failure =
@@ -388,9 +744,46 @@ export class ProxyServer {
 
         logger.error('Failed to start server', '', {
           error: failure.message,
+          nodeVersion: process.version,
         });
         reject(failure);
       }
+    });
+  }
+
+  /**
+   * Configures HTTP server optimizations for Node.js 24.
+   *
+   * @private
+   * @param server - HTTP server instance
+   */
+  private configureServerOptimizations(server: import('http').Server): void {
+    // Use configuration values for HTTP server settings
+    const config = loadedConfig;
+    
+    // Configure keep-alive settings for better connection reuse
+    server.keepAliveTimeout = config.HTTP_KEEP_ALIVE_TIMEOUT;
+    server.headersTimeout = config.HTTP_HEADERS_TIMEOUT;
+    
+    // Configure request timeout
+    server.requestTimeout = Number(this.config.azureOpenAI?.timeout ?? 120000);
+    
+    // Configure maximum connections
+    server.maxConnections = config.HTTP_MAX_CONNECTIONS;
+    
+    // Enable TCP_NODELAY for lower latency
+    server.on('connection', (socket) => {
+      socket.setNoDelay(true);
+      socket.setKeepAlive(true, 30000); // 30 second keep-alive
+    });
+
+    logger.debug('HTTP server optimizations configured with Node.js 24 settings', '', {
+      keepAliveTimeout: server.keepAliveTimeout,
+      headersTimeout: server.headersTimeout,
+      requestTimeout: server.requestTimeout,
+      maxConnections: server.maxConnections,
+      memoryManagementEnabled: config.ENABLE_MEMORY_MANAGEMENT,
+      resourceMonitoringEnabled: config.ENABLE_RESOURCE_MONITORING,
     });
   }
 
@@ -453,13 +846,15 @@ export class ProxyServer {
   }
 
   /**
-   * Gracefully stops the HTTP server and cleans up resources.
+   * Gracefully stops the HTTP server and cleans up resources with Node.js 24 features.
    *
    * This method:
    * 1. Stops health monitoring
-   * 2. Closes the HTTP server gracefully
-   * 3. Waits for existing connections to complete
-   * 4. Forces shutdown after timeout if necessary
+   * 2. Stops memory monitoring
+   * 3. Cleans up all managed resources
+   * 4. Closes the HTTP server gracefully
+   * 5. Waits for existing connections to complete
+   * 6. Forces shutdown after timeout if necessary
    *
    * @public
    * @async
@@ -475,29 +870,66 @@ export class ProxyServer {
    * ```
    */
   public async stop(): Promise<void> {
-    return new Promise((resolve) => {
-      const serverInstance = this.server;
-      if (serverInstance === null) {
-        resolve();
-        return;
-      }
+    const serverInstance = this.server;
+    if (serverInstance === null) {
+      return;
+    }
 
-      logger.info('Shutting down server gracefully');
+    logger.info('Shutting down server gracefully with resource cleanup');
 
+    try {
       // Stop health monitoring
       getHealthMonitor().stopMonitoring();
 
-      serverInstance.close(() => {
-        logger.info('Server shutdown complete');
-        resolve();
+      // Stop memory monitoring
+      memoryManager.stopMonitoring();
+
+      // Clean up all managed resources
+      await resourceManager[Symbol.asyncDispose]();
+
+      // Clean up performance optimization resources
+      cleanupGlobalHTTPClient();
+      cleanupGlobalSSEHandler();
+      cleanupGlobalPerformanceAlerts();
+
+      // Clear performance monitoring data
+      performanceMonitor.clear();
+
+      // Force garbage collection before shutdown if available
+      if (typeof global.gc === 'function') {
+        logger.info('Performing final garbage collection');
+        global.gc();
+      }
+
+      // Close server gracefully
+      await new Promise<void>((resolve) => {
+        serverInstance.close(() => {
+          logger.info('Server shutdown complete', '', {
+            resourcesCleanedUp: true,
+            memoryMonitoringStopped: true,
+          });
+          resolve();
+        });
+
+        // Force shutdown after 10 seconds
+        setTimeout(() => {
+          logger.warn('Forcing server shutdown after timeout');
+          process.exit(1);
+        }, 10000);
       });
 
-      // Force shutdown after 10 seconds
-      setTimeout(() => {
-        logger.warn('Forcing server shutdown');
-        process.exit(1);
-      }, 10000);
-    });
+    } catch (error) {
+      logger.error('Error during graceful shutdown', '', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      
+      // Still attempt to close the server
+      await new Promise<void>((resolve) => {
+        serverInstance.close(() => {
+          resolve();
+        });
+      });
+    }
   }
 }
 

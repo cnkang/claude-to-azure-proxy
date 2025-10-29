@@ -129,3 +129,48 @@ export {
   type SecurityEventContext,
   type StructuredSecurityEvent,
 } from './structured-logger.js';
+
+// Re-export memory management utilities
+export {
+  MemoryManager,
+  memoryManager,
+  startMemoryMonitoring,
+  getCurrentMemoryMetrics,
+  detectMemoryLeaks,
+  forceGarbageCollection,
+  type MemoryMetrics,
+  type GCEvent,
+  type MemoryLeakDetection,
+  type MemorySample,
+  type MemoryManagerConfig,
+} from './memory-manager.js';
+
+// Re-export resource management utilities
+export {
+  ResourceManager,
+  BaseDisposableResource,
+  BaseAsyncDisposableResource,
+  HTTPConnectionResource,
+  StreamResource,
+  TimerResource,
+  resourceManager,
+  createHTTPConnectionResource,
+  createStreamResource,
+  createTimerResource,
+  createDisposableResource,
+  createAsyncDisposableResource,
+  withResources,
+  createManagedTimeout,
+  createManagedInterval,
+  createManagedImmediate,
+  getResourceStats,
+  getAllResourceInfo,
+  cleanupDisposedResources,
+  disposeAllResources,
+  type ResourceType,
+  type ResourceInfo,
+  type ResourceCleanupFn,
+  type DisposableResource,
+  type AsyncDisposableResource,
+  type ResourceManagerConfig,
+} from '../runtime/resource-manager.js';
