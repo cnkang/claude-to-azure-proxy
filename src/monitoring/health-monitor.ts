@@ -53,7 +53,10 @@ export class HealthMonitor {
 
     // Handle Azure OpenAI config
     const azureConfig = config.azureOpenAI;
-    if (typeof azureConfig?.endpoint === 'string' && azureConfig.endpoint.length > 0) {
+    if (
+      typeof azureConfig?.endpoint === 'string' &&
+      azureConfig.endpoint.length > 0
+    ) {
       this.azureEndpoint = azureConfig.endpoint.trim();
       this.azureApiKey = azureConfig.apiKey.trim();
       this.hasAzureConfig =
@@ -101,7 +104,11 @@ export class HealthMonitor {
       awsBedrockStatus = await this.bedrockMonitor.checkBedrockHealth();
     }
 
-    const isHealthy = this.determineHealthStatus(memory, azureOpenAIStatus, awsBedrockStatus);
+    const isHealthy = this.determineHealthStatus(
+      memory,
+      azureOpenAIStatus,
+      awsBedrockStatus
+    );
 
     const healthStatus: HealthStatus = {
       status: isHealthy ? 'healthy' : 'unhealthy',
@@ -288,7 +295,9 @@ export class HealthMonitor {
   /**
    * Gets the Bedrock monitor instance for external access.
    */
-  getBedrockMonitor(): import('./bedrock-monitor.js').BedrockMonitor | undefined {
+  getBedrockMonitor():
+    | import('./bedrock-monitor.js').BedrockMonitor
+    | undefined {
     return this.bedrockMonitor;
   }
 
@@ -317,11 +326,11 @@ export class HealthMonitor {
     try {
       // Import Bedrock monitor dynamically to avoid circular dependencies
       const { BedrockMonitor } = await import('./bedrock-monitor.js');
-      
+
       // Get Bedrock configuration from environment variables
       const apiKey = process.env.AWS_BEDROCK_API_KEY;
       const region = process.env.AWS_BEDROCK_REGION ?? 'us-west-2';
-      
+
       if (apiKey === undefined || apiKey.length === 0) {
         logger.warn('Bedrock API key not found in environment', '', {
           hasApiKey: false,
@@ -338,7 +347,7 @@ export class HealthMonitor {
       };
 
       this.bedrockMonitor = new BedrockMonitor(bedrockConfig);
-      
+
       logger.info('Bedrock monitor initialized', '', {
         region,
         hasApiKey: true,

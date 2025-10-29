@@ -379,7 +379,7 @@ export class PerformanceProfiler {
   public getNodeJS24Metrics(): Record<string, unknown> {
     const eventLoopUtilization = performance.eventLoopUtilization();
     const resourceUsage = process.resourceUsage();
-    
+
     return {
       nodeVersion: process.version,
       v8Version: process.versions.v8,
@@ -449,7 +449,7 @@ export class PerformanceProfiler {
               readonly duration?: number;
             };
           };
-          
+
           // Enhanced GC profiling with Node.js 24 features
           const gcProfile: GCProfile = {
             kind: gcEntry.kind ?? gcEntry.detail?.kind ?? 0,
@@ -529,9 +529,10 @@ export class PerformanceProfiler {
       }
 
       // Enhanced memory monitoring with Node.js 24 features
-      const heapUsagePercent = (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
+      const heapUsagePercent =
+        (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
       const externalPercent = (memoryUsage.external / memoryUsage.rss) * 100;
-      
+
       const memoryData = {
         heapUsagePercent: Math.round(heapUsagePercent * 100) / 100,
         externalPercent: Math.round(externalPercent * 100) / 100,

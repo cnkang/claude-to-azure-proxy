@@ -75,7 +75,8 @@ export interface BedrockRequestTracker {
  */
 export class BedrockMonitor {
   private readonly config: AWSBedrockConfig;
-  private readonly requestTrackers: Map<string, BedrockRequestTracker> = new Map();
+  private readonly requestTrackers: Map<string, BedrockRequestTracker> =
+    new Map();
   private readonly metrics: BedrockMetrics;
   private axiosInstance?: AxiosInstance;
   private healthCheckInitialized = false;
@@ -260,7 +261,7 @@ export class BedrockMonitor {
       const response = await this.axiosInstance.get('/foundation-models', {
         timeout: 5000, // 5 second timeout for health check
         headers: {
-          'Accept': 'application/json',
+          Accept: 'application/json',
         },
       });
 
@@ -278,7 +279,7 @@ export class BedrockMonitor {
       }
     } catch (error) {
       this.updateServiceStatus('unavailable');
-      
+
       // Log health check failure without exposing sensitive data (Requirement 4.4)
       logger.warn('Bedrock health check failed', '', {
         serviceId: 'bedrock',
@@ -329,11 +330,16 @@ export class BedrockMonitor {
    */
   private updateMetrics(duration: number, success: boolean): void {
     const newRequestCount = this.metrics.requestCount + 1;
-    const newSuccessCount = success ? this.metrics.successCount + 1 : this.metrics.successCount;
-    const newErrorCount = success ? this.metrics.errorCount : this.metrics.errorCount + 1;
+    const newSuccessCount = success
+      ? this.metrics.successCount + 1
+      : this.metrics.successCount;
+    const newErrorCount = success
+      ? this.metrics.errorCount
+      : this.metrics.errorCount + 1;
 
     // Calculate new average latency
-    const totalLatency = this.metrics.averageLatency * this.metrics.requestCount + duration;
+    const totalLatency =
+      this.metrics.averageLatency * this.metrics.requestCount + duration;
     const newAverageLatency = totalLatency / newRequestCount;
 
     // Calculate new error rate
@@ -390,7 +396,10 @@ export class BedrockMonitor {
     this.healthCheckInitialized = true;
 
     try {
-      if (this.config.baseURL.length === 0 || !this.config.baseURL.startsWith('https://')) {
+      if (
+        this.config.baseURL.length === 0 ||
+        !this.config.baseURL.startsWith('https://')
+      ) {
         throw new ConfigurationError(
           'Bedrock endpoint must use HTTPS',
           'bedrock-health-init',
@@ -401,7 +410,7 @@ export class BedrockMonitor {
       this.axiosInstance = axios.create({
         baseURL: this.config.baseURL,
         headers: {
-          'Authorization': `Bearer ${this.config.apiKey}`,
+          Authorization: `Bearer ${this.config.apiKey}`,
           'Content-Type': 'application/json',
           'User-Agent': 'claude-to-azure-proxy/1.0.0',
           'X-Amzn-Bedrock-Region': this.config.region,
@@ -448,7 +457,7 @@ export function createBedrockTimer(
  *
  * @example
  * ```typescript
- * recordBedrockBusinessMetric('model_requests', 'requests', 1, { 
+ * recordBedrockBusinessMetric('model_requests', 'requests', 1, {
  *   model: 'qwen-3-coder',
  *   requestType: 'streaming'
  * });
