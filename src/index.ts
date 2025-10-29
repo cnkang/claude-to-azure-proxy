@@ -22,7 +22,7 @@ import {
   errorLoggingMiddleware,
   logger,
 } from './middleware/logging.js';
-import { 
+import {
   enhancedErrorHandler,
   memoryManagementMiddleware,
 } from './middleware/index.js';
@@ -36,16 +36,32 @@ import {
 } from './routes/completions.js';
 import { getHealthMonitor } from './monitoring/health-monitor.js';
 import { checkFeatureAvailability } from './resilience/graceful-degradation.js';
-import { memoryManager, startMemoryMonitoring } from './utils/memory-manager.js';
-import { resourceManager, createHTTPConnectionResource } from './runtime/resource-manager.js';
-import { 
-  initializePerformanceOptimizations, 
+import {
+  memoryManager,
+  startMemoryMonitoring,
+} from './utils/memory-manager.js';
+import {
+  resourceManager,
+  createHTTPConnectionResource,
+} from './runtime/resource-manager.js';
+import {
+  initializePerformanceOptimizations,
   performanceMonitor,
-  memoryPressureHandler 
+  memoryPressureHandler,
 } from './config/performance.js';
-import { getOptimizedHTTPClient, cleanupGlobalHTTPClient } from './runtime/optimized-http-client.js';
-import { getOptimizedSSEHandler, cleanupGlobalSSEHandler } from './runtime/optimized-streaming-handler.js';
-import { getPerformanceAlertSystem, cleanupGlobalPerformanceAlerts, type PerformanceAlert } from './monitoring/performance-alerts.js';
+import {
+  getOptimizedHTTPClient,
+  cleanupGlobalHTTPClient,
+} from './runtime/optimized-http-client.js';
+import {
+  getOptimizedSSEHandler,
+  cleanupGlobalSSEHandler,
+} from './runtime/optimized-streaming-handler.js';
+import {
+  getPerformanceAlertSystem,
+  cleanupGlobalPerformanceAlerts,
+  type PerformanceAlert,
+} from './monitoring/performance-alerts.js';
 
 /**
  * @fileoverview Main application entry point for the Claude-to-Azure OpenAI Proxy Server.
@@ -202,11 +218,13 @@ export class ProxyServer {
 
     // Request processing middleware
     this.app.use(correlationIdMiddleware);
-    this.app.use(timeoutMiddleware(
-      typeof this.config.azureOpenAI?.timeout === 'number' 
-        ? this.config.azureOpenAI.timeout 
-        : parseInt(String(this.config.azureOpenAI?.timeout ?? '120000'), 10)
-    )); // Use configured timeout
+    this.app.use(
+      timeoutMiddleware(
+        typeof this.config.azureOpenAI?.timeout === 'number'
+          ? this.config.azureOpenAI.timeout
+          : parseInt(String(this.config.azureOpenAI?.timeout ?? '120000'), 10)
+      )
+    ); // Use configured timeout
     this.app.use(globalRateLimit);
 
     // Memory management middleware for Node.js 24
@@ -366,41 +384,41 @@ export class ProxyServer {
     if (process.versions.node.startsWith('24.')) {
       // Initialize comprehensive performance optimizations
       const perfConfig = initializePerformanceOptimizations();
-      
+
       // Mark application initialization start
       performanceMonitor.mark('app-init-start');
-      
+
       // Enable enhanced performance monitoring
       this.enablePerformanceMonitoring();
-      
+
       // Start memory monitoring with Node.js 24 features
       this.startMemoryManagement();
-      
+
       // Configure optimal garbage collection settings
       this.configureGarbageCollection();
-      
+
       // Initialize optimized HTTP client
       getOptimizedHTTPClient();
-      
+
       // Initialize optimized SSE handler
       getOptimizedSSEHandler();
-      
+
       // Set up memory pressure monitoring
       this.setupMemoryPressureMonitoring();
-      
+
       // Initialize performance alert system
       this.setupPerformanceAlerts();
-      
+
       logger.info('Node.js 24 performance optimizations initialized', '', {
         nodeVersion: process.version,
         gcConfig: perfConfig.gc,
         httpConfig: perfConfig.http,
-        streamingConfig: perfConfig.streaming
+        streamingConfig: perfConfig.streaming,
       });
     } else {
       logger.warn('Node.js 24 optimizations not available', '', {
         currentVersion: process.version,
-        recommendedVersion: '24.x.x'
+        recommendedVersion: '24.x.x',
       });
     }
   }
@@ -455,17 +473,18 @@ export class ProxyServer {
   private enablePerformanceMonitoring(): void {
     // Mark server startup performance
     performance.mark('server-startup-begin');
-    
+
     // Monitor HTTP request performance
     this.app.use((req: Request, res: Response, next: () => void) => {
       const startTime = performance.now();
       const correlationId = (req as RequestWithCorrelationId).correlationId;
-      
+
       res.on('finish', () => {
         const duration = performance.now() - startTime;
-        
+
         // Log slow requests
-        if (duration > 1000) { // Log requests slower than 1 second
+        if (duration > 1000) {
+          // Log requests slower than 1 second
           logger.warn('Slow request detected', correlationId, {
             method: req.method,
             url: req.originalUrl,
@@ -473,18 +492,22 @@ export class ProxyServer {
             statusCode: res.statusCode,
           });
         }
-        
+
         // Track performance metrics
         performance.measure(`request-${correlationId}`, {
           start: startTime,
           duration,
         });
       });
-      
+
       next();
     });
 
-    logger.info('Performance monitoring enabled with Node.js 24 features', '', {});
+    logger.info(
+      'Performance monitoring enabled with Node.js 24 features',
+      '',
+      {}
+    );
   }
 
   /**
@@ -494,7 +517,7 @@ export class ProxyServer {
    */
   private startMemoryManagement(): void {
     const config = loadedConfig;
-    
+
     if (!config.ENABLE_MEMORY_MANAGEMENT) {
       logger.info('Memory management disabled by configuration', '', {});
       return;
@@ -528,7 +551,7 @@ export class ProxyServer {
    */
   private configureGarbageCollection(): void {
     const config = loadedConfig;
-    
+
     // Log GC configuration
     logger.info('Garbage collection configured for Node.js 24', '', {
       heapSizeLimit: this.getHeapSizeLimit(),
@@ -538,30 +561,45 @@ export class ProxyServer {
     });
 
     if (!config.ENABLE_AUTO_GC) {
-      logger.info('Automatic garbage collection disabled by configuration', '', {});
+      logger.info(
+        'Automatic garbage collection disabled by configuration',
+        '',
+        {}
+      );
       return;
     }
 
     // Set up periodic GC suggestions based on memory pressure
     setInterval(() => {
       const memoryMetrics = memoryManager.getMemoryMetrics();
-      
-      if (memoryMetrics.pressure.level === 'high' || memoryMetrics.pressure.level === 'critical') {
+
+      if (
+        memoryMetrics.pressure.level === 'high' ||
+        memoryMetrics.pressure.level === 'critical'
+      ) {
         if (typeof global.gc === 'function') {
-          logger.info('Triggering garbage collection due to memory pressure', '', {
-            pressureLevel: memoryMetrics.pressure.level,
-            heapUsage: memoryMetrics.heap.percentage,
-            threshold: config.MEMORY_PRESSURE_THRESHOLD,
-          });
-          
+          logger.info(
+            'Triggering garbage collection due to memory pressure',
+            '',
+            {
+              pressureLevel: memoryMetrics.pressure.level,
+              heapUsage: memoryMetrics.heap.percentage,
+              threshold: config.MEMORY_PRESSURE_THRESHOLD,
+            }
+          );
+
           global.gc();
         } else {
-          logger.warn('High memory pressure detected but GC not available', '', {
-            pressureLevel: memoryMetrics.pressure.level,
-            heapUsage: memoryMetrics.heap.percentage,
-            threshold: config.MEMORY_PRESSURE_THRESHOLD,
-            suggestion: 'Consider running with --expose-gc flag',
-          });
+          logger.warn(
+            'High memory pressure detected but GC not available',
+            '',
+            {
+              pressureLevel: memoryMetrics.pressure.level,
+              heapUsage: memoryMetrics.heap.percentage,
+              threshold: config.MEMORY_PRESSURE_THRESHOLD,
+              suggestion: 'Consider running with --expose-gc flag',
+            }
+          );
         }
       }
     }, 30000); // Check every 30 seconds
@@ -577,14 +615,14 @@ export class ProxyServer {
     setInterval(() => {
       memoryPressureHandler.handleMemoryPressure().catch((error: unknown) => {
         logger.error('Memory pressure handling failed', '', {
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error instanceof Error ? error.message : 'Unknown error',
         });
       });
     }, 15000); // Check every 15 seconds
 
     logger.info('Memory pressure monitoring initialized', '', {
       checkInterval: '15s',
-      nodeVersion: process.version
+      nodeVersion: process.version,
     });
   }
 
@@ -595,24 +633,24 @@ export class ProxyServer {
    */
   private setupPerformanceAlerts(): void {
     const alertSystem = getPerformanceAlertSystem();
-    
+
     // Start monitoring
     alertSystem.startMonitoring();
-    
+
     // Set up request tracking middleware
     this.app.use((req: Request, res: Response, next: () => void) => {
       const startTime = performance.now();
-      
+
       res.on('finish', () => {
         const responseTime = performance.now() - startTime;
         const isError = res.statusCode >= 400;
-        
+
         alertSystem.recordRequest(responseTime, isError);
       });
-      
+
       next();
     });
-    
+
     // Handle performance alerts
     alertSystem.on('alert', (alert: PerformanceAlert) => {
       logger.warn('Performance alert', '', {
@@ -620,13 +658,13 @@ export class ProxyServer {
         level: alert.level,
         value: alert.value,
         threshold: alert.threshold,
-        message: alert.message
+        message: alert.message,
       });
     });
-    
+
     logger.info('Performance alert system initialized', '', {
       nodeVersion: process.version,
-      alertsEnabled: true
+      alertsEnabled: true,
     });
   }
 
@@ -687,16 +725,21 @@ export class ProxyServer {
               'server-startup-complete'
             );
 
-            logger.info('Server started successfully with Node.js 24 optimizations', '', {
-              port: this.config.port,
-              nodeEnv: this.config.nodeEnv,
-              nodeVersion: process.version,
-              startupTime: Math.round(startupDuration),
-              azureEndpoint: this.config.azureOpenAI?.endpoint ?? 'not-configured',
-              model: this.config.azureOpenAI?.model ?? 'not-configured',
-              memoryMonitoring: true,
-              resourceManagement: true,
-            });
+            logger.info(
+              'Server started successfully with Node.js 24 optimizations',
+              '',
+              {
+                port: this.config.port,
+                nodeEnv: this.config.nodeEnv,
+                nodeVersion: process.version,
+                startupTime: Math.round(startupDuration),
+                azureEndpoint:
+                  this.config.azureOpenAI?.endpoint ?? 'not-configured',
+                model: this.config.azureOpenAI?.model ?? 'not-configured',
+                memoryMonitoring: true,
+                resourceManagement: true,
+              }
+            );
 
             this.setupHealthMonitoring();
 
@@ -725,14 +768,20 @@ export class ProxyServer {
 
           socket.on('close', () => {
             if (!connectionResource.disposed) {
-              connectionResource[Symbol.asyncDispose]().catch((cleanupError: unknown) => {
-                logger.debug('Socket connection resource cleanup failed', '', {
-                  error:
-                    cleanupError instanceof Error
-                      ? cleanupError.message
-                      : 'Unknown error',
-                });
-              });
+              connectionResource[Symbol.asyncDispose]().catch(
+                (cleanupError: unknown) => {
+                  logger.debug(
+                    'Socket connection resource cleanup failed',
+                    '',
+                    {
+                      error:
+                        cleanupError instanceof Error
+                          ? cleanupError.message
+                          : 'Unknown error',
+                    }
+                  );
+                }
+              );
             }
           });
         });
@@ -760,31 +809,35 @@ export class ProxyServer {
   private configureServerOptimizations(server: import('http').Server): void {
     // Use configuration values for HTTP server settings
     const config = loadedConfig;
-    
+
     // Configure keep-alive settings for better connection reuse
     server.keepAliveTimeout = config.HTTP_KEEP_ALIVE_TIMEOUT;
     server.headersTimeout = config.HTTP_HEADERS_TIMEOUT;
-    
+
     // Configure request timeout
     server.requestTimeout = Number(this.config.azureOpenAI?.timeout ?? 120000);
-    
+
     // Configure maximum connections
     server.maxConnections = config.HTTP_MAX_CONNECTIONS;
-    
+
     // Enable TCP_NODELAY for lower latency
     server.on('connection', (socket) => {
       socket.setNoDelay(true);
       socket.setKeepAlive(true, 30000); // 30 second keep-alive
     });
 
-    logger.debug('HTTP server optimizations configured with Node.js 24 settings', '', {
-      keepAliveTimeout: server.keepAliveTimeout,
-      headersTimeout: server.headersTimeout,
-      requestTimeout: server.requestTimeout,
-      maxConnections: server.maxConnections,
-      memoryManagementEnabled: config.ENABLE_MEMORY_MANAGEMENT,
-      resourceMonitoringEnabled: config.ENABLE_RESOURCE_MONITORING,
-    });
+    logger.debug(
+      'HTTP server optimizations configured with Node.js 24 settings',
+      '',
+      {
+        keepAliveTimeout: server.keepAliveTimeout,
+        headersTimeout: server.headersTimeout,
+        requestTimeout: server.requestTimeout,
+        maxConnections: server.maxConnections,
+        memoryManagementEnabled: config.ENABLE_MEMORY_MANAGEMENT,
+        resourceMonitoringEnabled: config.ENABLE_RESOURCE_MONITORING,
+      }
+    );
   }
 
   /**
@@ -917,12 +970,11 @@ export class ProxyServer {
           process.exit(1);
         }, 10000);
       });
-
     } catch (error) {
       logger.error('Error during graceful shutdown', '', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      
+
       // Still attempt to close the server
       await new Promise<void>((resolve) => {
         serverInstance.close(() => {

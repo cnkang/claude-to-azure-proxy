@@ -49,14 +49,14 @@ export function getPerformanceConfig(): PerformanceConfig {
   const cpuCount = cpus().length;
   const isProduction = process.env.NODE_ENV === 'production';
   const memoryLimit = parseInt(process.env.MEMORY_LIMIT ?? '1024', 10);
-  
+
   return {
     gc: {
       // Optimize heap sizes for Node.js 24
       maxOldSpaceSize: Math.min(memoryLimit * 0.8, 2048), // 80% of available memory, max 2GB
       maxNewSpaceSize: Math.min(memoryLimit * 0.1, 256), // 10% of available memory, max 256MB
       enableOptimizations: true,
-      exposeGC: !isProduction // Only expose GC in development/testing
+      exposeGC: !isProduction, // Only expose GC in development/testing
     },
     http: {
       keepAlive: true,
@@ -65,33 +65,35 @@ export function getPerformanceConfig(): PerformanceConfig {
       maxFreeSockets: cpuCount * 2, // 2 free sockets per CPU core
       timeout: 120000, // 2 minutes
       headersTimeout: 60000, // 1 minute
-      requestTimeout: 300000 // 5 minutes for streaming responses
+      requestTimeout: 300000, // 5 minutes for streaming responses
     },
     streaming: {
       highWaterMark: 64 * 1024, // 64KB buffer for optimal performance
       objectMode: false,
       enableBackpressure: true,
-      maxConcurrentStreams: cpuCount * 2 // 2 concurrent streams per CPU core
+      maxConcurrentStreams: cpuCount * 2, // 2 concurrent streams per CPU core
     },
     monitoring: {
       enableProfiling: !isProduction,
       memoryMonitoring: true,
       gcMonitoring: true,
-      performanceMarks: !isProduction
-    }
+      performanceMarks: !isProduction,
+    },
   };
 }
 
 /**
  * Apply Node.js 24 garbage collection optimizations
  */
-export function configureGarbageCollection(config: PerformanceConfig['gc']): void {
+export function configureGarbageCollection(
+  config: PerformanceConfig['gc']
+): void {
   // Set V8 flags for optimal garbage collection
   const v8Flags = [
     `--max-old-space-size=${config.maxOldSpaceSize}`,
-    `--max-new-space-size=${config.maxNewSpaceSize}`
+    `--max-new-space-size=${config.maxNewSpaceSize}`,
   ];
-  
+
   if (config.enableOptimizations) {
     v8Flags.push(
       '--optimize-for-size', // Optimize for memory usage
@@ -101,11 +103,11 @@ export function configureGarbageCollection(config: PerformanceConfig['gc']): voi
       '--parallel-scavenge' // Enable parallel scavenging
     );
   }
-  
+
   if (config.exposeGC) {
     v8Flags.push('--expose-gc');
   }
-  
+
   // Note: V8 flags must be set at startup, this is for documentation
   // eslint-disable-next-line no-console
   console.log('Recommended V8 flags:', v8Flags.join(' '));
@@ -114,13 +116,15 @@ export function configureGarbageCollection(config: PerformanceConfig['gc']): voi
 /**
  * Configure HTTP agent for optimal performance
  */
-export async function createOptimizedHTTPAgent(config: PerformanceConfig['http']): Promise<{
+export async function createOptimizedHTTPAgent(
+  config: PerformanceConfig['http']
+): Promise<{
   httpAgent: HttpAgent;
   httpsAgent: HttpsAgent;
 }> {
   const { Agent: HttpAgent } = await import('node:http');
   const { Agent: HttpsAgent } = await import('node:https');
-  
+
   const agentOptions = {
     keepAlive: config.keepAlive,
     keepAliveMsecs: config.keepAliveMsecs,
@@ -129,9 +133,9 @@ export async function createOptimizedHTTPAgent(config: PerformanceConfig['http']
     timeout: config.timeout,
     // Node.js 24 specific optimizations
     scheduling: 'lifo' as const, // Last-in-first-out for better cache locality
-    family: 0 // Allow both IPv4 and IPv6
+    family: 0, // Allow both IPv4 and IPv6
   };
-  
+
   return {
     httpAgent: new HttpAgent(agentOptions),
     httpsAgent: new HttpsAgent({
@@ -142,9 +146,9 @@ export async function createOptimizedHTTPAgent(config: PerformanceConfig['http']
       ciphers: [
         'TLS_AES_256_GCM_SHA384',
         'TLS_CHACHA20_POLY1305_SHA256',
-        'TLS_AES_128_GCM_SHA256'
-      ].join(':')
-    })
+        'TLS_AES_128_GCM_SHA256',
+      ].join(':'),
+    }),
   };
 }
 
@@ -154,7 +158,7 @@ export async function createOptimizedHTTPAgent(config: PerformanceConfig['http']
 export class PerformanceMonitor {
   private readonly marks = new Map<string, number>();
   private readonly measures = new Map<string, number>();
-  
+
   /**
    * Mark the start of a performance measurement
    */
@@ -164,7 +168,7 @@ export class PerformanceMonitor {
       performance.mark(name);
     }
   }
-  
+
   /**
    * Measure the time since a mark
    */
@@ -173,31 +177,31 @@ export class PerformanceMonitor {
     if (startTime === undefined) {
       throw new Error(`Mark '${startMark}' not found`);
     }
-    
+
     const duration = performance.now() - startTime;
     this.measures.set(name, duration);
-    
+
     if (typeof performance.measure === 'function') {
       performance.measure(name, startMark);
     }
-    
+
     return duration;
   }
-  
+
   /**
    * Get all measurements
    */
   public getMeasures(): ReadonlyMap<string, number> {
     return new Map(this.measures);
   }
-  
+
   /**
    * Clear all marks and measures
    */
   public clear(): void {
     this.marks.clear();
     this.measures.clear();
-    
+
     if (typeof performance.clearMarks === 'function') {
       performance.clearMarks();
     }
@@ -218,27 +222,27 @@ export const performanceMonitor = new PerformanceMonitor();
 export class MemoryPressureHandler {
   private readonly thresholds = {
     warning: 0.8, // 80% of max heap
-    critical: 0.9 // 90% of max heap
+    critical: 0.9, // 90% of max heap
   };
-  
+
   private isHandlingPressure = false;
-  
+
   /**
    * Check current memory pressure level
    */
   public checkMemoryPressure(): 'normal' | 'warning' | 'critical' {
     const memUsage = process.memoryUsage();
     const heapUsedRatio = memUsage.heapUsed / memUsage.heapTotal;
-    
+
     if (heapUsedRatio >= this.thresholds.critical) {
       return 'critical';
     } else if (heapUsedRatio >= this.thresholds.warning) {
       return 'warning';
     }
-    
+
     return 'normal';
   }
-  
+
   /**
    * Handle memory pressure by triggering garbage collection
    */
@@ -246,21 +250,20 @@ export class MemoryPressureHandler {
     if (this.isHandlingPressure) {
       return; // Already handling pressure
     }
-    
+
     this.isHandlingPressure = true;
-    
+
     try {
       const pressureLevel = this.checkMemoryPressure();
-      
+
       if (pressureLevel === 'critical') {
         // Force immediate garbage collection
         if (global.gc) {
           global.gc();
         }
-        
+
         // Wait for GC to complete
-        await new Promise(resolve => setImmediate(resolve));
-        
+        await new Promise((resolve) => setImmediate(resolve));
       } else if (pressureLevel === 'warning') {
         // Schedule garbage collection on next tick
         process.nextTick(() => {
@@ -269,7 +272,6 @@ export class MemoryPressureHandler {
           }
         });
       }
-      
     } finally {
       this.isHandlingPressure = false;
     }
@@ -286,10 +288,10 @@ export const memoryPressureHandler = new MemoryPressureHandler();
  */
 export function initializePerformanceOptimizations(): PerformanceConfig {
   const config = getPerformanceConfig();
-  
+
   // Configure garbage collection
   configureGarbageCollection(config.gc);
-  
+
   // Set up memory pressure monitoring
   if (config.monitoring.memoryMonitoring) {
     setInterval(() => {
@@ -298,12 +300,12 @@ export function initializePerformanceOptimizations(): PerformanceConfig {
       });
     }, 30000); // Check every 30 seconds
   }
-  
+
   // Set up performance monitoring
   if (config.monitoring.performanceMarks) {
     performanceMonitor.mark('application-start');
   }
-  
+
   return config;
 }
 

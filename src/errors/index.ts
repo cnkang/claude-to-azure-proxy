@@ -36,7 +36,7 @@ export function sanitizeErrorMessage(message: string): string {
     },
     {
       pattern: /(bearer\s+)([A-Za-z0-9._-]{8,})/gi,
-      replacement: '[TOKEN_REDACTED]'
+      replacement: '[TOKEN_REDACTED]',
     },
     {
       pattern: /(password[s]?(?:[:=]\s*|\s+))([^\s]{4,})/gi,
@@ -334,7 +334,7 @@ export class NetworkError extends BaseError {
       syscall: cause && 'syscall' in cause ? cause.syscall : undefined,
       errno: cause && 'errno' in cause ? cause.errno : undefined,
     });
-    
+
     // Set cause using Node.js 24's error cause pattern
     if (cause) {
       this.cause = cause;
@@ -509,27 +509,30 @@ export function preserveErrorContext(
         configurable: true,
       });
     }
-    
+
     // Preserve additional error properties
     if ('code' in originalError && typeof originalError.code === 'string') {
       Object.assign(newError.context.metadata ?? {}, {
         originalErrorCode: originalError.code,
       });
     }
-    
+
     if ('errno' in originalError && typeof originalError.errno === 'number') {
       Object.assign(newError.context.metadata ?? {}, {
         originalErrno: originalError.errno,
       });
     }
-    
-    if ('syscall' in originalError && typeof originalError.syscall === 'string') {
+
+    if (
+      'syscall' in originalError &&
+      typeof originalError.syscall === 'string'
+    ) {
       Object.assign(newError.context.metadata ?? {}, {
         originalSyscall: originalError.syscall,
       });
     }
   }
-  
+
   return newError;
 }
 
@@ -679,17 +682,22 @@ export class ErrorFactory {
       // Check for specific error types based on properties
       if ('code' in error) {
         const errorWithCode = error as Error & { code: string };
-        
+
         // Handle network-related errors
-        if (errorWithCode.code === 'ECONNREFUSED' || 
-            errorWithCode.code === 'ENOTFOUND' || 
-            errorWithCode.code === 'ECONNRESET' ||
-            errorWithCode.code === 'ETIMEDOUT') {
+        if (
+          errorWithCode.code === 'ECONNREFUSED' ||
+          errorWithCode.code === 'ENOTFOUND' ||
+          errorWithCode.code === 'ECONNRESET' ||
+          errorWithCode.code === 'ETIMEDOUT'
+        ) {
           return ErrorFactory.fromNetworkError(error, correlationId, operation);
         }
-        
+
         // Handle timeout errors
-        if (errorWithCode.code === 'TIMEOUT' || errorWithCode.code === 'ESOCKETTIMEDOUT') {
+        if (
+          errorWithCode.code === 'TIMEOUT' ||
+          errorWithCode.code === 'ESOCKETTIMEDOUT'
+        ) {
           return ErrorFactory.fromTimeout(30000, correlationId, operation);
         }
       }
@@ -717,25 +725,20 @@ export class ErrorFactory {
     // Handle object-like errors
     if (typeof error === 'object' && error !== null) {
       const errorObj = error as Record<string, unknown>;
-      const message = typeof errorObj.message === 'string' 
-        ? errorObj.message 
-        : defaultMessage;
-      
-      return new InternalServerError(
-        message,
-        correlationId,
-        operation,
-        { originalError: errorObj }
-      );
+      const message =
+        typeof errorObj.message === 'string'
+          ? errorObj.message
+          : defaultMessage;
+
+      return new InternalServerError(message, correlationId, operation, {
+        originalError: errorObj,
+      });
     }
 
     // Handle primitive values
-    return new InternalServerError(
-      defaultMessage,
-      correlationId,
-      operation,
-      { originalError: String(error) }
-    );
+    return new InternalServerError(defaultMessage, correlationId, operation, {
+      originalError: String(error),
+    });
   }
 }
 
@@ -747,14 +750,14 @@ export function createErrorResponse(
   includeStack: boolean = false
 ): Record<string, unknown> {
   const response = error.toClientError();
-  
+
   if (includeStack && process.env.NODE_ENV === 'development') {
     return {
       ...response,
       stack: error.stack,
     };
   }
-  
+
   return response;
 }
 
@@ -766,7 +769,7 @@ export function getErrorLogLevel(error: BaseError): 'error' | 'warn' {
   if (!error.isOperational) {
     return 'error';
   }
-  
+
   // Client errors (4xx) are warnings, server errors (5xx) are errors
   return error.statusCode >= 500 ? 'error' : 'warn';
 }
@@ -781,23 +784,27 @@ export function createCorrelationId(): string {
 /**
  * Type guard to check if an error has a correlation ID
  */
-export function hasCorrelationId(error: unknown): error is { context: { correlationId: string } } {
+export function hasCorrelationId(
+  error: unknown
+): error is { context: { correlationId: string } } {
   if (typeof error !== 'object' || error === null) {
     return false;
   }
-  
+
   if (!('context' in error)) {
     return false;
   }
-  
+
   const errorWithContext = error as { context: unknown };
-  if (typeof errorWithContext.context !== 'object' || errorWithContext.context === null) {
+  if (
+    typeof errorWithContext.context !== 'object' ||
+    errorWithContext.context === null
+  ) {
     return false;
   }
-  
+
   const context = errorWithContext.context as Record<string, unknown>;
   return (
-    'correlationId' in context &&
-    typeof context.correlationId === 'string'
+    'correlationId' in context && typeof context.correlationId === 'string'
   );
 }

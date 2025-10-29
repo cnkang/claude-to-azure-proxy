@@ -384,7 +384,9 @@ const configSchema = Joi.object<Config>({
   // Optional content security validation flag
   ENABLE_CONTENT_SECURITY_VALIDATION: Joi.boolean()
     .default(true)
-    .description('Enable content security validation (disable for code review scenarios)'),
+    .description(
+      'Enable content security validation (disable for code review scenarios)'
+    ),
 
   // Optional port with default value and range validation
   PORT: Joi.number()
@@ -421,7 +423,9 @@ const configSchema = Joi.object<Config>({
     .max(300000)
     .default(120000)
     .optional()
-    .description('AWS Bedrock request timeout in milliseconds (default: 120000)'),
+    .description(
+      'AWS Bedrock request timeout in milliseconds (default: 120000)'
+    ),
 
   // Optional AWS Bedrock max retries
   AWS_BEDROCK_MAX_RETRIES: Joi.number()
@@ -442,7 +446,9 @@ const configSchema = Joi.object<Config>({
     .min(1000)
     .max(60000)
     .default(10000)
-    .description('Memory monitoring sample interval in milliseconds (default: 10000)'),
+    .description(
+      'Memory monitoring sample interval in milliseconds (default: 10000)'
+    ),
 
   MEMORY_PRESSURE_THRESHOLD: Joi.number()
     .integer()
@@ -495,13 +501,15 @@ function createConfig(): Readonly<Config> {
     AZURE_OPENAI_API_KEY: process.env.AZURE_OPENAI_API_KEY,
     AZURE_OPENAI_MODEL: process.env.AZURE_OPENAI_MODEL,
     // Convert empty string to undefined for optional API version
-    AZURE_OPENAI_API_VERSION: process.env.AZURE_OPENAI_API_VERSION === '' 
-      ? undefined 
-      : process.env.AZURE_OPENAI_API_VERSION,
+    AZURE_OPENAI_API_VERSION:
+      process.env.AZURE_OPENAI_API_VERSION === ''
+        ? undefined
+        : process.env.AZURE_OPENAI_API_VERSION,
     AZURE_OPENAI_TIMEOUT: process.env.AZURE_OPENAI_TIMEOUT,
     AZURE_OPENAI_MAX_RETRIES: process.env.AZURE_OPENAI_MAX_RETRIES,
     DEFAULT_REASONING_EFFORT: process.env.DEFAULT_REASONING_EFFORT,
-    ENABLE_CONTENT_SECURITY_VALIDATION: process.env.ENABLE_CONTENT_SECURITY_VALIDATION,
+    ENABLE_CONTENT_SECURITY_VALIDATION:
+      process.env.ENABLE_CONTENT_SECURITY_VALIDATION,
     PORT: process.env.PORT,
     NODE_ENV: process.env.NODE_ENV,
     AWS_BEDROCK_API_KEY: process.env.AWS_BEDROCK_API_KEY,
@@ -843,12 +851,14 @@ function sanitizeConfig(value: Readonly<Config>): SanitizedConfig {
     AZURE_OPENAI_TIMEOUT: value.AZURE_OPENAI_TIMEOUT,
     AZURE_OPENAI_MAX_RETRIES: value.AZURE_OPENAI_MAX_RETRIES,
     DEFAULT_REASONING_EFFORT: value.DEFAULT_REASONING_EFFORT,
-    ENABLE_CONTENT_SECURITY_VALIDATION: value.ENABLE_CONTENT_SECURITY_VALIDATION,
+    ENABLE_CONTENT_SECURITY_VALIDATION:
+      value.ENABLE_CONTENT_SECURITY_VALIDATION,
     PORT: value.PORT,
     NODE_ENV: value.NODE_ENV,
     PROXY_API_KEY: '[REDACTED]',
     AZURE_OPENAI_API_KEY: '[REDACTED]',
-    AWS_BEDROCK_API_KEY: value.AWS_BEDROCK_API_KEY !== undefined ? '[REDACTED]' : undefined,
+    AWS_BEDROCK_API_KEY:
+      value.AWS_BEDROCK_API_KEY !== undefined ? '[REDACTED]' : undefined,
     AWS_BEDROCK_REGION: value.AWS_BEDROCK_REGION,
     AWS_BEDROCK_TIMEOUT: value.AWS_BEDROCK_TIMEOUT,
     AWS_BEDROCK_MAX_RETRIES: value.AWS_BEDROCK_MAX_RETRIES,
@@ -969,13 +979,15 @@ export function validateEnvironmentVariable(
   required: boolean = true
 ): string | undefined {
   if (required && (value === undefined || value === '')) {
-    throw new Error(`Required environment variable ${name} is missing or empty`);
+    throw new Error(
+      `Required environment variable ${name} is missing or empty`
+    );
   }
-  
+
   if (value === undefined || value === '') {
     return undefined;
   }
-  
+
   return value.trim();
 }
 
@@ -995,20 +1007,26 @@ export function validateNumericEnvironmentVariable(
     }
     throw new Error(`Required numeric environment variable ${name} is missing`);
   }
-  
+
   const numericValue = Number(value);
   if (Number.isNaN(numericValue)) {
-    throw new Error(`Environment variable ${name} must be a valid number, got: ${value}`);
+    throw new Error(
+      `Environment variable ${name} must be a valid number, got: ${value}`
+    );
   }
-  
+
   if (min !== undefined && numericValue < min) {
-    throw new Error(`Environment variable ${name} must be >= ${min}, got: ${numericValue}`);
+    throw new Error(
+      `Environment variable ${name} must be >= ${min}, got: ${numericValue}`
+    );
   }
-  
+
   if (max !== undefined && numericValue > max) {
-    throw new Error(`Environment variable ${name} must be <= ${max}, got: ${numericValue}`);
+    throw new Error(
+      `Environment variable ${name} must be <= ${max}, got: ${numericValue}`
+    );
   }
-  
+
   return numericValue;
 }
 
@@ -1030,7 +1048,7 @@ export function getConfigurationSummary(): Record<string, unknown> {
   if (config === null) {
     return { error: 'Configuration not loaded' };
   }
-  
+
   const {
     NODE_ENV,
     PORT,
@@ -1055,7 +1073,7 @@ export function getConfigurationSummary(): Record<string, unknown> {
     HTTP_HEADERS_TIMEOUT,
     HTTP_MAX_CONNECTIONS,
   } = config;
-  
+
   return {
     nodeEnv: NODE_ENV,
     port: PORT,
