@@ -2,9 +2,7 @@
  * Type definitions for test files to eliminate unsafe `any` usage
  */
 
-import type { 
-  ResponsesResponse, 
-} from '../../src/types/index.js';
+import type { ResponsesResponse } from '../../src/types/index.js';
 
 /**
  * Generic test response body that can be either success or error
@@ -52,13 +50,17 @@ export interface MockAzureResponsesClient {
     mock: {
       calls: Array<[import('../../src/types/index.js').ResponsesCreateParams]>;
     };
-  } & ((params: import('../../src/types/index.js').ResponsesCreateParams) => Promise<ResponsesResponse>);
-  
+  } & ((
+    params: import('../../src/types/index.js').ResponsesCreateParams
+  ) => Promise<ResponsesResponse>);
+
   createResponseStream: {
     mock: {
       calls: Array<[import('../../src/types/index.js').ResponsesCreateParams]>;
     };
-  } & ((params: import('../../src/types/index.js').ResponsesCreateParams) => AsyncIterable<ResponsesResponse>);
+  } & ((
+    params: import('../../src/types/index.js').ResponsesCreateParams
+  ) => AsyncIterable<ResponsesResponse>);
 }
 
 /**
@@ -70,24 +72,40 @@ export interface MockConversationManager {
       calls: Array<[Record<string, string>, string]>;
     };
   } & ((headers: Record<string, string>, correlationId: string) => string);
-  
+
   getConversationContext: {
     mock: {
       calls: Array<[string]>;
     };
-  } & ((conversationId: string) => import('../../src/types/index.js').ConversationContext | undefined);
-  
+  } & ((
+    conversationId: string
+  ) => import('../../src/types/index.js').ConversationContext | undefined);
+
   trackConversation: {
     mock: {
-      calls: Array<[string, string, import('../../src/types/index.js').ConversationMetrics]>;
+      calls: Array<
+        [string, string, import('../../src/types/index.js').ConversationMetrics]
+      >;
     };
-  } & ((conversationId: string, responseId: string, metrics: import('../../src/types/index.js').ConversationMetrics) => void);
-  
+  } & ((
+    conversationId: string,
+    responseId: string,
+    metrics: import('../../src/types/index.js').ConversationMetrics
+  ) => void);
+
   updateConversationMetrics: {
     mock: {
-      calls: Array<[string, Partial<import('../../src/types/index.js').ConversationMetrics>]>;
+      calls: Array<
+        [
+          string,
+          Partial<import('../../src/types/index.js').ConversationMetrics>,
+        ]
+      >;
     };
-  } & ((conversationId: string, updates: Partial<import('../../src/types/index.js').ConversationMetrics>) => void);
+  } & ((
+    conversationId: string,
+    updates: Partial<import('../../src/types/index.js').ConversationMetrics>
+  ) => void);
 }
 
 /**
@@ -96,9 +114,17 @@ export interface MockConversationManager {
 export interface MockUniversalRequestProcessor {
   processRequest: {
     mock: {
-      calls: Array<[import('../../src/types/index.js').IncomingRequest, import('../../src/types/index.js').ConversationContext | undefined]>;
+      calls: Array<
+        [
+          import('../../src/types/index.js').IncomingRequest,
+          import('../../src/types/index.js').ConversationContext | undefined,
+        ]
+      >;
     };
-  } & ((request: import('../../src/types/index.js').IncomingRequest, context?: import('../../src/types/index.js').ConversationContext) => import('../../src/utils/universal-request-processor.js').UniversalProcessingResult);
+  } & ((
+    request: import('../../src/types/index.js').IncomingRequest,
+    context?: import('../../src/types/index.js').ConversationContext
+  ) => import('../../src/utils/universal-request-processor.js').UniversalProcessingResult);
 }
 
 /**
@@ -107,9 +133,17 @@ export interface MockUniversalRequestProcessor {
 export interface MockReasoningAnalyzer {
   analyzeRequest: {
     mock: {
-      calls: Array<[import('../../src/types/index.js').IncomingRequest, import('../../src/types/index.js').ConversationContext | undefined]>;
+      calls: Array<
+        [
+          import('../../src/types/index.js').IncomingRequest,
+          import('../../src/types/index.js').ConversationContext | undefined,
+        ]
+      >;
     };
-  } & ((request: import('../../src/types/index.js').IncomingRequest, context?: import('../../src/types/index.js').ConversationContext) => import('../../src/types/index.js').ReasoningEffort);
+  } & ((
+    request: import('../../src/types/index.js').IncomingRequest,
+    context?: import('../../src/types/index.js').ConversationContext
+  ) => import('../../src/types/index.js').ReasoningEffort);
 }
 
 /**
@@ -132,31 +166,31 @@ export interface MockExpressApp {
       calls: Array<[number, string, () => void]>;
     };
   } & ((port: number, host: string, callback: () => void) => MockServer);
-  
+
   use: {
     mock: {
       calls: Array<unknown[]>;
     };
   } & ((...args: unknown[]) => void);
-  
+
   get: {
     mock: {
       calls: Array<unknown[]>;
     };
   } & ((...args: unknown[]) => void);
-  
+
   post: {
     mock: {
       calls: Array<unknown[]>;
     };
   } & ((...args: unknown[]) => void);
-  
+
   set: {
     mock: {
       calls: Array<unknown[]>;
     };
   } & ((...args: unknown[]) => void);
-  
+
   disable: {
     mock: {
       calls: Array<unknown[]>;
@@ -173,7 +207,7 @@ export interface MockServer {
       calls: Array<[string, (error: Error) => void]>;
     };
   } & ((event: string, callback: (error: Error) => void) => void);
-  
+
   close: {
     mock: {
       calls: Array<[() => void]>;
@@ -184,20 +218,28 @@ export interface MockServer {
 /**
  * Type guard to check if response is an error
  */
-export function isErrorResponse(response: TestResponseBody): response is TestResponseBody & { error: NonNullable<TestResponseBody['error']> } {
+export function isErrorResponse(
+  response: TestResponseBody
+): response is TestResponseBody & {
+  error: NonNullable<TestResponseBody['error']>;
+} {
   return response.error !== undefined;
 }
 
 /**
  * Type guard to check if response is Claude format
  */
-export function isClaudeResponse(response: TestResponseBody): response is TestResponseBody & { type: 'message' } {
+export function isClaudeResponse(
+  response: TestResponseBody
+): response is TestResponseBody & { type: 'message' } {
   return response.type === 'message';
 }
 
 /**
  * Type guard to check if response is OpenAI format
  */
-export function isOpenAIResponse(response: TestResponseBody): response is TestResponseBody & { object: 'chat.completion' } {
+export function isOpenAIResponse(
+  response: TestResponseBody
+): response is TestResponseBody & { object: 'chat.completion' } {
   return response.object === 'chat.completion';
 }

@@ -51,7 +51,9 @@ describe('runtime type guards', () => {
       },
     };
     expect(isResponsesResponse(responsesResponse)).toBe(true);
-    expect(isResponsesResponse({ ...responsesResponse, output: undefined })).toBe(false);
+    expect(
+      isResponsesResponse({ ...responsesResponse, output: undefined })
+    ).toBe(false);
 
     const streamChunk = {
       id: 'resp_chunk',
@@ -75,7 +77,9 @@ describe('runtime type guards', () => {
       choices: [],
     };
     expect(isOpenAIResponse(openaiResponse)).toBe(true);
-    expect(isOpenAIError({ error: { message: 'boom', type: 'server_error' } })).toBe(true);
+    expect(
+      isOpenAIError({ error: { message: 'boom', type: 'server_error' } })
+    ).toBe(true);
 
     const claudeResponse = {
       id: 'resp',
@@ -85,7 +89,12 @@ describe('runtime type guards', () => {
       model: 'claude-3',
     };
     expect(isClaudeResponse(claudeResponse)).toBe(true);
-    expect(isClaudeError({ type: 'error', error: { type: 'api_error', message: 'fail' } })).toBe(true);
+    expect(
+      isClaudeError({
+        type: 'error',
+        error: { type: 'api_error', message: 'fail' },
+      })
+    ).toBe(true);
   });
 
   it('validates health and request metadata structures', () => {
@@ -112,7 +121,9 @@ describe('runtime type guards', () => {
   it('checks authentication enums safely', () => {
     expect(isAuthenticationResult(AuthenticationResult.SUCCESS)).toBe(true);
     expect(isAuthenticationResult('unknown')).toBe(false);
-    expect(isAuthenticationMethod(AuthenticationMethod.BEARER_TOKEN)).toBe(true);
+    expect(isAuthenticationMethod(AuthenticationMethod.BEARER_TOKEN)).toBe(
+      true
+    );
     expect(isAuthenticationMethod('invalid')).toBe(false);
   });
 });

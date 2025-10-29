@@ -85,7 +85,8 @@ export const setupTestEnvironment = (): void => {
   process.env.AZURE_OPENAI_API_KEY = testConfig.AZURE_OPENAI_API_KEY;
   process.env.AZURE_OPENAI_MODEL = testConfig.AZURE_OPENAI_MODEL;
   process.env.AZURE_OPENAI_TIMEOUT = testConfig.AZURE_OPENAI_TIMEOUT.toString();
-  process.env.AZURE_OPENAI_MAX_RETRIES = testConfig.AZURE_OPENAI_MAX_RETRIES.toString();
+  process.env.AZURE_OPENAI_MAX_RETRIES =
+    testConfig.AZURE_OPENAI_MAX_RETRIES.toString();
   process.env.DEFAULT_REASONING_EFFORT = testConfig.DEFAULT_REASONING_EFFORT;
   process.env.PORT = testConfig.PORT.toString();
   process.env.NODE_ENV = testConfig.NODE_ENV;

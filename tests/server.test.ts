@@ -2,7 +2,11 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import request from 'supertest';
 import type { Application } from 'express';
 import type { ServerConfig } from '../src/types/index.js';
-import { ProxyServer, createServerConfig, setupGracefulShutdown } from '../src/index.js';
+import {
+  ProxyServer,
+  createServerConfig,
+  setupGracefulShutdown,
+} from '../src/index.js';
 import { testConfig, testServerConfig, validApiKey } from './test-config.js';
 
 const {
@@ -25,7 +29,10 @@ const {
   const startMonitoring = vi.fn();
   const stopMonitoring = vi.fn();
   const completionsRouteHandler = vi.fn((req, res) => {
-    res.status(200).json({ ok: true, correlationId: (req as { correlationId?: string }).correlationId });
+    res.status(200).json({
+      ok: true,
+      correlationId: (req as { correlationId?: string }).correlationId,
+    });
   });
   const completionsHandlerFactory = vi.fn(() => completionsRouteHandler);
 
@@ -41,8 +48,14 @@ const {
 
 vi.mock('../src/middleware/logging.js', () => ({
   logger: loggerMock,
-  requestLoggingMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
-  errorLoggingMiddleware: (_err: unknown, _req: unknown, _res: unknown, next: (error?: unknown) => void) => next(_err),
+  requestLoggingMiddleware: (_req: unknown, _res: unknown, next: () => void) =>
+    next(),
+  errorLoggingMiddleware: (
+    _err: unknown,
+    _req: unknown,
+    _res: unknown,
+    next: (error?: unknown) => void
+  ) => next(_err),
 }));
 
 vi.mock('../src/monitoring/health-monitor.js', () => ({
@@ -55,13 +68,15 @@ vi.mock('../src/monitoring/health-monitor.js', () => ({
 
 vi.mock('../src/routes/completions.js', () => ({
   completionsHandler: completionsHandlerFactory,
-  completionsRateLimit: (_req: unknown, _res: unknown, next: () => void) => next(),
+  completionsRateLimit: (_req: unknown, _res: unknown, next: () => void) =>
+    next(),
 }));
 
 vi.mock('../src/resilience/graceful-degradation.js', () => ({
-  checkFeatureAvailability: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+  checkFeatureAvailability:
+    () => (_req: unknown, _res: unknown, next: () => void) =>
+      next(),
 }));
-
 
 const createProxyServer = (): ProxyServer => {
   const config: ServerConfig = {
@@ -95,8 +110,12 @@ describe('ProxyServer integration', () => {
 
     expect(serverConfig.port).toBe(testConfig.PORT);
     expect(serverConfig.proxyApiKey).toBe(testConfig.PROXY_API_KEY);
-    expect(serverConfig.azureOpenAI?.deployment).toBe(testConfig.AZURE_OPENAI_MODEL);
-    expect(serverConfig.azureOpenAI?.endpoint).toBe(testConfig.AZURE_OPENAI_ENDPOINT);
+    expect(serverConfig.azureOpenAI?.deployment).toBe(
+      testConfig.AZURE_OPENAI_MODEL
+    );
+    expect(serverConfig.azureOpenAI?.endpoint).toBe(
+      testConfig.AZURE_OPENAI_ENDPOINT
+    );
   });
 
   it('serves service metadata with correlation IDs on the root endpoint', async () => {
@@ -159,7 +178,9 @@ describe('ProxyServer integration', () => {
       const configArg = call[0];
       expect(configArg).toMatchObject({
         proxyApiKey: testServerConfig.proxyApiKey,
-        azureOpenAI: expect.objectContaining({ model: testServerConfig.azureOpenAI?.model }),
+        azureOpenAI: expect.objectContaining({
+          model: testServerConfig.azureOpenAI?.model,
+        }),
       });
     }
   });
@@ -175,23 +196,29 @@ describe('ProxyServer integration', () => {
       }),
     } as unknown as import('http').Server;
 
-    const listenSpy = vi
-      .spyOn(app, 'listen')
-      .mockImplementation(((_port: number, _host: string, callback: () => void) => {
-        // Call callback asynchronously to simulate real server behavior
-        setTimeout(callback, 10);
-        return mockHttpServer;
-      }) as unknown as typeof app.listen);
+    const listenSpy = vi.spyOn(app, 'listen').mockImplementation(((
+      _port: number,
+      _host: string,
+      callback: () => void
+    ) => {
+      // Call callback asynchronously to simulate real server behavior
+      setTimeout(callback, 10);
+      return mockHttpServer;
+    }) as unknown as typeof app.listen);
 
     await Promise.race([
       server.start(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Server start timeout')), 5000))
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Server start timeout')), 5000)
+      ),
     ]);
     expect(listenSpy).toHaveBeenCalled();
-    
+
     await Promise.race([
       server.stop(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Server stop timeout')), 5000))
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Server stop timeout')), 5000)
+      ),
     ]);
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(mockHttpServer.close).toHaveBeenCalled();
@@ -201,21 +228,33 @@ describe('ProxyServer integration', () => {
 
   it('registers graceful shutdown handlers with the process', () => {
     const server = createProxyServer();
-    const registeredHandlers: Record<string | symbol, (...args: unknown[]) => unknown> = {};
-    const onSpy = vi.spyOn(process, 'on').mockImplementation(
-      ((event: NodeJS.Signals | 'uncaughtException' | 'unhandledRejection', handler: (...args: unknown[]) => unknown) => {
-        Object.assign(registeredHandlers, { [event]: handler });
-        return process;
-      }) as typeof process.on
-    );
-    const exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as typeof process.exit);
+    const registeredHandlers: Record<
+      string | symbol,
+      (...args: unknown[]) => unknown
+    > = {};
+    const onSpy = vi.spyOn(process, 'on').mockImplementation(((
+      event: NodeJS.Signals | 'uncaughtException' | 'unhandledRejection',
+      handler: (...args: unknown[]) => unknown
+    ) => {
+      Object.assign(registeredHandlers, { [event]: handler });
+      return process;
+    }) as typeof process.on);
+    const exitSpy = vi
+      .spyOn(process, 'exit')
+      .mockImplementation((() => undefined) as typeof process.exit);
 
     setupGracefulShutdown(server);
 
     expect(onSpy).toHaveBeenCalledWith('SIGTERM', expect.any(Function));
     expect(onSpy).toHaveBeenCalledWith('SIGINT', expect.any(Function));
-    expect(onSpy).toHaveBeenCalledWith('uncaughtException', expect.any(Function));
-    expect(onSpy).toHaveBeenCalledWith('unhandledRejection', expect.any(Function));
+    expect(onSpy).toHaveBeenCalledWith(
+      'uncaughtException',
+      expect.any(Function)
+    );
+    expect(onSpy).toHaveBeenCalledWith(
+      'unhandledRejection',
+      expect.any(Function)
+    );
 
     onSpy.mockRestore();
     exitSpy.mockRestore();

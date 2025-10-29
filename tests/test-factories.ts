@@ -183,7 +183,8 @@ export class ClaudeRequestFactory {
           content,
         },
       ],
-      ...(maxTokens !== undefined && maxTokens > 0 && { max_tokens: maxTokens }),
+      ...(maxTokens !== undefined &&
+        maxTokens > 0 && { max_tokens: maxTokens }),
     };
   }
 }
@@ -726,11 +727,13 @@ export class AuthTestDataFactory {
 export class ResponsesResponseFactory {
   private static counter = 0;
 
-  static create(options: {
-    content?: string;
-    includeReasoning?: boolean;
-    includeUsage?: boolean;
-  } = {}): ResponsesResponse {
+  static create(
+    options: {
+      content?: string;
+      includeReasoning?: boolean;
+      includeUsage?: boolean;
+    } = {}
+  ): ResponsesResponse {
     const {
       content = 'Test response content',
       includeReasoning = false,
@@ -745,16 +748,18 @@ export class ResponsesResponseFactory {
       created: Math.floor(Date.now() / 1000),
       model: 'claude-3-5-sonnet-20241022',
       output: content,
-      usage: includeUsage ? {
-        input_tokens: 10,
-        output_tokens: 20,
-        total_tokens: 30,
-        reasoning_tokens: includeReasoning ? 5 : undefined,
-      } : {
-        input_tokens: 0,
-        output_tokens: 0,
-        total_tokens: 0,
-      },
+      usage: includeUsage
+        ? {
+            input_tokens: 10,
+            output_tokens: 20,
+            total_tokens: 30,
+            reasoning_tokens: includeReasoning ? 5 : undefined,
+          }
+        : {
+            input_tokens: 0,
+            output_tokens: 0,
+            total_tokens: 0,
+          },
     };
 
     if (includeReasoning) {

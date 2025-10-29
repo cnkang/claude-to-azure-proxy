@@ -1,12 +1,19 @@
 import net from 'node:net';
 import { vi } from 'vitest';
 import { setupTestEnvironment, createMockConfig } from './test-config.js';
-import { setupNodeJS24TestEnvironment, nodejs24TestUtils } from './nodejs24-test-config.js';
+import {
+  setupNodeJS24TestEnvironment,
+  nodejs24TestUtils,
+} from './nodejs24-test-config.js';
 
 declare global {
   var __AZURE_OPENAI_AXIOS_MOCK__:
     | {
-        post: (url: string, data?: unknown, config?: unknown) => Promise<{ data: unknown }>;
+        post: (
+          url: string,
+          data?: unknown,
+          config?: unknown
+        ) => Promise<{ data: unknown }>;
       }
     | undefined;
 }
@@ -20,39 +27,42 @@ vi.mock('openai', () => {
   ): Record<string, unknown> => {
     const input = params.input;
 
-    const messages: Array<{ role: string; content: string }> =
-      Array.isArray(input)
-        ? input.map((entry) => {
-            const candidate = entry as Record<string, unknown>;
-            const role = typeof candidate.role === 'string' ? candidate.role : 'user';
-            const contentValue = candidate.content;
+    const messages: Array<{ role: string; content: string }> = Array.isArray(
+      input
+    )
+      ? input.map((entry) => {
+          const candidate = entry as Record<string, unknown>;
+          const role =
+            typeof candidate.role === 'string' ? candidate.role : 'user';
+          const contentValue = candidate.content;
 
-            if (typeof contentValue === 'string') {
-              return { role, content: contentValue };
-            }
+          if (typeof contentValue === 'string') {
+            return { role, content: contentValue };
+          }
 
-            if (Array.isArray(contentValue)) {
-              const textContent = contentValue
-                .map((block) => {
-                  if (
-                    typeof block === 'object' &&
-                    block !== null &&
-                    'text' in block &&
-                    typeof (block as { text?: unknown }).text === 'string'
-                  ) {
-                    return (block as { text: string }).text;
-                  }
-                  return '';
-                })
-                .join('');
-              return { role, content: textContent };
-            }
+          if (Array.isArray(contentValue)) {
+            const textContent = contentValue
+              .map((block) => {
+                if (
+                  typeof block === 'object' &&
+                  block !== null &&
+                  'text' in block &&
+                  typeof (block as { text?: unknown }).text === 'string'
+                ) {
+                  return (block as { text: string }).text;
+                }
+                return '';
+              })
+              .join('');
+            return { role, content: textContent };
+          }
 
-            return { role, content: '' };
-          })
-        : Array.isArray((params as { messages?: unknown }).messages)
-          ? ((params as { messages: Array<{ role: string; content: string }> }).messages)
-          : [{ role: 'user', content: '' }];
+          return { role, content: '' };
+        })
+      : Array.isArray((params as { messages?: unknown }).messages)
+        ? (params as { messages: Array<{ role: string; content: string }> })
+            .messages
+        : [{ role: 'user', content: '' }];
 
     const payload: Record<string, unknown> = {
       model: params.model,
@@ -79,7 +89,9 @@ vi.mock('openai', () => {
       payload.max_completion_tokens = params.max_output_tokens;
       payload.max_tokens = params.max_output_tokens;
     } else if ('max_tokens' in params) {
-      payload.max_completion_tokens = (params as { max_tokens?: number }).max_tokens;
+      payload.max_completion_tokens = (
+        params as { max_tokens?: number }
+      ).max_tokens;
       payload.max_tokens = (params as { max_tokens?: number }).max_tokens;
     }
 
@@ -98,23 +110,22 @@ vi.mock('openai', () => {
     }
 
     const responseId =
-      (isRecord(data) && typeof data.id === 'string'
-        ? data.id
-        : undefined) ?? `resp_${Math.random().toString(36).slice(2)}`;
+      (isRecord(data) && typeof data.id === 'string' ? data.id : undefined) ??
+      `resp_${Math.random().toString(36).slice(2)}`;
 
     const createdAt =
-      (isRecord(data) &&
-        typeof (data.created_at ?? data.created) === 'number' &&
-        Number.isFinite(data.created_at ?? data.created)
-        ? (data.created_at ?? data.created) as number
-        : Math.floor(Date.now() / 1000));
+      isRecord(data) &&
+      typeof (data.created_at ?? data.created) === 'number' &&
+      Number.isFinite(data.created_at ?? data.created)
+        ? ((data.created_at ?? data.created) as number)
+        : Math.floor(Date.now() / 1000);
 
     const model =
-      (isRecord(data) && typeof data.model === 'string'
+      isRecord(data) && typeof data.model === 'string'
         ? data.model
         : typeof fallbackModel === 'string'
-        ? fallbackModel
-        : 'mock-model');
+          ? fallbackModel
+          : 'mock-model';
 
     let textContent = defaultText;
     if (isRecord(data) && 'choices' in data && Array.isArray(data.choices)) {
@@ -225,10 +236,15 @@ vi.mock('openai', () => {
                 ? payload.messages[0]
                 : undefined;
             const defaultText =
-              firstMessage !== undefined && typeof firstMessage.content === 'string'
+              firstMessage !== undefined &&
+              typeof firstMessage.content === 'string'
                 ? `Mock response to: ${firstMessage.content}`
                 : 'Mock Azure OpenAI response';
-            return toResponsesResponse(response.data, payload.model, defaultText);
+            return toResponsesResponse(
+              response.data,
+              payload.model,
+              defaultText
+            );
           } catch (error) {
             const axiosError = error as {
               response?: { status?: number; data?: unknown };
@@ -247,8 +263,9 @@ vi.mock('openai', () => {
                 normalizedError !== null &&
                 typeof normalizedError === 'object' &&
                 'message' in (normalizedError as Record<string, unknown>) &&
-                typeof (normalizedError as { message?: unknown }).message === 'string'
-                  ? ((normalizedError as { message: string }).message)
+                typeof (normalizedError as { message?: unknown }).message ===
+                  'string'
+                  ? (normalizedError as { message: string }).message
                   : 'Azure OpenAI request failed';
 
               const openAIError = new Error(errorMessage) as Error & {
@@ -256,10 +273,9 @@ vi.mock('openai', () => {
                 error?: unknown;
               };
               openAIError.status = axiosError.response.status;
-              openAIError.error =
-                normalizedError ?? {
-                  message: errorMessage,
-                };
+              openAIError.error = normalizedError ?? {
+                message: errorMessage,
+              };
               throw openAIError;
             }
 
@@ -308,8 +324,7 @@ vi.mock('openai', () => {
           ? contentArray[0]
           : undefined;
       const messageContent =
-        firstContent !== undefined &&
-        typeof firstContent.text === 'string'
+        firstContent !== undefined && typeof firstContent.text === 'string'
           ? firstContent.text
           : 'Mock streaming response';
 

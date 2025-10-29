@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { StructuredLogger } from '../src/utils/structured-logger.js';
-import type { SecurityEventContext, StructuredSecurityEvent, GCLogEntry } from '../src/utils/structured-logger.js';
+import type {
+  SecurityEventContext,
+  StructuredSecurityEvent,
+  GCLogEntry,
+} from '../src/utils/structured-logger.js';
 
 // Mock the logger using vi.hoisted
 const { mockLogger } = vi.hoisted(() => ({
@@ -18,11 +22,11 @@ vi.mock('../src/middleware/logging.js', () => ({
 }));
 
 // Mock performance APIs for Node.js 24 features
-const { 
+const {
   mockPerformanceObserver,
   mockPerformanceMark,
   mockPerformanceMeasure,
-  mockPerformanceGetEntriesByName 
+  mockPerformanceGetEntriesByName,
 } = vi.hoisted(() => ({
   mockPerformanceObserver: vi.fn(),
   mockPerformanceMark: vi.fn(),
@@ -152,7 +156,12 @@ describe('StructuredLogger Node.js 24 Enhancements', () => {
       const correlationId = 'perf-test-id';
       const metadata = { query: 'SELECT * FROM users' };
 
-      StructuredLogger.logPerformanceMetrics(operation, duration, correlationId, metadata);
+      StructuredLogger.logPerformanceMetrics(
+        operation,
+        duration,
+        correlationId,
+        metadata
+      );
 
       expect(mockLogger.debug).toHaveBeenCalledWith(
         'Performance metrics recorded',
@@ -172,7 +181,11 @@ describe('StructuredLogger Node.js 24 Enhancements', () => {
       const duration = 2000; // 2 seconds
       const correlationId = 'slow-test-id';
 
-      StructuredLogger.logPerformanceMetrics(operation, duration, correlationId);
+      StructuredLogger.logPerformanceMetrics(
+        operation,
+        duration,
+        correlationId
+      );
 
       expect(mockLogger.warn).toHaveBeenCalledWith(
         'Slow operation detected',
@@ -295,9 +308,18 @@ describe('StructuredLogger Node.js 24 Enhancements', () => {
         },
       ]);
 
-      const duration = StructuredLogger.measure(measureName, startMark, endMark, correlationId);
+      const duration = StructuredLogger.measure(
+        measureName,
+        startMark,
+        endMark,
+        correlationId
+      );
 
-      expect(mockPerformanceMeasure).toHaveBeenCalledWith(measureName, startMark, endMark);
+      expect(mockPerformanceMeasure).toHaveBeenCalledWith(
+        measureName,
+        startMark,
+        endMark
+      );
       expect(duration).toBe(100);
       expect(mockLogger.debug).toHaveBeenCalledWith(
         'Performance metrics recorded',
