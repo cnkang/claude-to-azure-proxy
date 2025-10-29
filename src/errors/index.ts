@@ -320,7 +320,7 @@ export class AzureOpenAIError extends BaseError {
  * Network and connectivity errors
  */
 export class NetworkError extends BaseError {
-  public readonly cause?: Error;
+  public override readonly cause?: Error;
 
   constructor(
     message: string,
@@ -330,8 +330,22 @@ export class NetworkError extends BaseError {
   ) {
     super(message, 503, 'NETWORK_ERROR', correlationId, true, operation, {
       cause: cause?.message,
+      errorCode: cause && 'code' in cause ? cause.code : undefined,
+      syscall: cause && 'syscall' in cause ? cause.syscall : undefined,
+      errno: cause && 'errno' in cause ? cause.errno : undefined,
     });
-    this.cause = cause;
+    
+    // Set cause using Node.js 24's error cause pattern
+    if (cause) {
+      this.cause = cause;
+      // Also set as a property for Node.js 24 compatibility
+      Object.defineProperty(this, 'cause', {
+        value: cause,
+        writable: false,
+        enumerable: false,
+        configurable: true,
+      });
+    }
   }
 }
 
@@ -469,6 +483,57 @@ export function isBaseError(error: unknown): error is BaseError {
 }
 
 /**
+ * Enhanced type guard using Node.js 24's Error.isError() method
+ * Falls back to instanceof Error for compatibility
+ */
+export function isError(error: unknown): error is Error {
+  // Fallback implementation (Error.isError not yet available in Node.js 24)
+  return error instanceof Error;
+}
+
+/**
+ * Enhanced error context preservation for Node.js 24
+ * Maintains error cause chain and additional context
+ */
+export function preserveErrorContext(
+  originalError: unknown,
+  newError: BaseError
+): BaseError {
+  if (isError(originalError)) {
+    // Preserve the original error as cause if not already set
+    if (newError.cause === undefined) {
+      Object.defineProperty(newError, 'cause', {
+        value: originalError,
+        writable: false,
+        enumerable: false,
+        configurable: true,
+      });
+    }
+    
+    // Preserve additional error properties
+    if ('code' in originalError && typeof originalError.code === 'string') {
+      Object.assign(newError.context.metadata ?? {}, {
+        originalErrorCode: originalError.code,
+      });
+    }
+    
+    if ('errno' in originalError && typeof originalError.errno === 'number') {
+      Object.assign(newError.context.metadata ?? {}, {
+        originalErrno: originalError.errno,
+      });
+    }
+    
+    if ('syscall' in originalError && typeof originalError.syscall === 'string') {
+      Object.assign(newError.context.metadata ?? {}, {
+        originalSyscall: originalError.syscall,
+      });
+    }
+  }
+  
+  return newError;
+}
+
+/**
  * Error factory for creating errors from Azure OpenAI responses
  */
 export class ErrorFactory {
@@ -506,7 +571,7 @@ export class ErrorFactory {
         statusCode = 500;
     }
 
-    return new AzureOpenAIError(
+    const azureOpenAIError = new AzureOpenAIError(
       message,
       statusCode,
       correlationId,
@@ -514,6 +579,13 @@ export class ErrorFactory {
       code,
       operation
     );
+
+    // Preserve original error context if it's an Error object
+    if (isError(azureError)) {
+      return preserveErrorContext(azureError, azureOpenAIError);
+    }
+
+    return azureOpenAIError;
   }
 
   private static parseAzureOpenAIErrorPayload(azureError: unknown): {
@@ -564,12 +636,14 @@ export class ErrorFactory {
     correlationId: string,
     operation?: string
   ): NetworkError {
-    return new NetworkError(
+    const networkError = new NetworkError(
       `Network error: ${error.message}`,
       correlationId,
       error,
       operation
     );
+
+    return preserveErrorContext(error, networkError) as NetworkError;
   }
 
   public static fromTimeout(
@@ -582,6 +656,85 @@ export class ErrorFactory {
       correlationId,
       timeoutMs,
       operation
+    );
+  }
+
+  /**
+   * Enhanced error transformation with comprehensive context preservation
+   * Handles various error types and maintains error cause chains
+   */
+  public static transformError(
+    error: unknown,
+    correlationId: string,
+    operation?: string,
+    defaultMessage: string = 'An unexpected error occurred'
+  ): BaseError {
+    // Handle BaseError instances - preserve them as-is
+    if (isBaseError(error)) {
+      return error;
+    }
+
+    // Handle standard Error objects
+    if (isError(error)) {
+      // Check for specific error types based on properties
+      if ('code' in error) {
+        const errorWithCode = error as Error & { code: string };
+        
+        // Handle network-related errors
+        if (errorWithCode.code === 'ECONNREFUSED' || 
+            errorWithCode.code === 'ENOTFOUND' || 
+            errorWithCode.code === 'ECONNRESET' ||
+            errorWithCode.code === 'ETIMEDOUT') {
+          return ErrorFactory.fromNetworkError(error, correlationId, operation);
+        }
+        
+        // Handle timeout errors
+        if (errorWithCode.code === 'TIMEOUT' || errorWithCode.code === 'ESOCKETTIMEDOUT') {
+          return ErrorFactory.fromTimeout(30000, correlationId, operation);
+        }
+      }
+
+      // Handle generic Error objects
+      const genericError = new InternalServerError(
+        error.message || defaultMessage,
+        correlationId,
+        operation,
+        { originalErrorName: error.name }
+      );
+
+      return preserveErrorContext(error, genericError);
+    }
+
+    // Handle string errors
+    if (typeof error === 'string') {
+      return new InternalServerError(
+        error || defaultMessage,
+        correlationId,
+        operation
+      );
+    }
+
+    // Handle object-like errors
+    if (typeof error === 'object' && error !== null) {
+      const errorObj = error as Record<string, unknown>;
+      const message = typeof errorObj.message === 'string' 
+        ? errorObj.message 
+        : defaultMessage;
+      
+      return new InternalServerError(
+        message,
+        correlationId,
+        operation,
+        { originalError: errorObj }
+      );
+    }
+
+    // Handle primitive values
+    return new InternalServerError(
+      defaultMessage,
+      correlationId,
+      operation,
+      { originalError: String(error) }
     );
   }
 }

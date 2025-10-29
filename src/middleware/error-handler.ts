@@ -23,6 +23,9 @@ import type {
 } from '../types/index.js';
 import { normalizeHeaderValue } from '../utils/http-headers.js';
 import { resolveCorrelationId } from '../utils/correlation-id.js';
+import { getCurrentMemoryMetrics, forceGarbageCollection } from '../utils/memory-manager.js';
+import { getRequestMemoryInfo } from './memory-management.js';
+import loadedConfig from '../config/index.js';
 
 export interface ErrorHandlerConfig {
   readonly exposeStackTrace: boolean;
@@ -61,14 +64,14 @@ export class EnhancedErrorHandler {
     this.config = {
       exposeStackTrace: process.env.NODE_ENV === 'development',
       logErrors: true,
-      enableGracefulDegradation: true,
+      enableGracefulDegradation: false,
       enableHealthMonitoring: true,
       ...config,
     };
   }
 
   /**
-   * Main error handling middleware
+   * Main error handling middleware with Node.js 24 enhancements
    */
   public handleError = async (
     error: Readonly<Error>,
@@ -79,9 +82,12 @@ export class EnhancedErrorHandler {
     const context = this.createErrorContext(req);
 
     try {
-      // Log the error
+      // Check memory state during error handling
+      const memoryInfo = this.gatherMemoryInfo(req);
+      
+      // Log the error with memory context
       if (this.config.logErrors) {
-        this.logError(error, context);
+        this.logErrorWithMemoryContext(error, context, memoryInfo);
       }
 
       // Check if response was already sent
@@ -104,9 +110,13 @@ export class EnhancedErrorHandler {
       }
 
       // Auto-adjust service level based on error patterns
-      if (this.config.enableGracefulDegradation) {
-        this.adjustServiceLevel(error, context);
+      this.adjustServiceLevel(error, context);
+
+      // Handle memory pressure during error scenarios
+      if (memoryInfo.pressureDetected && loadedConfig.ENABLE_AUTO_GC) {
+        this.handleMemoryPressureOnError(context.correlationId);
       }
+
     } catch (handlingError) {
       // Error occurred while handling the original error
       logger.critical(
@@ -118,6 +128,7 @@ export class EnhancedErrorHandler {
             handlingError instanceof Error
               ? handlingError.message
               : 'Unknown error',
+          nodeVersion: process.version,
         },
         handlingError as Error
       );
@@ -294,7 +305,7 @@ export class EnhancedErrorHandler {
   }
 
   /**
-   * Handle known Node.js errors
+   * Handle known Node.js errors with enhanced Node.js 24 error detection
    */
   private handleNodeError(
     error: Readonly<Error>,
@@ -321,6 +332,21 @@ export class EnhancedErrorHandler {
         statusCode = 503;
         errorType = 'resource_exhausted';
         message = 'Server resources temporarily exhausted';
+        break;
+      case 'ENOMEM':
+        statusCode = 503;
+        errorType = 'memory_exhausted';
+        message = 'Server memory temporarily exhausted';
+        break;
+      case 'ERR_OUT_OF_RANGE':
+        statusCode = 400;
+        errorType = 'invalid_request';
+        message = 'Request parameter out of valid range';
+        break;
+      case 'ERR_INVALID_ARG_TYPE':
+        statusCode = 400;
+        errorType = 'invalid_request';
+        message = 'Invalid request parameter type';
         break;
     }
 
@@ -392,7 +418,7 @@ export class EnhancedErrorHandler {
   }
 
   /**
-   * Check if error is a known Node.js error
+   * Check if error is a known Node.js error with Node.js 24 error codes
    */
   private isKnownNodeError(error: Readonly<Error>): boolean {
     const knownCodes = [
@@ -404,10 +430,132 @@ export class EnhancedErrorHandler {
       'ENFILE',
       'EACCES',
       'EPERM',
+      'ENOMEM',
+      'ERR_OUT_OF_RANGE',
+      'ERR_INVALID_ARG_TYPE',
+      'ERR_INVALID_ARG_VALUE',
+      'ERR_INVALID_RETURN_VALUE',
+      'ERR_MEMORY_ALLOCATION_FAILED',
     ];
 
     const errorCode = extractErrorCode(error);
     return errorCode !== undefined && knownCodes.includes(errorCode);
+  }
+
+  /**
+   * Gathers memory information for error context.
+   *
+   * @private
+   * @param req - Express request object
+   * @returns Memory information
+   */
+  private gatherMemoryInfo(req: Readonly<Request>): {
+    readonly currentMemory: NodeJS.MemoryUsage;
+    readonly requestMemoryInfo?: ReturnType<typeof getRequestMemoryInfo>;
+    readonly pressureDetected: boolean;
+    readonly memoryMetrics?: ReturnType<typeof getCurrentMemoryMetrics>;
+  } {
+    const currentMemory = process.memoryUsage();
+    const requestMemoryInfo = getRequestMemoryInfo(req);
+    
+    let memoryMetrics: ReturnType<typeof getCurrentMemoryMetrics> | undefined;
+    let pressureDetected = false;
+
+    try {
+      if (loadedConfig.ENABLE_MEMORY_MANAGEMENT) {
+        memoryMetrics = getCurrentMemoryMetrics();
+        pressureDetected = memoryMetrics.pressure.level === 'high' || 
+                          memoryMetrics.pressure.level === 'critical';
+      }
+    } catch (error) {
+      // Memory metrics gathering failed, continue without it
+      logger.debug('Failed to gather memory metrics during error handling', '', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+
+    return {
+      currentMemory,
+      requestMemoryInfo,
+      pressureDetected,
+      memoryMetrics,
+    };
+  }
+
+  /**
+   * Logs error with enhanced memory context.
+   *
+   * @private
+   * @param error - Error to log
+   * @param context - Error context
+   * @param memoryInfo - Memory information
+   */
+  private logErrorWithMemoryContext(
+    error: Readonly<Error>,
+    context: Readonly<ErrorContext>,
+    memoryInfo: ReturnType<typeof this.gatherMemoryInfo>
+  ): void {
+    const metadata = {
+      operation: context.operation,
+      method: context.method,
+      url: context.url,
+      userAgent: context.userAgent,
+      ip: context.ip,
+      nodeVersion: process.version,
+      heapUsed: memoryInfo.currentMemory.heapUsed,
+      heapTotal: memoryInfo.currentMemory.heapTotal,
+      memoryPressure: memoryInfo.pressureDetected,
+    };
+
+    // Add request-specific memory information if available
+    if (memoryInfo.requestMemoryInfo) {
+      Object.assign(metadata, {
+        requestMemoryDelta: memoryInfo.requestMemoryInfo.memoryDelta,
+        requestDuration: memoryInfo.requestMemoryInfo.duration,
+      });
+    }
+
+    if (isBaseError(error)) {
+      // Use appropriate log level based on error type
+      const logLevel = this.getLogLevel(error);
+
+      if (logLevel === 'critical') {
+        logger.critical(error.message, context.correlationId, metadata, error);
+      } else if (logLevel === 'error') {
+        logger.error(error.message, context.correlationId, metadata, error);
+      } else {
+        logger.warn(error.message, context.correlationId, metadata);
+      }
+    } else {
+      // Unknown error type with enhanced context
+      logger.error(
+        `Unhandled error: ${error.message}`,
+        context.correlationId,
+        metadata,
+        error
+      );
+    }
+  }
+
+  /**
+   * Handles memory pressure during error scenarios.
+   *
+   * @private
+   * @param correlationId - Request correlation ID
+   */
+  private handleMemoryPressureOnError(correlationId: string): void {
+    logger.warn('Memory pressure detected during error handling', correlationId, {
+      action: 'triggering_garbage_collection',
+    });
+
+    // Force garbage collection to free memory during error scenarios
+    const gcTriggered = forceGarbageCollection();
+    
+    if (!gcTriggered) {
+      logger.warn('Could not trigger garbage collection during memory pressure', correlationId, {
+        suggestion: 'Consider running with --expose-gc flag',
+      });
+    }
   }
 
   /**
