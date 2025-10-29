@@ -130,7 +130,12 @@ describe('EnhancedErrorHandler', () => {
       'unsupported'
     );
 
-    await handler.handleError(error, req, res as unknown as Response, next as NextFunction);
+    await handler.handleError(
+      error,
+      req,
+      res as unknown as Response,
+      next as NextFunction
+    );
 
     expect(res.status).toHaveBeenCalledWith(error.statusCode);
     expect(res.json.mock.calls[0]?.[0].error.field).toBe('model');
@@ -138,13 +143,20 @@ describe('EnhancedErrorHandler', () => {
   });
 
   it('maps Node.js networking errors to service unavailable responses', async () => {
-    const handler = new EnhancedErrorHandler({ enableGracefulDegradation: false });
+    const handler = new EnhancedErrorHandler({
+      enableGracefulDegradation: false,
+    });
     const req = buildRequest();
     const res = createChainableResponse();
     const next = vi.fn();
     const nodeError = Object.assign(new Error('reset'), { code: 'ECONNRESET' });
 
-    await handler.handleError(nodeError, req, res as unknown as Response, next as NextFunction);
+    await handler.handleError(
+      nodeError,
+      req,
+      res as unknown as Response,
+      next as NextFunction
+    );
 
     expect(res.status).toHaveBeenCalledWith(503);
     expect(res.json.mock.calls[0]?.[0].error.type).toBe('service_unavailable');
@@ -162,11 +174,18 @@ describe('EnhancedErrorHandler', () => {
       },
     });
 
-    const handler = new EnhancedErrorHandler({ enableGracefulDegradation: true });
+    const handler = new EnhancedErrorHandler({
+      enableGracefulDegradation: true,
+    });
     const req = buildRequest();
     const res = createChainableResponse();
 
-    await handler.handleError(new Error('boom'), req, res as unknown as Response, vi.fn());
+    await handler.handleError(
+      new Error('boom'),
+      req,
+      res as unknown as Response,
+      vi.fn()
+    );
 
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json.mock.calls[0]?.[0].error.type).toBe('graceful_degradation');
@@ -202,7 +221,12 @@ describe('EnhancedErrorHandler', () => {
       false
     );
 
-    await handler.handleError(nonOperational, req, res as unknown as Response, vi.fn());
+    await handler.handleError(
+      nonOperational,
+      req,
+      res as unknown as Response,
+      vi.fn()
+    );
 
     expect(degradeServiceLevel).toHaveBeenCalledWith(
       expect.stringContaining('Critical error'),
@@ -226,7 +250,12 @@ describe('EnhancedErrorHandler', () => {
         resourcesCleanedUp: true,
       });
 
-      await handler.handleError(error, req, res as unknown as Response, vi.fn());
+      await handler.handleError(
+        error,
+        req,
+        res as unknown as Response,
+        vi.fn()
+      );
 
       expect(getCurrentMemoryMetrics).toHaveBeenCalled();
       expect(getRequestMemoryInfo).toHaveBeenCalledWith(req);
@@ -249,7 +278,12 @@ describe('EnhancedErrorHandler', () => {
         resourcesCleanedUp: true,
       });
 
-      await handler.handleError(error, req, res as unknown as Response, vi.fn());
+      await handler.handleError(
+        error,
+        req,
+        res as unknown as Response,
+        vi.fn()
+      );
 
       expect(forceGarbageCollection).toHaveBeenCalled();
       expect(loggerMock.warn).toHaveBeenCalledWith(
@@ -265,12 +299,19 @@ describe('EnhancedErrorHandler', () => {
       const handler = new EnhancedErrorHandler();
       const req = buildRequest();
       const res = createChainableResponse();
-      
+
       // Test ENOMEM error
-      const memoryError = new Error('Out of memory') as Error & { code: string };
+      const memoryError = new Error('Out of memory') as Error & {
+        code: string;
+      };
       memoryError.code = 'ENOMEM';
 
-      await handler.handleError(memoryError, req, res as unknown as Response, vi.fn());
+      await handler.handleError(
+        memoryError,
+        req,
+        res as unknown as Response,
+        vi.fn()
+      );
 
       expect(res.status).toHaveBeenCalledWith(503);
       expect(res.json).toHaveBeenCalledWith({
@@ -285,11 +326,18 @@ describe('EnhancedErrorHandler', () => {
       const handler = new EnhancedErrorHandler();
       const req = buildRequest();
       const res = createChainableResponse();
-      
-      const rangeError = new Error('Value out of range') as Error & { code: string };
+
+      const rangeError = new Error('Value out of range') as Error & {
+        code: string;
+      };
       rangeError.code = 'ERR_OUT_OF_RANGE';
 
-      await handler.handleError(rangeError, req, res as unknown as Response, vi.fn());
+      await handler.handleError(
+        rangeError,
+        req,
+        res as unknown as Response,
+        vi.fn()
+      );
 
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith({
@@ -304,11 +352,18 @@ describe('EnhancedErrorHandler', () => {
       const handler = new EnhancedErrorHandler();
       const req = buildRequest();
       const res = createChainableResponse();
-      
-      const typeError = new Error('Invalid argument type') as Error & { code: string };
+
+      const typeError = new Error('Invalid argument type') as Error & {
+        code: string;
+      };
       typeError.code = 'ERR_INVALID_ARG_TYPE';
 
-      await handler.handleError(typeError, req, res as unknown as Response, vi.fn());
+      await handler.handleError(
+        typeError,
+        req,
+        res as unknown as Response,
+        vi.fn()
+      );
 
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith({
@@ -325,7 +380,12 @@ describe('EnhancedErrorHandler', () => {
       const res = createChainableResponse();
       const error = new Error('Test error');
 
-      await handler.handleError(error, req, res as unknown as Response, vi.fn());
+      await handler.handleError(
+        error,
+        req,
+        res as unknown as Response,
+        vi.fn()
+      );
 
       expect(loggerMock.error).toHaveBeenCalledWith(
         expect.stringContaining('Unhandled error'),
@@ -350,7 +410,12 @@ describe('EnhancedErrorHandler', () => {
         throw new Error('Memory metrics error');
       });
 
-      await handler.handleError(error, req, res as unknown as Response, vi.fn());
+      await handler.handleError(
+        error,
+        req,
+        res as unknown as Response,
+        vi.fn()
+      );
 
       // Should not throw and should still handle the original error
       expect(res.status).toHaveBeenCalledWith(500);
@@ -376,7 +441,12 @@ describe('EnhancedErrorHandler', () => {
 
       forceGarbageCollection.mockReturnValue(false);
 
-      await handler.handleError(error, req, res as unknown as Response, vi.fn());
+      await handler.handleError(
+        error,
+        req,
+        res as unknown as Response,
+        vi.fn()
+      );
 
       expect(loggerMock.warn).toHaveBeenCalledWith(
         'Could not trigger garbage collection during memory pressure',

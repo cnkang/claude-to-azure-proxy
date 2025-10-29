@@ -134,7 +134,7 @@ describe('Memory Management Middleware', () => {
       );
 
       expect(hasMemoryTracking(mockRequest as Request)).toBe(true);
-      
+
       const memoryInfo = getRequestMemoryInfo(mockRequest as Request);
       expect(memoryInfo).toBeDefined();
       expect(memoryInfo?.startMemory).toBeDefined();
@@ -160,8 +160,14 @@ describe('Memory Management Middleware', () => {
         mockNext
       );
 
-      expect(mockResponse.on).toHaveBeenCalledWith('finish', expect.any(Function));
-      expect(mockResponse.on).toHaveBeenCalledWith('close', expect.any(Function));
+      expect(mockResponse.on).toHaveBeenCalledWith(
+        'finish',
+        expect.any(Function)
+      );
+      expect(mockResponse.on).toHaveBeenCalledWith(
+        'close',
+        expect.any(Function)
+      );
     });
   });
 
@@ -212,7 +218,7 @@ describe('Memory Management Middleware', () => {
       );
 
       const memoryInfo = getRequestMemoryInfo(mockRequest as Request);
-      // Note: pressure detection logic is in the middleware, 
+      // Note: pressure detection logic is in the middleware,
       // this test verifies the structure is set up correctly
       expect(memoryInfo).toBeDefined();
     });
@@ -220,8 +226,10 @@ describe('Memory Management Middleware', () => {
 
   describe('Resource Management', () => {
     it('should create and clean up HTTP connection resources', async () => {
-      const { createHTTPConnectionResource } = vi.mocked(await import('../../src/runtime/resource-manager.js'));
-      
+      const { createHTTPConnectionResource } = vi.mocked(
+        await import('../../src/runtime/resource-manager.js')
+      );
+
       memoryManagementMiddleware(
         mockRequest as Request,
         mockResponse as Response,
@@ -252,7 +260,7 @@ describe('Memory Management Middleware', () => {
       // Simulate response close
       const closeHandler = responseEventHandlers.close;
       expect(closeHandler).toBeDefined();
-      
+
       closeHandler();
 
       const memoryInfo = getRequestMemoryInfo(mockRequest as Request);
@@ -262,10 +270,13 @@ describe('Memory Management Middleware', () => {
 
   describe('Performance Monitoring', () => {
     it('should log slow requests with memory information', async () => {
-      const { logger } = vi.mocked(await import('../../src/middleware/logging.js'));
-      
+      const { logger } = vi.mocked(
+        await import('../../src/middleware/logging.js')
+      );
+
       // Add correlation ID to request
-      (mockRequest as RequestWithMemoryTracking).correlationId = 'test-correlation-id';
+      (mockRequest as RequestWithMemoryTracking).correlationId =
+        'test-correlation-id';
 
       memoryManagementMiddleware(
         mockRequest as Request,
@@ -300,9 +311,12 @@ describe('Memory Management Middleware', () => {
     });
 
     it('should suggest garbage collection for memory-intensive requests', async () => {
-      const { forceGarbageCollection } = vi.mocked(await import('../../src/utils/memory-manager.js'));
-      
-      (mockRequest as RequestWithMemoryTracking).correlationId = 'test-correlation-id';
+      const { forceGarbageCollection } = vi.mocked(
+        await import('../../src/utils/memory-manager.js')
+      );
+
+      (mockRequest as RequestWithMemoryTracking).correlationId =
+        'test-correlation-id';
 
       memoryManagementMiddleware(
         mockRequest as Request,
@@ -343,7 +357,9 @@ describe('Memory Management Middleware', () => {
 
   describe('Error Handling', () => {
     it('should handle memory metrics gathering errors gracefully', async () => {
-      const { getCurrentMemoryMetrics } = vi.mocked(await import('../../src/utils/memory-manager.js'));
+      const { getCurrentMemoryMetrics } = vi.mocked(
+        await import('../../src/utils/memory-manager.js')
+      );
       getCurrentMemoryMetrics.mockImplementation(() => {
         throw new Error('Memory metrics error');
       });
@@ -360,10 +376,14 @@ describe('Memory Management Middleware', () => {
     });
 
     it('should handle resource cleanup errors gracefully', async () => {
-      const { createHTTPConnectionResource } = vi.mocked(await import('../../src/runtime/resource-manager.js'));
+      const { createHTTPConnectionResource } = vi.mocked(
+        await import('../../src/runtime/resource-manager.js')
+      );
       createHTTPConnectionResource.mockReturnValue({
         disposed: false,
-        [Symbol.asyncDispose]: vi.fn().mockRejectedValue(new Error('Cleanup error')),
+        [Symbol.asyncDispose]: vi
+          .fn()
+          .mockRejectedValue(new Error('Cleanup error')),
       });
 
       memoryManagementMiddleware(
@@ -381,7 +401,7 @@ describe('Memory Management Middleware', () => {
   describe('Configuration Integration', () => {
     it('should respect configuration settings', () => {
       const stats = getMemoryMiddlewareStats();
-      
+
       expect(stats.config.enablePressureMonitoring).toBe(true);
       expect(stats.config.enableResourceTracking).toBe(true);
       expect(stats.config.pressureThreshold).toBe(80);

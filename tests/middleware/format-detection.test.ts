@@ -4,7 +4,10 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { Request, Response, NextFunction } from 'express';
-import { formatDetectionMiddleware, hasFormatDetection } from '../../src/middleware/format-detection.js';
+import {
+  formatDetectionMiddleware,
+  hasFormatDetection,
+} from '../../src/middleware/format-detection.js';
 
 // Mock logger
 vi.mock('../../src/middleware/logging.js', () => ({
@@ -45,7 +48,11 @@ describe('Format Detection Middleware', () => {
       };
       (mockReq as any).correlationId = 'test-correlation-id';
 
-      formatDetectionMiddleware(mockReq as Request, mockRes as Response, mockNext);
+      formatDetectionMiddleware(
+        mockReq as Request,
+        mockRes as Response,
+        mockNext
+      );
 
       expect(mockNext).toHaveBeenCalled();
       expect((mockReq as any).requestFormat).toBe('claude');
@@ -71,7 +78,11 @@ describe('Format Detection Middleware', () => {
       };
       (mockReq as any).correlationId = 'test-correlation-id';
 
-      formatDetectionMiddleware(mockReq as Request, mockRes as Response, mockNext);
+      formatDetectionMiddleware(
+        mockReq as Request,
+        mockRes as Response,
+        mockNext
+      );
 
       expect(mockNext).toHaveBeenCalled();
       expect((mockReq as any).requestFormat).toBe('claude');
@@ -92,7 +103,11 @@ describe('Format Detection Middleware', () => {
       };
       (mockReq as any).correlationId = 'test-correlation-id';
 
-      formatDetectionMiddleware(mockReq as Request, mockRes as Response, mockNext);
+      formatDetectionMiddleware(
+        mockReq as Request,
+        mockRes as Response,
+        mockNext
+      );
 
       expect(mockNext).toHaveBeenCalled();
       expect((mockReq as any).requestFormat).toBe('claude');
@@ -114,7 +129,11 @@ describe('Format Detection Middleware', () => {
       };
       (mockReq as any).correlationId = 'test-correlation-id';
 
-      formatDetectionMiddleware(mockReq as Request, mockRes as Response, mockNext);
+      formatDetectionMiddleware(
+        mockReq as Request,
+        mockRes as Response,
+        mockNext
+      );
 
       expect(mockNext).toHaveBeenCalled();
       expect((mockReq as any).requestFormat).toBe('openai');
@@ -139,16 +158,20 @@ describe('Format Detection Middleware', () => {
               parameters: {
                 type: 'object',
                 properties: {
-                  location: { type: 'string' }
-                }
-              }
-            }
-          }
-        ]
+                  location: { type: 'string' },
+                },
+              },
+            },
+          },
+        ],
       };
       (mockReq as any).correlationId = 'test-correlation-id';
 
-      formatDetectionMiddleware(mockReq as Request, mockRes as Response, mockNext);
+      formatDetectionMiddleware(
+        mockReq as Request,
+        mockRes as Response,
+        mockNext
+      );
 
       expect(mockNext).toHaveBeenCalled();
       expect((mockReq as any).requestFormat).toBe('openai');
@@ -173,7 +196,11 @@ describe('Format Detection Middleware', () => {
       };
       (mockReq as any).correlationId = 'test-correlation-id';
 
-      formatDetectionMiddleware(mockReq as Request, mockRes as Response, mockNext);
+      formatDetectionMiddleware(
+        mockReq as Request,
+        mockRes as Response,
+        mockNext
+      );
 
       expect(mockNext).toHaveBeenCalled();
       expect((mockReq as any).requestFormat).toBe('openai');
@@ -195,7 +222,11 @@ describe('Format Detection Middleware', () => {
       };
       (mockReq as any).correlationId = 'test-correlation-id';
 
-      formatDetectionMiddleware(mockReq as Request, mockRes as Response, mockNext);
+      formatDetectionMiddleware(
+        mockReq as Request,
+        mockRes as Response,
+        mockNext
+      );
 
       expect(mockNext).toHaveBeenCalled();
       expect((mockReq as any).requestFormat).toBe('claude');
@@ -206,7 +237,11 @@ describe('Format Detection Middleware', () => {
       mockReq.body = null; // Invalid body that will cause error
       (mockReq as any).correlationId = 'test-correlation-id';
 
-      formatDetectionMiddleware(mockReq as Request, mockRes as Response, mockNext);
+      formatDetectionMiddleware(
+        mockReq as Request,
+        mockRes as Response,
+        mockNext
+      );
 
       expect(mockNext).toHaveBeenCalled();
       expect((mockReq as any).requestFormat).toBe('claude');
@@ -248,7 +283,11 @@ describe('Format Detection Middleware', () => {
       (mockReq as any).correlationId = 'test-correlation-id';
 
       const startTime = Date.now();
-      formatDetectionMiddleware(mockReq as Request, mockRes as Response, mockNext);
+      formatDetectionMiddleware(
+        mockReq as Request,
+        mockRes as Response,
+        mockNext
+      );
       const endTime = Date.now();
 
       expect(mockNext).toHaveBeenCalled();

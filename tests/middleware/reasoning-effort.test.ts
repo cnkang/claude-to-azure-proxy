@@ -4,7 +4,10 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { Request, Response, NextFunction } from 'express';
-import { reasoningEffortMiddleware, hasReasoningAnalysis } from '../../src/middleware/reasoning-effort.js';
+import {
+  reasoningEffortMiddleware,
+  hasReasoningAnalysis,
+} from '../../src/middleware/reasoning-effort.js';
 import type { ClaudeRequest } from '../../src/types/index.js';
 
 // Mock logger
@@ -56,7 +59,11 @@ describe('Reasoning Effort Middleware', () => {
       mockReq.body = simpleClaudeRequest;
       (mockReq as any).correlationId = 'test-correlation-id';
 
-      reasoningEffortMiddleware(mockReq as Request, mockRes as Response, mockNext);
+      reasoningEffortMiddleware(
+        mockReq as Request,
+        mockRes as Response,
+        mockNext
+      );
 
       expect(mockNext).toHaveBeenCalled();
       expect((mockReq as any).reasoningEffort).toBeUndefined(); // Simple requests may not need reasoning
@@ -73,7 +80,8 @@ describe('Reasoning Effort Middleware', () => {
         messages: [
           {
             role: 'user',
-            content: 'Design a microservices architecture for a large-scale e-commerce platform with high availability, scalability, and security requirements. Include database design, API gateway configuration, service mesh implementation, and deployment strategies using Kubernetes. Consider the following requirements:\n\n1. Handle 1M+ concurrent users\n2. 99.99% uptime\n3. Global distribution\n4. Real-time inventory management\n5. Payment processing integration\n6. Advanced analytics and reporting\n\nProvide detailed implementation plans, code examples, and architectural diagrams.',
+            content:
+              'Design a microservices architecture for a large-scale e-commerce platform with high availability, scalability, and security requirements. Include database design, API gateway configuration, service mesh implementation, and deployment strategies using Kubernetes. Consider the following requirements:\n\n1. Handle 1M+ concurrent users\n2. 99.99% uptime\n3. Global distribution\n4. Real-time inventory management\n5. Payment processing integration\n6. Advanced analytics and reporting\n\nProvide detailed implementation plans, code examples, and architectural diagrams.',
           },
         ],
         max_tokens: 4000,
@@ -82,14 +90,22 @@ describe('Reasoning Effort Middleware', () => {
       mockReq.body = complexClaudeRequest;
       (mockReq as any).correlationId = 'test-correlation-id';
 
-      reasoningEffortMiddleware(mockReq as Request, mockRes as Response, mockNext);
+      reasoningEffortMiddleware(
+        mockReq as Request,
+        mockRes as Response,
+        mockNext
+      );
 
       expect(mockNext).toHaveBeenCalled();
       expect((mockReq as any).reasoningEffort).toBeDefined();
       expect(['medium', 'high']).toContain((mockReq as any).reasoningEffort);
       expect((mockReq as any).shouldApplyReasoning).toBe(true);
-      expect((mockReq as any).complexityFactors.hasArchitecturalKeywords).toBe(true);
-      expect((mockReq as any).complexityFactors.contentLength).toBeGreaterThan(500);
+      expect((mockReq as any).complexityFactors.hasArchitecturalKeywords).toBe(
+        true
+      );
+      expect((mockReq as any).complexityFactors.contentLength).toBeGreaterThan(
+        500
+      );
     });
 
     it('should analyze TypeScript development request', () => {
@@ -98,7 +114,8 @@ describe('Reasoning Effort Middleware', () => {
         messages: [
           {
             role: 'user',
-            content: 'Create a TypeScript React component with hooks for managing user authentication state. Include proper type definitions, error handling, and integration with a REST API. The component should support login, logout, and automatic token refresh.',
+            content:
+              'Create a TypeScript React component with hooks for managing user authentication state. Include proper type definitions, error handling, and integration with a REST API. The component should support login, logout, and automatic token refresh.',
           },
         ],
         max_tokens: 2000,
@@ -107,10 +124,16 @@ describe('Reasoning Effort Middleware', () => {
       mockReq.body = typescriptRequest;
       (mockReq as any).correlationId = 'test-correlation-id';
 
-      reasoningEffortMiddleware(mockReq as Request, mockRes as Response, mockNext);
+      reasoningEffortMiddleware(
+        mockReq as Request,
+        mockRes as Response,
+        mockNext
+      );
 
       expect(mockNext).toHaveBeenCalled();
-      expect((mockReq as any).languageContext.primaryLanguage).toBe('typescript');
+      expect((mockReq as any).languageContext.primaryLanguage).toBe(
+        'typescript'
+      );
       expect((mockReq as any).languageContext.frameworks).toContain('react');
       expect((mockReq as any).shouldApplyReasoning).toBe(true);
     });
@@ -121,7 +144,8 @@ describe('Reasoning Effort Middleware', () => {
         messages: [
           {
             role: 'user',
-            content: 'Create a Django REST API with models.py, views.py, and serializers.py for a blog application. Include user authentication, permissions, and proper database relationships.',
+            content:
+              'Create a Django REST API with models.py, views.py, and serializers.py for a blog application. Include user authentication, permissions, and proper database relationships.',
           },
         ],
         max_tokens: 1500,
@@ -130,12 +154,18 @@ describe('Reasoning Effort Middleware', () => {
       mockReq.body = djangoRequest;
       (mockReq as any).correlationId = 'test-correlation-id';
 
-      reasoningEffortMiddleware(mockReq as Request, mockRes as Response, mockNext);
+      reasoningEffortMiddleware(
+        mockReq as Request,
+        mockRes as Response,
+        mockNext
+      );
 
       expect(mockNext).toHaveBeenCalled();
       expect((mockReq as any).languageContext.primaryLanguage).toBe('python');
       expect((mockReq as any).languageContext.frameworks).toContain('django');
-      expect((mockReq as any).complexityFactors.hasComplexFrameworkPatterns).toBe(true);
+      expect(
+        (mockReq as any).complexityFactors.hasComplexFrameworkPatterns
+      ).toBe(true);
     });
 
     it('should analyze Android Kotlin request', () => {
@@ -144,7 +174,8 @@ describe('Reasoning Effort Middleware', () => {
         messages: [
           {
             role: 'user',
-            content: 'Create an Android Kotlin app with Jetpack Compose for a todo list. Include Room database, ViewModel, and proper MVVM architecture.',
+            content:
+              'Create an Android Kotlin app with Jetpack Compose for a todo list. Include Room database, ViewModel, and proper MVVM architecture.',
           },
         ],
         max_tokens: 2000,
@@ -153,11 +184,17 @@ describe('Reasoning Effort Middleware', () => {
       mockReq.body = androidRequest;
       (mockReq as any).correlationId = 'test-correlation-id';
 
-      reasoningEffortMiddleware(mockReq as Request, mockRes as Response, mockNext);
+      reasoningEffortMiddleware(
+        mockReq as Request,
+        mockRes as Response,
+        mockNext
+      );
 
       expect(mockNext).toHaveBeenCalled();
       expect((mockReq as any).languageContext.primaryLanguage).toBe('kotlin');
-      expect((mockReq as any).languageContext.frameworks).toContain('android-sdk');
+      expect((mockReq as any).languageContext.frameworks).toContain(
+        'android-sdk'
+      );
       expect((mockReq as any).shouldApplyReasoning).toBe(true);
     });
   });
@@ -178,7 +215,11 @@ describe('Reasoning Effort Middleware', () => {
       mockReq.body = openAIRequest;
       (mockReq as any).correlationId = 'test-correlation-id';
 
-      reasoningEffortMiddleware(mockReq as Request, mockRes as Response, mockNext);
+      reasoningEffortMiddleware(
+        mockReq as Request,
+        mockRes as Response,
+        mockNext
+      );
 
       expect(mockNext).toHaveBeenCalled();
       expect((mockReq as any).reasoningEffort).toBeUndefined();
@@ -191,7 +232,11 @@ describe('Reasoning Effort Middleware', () => {
       mockReq.body = null;
       (mockReq as any).correlationId = 'test-correlation-id';
 
-      reasoningEffortMiddleware(mockReq as Request, mockRes as Response, mockNext);
+      reasoningEffortMiddleware(
+        mockReq as Request,
+        mockRes as Response,
+        mockNext
+      );
 
       expect(mockNext).toHaveBeenCalled();
       expect((mockReq as any).reasoningEffort).toBeUndefined();
@@ -212,7 +257,11 @@ describe('Reasoning Effort Middleware', () => {
       mockReq.body = invalidRequest;
       (mockReq as any).correlationId = 'test-correlation-id';
 
-      reasoningEffortMiddleware(mockReq as Request, mockRes as Response, mockNext);
+      reasoningEffortMiddleware(
+        mockReq as Request,
+        mockRes as Response,
+        mockNext
+      );
 
       expect(mockNext).toHaveBeenCalled();
       expect((mockReq as any).reasoningEffort).toBeUndefined();
@@ -249,7 +298,8 @@ describe('Reasoning Effort Middleware', () => {
         messages: [
           {
             role: 'user',
-            content: 'Write a Python function to sort a list of dictionaries by multiple keys.',
+            content:
+              'Write a Python function to sort a list of dictionaries by multiple keys.',
           },
         ],
         max_tokens: 500,
@@ -259,7 +309,11 @@ describe('Reasoning Effort Middleware', () => {
       (mockReq as any).correlationId = 'test-correlation-id';
 
       const startTime = Date.now();
-      reasoningEffortMiddleware(mockReq as Request, mockRes as Response, mockNext);
+      reasoningEffortMiddleware(
+        mockReq as Request,
+        mockRes as Response,
+        mockNext
+      );
       const endTime = Date.now();
 
       expect(mockNext).toHaveBeenCalled();
@@ -285,15 +339,23 @@ describe('Reasoning Effort Middleware', () => {
       mockReq.headers = { 'x-conversation-id': 'test-conversation-123' };
       (mockReq as any).correlationId = 'test-correlation-id';
 
-      reasoningEffortMiddleware(mockReq as Request, mockRes as Response, mockNext);
+      reasoningEffortMiddleware(
+        mockReq as Request,
+        mockRes as Response,
+        mockNext
+      );
 
       expect(mockNext).toHaveBeenCalled();
       expect((mockReq as any).conversationComplexity).toBe('simple'); // Mocked return value
 
-      const { conversationManager } = await import('../../src/utils/conversation-manager.js');
+      const { conversationManager } = await import(
+        '../../src/utils/conversation-manager.js'
+      );
       // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(conversationManager.extractConversationId).toHaveBeenCalledWith(
-        expect.objectContaining({ 'x-conversation-id': 'test-conversation-123' }),
+        expect.objectContaining({
+          'x-conversation-id': 'test-conversation-123',
+        }),
         'test-correlation-id'
       );
     });
