@@ -23,7 +23,7 @@ import type { Socket } from 'node:net';
  * @public
  * @type ResourceType
  */
-export type ResourceType = 
+export type ResourceType =
   | 'http_connection'
   | 'stream'
   | 'timer'
@@ -172,9 +172,9 @@ export class BaseDisposableResource implements DisposableResource {
           });
         });
       }
-      
+
       this._disposed = true;
-      
+
       if (DEFAULT_CONFIG.enableLogging) {
         logger.debug('Resource disposed', '', {
           resourceId: this.resourceInfo.id,
@@ -240,9 +240,9 @@ export class BaseAsyncDisposableResource implements AsyncDisposableResource {
       if (result instanceof Promise) {
         await result;
       }
-      
+
       this._disposed = true;
-      
+
       if (DEFAULT_CONFIG.enableLogging) {
         logger.debug('Async resource disposed', '', {
           resourceId: this.resourceInfo.id,
@@ -283,15 +283,20 @@ export class HTTPConnectionResource extends BaseAsyncDisposableResource {
     socket?: Readonly<Socket>
   ) {
     const description = `HTTP connection ${request?.method ?? 'unknown'} ${request?.url ?? 'unknown'}`;
-    
-    super('http_connection', description, async () => {
-      await this.cleanup();
-    }, {
-      method: request?.method,
-      url: request?.url,
-      remoteAddress: socket?.remoteAddress,
-      remotePort: socket?.remotePort,
-    });
+
+    super(
+      'http_connection',
+      description,
+      async () => {
+        await this.cleanup();
+      },
+      {
+        method: request?.method,
+        url: request?.url,
+        remoteAddress: socket?.remoteAddress,
+        remotePort: socket?.remotePort,
+      }
+    );
 
     this.request = request;
     this.response = response;
@@ -302,10 +307,16 @@ export class HTTPConnectionResource extends BaseAsyncDisposableResource {
     const cleanupPromises: Promise<void>[] = [];
 
     // Close response if not already closed
-    if (this.response && !this.response.destroyed && !this.response.headersSent) {
-      cleanupPromises.push(new Promise<void>((resolve) => {
-        this.response!.end(() => resolve());
-      }));
+    if (
+      this.response &&
+      !this.response.destroyed &&
+      !this.response.headersSent
+    ) {
+      cleanupPromises.push(
+        new Promise<void>((resolve) => {
+          this.response!.end(() => resolve());
+        })
+      );
     }
 
     // Destroy request if not already destroyed
@@ -315,9 +326,11 @@ export class HTTPConnectionResource extends BaseAsyncDisposableResource {
 
     // Close socket if not already closed
     if (this.socket && !this.socket.destroyed) {
-      cleanupPromises.push(new Promise<void>((resolve) => {
-        this.socket!.end(() => resolve());
-      }));
+      cleanupPromises.push(
+        new Promise<void>((resolve) => {
+          this.socket!.end(() => resolve());
+        })
+      );
     }
 
     // Wait for all cleanup operations with timeout
@@ -345,13 +358,24 @@ export class StreamResource extends BaseAsyncDisposableResource {
     stream: Readonly<NodeJS.ReadableStream | NodeJS.WritableStream>,
     description: string = 'Stream resource'
   ) {
-    super('stream', description, async () => {
-      await this.cleanup();
-    }, {
-      readable: 'readable' in stream && typeof stream.readable === 'boolean' ? stream.readable : false,
-      writable: 'writable' in stream && typeof stream.writable === 'boolean' ? stream.writable : false,
-      destroyed: 'destroyed' in stream ? stream.destroyed : false,
-    });
+    super(
+      'stream',
+      description,
+      async () => {
+        await this.cleanup();
+      },
+      {
+        readable:
+          'readable' in stream && typeof stream.readable === 'boolean'
+            ? stream.readable
+            : false,
+        writable:
+          'writable' in stream && typeof stream.writable === 'boolean'
+            ? stream.writable
+            : false,
+        destroyed: 'destroyed' in stream ? stream.destroyed : false,
+      }
+    );
 
     this.stream = stream;
   }
@@ -363,7 +387,10 @@ export class StreamResource extends BaseAsyncDisposableResource {
 
     return new Promise<void>((resolve) => {
       const timeout = setTimeout(() => {
-        if ('destroy' in this.stream && typeof this.stream.destroy === 'function') {
+        if (
+          'destroy' in this.stream &&
+          typeof this.stream.destroy === 'function'
+        ) {
           (this.stream.destroy as () => void)();
         }
         resolve();
@@ -374,7 +401,10 @@ export class StreamResource extends BaseAsyncDisposableResource {
           clearTimeout(timeout);
           resolve();
         });
-      } else if ('destroy' in this.stream && typeof this.stream.destroy === 'function') {
+      } else if (
+        'destroy' in this.stream &&
+        typeof this.stream.destroy === 'function'
+      ) {
         (this.stream.destroy as () => void)();
         clearTimeout(timeout);
         resolve();
@@ -408,7 +438,9 @@ export class TimerResource extends BaseDisposableResource {
     if (typeof timerId === 'number') {
       timerMetadata.timerId = timerId;
     } else {
-      const descriptor = (timerId as { [Symbol.toStringTag]?: string })[Symbol.toStringTag];
+      const descriptor = (timerId as { [Symbol.toStringTag]?: string })[
+        Symbol.toStringTag
+      ];
       if (descriptor !== undefined) {
         timerMetadata.timerHandleType = descriptor;
       }
@@ -424,7 +456,7 @@ export class TimerResource extends BaseDisposableResource {
       () => {
         this.cleanup();
       },
-      timerMetadata,
+      timerMetadata
     );
 
     this.timerId = timerId;
@@ -455,13 +487,16 @@ export class TimerResource extends BaseDisposableResource {
  */
 export class ResourceManager implements AsyncDisposable {
   private readonly config: ResourceManagerConfig;
-  private readonly resources = new Map<string, DisposableResource | AsyncDisposableResource>();
+  private readonly resources = new Map<
+    string,
+    DisposableResource | AsyncDisposableResource
+  >();
   private leakDetectionInterval?: NodeJS.Timeout;
   private _disposed = false;
 
   constructor(config: Partial<ResourceManagerConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
-    
+
     if (this.config.enableLeakDetection) {
       this.startLeakDetection();
     }
@@ -511,7 +546,7 @@ export class ResourceManager implements AsyncDisposable {
    */
   public unregisterResource(resourceId: string): void {
     const removed = this.resources.delete(resourceId);
-    
+
     if (removed && this.config.enableLogging) {
       logger.debug('Resource unregistered', '', {
         resourceId,
@@ -527,7 +562,7 @@ export class ResourceManager implements AsyncDisposable {
    * @returns Array of resource information
    */
   public getResourceInfo(): readonly ResourceInfo[] {
-    return Array.from(this.resources.values()).map(resource => ({
+    return Array.from(this.resources.values()).map((resource) => ({
       ...resource.resourceInfo,
       active: !resource.disposed,
     }));
@@ -547,9 +582,9 @@ export class ResourceManager implements AsyncDisposable {
     readonly oldestResource?: ResourceInfo;
   } {
     const resources = Array.from(this.resources.values());
-    const active = resources.filter(r => !r.disposed);
-    const disposed = resources.filter(r => r.disposed);
-    
+    const active = resources.filter((r) => !r.disposed);
+    const disposed = resources.filter((r) => r.disposed);
+
     const byType: Record<ResourceType, number> = {
       http_connection: 0,
       stream: 0,
@@ -564,9 +599,10 @@ export class ResourceManager implements AsyncDisposable {
     }
 
     const oldestResource = resources
-      .filter(r => !r.disposed)
-      .sort((a, b) => a.resourceInfo.createdAt - b.resourceInfo.createdAt)[0]
-      ?.resourceInfo;
+      .filter((r) => !r.disposed)
+      .sort(
+        (a, b) => a.resourceInfo.createdAt - b.resourceInfo.createdAt
+      )[0]?.resourceInfo;
 
     return {
       total: resources.length,
@@ -585,7 +621,7 @@ export class ResourceManager implements AsyncDisposable {
    */
   public cleanupDisposedResources(): number {
     const initialSize = this.resources.size;
-    
+
     for (const [id, resource] of this.resources.entries()) {
       if (resource.disposed) {
         this.resources.delete(id);
@@ -593,7 +629,7 @@ export class ResourceManager implements AsyncDisposable {
     }
 
     const cleanedUp = initialSize - this.resources.size;
-    
+
     if (cleanedUp > 0 && this.config.enableLogging) {
       logger.debug('Disposed resources cleaned up', '', {
         cleanedUp,
@@ -664,7 +700,7 @@ export class ResourceManager implements AsyncDisposable {
     if (this.config.enableLogging) {
       logger.info('Resource manager disposed', '', {});
     }
-  }  /**
+  } /**
    
 * Starts leak detection monitoring.
    *
@@ -687,18 +723,18 @@ export class ResourceManager implements AsyncDisposable {
     const oldResourceThreshold = 5 * 60 * 1000; // 5 minutes
 
     // Check for resources that have been active for too long
-    const oldResources = Array.from(this.resources.values())
-      .filter(resource => 
-        !resource.disposed && 
-        (now - resource.resourceInfo.createdAt) > oldResourceThreshold
-      );
+    const oldResources = Array.from(this.resources.values()).filter(
+      (resource) =>
+        !resource.disposed &&
+        now - resource.resourceInfo.createdAt > oldResourceThreshold
+    );
 
     if (oldResources.length > 0) {
       logger.warn('Potential resource leaks detected', '', {
         oldResourceCount: oldResources.length,
         totalActive: stats.active,
-        oldestResourceAge: stats.oldestResource 
-          ? now - stats.oldestResource.createdAt 
+        oldestResourceAge: stats.oldestResource
+          ? now - stats.oldestResource.createdAt
           : 0,
         resourcesByType: stats.byType,
       });
@@ -709,7 +745,9 @@ export class ResourceManager implements AsyncDisposable {
       logger.warn('High resource usage detected', '', {
         activeResources: stats.active,
         maxResources: this.config.maxResources,
-        utilizationPercent: Math.round((stats.active / this.config.maxResources) * 100),
+        utilizationPercent: Math.round(
+          (stats.active / this.config.maxResources) * 100
+        ),
       });
     }
 
@@ -725,7 +763,7 @@ export class ResourceManager implements AsyncDisposable {
    */
   private cleanupOldestResources(count: number): void {
     const resources = Array.from(this.resources.values())
-      .filter(r => !r.disposed)
+      .filter((r) => !r.disposed)
       .sort((a, b) => a.resourceInfo.createdAt - b.resourceInfo.createdAt)
       .slice(0, count);
 
@@ -827,7 +865,12 @@ export function createDisposableResource(
   cleanupFn: ResourceCleanupFn,
   metadata?: Readonly<Record<string, unknown>>
 ): BaseDisposableResource {
-  const resource = new BaseDisposableResource(type, description, cleanupFn, metadata);
+  const resource = new BaseDisposableResource(
+    type,
+    description,
+    cleanupFn,
+    metadata
+  );
   resourceManager.registerResource(resource);
   return resource;
 }
@@ -848,7 +891,12 @@ export function createAsyncDisposableResource(
   cleanupFn: ResourceCleanupFn,
   metadata?: Readonly<Record<string, unknown>>
 ): BaseAsyncDisposableResource {
-  const resource = new BaseAsyncDisposableResource(type, description, cleanupFn, metadata);
+  const resource = new BaseAsyncDisposableResource(
+    type,
+    description,
+    cleanupFn,
+    metadata
+  );
   resourceManager.registerResource(resource);
   return resource;
 }
@@ -875,7 +923,7 @@ export async function withResources<T>(
   } finally {
     // Dispose all resources
     const disposePromises: Promise<void>[] = [];
-    
+
     for (const resource of resources) {
       if (!resource.disposed) {
         if (Symbol.asyncDispose in resource) {
@@ -957,7 +1005,9 @@ export function createManagedImmediate(
  * @public
  * @returns Resource statistics
  */
-export function getResourceStats(): ReturnType<ResourceManager['getResourceStats']> {
+export function getResourceStats(): ReturnType<
+  ResourceManager['getResourceStats']
+> {
   return resourceManager.getResourceStats();
 }
 

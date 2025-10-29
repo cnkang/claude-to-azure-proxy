@@ -13,7 +13,7 @@ export class OptimizedSSEHandler {
     response.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
+      Connection: 'keep-alive',
       'Transfer-Encoding': 'chunked',
     });
 
@@ -24,7 +24,11 @@ export class OptimizedSSEHandler {
     });
   }
 
-  public sendEvent(res: ImmutableResponse, event: string, data: unknown): boolean {
+  public sendEvent(
+    res: ImmutableResponse,
+    event: string,
+    data: unknown
+  ): boolean {
     const response = res as ExpressResponse;
 
     if (!this.activeStreams.has(response) || response.destroyed) {
@@ -83,11 +87,8 @@ export async function createOptimizedStreamingPipeline(
   transforms: ReadonlyArray<Transform> = []
 ): Promise<void> {
   const pipelineTransforms = transforms.length > 0 ? transforms : [];
-  const streams: ReadonlyArray<NodeJS.ReadableStream | NodeJS.WritableStream> = [
-    source as Readable,
-    ...pipelineTransforms,
-    destination as Writable,
-  ];
+  const streams: ReadonlyArray<NodeJS.ReadableStream | NodeJS.WritableStream> =
+    [source as Readable, ...pipelineTransforms, destination as Writable];
 
   await pipeline(streams);
 }
