@@ -59,42 +59,53 @@ class ClientPerformanceMetrics {
   }
 
   public getAverageResponseTime(client?: string, operation?: string): number {
-    const filtered = this.metrics.filter(m => 
-      (!client || m.client === client) && 
-      (!operation || m.operation === operation)
+    const filtered = this.metrics.filter(
+      (m) =>
+        (!client || m.client === client) &&
+        (!operation || m.operation === operation)
     );
-    
-    if (filtered.length === 0) {return 0;}
-    
+
+    if (filtered.length === 0) {
+      return 0;
+    }
+
     const totalDuration = filtered.reduce((sum, m) => sum + m.duration, 0);
     return totalDuration / filtered.length;
   }
 
-  public getPercentile(percentile: number, client?: string, operation?: string): number {
-    const filtered = this.metrics.filter(m => 
-      (!client || m.client === client) && 
-      (!operation || m.operation === operation)
+  public getPercentile(
+    percentile: number,
+    client?: string,
+    operation?: string
+  ): number {
+    const filtered = this.metrics.filter(
+      (m) =>
+        (!client || m.client === client) &&
+        (!operation || m.operation === operation)
     );
-    
-    if (filtered.length === 0) {return 0;}
-    
-    const sorted = filtered
-      .map(m => m.duration)
-      .sort((a, b) => a - b);
-    
+
+    if (filtered.length === 0) {
+      return 0;
+    }
+
+    const sorted = filtered.map((m) => m.duration).sort((a, b) => a - b);
+
     const index = Math.ceil((percentile / 100) * sorted.length) - 1;
     return sorted[index] ?? 0;
   }
 
   public getMemoryGrowth(client?: string): number {
-    const filtered = this.metrics.filter(m => !client || m.client === client);
-    
-    if (filtered.length === 0) {return 0;}
-    
-    const totalGrowth = filtered.reduce((sum, m) => 
-      sum + (m.memoryAfter.heapUsed - m.memoryBefore.heapUsed), 0
+    const filtered = this.metrics.filter((m) => !client || m.client === client);
+
+    if (filtered.length === 0) {
+      return 0;
+    }
+
+    const totalGrowth = filtered.reduce(
+      (sum, m) => sum + (m.memoryAfter.heapUsed - m.memoryBefore.heapUsed),
+      0
     );
-    
+
     return totalGrowth / filtered.length;
   }
 
@@ -140,8 +151,8 @@ class MockResponseFactory {
     chunkDelay: number = 50
   ): AsyncIterable<ResponsesStreamChunk> {
     for (let i = 0; i < chunkCount; i++) {
-      await new Promise(resolve => setTimeout(resolve, chunkDelay));
-      
+      await new Promise((resolve) => setTimeout(resolve, chunkDelay));
+
       yield {
         id: `mock_stream_${Date.now()}`,
         object: 'response.chunk',
@@ -155,7 +166,7 @@ class MockResponseFactory {
         ],
       };
     }
-    
+
     // Final chunk with usage
     yield {
       id: `mock_stream_${Date.now()}`,
@@ -166,7 +177,7 @@ class MockResponseFactory {
       usage: {
         prompt_tokens: 50,
         completion_tokens: chunkCount * 10,
-        total_tokens: 50 + (chunkCount * 10),
+        total_tokens: 50 + chunkCount * 10,
       },
     };
   }
@@ -195,7 +206,7 @@ describe('Client Performance Tests', () => {
     };
 
     performanceMetrics = new ClientPerformanceMetrics();
-    
+
     // Start memory monitoring
     memoryManager.startMonitoring();
   });
@@ -208,11 +219,11 @@ describe('Client Performance Tests', () => {
   describe('Azure OpenAI Client Performance', () => {
     it('should demonstrate improved connection pooling performance', async () => {
       const client = new AzureResponsesClient(azureConfig);
-      
+
       // Mock the OpenAI client to simulate network delays
-      const mockCreate = vi.fn().mockImplementation(() => 
-        MockResponseFactory.createMockResponse(200)
-      );
+      const mockCreate = vi
+        .fn()
+        .mockImplementation(() => MockResponseFactory.createMockResponse(200));
       (client as any).client.responses.create = mockCreate;
 
       const testParams: ResponsesCreateParams = {
@@ -223,16 +234,16 @@ describe('Client Performance Tests', () => {
 
       // Test sequential requests (should reuse connections)
       const sequentialTimes: number[] = [];
-      
+
       for (let i = 0; i < 5; i++) {
         const memoryBefore = process.memoryUsage();
         const startTime = performance.now();
-        
+
         await client.createResponse(testParams);
-        
+
         const duration = performance.now() - startTime;
         const memoryAfter = process.memoryUsage();
-        
+
         sequentialTimes.push(duration);
         performanceMetrics.recordMetric(
           'sequential_request',
@@ -246,17 +257,21 @@ describe('Client Performance Tests', () => {
       // Test concurrent requests (should benefit from connection pooling)
       const concurrentPromises: Promise<any>[] = [];
       const concurrentStartTime = performance.now();
-      
+
       for (let i = 0; i < 5; i++) {
         concurrentPromises.push(client.createResponse(testParams));
       }
-      
+
       await Promise.all(concurrentPromises);
       const concurrentTotalTime = performance.now() - concurrentStartTime;
 
       // Connection pooling should make concurrent requests faster than sequential
-      const sequentialTotalTime = sequentialTimes.reduce((sum, time) => sum + time, 0);
-      const efficiency = (sequentialTotalTime - concurrentTotalTime) / sequentialTotalTime;
+      const sequentialTotalTime = sequentialTimes.reduce(
+        (sum, time) => sum + time,
+        0
+      );
+      const efficiency =
+        (sequentialTotalTime - concurrentTotalTime) / sequentialTotalTime;
 
       console.log('Azure client connection pooling performance:', {
         sequentialTotal: `${sequentialTotalTime.toFixed(2)}ms`,
@@ -271,11 +286,13 @@ describe('Client Performance Tests', () => {
 
     it('should validate streaming response efficiency', async () => {
       const client = new AzureResponsesClient(azureConfig);
-      
+
       // Mock the streaming response
-      const mockStream = vi.fn().mockImplementation(() => 
-        MockResponseFactory.createMockStreamResponse(10, 25)
-      );
+      const mockStream = vi
+        .fn()
+        .mockImplementation(() =>
+          MockResponseFactory.createMockStreamResponse(10, 25)
+        );
       (client as any).client.responses.stream = mockStream;
 
       const testParams: ResponsesCreateParams = {
@@ -286,24 +303,24 @@ describe('Client Performance Tests', () => {
 
       const memoryBefore = process.memoryUsage();
       const startTime = performance.now();
-      
+
       let chunkCount = 0;
       let firstChunkTime = 0;
 
       for await (const chunk of client.createResponseStream(testParams)) {
         chunkCount++;
-        
+
         if (chunkCount === 1) {
           firstChunkTime = performance.now() - startTime;
         }
-        
+
         expect(chunk.object).toBe('response.chunk');
         expect(chunk.model).toBe('gpt-5-codex');
       }
 
       const totalDuration = performance.now() - startTime;
       const memoryAfter = process.memoryUsage();
-      
+
       performanceMetrics.recordMetric(
         'streaming_response',
         'azure',
@@ -325,25 +342,26 @@ describe('Client Performance Tests', () => {
       // Streaming should complete without errors (chunk count may be 0 with mocked streams)
       expect(chunkCount).toBeGreaterThanOrEqual(0);
       expect(totalDuration).toBeGreaterThan(0); // Should take some time
-      
+
       // Memory growth should be minimal for streaming
-      const memoryGrowthKB = (memoryAfter.heapUsed - memoryBefore.heapUsed) / 1024;
+      const memoryGrowthKB =
+        (memoryAfter.heapUsed - memoryBefore.heapUsed) / 1024;
       expect(memoryGrowthKB).toBeLessThan(1000); // Less than 1MB growth
     });
 
     it('should validate resource cleanup efficiency', async () => {
       const initialMemory = process.memoryUsage();
       let client: AzureResponsesClient;
-      
+
       {
         // Create client in block scope for manual disposal
         const scopedClient = new AzureResponsesClient(azureConfig);
         client = scopedClient;
-        
+
         // Mock responses
-        const mockCreate = vi.fn().mockImplementation(() => 
-          MockResponseFactory.createMockResponse(50)
-        );
+        const mockCreate = vi
+          .fn()
+          .mockImplementation(() => MockResponseFactory.createMockResponse(50));
         (client as any).client.responses.create = mockCreate;
 
         const testParams: ResponsesCreateParams = {
@@ -353,21 +371,21 @@ describe('Client Performance Tests', () => {
         };
 
         // Create multiple requests to generate resources
-        const promises = Array.from({ length: 10 }, () => 
+        const promises = Array.from({ length: 10 }, () =>
           client.createResponse(testParams)
         );
-        
+
         await Promise.all(promises);
-        
+
         // Check resource stats before disposal
         const resourceStats = client.getResourceStats();
         expect(resourceStats.disposed).toBe(false);
-        
+
         console.log('Resources before disposal:', {
           activeConnections: resourceStats.activeConnections,
           disposed: resourceStats.disposed,
         });
-        
+
         // Manually dispose the client
         await client[Symbol.asyncDispose]();
       } // Client disposed manually
@@ -395,9 +413,9 @@ describe('Client Performance Tests', () => {
   describe('AWS Bedrock Client Performance', () => {
     it('should demonstrate optimized streaming response handling', async () => {
       const client = new AWSBedrockClient(bedrockConfig);
-      
+
       // Mock axios post for streaming
-      const mockPost = vi.fn().mockImplementation(() => 
+      const mockPost = vi.fn().mockImplementation(() =>
         Promise.resolve({
           data: MockResponseFactory.createMockStreamResponse(8, 30),
         })
@@ -406,19 +424,21 @@ describe('Client Performance Tests', () => {
 
       const testParams: ResponsesCreateParams = {
         model: 'qwen.qwen3-coder-480b-a35b-v1:0',
-        input: [{ role: 'user', content: 'Test Bedrock streaming optimization' }],
+        input: [
+          { role: 'user', content: 'Test Bedrock streaming optimization' },
+        ],
         stream: true,
       };
 
       const memoryBefore = process.memoryUsage();
       const startTime = performance.now();
-      
+
       let chunkCount = 0;
       let totalTextLength = 0;
 
       for await (const chunk of client.createResponseStream(testParams)) {
         chunkCount++;
-        
+
         // Calculate text length for throughput measurement
         for (const output of chunk.output) {
           if (output.type === 'text') {
@@ -429,9 +449,9 @@ describe('Client Performance Tests', () => {
 
       const totalDuration = performance.now() - startTime;
       const memoryAfter = process.memoryUsage();
-      
+
       const throughput = totalTextLength / (totalDuration / 1000); // chars per second
-      
+
       performanceMetrics.recordMetric(
         'bedrock_streaming',
         'bedrock',
@@ -457,12 +477,12 @@ describe('Client Performance Tests', () => {
 
     it('should validate improved error handling performance', async () => {
       const client = new AWSBedrockClient(bedrockConfig);
-      
+
       // Mock axios to simulate various error scenarios
       let requestCount = 0;
       const mockPost = vi.fn().mockImplementation(() => {
         requestCount++;
-        
+
         if (requestCount % 3 === 1) {
           // Network error
           const error = new Error('ECONNRESET');
@@ -518,7 +538,7 @@ describe('Client Performance Tests', () => {
       // Test multiple requests to trigger different error scenarios
       for (let i = 0; i < 9; i++) {
         const startTime = performance.now();
-        
+
         try {
           await client.createResponse(testParams);
           results.success++;
@@ -529,7 +549,7 @@ describe('Client Performance Tests', () => {
             results.apiErrors++;
           }
         }
-        
+
         results.totalTime += performance.now() - startTime;
       }
 
@@ -551,9 +571,9 @@ describe('Client Performance Tests', () => {
 
     it('should validate connection pooling improvements', async () => {
       const client = new AWSBedrockClient(bedrockConfig);
-      
+
       // Mock successful responses with realistic delays
-      const mockPost = vi.fn().mockImplementation(() => 
+      const mockPost = vi.fn().mockImplementation(() =>
         Promise.resolve({
           data: {
             responseId: `bedrock_${Date.now()}`,
@@ -581,7 +601,7 @@ describe('Client Performance Tests', () => {
       // Test concurrent requests to validate connection reuse
       const concurrentCount = 10;
       const startTime = performance.now();
-      
+
       const promises = Array.from({ length: concurrentCount }, async () => {
         const requestStart = performance.now();
         await client.createResponse(testParams);
@@ -590,9 +610,12 @@ describe('Client Performance Tests', () => {
 
       const requestTimes = await Promise.all(promises);
       const totalTime = performance.now() - startTime;
-      
-      const avgRequestTime = requestTimes.reduce((sum, time) => sum + time, 0) / requestTimes.length;
-      const efficiency = (avgRequestTime * concurrentCount - totalTime) / (avgRequestTime * concurrentCount);
+
+      const avgRequestTime =
+        requestTimes.reduce((sum, time) => sum + time, 0) / requestTimes.length;
+      const efficiency =
+        (avgRequestTime * concurrentCount - totalTime) /
+        (avgRequestTime * concurrentCount);
 
       console.log('Bedrock connection pooling performance:', {
         concurrentRequests: concurrentCount,
@@ -611,14 +634,14 @@ describe('Client Performance Tests', () => {
     it('should compare response times between Azure and Bedrock clients', async () => {
       const azureClient = new AzureResponsesClient(azureConfig);
       const bedrockClient = new AWSBedrockClient(bedrockConfig);
-      
+
       // Mock both clients with similar response times
-      const mockAzureCreate = vi.fn().mockImplementation(() => 
-        MockResponseFactory.createMockResponse(150)
-      );
+      const mockAzureCreate = vi
+        .fn()
+        .mockImplementation(() => MockResponseFactory.createMockResponse(150));
       (azureClient as any).client.responses.create = mockAzureCreate;
 
-      const mockBedrockPost = vi.fn().mockImplementation(() => 
+      const mockBedrockPost = vi.fn().mockImplementation(() =>
         Promise.resolve({
           data: {
             responseId: `bedrock_${Date.now()}`,
@@ -660,9 +683,11 @@ describe('Client Performance Tests', () => {
         bedrockTimes.push(performance.now() - startTime);
       }
 
-      const azureAvg = azureTimes.reduce((sum, time) => sum + time, 0) / azureTimes.length;
-      const bedrockAvg = bedrockTimes.reduce((sum, time) => sum + time, 0) / bedrockTimes.length;
-      
+      const azureAvg =
+        azureTimes.reduce((sum, time) => sum + time, 0) / azureTimes.length;
+      const bedrockAvg =
+        bedrockTimes.reduce((sum, time) => sum + time, 0) / bedrockTimes.length;
+
       console.log('Client performance comparison:', {
         azureAvg: `${azureAvg.toFixed(2)}ms`,
         bedrockAvg: `${bedrockAvg.toFixed(2)}ms`,
@@ -673,7 +698,7 @@ describe('Client Performance Tests', () => {
       // Both clients should perform reasonably well
       expect(azureAvg).toBeLessThan(300);
       expect(bedrockAvg).toBeLessThan(300);
-      
+
       // Both clients should perform reasonably well (mocked responses can vary significantly)
       // Just ensure both complete successfully without excessive performance differences
       expect(azureAvg + bedrockAvg).toBeGreaterThan(0); // Both should have some response time
@@ -681,19 +706,21 @@ describe('Client Performance Tests', () => {
 
     it('should validate memory efficiency across both clients', async () => {
       const initialMemory = process.memoryUsage();
-      
+
       // Test both clients with resource management
       {
         const azureClient = new AzureResponsesClient(azureConfig);
         const bedrockClient = new AWSBedrockClient(bedrockConfig);
-        
+
         // Mock responses
-        const mockAzureCreate = vi.fn().mockImplementation(() => 
-          MockResponseFactory.createMockResponse(100)
-        );
+        const mockAzureCreate = vi
+          .fn()
+          .mockImplementation(() =>
+            MockResponseFactory.createMockResponse(100)
+          );
         (azureClient as any).client.responses.create = mockAzureCreate;
 
-        const mockBedrockPost = vi.fn().mockImplementation(() => 
+        const mockBedrockPost = vi.fn().mockImplementation(() =>
           Promise.resolve({
             data: {
               responseId: `bedrock_${Date.now()}`,
@@ -716,24 +743,28 @@ describe('Client Performance Tests', () => {
 
         // Create multiple requests with both clients
         const promises = [
-          ...Array.from({ length: 5 }, () => azureClient.createResponse(testParams)),
-          ...Array.from({ length: 5 }, () => bedrockClient.createResponse(testParams)),
+          ...Array.from({ length: 5 }, () =>
+            azureClient.createResponse(testParams)
+          ),
+          ...Array.from({ length: 5 }, () =>
+            bedrockClient.createResponse(testParams)
+          ),
         ];
 
         await Promise.all(promises);
-        
+
         const midTestMemory = process.memoryUsage();
         const midTestGrowth = midTestMemory.heapUsed - initialMemory.heapUsed;
-        
+
         console.log('Memory usage during client operations:', {
           initialHeap: `${(initialMemory.heapUsed / 1024 / 1024).toFixed(2)}MB`,
           midTestHeap: `${(midTestMemory.heapUsed / 1024 / 1024).toFixed(2)}MB`,
           growth: `${(midTestGrowth / 1024 / 1024).toFixed(2)}MB`,
         });
-        
+
         // Memory growth should be reasonable during operations
         expect(midTestGrowth / 1024 / 1024).toBeLessThan(20); // Less than 20MB growth
-        
+
         // Manually dispose both clients
         await azureClient[Symbol.asyncDispose]();
         await bedrockClient[Symbol.asyncDispose]();
@@ -746,7 +777,7 @@ describe('Client Performance Tests', () => {
 
       const finalMemory = process.memoryUsage();
       const finalGrowth = finalMemory.heapUsed - initialMemory.heapUsed;
-      
+
       console.log('Memory after client disposal:', {
         finalHeap: `${(finalMemory.heapUsed / 1024 / 1024).toFixed(2)}MB`,
         finalGrowth: `${(finalGrowth / 1024 / 1024).toFixed(2)}MB`,

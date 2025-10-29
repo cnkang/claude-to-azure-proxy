@@ -268,7 +268,9 @@ describe('AzureResponsesClient', () => {
         throw new Error('No chunks returned from streaming call');
       }
 
-      const finalChunk = chunks.reduce<ResponsesStreamChunk>((_, chunk) => chunk);
+      const finalChunk = chunks.reduce<ResponsesStreamChunk>(
+        (_, chunk) => chunk
+      );
 
       expect(finalChunk.usage).toBeDefined();
       expect(finalChunk.usage?.total_tokens).toBeGreaterThan(0);

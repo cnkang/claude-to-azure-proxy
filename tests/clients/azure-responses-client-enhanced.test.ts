@@ -21,8 +21,16 @@ const axiosMocks = vi.hoisted(() => {
     },
   } as const;
   const create = vi.fn(() => axiosInstance);
-  const isAxiosError = (error: unknown): boolean => Boolean((error as { isAxiosError?: boolean }).isAxiosError);
-  return { request, get, requestInterceptors, responseInterceptors, create, isAxiosError };
+  const isAxiosError = (error: unknown): boolean =>
+    Boolean((error as { isAxiosError?: boolean }).isAxiosError);
+  return {
+    request,
+    get,
+    requestInterceptors,
+    responseInterceptors,
+    create,
+    isAxiosError,
+  };
 });
 
 vi.mock('axios', () => ({
@@ -54,18 +62,23 @@ const retryStrategyMocks = vi.hoisted(() => {
   const executeWithRetry = vi.fn();
   const getMetrics = vi.fn(() => ({ attempts: 1, totalDurationMs: 5 }));
   const resetMetrics = vi.fn();
-  
+
   class MockAzureRetryStrategy {
     executeWithRetry = executeWithRetry;
     getMetrics = getMetrics;
     resetMetrics = resetMetrics;
-    
+
     constructor(_name: string, _config?: unknown) {
       // Mock constructor
     }
   }
-  
-  return { AzureRetryStrategy: MockAzureRetryStrategy, executeWithRetry, getMetrics, resetMetrics };
+
+  return {
+    AzureRetryStrategy: MockAzureRetryStrategy,
+    executeWithRetry,
+    getMetrics,
+    resetMetrics,
+  };
 });
 
 vi.mock('../../src/utils/azure-retry-strategy.js', () => ({
@@ -161,12 +174,13 @@ describe('EnhancedAzureResponsesClient', () => {
   });
 
   it('creates axios client with expected defaults', () => {
-     
     new EnhancedAzureResponsesClient();
 
     expect(axiosMocks.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        baseURL: expect.stringContaining(testServerConfig.azureOpenAI?.endpoint ?? ''),
+        baseURL: expect.stringContaining(
+          testServerConfig.azureOpenAI?.endpoint ?? ''
+        ),
         headers: expect.objectContaining({
           Authorization: expect.stringContaining('Bearer '),
           'Content-Type': 'application/json',
@@ -177,14 +191,21 @@ describe('EnhancedAzureResponsesClient', () => {
 
   it('executes completion requests through the circuit breaker', async () => {
     axiosMocks.request.mockResolvedValue({ data: sampleResponse });
-    registryMocks.circuitBreaker.execute.mockImplementation(async (operation) => ({
-      success: true,
-      data: await operation(),
-      metrics: registryMocks.circuitBreaker.getMetrics(),
-    }));
+    registryMocks.circuitBreaker.execute.mockImplementation(
+      async (operation) => ({
+        success: true,
+        data: await operation(),
+        metrics: registryMocks.circuitBreaker.getMetrics(),
+      })
+    );
 
     const client = new EnhancedAzureResponsesClient();
-    const result = await client.createCompletion(sampleParams, 'corr-1', 'claude', sampleRequest);
+    const result = await client.createCompletion(
+      sampleParams,
+      'corr-1',
+      'claude',
+      sampleRequest
+    );
 
     expect(result.success).toBe(true);
     expect(result.data).toEqual(sampleResponse);
@@ -205,8 +226,15 @@ describe('EnhancedAzureResponsesClient', () => {
       degraded: true,
     });
 
-    const client = new EnhancedAzureResponsesClient({ enableCircuitBreaker: false });
-    const result = await client.createCompletion(sampleParams, 'corr-2', 'openai', sampleRequest);
+    const client = new EnhancedAzureResponsesClient({
+      enableCircuitBreaker: false,
+    });
+    const result = await client.createCompletion(
+      sampleParams,
+      'corr-2',
+      'openai',
+      sampleRequest
+    );
 
     expect(fallbackMocks.executeFallback).toHaveBeenCalled();
     expect(result.success).toBe(true);
@@ -221,8 +249,15 @@ describe('EnhancedAzureResponsesClient', () => {
       totalDurationMs: 25,
     });
 
-    const client = new EnhancedAzureResponsesClient({ enableCircuitBreaker: false });
-    const result = await client.createCompletion(sampleParams, 'corr-3', 'claude', sampleRequest);
+    const client = new EnhancedAzureResponsesClient({
+      enableCircuitBreaker: false,
+    });
+    const result = await client.createCompletion(
+      sampleParams,
+      'corr-3',
+      'claude',
+      sampleRequest
+    );
 
     expect(retryStrategyMocks.executeWithRetry).toHaveBeenCalled();
     expect(result.metadata.retryUsed).toBe(true);
@@ -240,7 +275,12 @@ describe('EnhancedAzureResponsesClient', () => {
       enableCircuitBreaker: false,
       enableFallback: false,
     });
-    const result = await client.createCompletion(sampleParams, 'corr-4', 'openai', sampleRequest);
+    const result = await client.createCompletion(
+      sampleParams,
+      'corr-4',
+      'openai',
+      sampleRequest
+    );
 
     expect(result.success).toBe(false);
     expect(errorMapperMocks.mapError).toHaveBeenCalled();
