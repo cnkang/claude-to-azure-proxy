@@ -4,14 +4,17 @@
  */
 
 import type { Request, Response, NextFunction } from 'express';
-import type { 
-  RequestWithCorrelationId, 
+import type {
+  RequestWithCorrelationId,
   IncomingRequest,
   RequestFormat,
   ResponseFormat,
 } from '../types/index.js';
 import { logger } from './logging.js';
-import { detectRequestFormat, getResponseFormat } from '../utils/format-detection.js';
+import {
+  detectRequestFormat,
+  getResponseFormat,
+} from '../utils/format-detection.js';
 
 /**
  * Extended request interface with format detection information
@@ -32,7 +35,8 @@ export const formatDetectionMiddleware = (
   next: NextFunction
 ): void => {
   const startTime = Date.now();
-  const correlationId = (req as RequestWithCorrelationId).correlationId || 'unknown';
+  const correlationId =
+    (req as RequestWithCorrelationId).correlationId || 'unknown';
 
   try {
     // Create incoming request object for format detection
@@ -50,9 +54,12 @@ export const formatDetectionMiddleware = (
 
     // Add format information to request object
     const requestWithFormat = req as unknown as RequestWithFormat;
-    (requestWithFormat as { requestFormat: RequestFormat }).requestFormat = requestFormat;
-    (requestWithFormat as { responseFormat: ResponseFormat }).responseFormat = responseFormat;
-    (requestWithFormat as { formatDetectionTime: number }).formatDetectionTime = formatDetectionTime;
+    (requestWithFormat as { requestFormat: RequestFormat }).requestFormat =
+      requestFormat;
+    (requestWithFormat as { responseFormat: ResponseFormat }).responseFormat =
+      responseFormat;
+    (requestWithFormat as { formatDetectionTime: number }).formatDetectionTime =
+      formatDetectionTime;
 
     logger.debug('Request format detected', correlationId, {
       requestFormat,
@@ -75,9 +82,12 @@ export const formatDetectionMiddleware = (
 
     // Default to Claude format on error for backward compatibility
     const requestWithFormat = req as unknown as RequestWithFormat;
-    (requestWithFormat as { requestFormat: RequestFormat }).requestFormat = 'claude';
-    (requestWithFormat as { responseFormat: ResponseFormat }).responseFormat = 'claude';
-    (requestWithFormat as { formatDetectionTime: number }).formatDetectionTime = formatDetectionTime;
+    (requestWithFormat as { requestFormat: RequestFormat }).requestFormat =
+      'claude';
+    (requestWithFormat as { responseFormat: ResponseFormat }).responseFormat =
+      'claude';
+    (requestWithFormat as { formatDetectionTime: number }).formatDetectionTime =
+      formatDetectionTime;
 
     next();
   }

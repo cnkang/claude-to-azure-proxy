@@ -4,7 +4,7 @@
  */
 
 import type { Request, Response, NextFunction } from 'express';
-import type { 
+import type {
   RequestWithCorrelationId,
   ClaudeRequest,
   ReasoningEffort,
@@ -37,7 +37,8 @@ export const reasoningEffortMiddleware = (
   next: NextFunction
 ): void => {
   const startTime = Date.now();
-  const correlationId = (req as RequestWithCorrelationId).correlationId || 'unknown';
+  const correlationId =
+    (req as RequestWithCorrelationId).correlationId || 'unknown';
 
   try {
     // Initialize reasoning analyzer
@@ -50,7 +51,8 @@ export const reasoningEffortMiddleware = (
     );
 
     // Get conversation context
-    const conversationContext = conversationManager.getConversationContext(conversationId);
+    const conversationContext =
+      conversationManager.getConversationContext(conversationId);
 
     // Analyze request if it's a Claude request format
     let reasoningEffort: ReasoningEffort | undefined;
@@ -64,12 +66,17 @@ export const reasoningEffortMiddleware = (
       const claudeRequest = req.body as ClaudeRequest;
 
       // Analyze reasoning effort
-      reasoningEffort = reasoningAnalyzer.analyzeRequest(claudeRequest, conversationContext);
-      
+      reasoningEffort = reasoningAnalyzer.analyzeRequest(
+        claudeRequest,
+        conversationContext
+      );
+
       // Get detailed complexity analysis
-      complexityFactors = reasoningAnalyzer.detectComplexityFactors(claudeRequest);
+      complexityFactors =
+        reasoningAnalyzer.detectComplexityFactors(claudeRequest);
       languageContext = reasoningAnalyzer.detectLanguageContext(claudeRequest);
-      shouldApplyReasoning = reasoningAnalyzer.shouldApplyReasoning(claudeRequest);
+      shouldApplyReasoning =
+        reasoningAnalyzer.shouldApplyReasoning(claudeRequest);
 
       // Analyze conversation complexity if we have conversation context
       if (conversationContext) {
@@ -106,12 +113,26 @@ export const reasoningEffortMiddleware = (
 
     // Add reasoning analysis information to request object
     const requestWithReasoning = req as unknown as RequestWithReasoningAnalysis;
-    (requestWithReasoning as { reasoningEffort?: ReasoningEffort }).reasoningEffort = reasoningEffort;
-    (requestWithReasoning as { complexityFactors: ComplexityFactors }).complexityFactors = complexityFactors;
-    (requestWithReasoning as { languageContext: LanguageContext }).languageContext = languageContext;
-    (requestWithReasoning as { reasoningAnalysisTime: number }).reasoningAnalysisTime = reasoningAnalysisTime;
-    (requestWithReasoning as { shouldApplyReasoning: boolean }).shouldApplyReasoning = shouldApplyReasoning;
-    (requestWithReasoning as { conversationComplexity: 'simple' | 'medium' | 'complex' }).conversationComplexity = conversationComplexity;
+    (
+      requestWithReasoning as { reasoningEffort?: ReasoningEffort }
+    ).reasoningEffort = reasoningEffort;
+    (
+      requestWithReasoning as { complexityFactors: ComplexityFactors }
+    ).complexityFactors = complexityFactors;
+    (
+      requestWithReasoning as { languageContext: LanguageContext }
+    ).languageContext = languageContext;
+    (
+      requestWithReasoning as { reasoningAnalysisTime: number }
+    ).reasoningAnalysisTime = reasoningAnalysisTime;
+    (
+      requestWithReasoning as { shouldApplyReasoning: boolean }
+    ).shouldApplyReasoning = shouldApplyReasoning;
+    (
+      requestWithReasoning as {
+        conversationComplexity: 'simple' | 'medium' | 'complex';
+      }
+    ).conversationComplexity = conversationComplexity;
 
     logger.debug('Reasoning effort analysis completed', correlationId, {
       reasoningEffort,
@@ -139,8 +160,12 @@ export const reasoningEffortMiddleware = (
 
     // Provide default values on error
     const requestWithReasoning = req as unknown as RequestWithReasoningAnalysis;
-    (requestWithReasoning as { reasoningEffort?: ReasoningEffort }).reasoningEffort = undefined;
-    (requestWithReasoning as { complexityFactors: ComplexityFactors }).complexityFactors = {
+    (
+      requestWithReasoning as { reasoningEffort?: ReasoningEffort }
+    ).reasoningEffort = undefined;
+    (
+      requestWithReasoning as { complexityFactors: ComplexityFactors }
+    ).complexityFactors = {
       contentLength: 0,
       messageCount: 1,
       codeBlockCount: 0,
@@ -158,15 +183,25 @@ export const reasoningEffortMiddleware = (
       hasMultipleLanguages: false,
       hasComplexFrameworkPatterns: false,
     };
-    (requestWithReasoning as { languageContext: LanguageContext }).languageContext = {
+    (
+      requestWithReasoning as { languageContext: LanguageContext }
+    ).languageContext = {
       primaryLanguage: 'unknown',
       frameworks: [],
       complexity: 'simple',
       developmentType: 'completion',
     };
-    (requestWithReasoning as { reasoningAnalysisTime: number }).reasoningAnalysisTime = reasoningAnalysisTime;
-    (requestWithReasoning as { shouldApplyReasoning: boolean }).shouldApplyReasoning = false;
-    (requestWithReasoning as { conversationComplexity: 'simple' | 'medium' | 'complex' }).conversationComplexity = 'simple';
+    (
+      requestWithReasoning as { reasoningAnalysisTime: number }
+    ).reasoningAnalysisTime = reasoningAnalysisTime;
+    (
+      requestWithReasoning as { shouldApplyReasoning: boolean }
+    ).shouldApplyReasoning = false;
+    (
+      requestWithReasoning as {
+        conversationComplexity: 'simple' | 'medium' | 'complex';
+      }
+    ).conversationComplexity = 'simple';
 
     next();
   }
@@ -175,7 +210,9 @@ export const reasoningEffortMiddleware = (
 /**
  * Type guard to check if request has reasoning analysis information
  */
-export function hasReasoningAnalysis(req: Request): req is RequestWithReasoningAnalysis {
+export function hasReasoningAnalysis(
+  req: Request
+): req is RequestWithReasoningAnalysis {
   const requestWithReasoning = req as RequestWithReasoningAnalysis;
   return (
     typeof requestWithReasoning.reasoningAnalysisTime === 'number' &&
@@ -200,12 +237,10 @@ function isClaudeRequest(body: unknown): boolean {
   return (
     'messages' in requestBody &&
     Array.isArray(requestBody.messages) &&
-    (
-      'system' in requestBody ||
+    ('system' in requestBody ||
       'max_tokens' in requestBody ||
       'anthropic-version' in requestBody ||
-      hasClaudeContentBlocks(requestBody.messages)
-    )
+      hasClaudeContentBlocks(requestBody.messages))
   );
 }
 

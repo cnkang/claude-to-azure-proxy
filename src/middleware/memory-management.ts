@@ -15,8 +15,14 @@
 
 import type { Request, Response, NextFunction } from 'express';
 import { logger } from './logging.js';
-import { getCurrentMemoryMetrics, forceGarbageCollection } from '../utils/memory-manager.js';
-import { createHTTPConnectionResource, resourceManager } from '../runtime/resource-manager.js';
+import {
+  getCurrentMemoryMetrics,
+  forceGarbageCollection,
+} from '../utils/memory-manager.js';
+import {
+  createHTTPConnectionResource,
+  resourceManager,
+} from '../runtime/resource-manager.js';
 import type { RequestWithCorrelationId } from '../types/index.js';
 import loadedConfig from '../config/index.js';
 
@@ -118,11 +124,11 @@ export class MemoryManagementMiddleware {
   ): void => {
     const request = req as RequestWithMemoryTracking;
     const correlationId = request.correlationId || 'unknown';
-    
+
     // Initialize memory tracking
     const startMemory = process.memoryUsage();
     const startTime = Date.now();
-    
+
     request.memoryInfo = {
       startMemory,
       startTime,
@@ -136,7 +142,9 @@ export class MemoryManagementMiddleware {
     }
 
     // Create resource tracking for this request
-    let connectionResource: ReturnType<typeof createHTTPConnectionResource> | undefined;
+    let connectionResource:
+      | ReturnType<typeof createHTTPConnectionResource>
+      | undefined;
     if (this.config.enableResourceTracking) {
       connectionResource = createHTTPConnectionResource(req, res, req.socket);
     }
@@ -160,7 +168,10 @@ export class MemoryManagementMiddleware {
       }
 
       // Log memory usage for slow requests
-      if (this.config.logSlowRequestMemory && duration > this.config.slowRequestThreshold) {
+      if (
+        this.config.logSlowRequestMemory &&
+        duration > this.config.slowRequestThreshold
+      ) {
         logger.warn('Slow request with memory tracking', correlationId, {
           method: req.method,
           url: req.originalUrl,
@@ -188,7 +199,8 @@ export class MemoryManagementMiddleware {
       }
 
       // Suggest garbage collection for memory-intensive requests
-      if (this.config.enableGCSuggestions && memoryDelta > 10 * 1024 * 1024) { // 10MB
+      if (this.config.enableGCSuggestions && memoryDelta > 10 * 1024 * 1024) {
+        // 10MB
         this.suggestGarbageCollection(correlationId, memoryDelta);
       }
     };
@@ -213,7 +225,7 @@ export class MemoryManagementMiddleware {
     memoryUsage: NodeJS.MemoryUsage
   ): void {
     const heapPercentage = (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
-    
+
     if (heapPercentage > this.config.pressureThreshold) {
       logger.warn('Memory pressure detected during request', correlationId, {
         heapUsage: Math.round(heapPercentage),
@@ -232,12 +244,12 @@ export class MemoryManagementMiddleware {
    */
   private performPeriodicMemoryCheck(correlationId: string): void {
     const now = Date.now();
-    
+
     // Only check memory every 5 minutes to avoid overhead
     if (now - this.lastMemoryCheck < 300000) {
       return;
     }
-    
+
     this.lastMemoryCheck = now;
 
     try {
@@ -245,22 +257,36 @@ export class MemoryManagementMiddleware {
       const resourceStats = resourceManager.getResourceStats();
 
       // Check for potential memory leaks
-      if (memoryMetrics.pressure.level === 'high' || memoryMetrics.pressure.level === 'critical') {
+      if (
+        memoryMetrics.pressure.level === 'high' ||
+        memoryMetrics.pressure.level === 'critical'
+      ) {
         this.memoryLeakWarnings += 1;
-        
-        logger.warn('Potential memory leak detected during periodic check', correlationId, {
-          pressureLevel: memoryMetrics.pressure.level,
-          heapUsage: memoryMetrics.heap.percentage,
-          activeResources: resourceStats.active,
-          totalRequests: this.requestCount,
-          leakWarnings: this.memoryLeakWarnings,
-        });
+
+        logger.warn(
+          'Potential memory leak detected during periodic check',
+          correlationId,
+          {
+            pressureLevel: memoryMetrics.pressure.level,
+            heapUsage: memoryMetrics.heap.percentage,
+            activeResources: resourceStats.active,
+            totalRequests: this.requestCount,
+            leakWarnings: this.memoryLeakWarnings,
+          }
+        );
 
         // Force garbage collection if available and pressure is critical
-        if (memoryMetrics.pressure.level === 'critical' && typeof global.gc === 'function') {
-          logger.info('Forcing garbage collection due to critical memory pressure', correlationId, {
-            heapUsage: memoryMetrics.heap.percentage,
-          });
+        if (
+          memoryMetrics.pressure.level === 'critical' &&
+          typeof global.gc === 'function'
+        ) {
+          logger.info(
+            'Forcing garbage collection due to critical memory pressure',
+            correlationId,
+            {
+              heapUsage: memoryMetrics.heap.percentage,
+            }
+          );
           global.gc();
         }
       }
@@ -273,7 +299,6 @@ export class MemoryManagementMiddleware {
           resourcesByType: resourceStats.byType,
         });
       }
-
     } catch (error) {
       logger.error('Error during periodic memory check', correlationId, {
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -288,24 +313,36 @@ export class MemoryManagementMiddleware {
    * @param correlationId - Request correlation ID
    * @param memoryDelta - Memory usage delta
    */
-  private suggestGarbageCollection(correlationId: string, memoryDelta: number): void {
+  private suggestGarbageCollection(
+    correlationId: string,
+    memoryDelta: number
+  ): void {
     logger.debug('Memory-intensive request detected', correlationId, {
       memoryDelta,
       suggestion: 'Consider garbage collection',
     });
 
     // Trigger GC if available and delta is very large
-    if (memoryDelta > 50 * 1024 * 1024) { // 50MB
+    if (memoryDelta > 50 * 1024 * 1024) {
+      // 50MB
       const gcTriggered = forceGarbageCollection();
 
       if (gcTriggered) {
-        logger.info('Garbage collection triggered for memory-intensive request', correlationId, {
-          memoryDelta,
-        });
+        logger.info(
+          'Garbage collection triggered for memory-intensive request',
+          correlationId,
+          {
+            memoryDelta,
+          }
+        );
       } else {
-        logger.warn('Garbage collection unavailable for memory-intensive request', correlationId, {
-          memoryDelta,
-        });
+        logger.warn(
+          'Garbage collection unavailable for memory-intensive request',
+          correlationId,
+          {
+            memoryDelta,
+          }
+        );
       }
     }
   }
@@ -370,7 +407,9 @@ export const memoryManagementMiddleware = memoryMiddleware.middleware;
  * @public
  * @returns Memory middleware statistics
  */
-export function getMemoryMiddlewareStats(): ReturnType<MemoryManagementMiddleware['getStats']> {
+export function getMemoryMiddlewareStats(): ReturnType<
+  MemoryManagementMiddleware['getStats']
+> {
   return memoryMiddleware.getStats();
 }
 
@@ -390,7 +429,9 @@ export function resetMemoryMiddlewareStats(): void {
  * @param req - Express request object
  * @returns True if request has memory tracking
  */
-export function hasMemoryTracking(req: Request): req is RequestWithMemoryTracking {
+export function hasMemoryTracking(
+  req: Request
+): req is RequestWithMemoryTracking {
   return 'memoryInfo' in req && req.memoryInfo !== undefined;
 }
 
@@ -401,6 +442,8 @@ export function hasMemoryTracking(req: Request): req is RequestWithMemoryTrackin
  * @param req - Express request object
  * @returns Memory information or undefined
  */
-export function getRequestMemoryInfo(req: Request): RequestMemoryInfo | undefined {
+export function getRequestMemoryInfo(
+  req: Request
+): RequestMemoryInfo | undefined {
   return hasMemoryTracking(req) ? req.memoryInfo : undefined;
 }

@@ -23,7 +23,10 @@ import type {
 } from '../types/index.js';
 import { normalizeHeaderValue } from '../utils/http-headers.js';
 import { resolveCorrelationId } from '../utils/correlation-id.js';
-import { getCurrentMemoryMetrics, forceGarbageCollection } from '../utils/memory-manager.js';
+import {
+  getCurrentMemoryMetrics,
+  forceGarbageCollection,
+} from '../utils/memory-manager.js';
 import { getRequestMemoryInfo } from './memory-management.js';
 import loadedConfig from '../config/index.js';
 
@@ -84,7 +87,7 @@ export class EnhancedErrorHandler {
     try {
       // Check memory state during error handling
       const memoryInfo = this.gatherMemoryInfo(req);
-      
+
       // Log the error with memory context
       if (this.config.logErrors) {
         this.logErrorWithMemoryContext(error, context, memoryInfo);
@@ -116,7 +119,6 @@ export class EnhancedErrorHandler {
       if (memoryInfo.pressureDetected && loadedConfig.ENABLE_AUTO_GC) {
         this.handleMemoryPressureOnError(context.correlationId);
       }
-
     } catch (handlingError) {
       // Error occurred while handling the original error
       logger.critical(
@@ -457,21 +459,26 @@ export class EnhancedErrorHandler {
   } {
     const currentMemory = process.memoryUsage();
     const requestMemoryInfo = getRequestMemoryInfo(req);
-    
+
     let memoryMetrics: ReturnType<typeof getCurrentMemoryMetrics> | undefined;
     let pressureDetected = false;
 
     try {
       if (loadedConfig.ENABLE_MEMORY_MANAGEMENT) {
         memoryMetrics = getCurrentMemoryMetrics();
-        pressureDetected = memoryMetrics.pressure.level === 'high' || 
-                          memoryMetrics.pressure.level === 'critical';
+        pressureDetected =
+          memoryMetrics.pressure.level === 'high' ||
+          memoryMetrics.pressure.level === 'critical';
       }
     } catch (error) {
       // Memory metrics gathering failed, continue without it
-      logger.debug('Failed to gather memory metrics during error handling', '', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      logger.debug(
+        'Failed to gather memory metrics during error handling',
+        '',
+        {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        }
+      );
     }
 
     return {
@@ -544,17 +551,25 @@ export class EnhancedErrorHandler {
    * @param correlationId - Request correlation ID
    */
   private handleMemoryPressureOnError(correlationId: string): void {
-    logger.warn('Memory pressure detected during error handling', correlationId, {
-      action: 'triggering_garbage_collection',
-    });
+    logger.warn(
+      'Memory pressure detected during error handling',
+      correlationId,
+      {
+        action: 'triggering_garbage_collection',
+      }
+    );
 
     // Force garbage collection to free memory during error scenarios
     const gcTriggered = forceGarbageCollection();
-    
+
     if (!gcTriggered) {
-      logger.warn('Could not trigger garbage collection during memory pressure', correlationId, {
-        suggestion: 'Consider running with --expose-gc flag',
-      });
+      logger.warn(
+        'Could not trigger garbage collection during memory pressure',
+        correlationId,
+        {
+          suggestion: 'Consider running with --expose-gc flag',
+        }
+      );
     }
   }
 

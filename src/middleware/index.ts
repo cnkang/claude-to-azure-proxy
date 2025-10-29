@@ -66,7 +66,7 @@ export type {
 
 export type { RequestWithFormat } from './format-detection.js';
 export type { RequestWithReasoningAnalysis } from './reasoning-effort.js';
-export type { 
+export type {
   RequestWithMemoryTracking,
   RequestMemoryInfo,
   MemoryMiddlewareConfig,

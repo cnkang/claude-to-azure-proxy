@@ -50,7 +50,9 @@ export const helmetConfig = helmet({
   xssFilter: true,
 });
 
-const parsePositiveInteger = (value: string | undefined): number | undefined => {
+const parsePositiveInteger = (
+  value: string | undefined
+): number | undefined => {
   if (value === undefined) {
     return undefined;
   }
@@ -63,24 +65,26 @@ const parsePositiveInteger = (value: string | undefined): number | undefined => 
   return undefined;
 };
 
-const defaultRateLimitDefinitions: Record<'global' | 'auth' | 'api', RateLimitConfig> =
-  {
-    global: {
-      windowMs: 15 * 60 * 1000, // 15 minutes
-      maxRequests: 5000,
-      message: 'Too many requests from this IP, please try again later.',
-    },
-    auth: {
-      windowMs: 15 * 60 * 1000, // 15 minutes
-      maxRequests: 100,
-      message: 'Too many authentication attempts, please try again later.',
-    },
-    api: {
-      windowMs: 1 * 60 * 1000, // 1 minute
-      maxRequests: 200,
-      message: 'API rate limit exceeded, please try again later.',
-    },
-  };
+const defaultRateLimitDefinitions: Record<
+  'global' | 'auth' | 'api',
+  RateLimitConfig
+> = {
+  global: {
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    maxRequests: 5000,
+    message: 'Too many requests from this IP, please try again later.',
+  },
+  auth: {
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    maxRequests: 100,
+    message: 'Too many authentication attempts, please try again later.',
+  },
+  api: {
+    windowMs: 1 * 60 * 1000, // 1 minute
+    maxRequests: 200,
+    message: 'API rate limit exceeded, please try again later.',
+  },
+};
 
 const rateLimitNamespaceStore = new WeakMap<Request['app'], string>();
 const rateLimitTimestampStateStore = new WeakMap<
@@ -157,20 +161,31 @@ const resolveRateLimitConfig = (
   const globalMax = parsePositiveInteger(process.env.RATE_LIMIT_MAX_REQUESTS);
 
   const isTestEnvironment = process.env.NODE_ENV === 'test';
-  const testWindow = parsePositiveInteger(process.env.RATE_LIMIT_TEST_WINDOW_MS);
-  const testMax = parsePositiveInteger(process.env.RATE_LIMIT_TEST_MAX_REQUESTS);
+  const testWindow = parsePositiveInteger(
+    process.env.RATE_LIMIT_TEST_WINDOW_MS
+  );
+  const testMax = parsePositiveInteger(
+    process.env.RATE_LIMIT_TEST_MAX_REQUESTS
+  );
 
   const windowMs =
     specificWindow ??
     globalWindow ??
-    (isTestEnvironment ? testWindow ?? defaults.windowMs : defaults.windowMs);
+    (isTestEnvironment ? (testWindow ?? defaults.windowMs) : defaults.windowMs);
 
   let maxRequests =
     specificMax ??
     globalMax ??
-    (isTestEnvironment ? testMax ?? defaults.maxRequests : defaults.maxRequests);
+    (isTestEnvironment
+      ? (testMax ?? defaults.maxRequests)
+      : defaults.maxRequests);
 
-  if (isTestEnvironment && prefix === 'GLOBAL' && specificMax === undefined && globalMax === undefined) {
+  if (
+    isTestEnvironment &&
+    prefix === 'GLOBAL' &&
+    specificMax === undefined &&
+    globalMax === undefined
+  ) {
     maxRequests = testMax ?? 10;
   }
 
@@ -316,7 +331,11 @@ const baseGlobalRateLimit = rateLimit({
   },
 });
 
-export const globalRateLimit = ((req: Request, res: Response, next: NextFunction) => {
+export const globalRateLimit = ((
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   ensureMonotonicTimestamp(req, res);
   return baseGlobalRateLimit(req, res, next);
 }) as typeof baseGlobalRateLimit;

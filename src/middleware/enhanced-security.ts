@@ -6,8 +6,15 @@
 import rateLimit from 'express-rate-limit';
 import type { Request, Response, NextFunction } from 'express';
 import { logger } from './logging.js';
-import { ValidationError, RateLimitError, AuthenticationError } from '../errors/index.js';
-import type { RequestWithCorrelationId, SecurityAuditLog } from '../types/index.js';
+import {
+  ValidationError,
+  RateLimitError,
+  AuthenticationError,
+} from '../errors/index.js';
+import type {
+  RequestWithCorrelationId,
+  SecurityAuditLog,
+} from '../types/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { normalizeHeaderValue } from '../utils/http-headers.js';
 import { resolveCorrelationId } from '../utils/correlation-id.js';
@@ -29,7 +36,8 @@ export const enhancedRateLimitConfigs = {
   completions: {
     windowMs: 1 * 60 * 1000, // 1 minute
     max: 100, // Allow reasonable usage
-    message: 'Rate limit exceeded for completion requests. Please try again later.',
+    message:
+      'Rate limit exceeded for completion requests. Please try again later.',
     standardHeaders: true,
     legacyHeaders: false,
   },
@@ -38,7 +46,8 @@ export const enhancedRateLimitConfigs = {
   streaming: {
     windowMs: 1 * 60 * 1000, // 1 minute
     max: 50, // Lower limit for streaming due to resource usage
-    message: 'Rate limit exceeded for streaming requests. Please try again later.',
+    message:
+      'Rate limit exceeded for streaming requests. Please try again later.',
     standardHeaders: true,
     legacyHeaders: false,
   },
@@ -65,7 +74,10 @@ export const enhancedRateLimitConfigs = {
 /**
  * Create enhanced rate limiter with security logging
  */
-function createEnhancedRateLimit(config: typeof enhancedRateLimitConfigs[keyof typeof enhancedRateLimitConfigs], name: string) {
+function createEnhancedRateLimit(
+  config: (typeof enhancedRateLimitConfigs)[keyof typeof enhancedRateLimitConfigs],
+  name: string
+) {
   return rateLimit({
     ...config,
     keyGenerator: (req: Request): string => {
@@ -120,10 +132,22 @@ function createEnhancedRateLimit(config: typeof enhancedRateLimitConfigs[keyof t
  * Enhanced rate limiters
  */
 export const enhancedRateLimiters = {
-  authentication: createEnhancedRateLimit(enhancedRateLimitConfigs.authentication, 'authentication'),
-  completions: createEnhancedRateLimit(enhancedRateLimitConfigs.completions, 'completions'),
-  streaming: createEnhancedRateLimit(enhancedRateLimitConfigs.streaming, 'streaming'),
-  healthCheck: createEnhancedRateLimit(enhancedRateLimitConfigs.healthCheck, 'healthCheck'),
+  authentication: createEnhancedRateLimit(
+    enhancedRateLimitConfigs.authentication,
+    'authentication'
+  ),
+  completions: createEnhancedRateLimit(
+    enhancedRateLimitConfigs.completions,
+    'completions'
+  ),
+  streaming: createEnhancedRateLimit(
+    enhancedRateLimitConfigs.streaming,
+    'streaming'
+  ),
+  healthCheck: createEnhancedRateLimit(
+    enhancedRateLimitConfigs.healthCheck,
+    'healthCheck'
+  ),
   global: createEnhancedRateLimit(enhancedRateLimitConfigs.global, 'global'),
 };
 
@@ -321,11 +345,7 @@ export function validateRequestIntegrity(
 
   try {
     // Validate request structure
-    if (
-      req.method === 'POST' &&
-      req.body !== undefined &&
-      req.body !== null
-    ) {
+    if (req.method === 'POST' && req.body !== undefined && req.body !== null) {
       if (typeof req.body !== 'object' || req.body === null) {
         const validationError = new ValidationError(
           'Request body must be a valid JSON object',
@@ -432,15 +452,17 @@ export function enhancedSecurityHeaders(
     'X-Frame-Options': 'DENY',
     'X-XSS-Protection': '1; mode=block',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
-    'Permissions-Policy': 'geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()',
+    'Permissions-Policy':
+      'geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()',
     'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
-    'Content-Security-Policy': "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; media-src 'none'; child-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+    'Content-Security-Policy':
+      "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; media-src 'none'; child-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
     'Cross-Origin-Embedder-Policy': 'require-corp',
     'Cross-Origin-Opener-Policy': 'same-origin',
     'Cross-Origin-Resource-Policy': 'same-origin',
     'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-    'Pragma': 'no-cache',
-    'Expires': '0',
+    Pragma: 'no-cache',
+    Expires: '0',
   });
 
   next();
@@ -533,20 +555,23 @@ function isSuspiciousUserAgent(userAgent: string): boolean {
     /^$/,
   ];
 
-  return suspiciousPatterns.some(pattern => pattern.test(userAgent));
+  return suspiciousPatterns.some((pattern) => pattern.test(userAgent));
 }
 
 function getObjectDepth(obj: unknown, depth = 0): number {
   if (depth > 20) {
     return depth; // Prevent stack overflow
   }
-  
+
   if (typeof obj !== 'object' || obj === null) {
     return depth;
   }
 
   if (Array.isArray(obj)) {
-    return Math.max(depth, ...obj.map(item => getObjectDepth(item, depth + 1)));
+    return Math.max(
+      depth,
+      ...obj.map((item) => getObjectDepth(item, depth + 1))
+    );
   }
 
   const objRecord = obj as Record<string, unknown>;
@@ -555,7 +580,10 @@ function getObjectDepth(obj: unknown, depth = 0): number {
     return depth;
   }
 
-  return Math.max(depth, ...values.map(value => getObjectDepth(value, depth + 1)));
+  return Math.max(
+    depth,
+    ...values.map((value) => getObjectDepth(value, depth + 1))
+  );
 }
 
 function hasExcessiveArrays(obj: unknown, maxLength: number): boolean {
@@ -563,12 +591,12 @@ function hasExcessiveArrays(obj: unknown, maxLength: number): boolean {
     if (obj.length > maxLength) {
       return true;
     }
-    return obj.some(item => hasExcessiveArrays(item, maxLength));
+    return obj.some((item) => hasExcessiveArrays(item, maxLength));
   }
 
   if (typeof obj === 'object' && obj !== null) {
     const objRecord = obj as Record<string, unknown>;
-    return Object.values(objRecord).some(value => 
+    return Object.values(objRecord).some((value) =>
       hasExcessiveArrays(value, maxLength)
     );
   }
