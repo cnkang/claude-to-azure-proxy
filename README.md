@@ -410,7 +410,7 @@ See the [Deployment Guide](docs/DEPLOYMENT.md) for detailed instructions.
 docker build -t claude-to-azure-proxy .
 
 # Run with environment file
-docker run -p 8080:8080 --env-file .env claude-to-azure-proxy
+docker run --init -p 8080:8080 --env-file .env claude-to-azure-proxy
 ```
 
 ### Docker Compose

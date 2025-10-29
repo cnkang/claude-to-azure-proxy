@@ -103,7 +103,7 @@ hadolint Dockerfile                          # Dockerfile linting
 ### Runtime Security
 ```bash
 # Run with security constraints
-docker run --read-only --tmpfs /tmp \
+docker run --init --read-only --tmpfs /tmp \
   --cap-drop=ALL --cap-add=NET_BIND_SERVICE \
   --user 1001:1001 \
   claude-to-azure-proxy:latest

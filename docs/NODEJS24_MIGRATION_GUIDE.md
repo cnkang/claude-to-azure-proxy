@@ -86,7 +86,7 @@ FROM node:24-alpine AS base
 
 # Verify the change
 docker build -t claude-proxy:node24 .
-docker run --rm claude-proxy:node24 node --version
+docker run --init --rm claude-proxy:node24 node --version
 ```
 
 #### Production Servers
