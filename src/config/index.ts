@@ -227,6 +227,94 @@ export interface Config {
    * @example 3
    */
   AWS_BEDROCK_MAX_RETRIES?: number;
+
+  /**
+   * Node.js 24 memory management configuration.
+   *
+   * Enable enhanced memory management features including GC monitoring,
+   * memory leak detection, and automatic memory pressure handling.
+   *
+   * @default true
+   * @example true | false
+   */
+  ENABLE_MEMORY_MANAGEMENT: boolean;
+
+  /**
+   * Memory monitoring sample interval in milliseconds.
+   *
+   * How frequently to collect memory usage samples for analysis.
+   * Lower values provide more granular monitoring but use more resources.
+   *
+   * @default 10000
+   * @example 5000 | 10000 | 30000
+   */
+  MEMORY_SAMPLE_INTERVAL: number;
+
+  /**
+   * Memory pressure threshold for triggering warnings (percentage).
+   *
+   * When heap usage exceeds this percentage, warnings will be logged
+   * and memory optimization suggestions will be provided.
+   *
+   * @default 80
+   * @example 70 | 80 | 90
+   */
+  MEMORY_PRESSURE_THRESHOLD: number;
+
+  /**
+   * Enable automatic garbage collection on memory pressure.
+   *
+   * When enabled, the system will automatically trigger garbage collection
+   * when memory pressure exceeds the critical threshold.
+   *
+   * @default true
+   * @example true | false
+   */
+  ENABLE_AUTO_GC: boolean;
+
+  /**
+   * Enable resource leak detection and monitoring.
+   *
+   * When enabled, the system will track resource usage and detect
+   * potential leaks in HTTP connections, streams, and timers.
+   *
+   * @default true
+   * @example true | false
+   */
+  ENABLE_RESOURCE_MONITORING: boolean;
+
+  /**
+   * HTTP server keep-alive timeout in milliseconds.
+   *
+   * How long to keep HTTP connections alive for reuse.
+   * Should be slightly higher than load balancer timeout.
+   *
+   * @default 65000
+   * @example 60000 | 65000 | 75000
+   */
+  HTTP_KEEP_ALIVE_TIMEOUT: number;
+
+  /**
+   * HTTP server headers timeout in milliseconds.
+   *
+   * Maximum time to wait for request headers to be received.
+   * Should be higher than keep-alive timeout.
+   *
+   * @default 66000
+   * @example 61000 | 66000 | 76000
+   */
+  HTTP_HEADERS_TIMEOUT: number;
+
+  /**
+   * Maximum number of concurrent HTTP connections.
+   *
+   * Limits the number of simultaneous connections to prevent
+   * resource exhaustion and ensure stable performance.
+   *
+   * @default 1000
+   * @example 500 | 1000 | 2000
+   */
+  HTTP_MAX_CONNECTIONS: number;
 }
 
 /**
@@ -343,6 +431,55 @@ const configSchema = Joi.object<Config>({
     .default(3)
     .optional()
     .description('AWS Bedrock maximum retry attempts (default: 3)'),
+
+  // Node.js 24 memory management configuration
+  ENABLE_MEMORY_MANAGEMENT: Joi.boolean()
+    .default(true)
+    .description('Enable Node.js 24 enhanced memory management features'),
+
+  MEMORY_SAMPLE_INTERVAL: Joi.number()
+    .integer()
+    .min(1000)
+    .max(60000)
+    .default(10000)
+    .description('Memory monitoring sample interval in milliseconds (default: 10000)'),
+
+  MEMORY_PRESSURE_THRESHOLD: Joi.number()
+    .integer()
+    .min(50)
+    .max(95)
+    .default(80)
+    .description('Memory pressure threshold percentage (default: 80)'),
+
+  ENABLE_AUTO_GC: Joi.boolean()
+    .default(true)
+    .description('Enable automatic garbage collection on memory pressure'),
+
+  ENABLE_RESOURCE_MONITORING: Joi.boolean()
+    .default(true)
+    .description('Enable resource leak detection and monitoring'),
+
+  // HTTP server optimization configuration
+  HTTP_KEEP_ALIVE_TIMEOUT: Joi.number()
+    .integer()
+    .min(30000)
+    .max(300000)
+    .default(65000)
+    .description('HTTP keep-alive timeout in milliseconds (default: 65000)'),
+
+  HTTP_HEADERS_TIMEOUT: Joi.number()
+    .integer()
+    .min(30000)
+    .max(300000)
+    .default(66000)
+    .description('HTTP headers timeout in milliseconds (default: 66000)'),
+
+  HTTP_MAX_CONNECTIONS: Joi.number()
+    .integer()
+    .min(100)
+    .max(10000)
+    .default(1000)
+    .description('Maximum concurrent HTTP connections (default: 1000)'),
 });
 
 /**
@@ -371,6 +508,15 @@ function createConfig(): Readonly<Config> {
     AWS_BEDROCK_REGION: process.env.AWS_BEDROCK_REGION,
     AWS_BEDROCK_TIMEOUT: process.env.AWS_BEDROCK_TIMEOUT,
     AWS_BEDROCK_MAX_RETRIES: process.env.AWS_BEDROCK_MAX_RETRIES,
+    // Node.js 24 configuration
+    ENABLE_MEMORY_MANAGEMENT: process.env.ENABLE_MEMORY_MANAGEMENT,
+    MEMORY_SAMPLE_INTERVAL: process.env.MEMORY_SAMPLE_INTERVAL,
+    MEMORY_PRESSURE_THRESHOLD: process.env.MEMORY_PRESSURE_THRESHOLD,
+    ENABLE_AUTO_GC: process.env.ENABLE_AUTO_GC,
+    ENABLE_RESOURCE_MONITORING: process.env.ENABLE_RESOURCE_MONITORING,
+    HTTP_KEEP_ALIVE_TIMEOUT: process.env.HTTP_KEEP_ALIVE_TIMEOUT,
+    HTTP_HEADERS_TIMEOUT: process.env.HTTP_HEADERS_TIMEOUT,
+    HTTP_MAX_CONNECTIONS: process.env.HTTP_MAX_CONNECTIONS,
   };
 
   // Validate against schema
@@ -427,6 +573,16 @@ function createConfig(): Readonly<Config> {
       '  - AWS_BEDROCK_REGION: AWS Bedrock region (optional, default: us-west-2)',
       '  - AWS_BEDROCK_TIMEOUT: AWS Bedrock request timeout in ms (optional, 5000-300000, default: 120000)',
       '  - AWS_BEDROCK_MAX_RETRIES: AWS Bedrock max retry attempts (optional, 0-10, default: 3)',
+      '',
+      'Node.js 24 Configuration (optional):',
+      '  - ENABLE_MEMORY_MANAGEMENT: Enable memory management features (true|false, default: true)',
+      '  - MEMORY_SAMPLE_INTERVAL: Memory sampling interval in ms (1000-60000, default: 10000)',
+      '  - MEMORY_PRESSURE_THRESHOLD: Memory pressure threshold % (50-95, default: 80)',
+      '  - ENABLE_AUTO_GC: Enable automatic garbage collection (true|false, default: true)',
+      '  - ENABLE_RESOURCE_MONITORING: Enable resource monitoring (true|false, default: true)',
+      '  - HTTP_KEEP_ALIVE_TIMEOUT: HTTP keep-alive timeout in ms (30000-300000, default: 65000)',
+      '  - HTTP_HEADERS_TIMEOUT: HTTP headers timeout in ms (30000-300000, default: 66000)',
+      '  - HTTP_MAX_CONNECTIONS: Maximum HTTP connections (100-10000, default: 1000)',
     ].join('\n');
 
     throw new ConfigurationError(
@@ -467,6 +623,14 @@ export interface SanitizedConfig {
   readonly AWS_BEDROCK_REGION?: string;
   readonly AWS_BEDROCK_TIMEOUT?: number;
   readonly AWS_BEDROCK_MAX_RETRIES?: number;
+  readonly ENABLE_MEMORY_MANAGEMENT: boolean;
+  readonly MEMORY_SAMPLE_INTERVAL: number;
+  readonly MEMORY_PRESSURE_THRESHOLD: number;
+  readonly ENABLE_AUTO_GC: boolean;
+  readonly ENABLE_RESOURCE_MONITORING: boolean;
+  readonly HTTP_KEEP_ALIVE_TIMEOUT: number;
+  readonly HTTP_HEADERS_TIMEOUT: number;
+  readonly HTTP_MAX_CONNECTIONS: number;
 }
 
 function assertIsConfig(value: unknown): asserts value is Config {
@@ -604,6 +768,71 @@ function assertIsConfig(value: unknown): asserts value is Config {
       'configuration_validation'
     );
   }
+
+  // Node.js 24 configuration validation
+  if (typeof candidate.ENABLE_MEMORY_MANAGEMENT !== 'boolean') {
+    throw new ConfigurationError(
+      'Configuration key ENABLE_MEMORY_MANAGEMENT is missing or not a boolean',
+      'config-validation',
+      'configuration_validation'
+    );
+  }
+
+  if (typeof candidate.MEMORY_SAMPLE_INTERVAL !== 'number') {
+    throw new ConfigurationError(
+      'Configuration key MEMORY_SAMPLE_INTERVAL is missing or not a number',
+      'config-validation',
+      'configuration_validation'
+    );
+  }
+
+  if (typeof candidate.MEMORY_PRESSURE_THRESHOLD !== 'number') {
+    throw new ConfigurationError(
+      'Configuration key MEMORY_PRESSURE_THRESHOLD is missing or not a number',
+      'config-validation',
+      'configuration_validation'
+    );
+  }
+
+  if (typeof candidate.ENABLE_AUTO_GC !== 'boolean') {
+    throw new ConfigurationError(
+      'Configuration key ENABLE_AUTO_GC is missing or not a boolean',
+      'config-validation',
+      'configuration_validation'
+    );
+  }
+
+  if (typeof candidate.ENABLE_RESOURCE_MONITORING !== 'boolean') {
+    throw new ConfigurationError(
+      'Configuration key ENABLE_RESOURCE_MONITORING is missing or not a boolean',
+      'config-validation',
+      'configuration_validation'
+    );
+  }
+
+  if (typeof candidate.HTTP_KEEP_ALIVE_TIMEOUT !== 'number') {
+    throw new ConfigurationError(
+      'Configuration key HTTP_KEEP_ALIVE_TIMEOUT is missing or not a number',
+      'config-validation',
+      'configuration_validation'
+    );
+  }
+
+  if (typeof candidate.HTTP_HEADERS_TIMEOUT !== 'number') {
+    throw new ConfigurationError(
+      'Configuration key HTTP_HEADERS_TIMEOUT is missing or not a number',
+      'config-validation',
+      'configuration_validation'
+    );
+  }
+
+  if (typeof candidate.HTTP_MAX_CONNECTIONS !== 'number') {
+    throw new ConfigurationError(
+      'Configuration key HTTP_MAX_CONNECTIONS is missing or not a number',
+      'config-validation',
+      'configuration_validation'
+    );
+  }
 }
 
 function sanitizeConfig(value: Readonly<Config>): SanitizedConfig {
@@ -623,6 +852,14 @@ function sanitizeConfig(value: Readonly<Config>): SanitizedConfig {
     AWS_BEDROCK_REGION: value.AWS_BEDROCK_REGION,
     AWS_BEDROCK_TIMEOUT: value.AWS_BEDROCK_TIMEOUT,
     AWS_BEDROCK_MAX_RETRIES: value.AWS_BEDROCK_MAX_RETRIES,
+    ENABLE_MEMORY_MANAGEMENT: value.ENABLE_MEMORY_MANAGEMENT,
+    MEMORY_SAMPLE_INTERVAL: value.MEMORY_SAMPLE_INTERVAL,
+    MEMORY_PRESSURE_THRESHOLD: value.MEMORY_PRESSURE_THRESHOLD,
+    ENABLE_AUTO_GC: value.ENABLE_AUTO_GC,
+    ENABLE_RESOURCE_MONITORING: value.ENABLE_RESOURCE_MONITORING,
+    HTTP_KEEP_ALIVE_TIMEOUT: value.HTTP_KEEP_ALIVE_TIMEOUT,
+    HTTP_HEADERS_TIMEOUT: value.HTTP_HEADERS_TIMEOUT,
+    HTTP_MAX_CONNECTIONS: value.HTTP_MAX_CONNECTIONS,
   };
 }
 
@@ -809,6 +1046,14 @@ export function getConfigurationSummary(): Record<string, unknown> {
     AWS_BEDROCK_REGION,
     AWS_BEDROCK_TIMEOUT,
     AWS_BEDROCK_MAX_RETRIES,
+    ENABLE_MEMORY_MANAGEMENT,
+    MEMORY_SAMPLE_INTERVAL,
+    MEMORY_PRESSURE_THRESHOLD,
+    ENABLE_AUTO_GC,
+    ENABLE_RESOURCE_MONITORING,
+    HTTP_KEEP_ALIVE_TIMEOUT,
+    HTTP_HEADERS_TIMEOUT,
+    HTTP_MAX_CONNECTIONS,
   } = config;
   
   return {
@@ -826,6 +1071,14 @@ export function getConfigurationSummary(): Record<string, unknown> {
     bedrockRegion: AWS_BEDROCK_REGION,
     bedrockTimeout: AWS_BEDROCK_TIMEOUT,
     bedrockMaxRetries: AWS_BEDROCK_MAX_RETRIES,
+    memoryManagementEnabled: ENABLE_MEMORY_MANAGEMENT,
+    memorySampleInterval: MEMORY_SAMPLE_INTERVAL,
+    memoryPressureThreshold: MEMORY_PRESSURE_THRESHOLD,
+    autoGcEnabled: ENABLE_AUTO_GC,
+    resourceMonitoringEnabled: ENABLE_RESOURCE_MONITORING,
+    httpKeepAliveTimeout: HTTP_KEEP_ALIVE_TIMEOUT,
+    httpHeadersTimeout: HTTP_HEADERS_TIMEOUT,
+    httpMaxConnections: HTTP_MAX_CONNECTIONS,
   };
 }
 

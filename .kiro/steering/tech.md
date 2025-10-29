@@ -6,7 +6,7 @@ inclusion: always
 
 ## Core Stack Requirements
 
-- **Runtime**: Node.js 22+ with ES Modules (ESM) - use `.js` extensions in imports
+- **Runtime**: Node.js 24+ with ES Modules (ESM) - use `.js` extensions in imports
 - **Language**: TypeScript 5.3+ with strict mode - no `any` types, explicit return types required
 - **Framework**: Express.js - always use typed Request/Response interfaces
 - **Package Manager**: pnpm (preferred) - use `pnpm` commands in scripts and documentation
@@ -92,7 +92,7 @@ try {
 
 ### Docker Requirements
 
-- Use `node:22-alpine` base image
+- Use `node:24-alpine` base image
 - Multi-stage builds: deps → builder → runner
 - Non-root user with minimal privileges
 - Health check endpoint at `/health`
