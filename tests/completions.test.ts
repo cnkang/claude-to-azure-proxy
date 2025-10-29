@@ -15,12 +15,20 @@ const mocks = setupAllMocks();
 
 // Mock Azure Responses Client
 vi.mock('../src/clients/azure-responses-client.js', () => ({
-  AzureResponsesClient: vi.fn().mockImplementation(() => mocks.azureClient),
+  AzureResponsesClient: class MockAzureResponsesClient {
+    constructor(_config: unknown) {
+      return mocks.azureClient;
+    }
+  },
 }));
 
 // Mock AWS Bedrock Client
 vi.mock('../src/clients/aws-bedrock-client.js', () => ({
-  AWSBedrockClient: vi.fn().mockImplementation(() => mocks.bedrockClient),
+  AWSBedrockClient: class MockAWSBedrockClient {
+    constructor(_config: unknown) {
+      return mocks.bedrockClient;
+    }
+  },
 }));
 
 // Mock other dependencies with typed implementations
@@ -30,7 +38,11 @@ vi.mock('../src/utils/universal-request-processor.js', () => ({
 }));
 
 vi.mock('../src/utils/reasoning-effort-analyzer.js', () => ({
-  ReasoningEffortAnalysisService: vi.fn().mockImplementation(() => mocks.reasoningAnalyzer),
+  ReasoningEffortAnalysisService: class MockReasoningEffortAnalysisService {
+    constructor() {
+      return mocks.reasoningAnalyzer;
+    }
+  },
   createReasoningEffortAnalyzer: vi.fn().mockReturnValue(mocks.reasoningAnalyzer),
 }));
 

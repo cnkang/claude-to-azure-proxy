@@ -97,7 +97,10 @@ describe('Completions Route - Responses API Integration', () => {
       })),
     };
 
-    MockedAzureResponsesClient.mockImplementation(() => mockResponsesClient);
+    MockedAzureResponsesClient.mockImplementation(function(this: any, ..._args: any[]) {
+      Object.assign(this, mockResponsesClient);
+      return this;
+    });
 
     // Create Express app with middleware
     app = express();

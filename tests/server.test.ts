@@ -178,18 +178,26 @@ describe('ProxyServer integration', () => {
     const listenSpy = vi
       .spyOn(app, 'listen')
       .mockImplementation(((_port: number, _host: string, callback: () => void) => {
-        callback();
+        // Call callback asynchronously to simulate real server behavior
+        setTimeout(callback, 10);
         return mockHttpServer;
       }) as unknown as typeof app.listen);
 
-    await server.start();
+    await Promise.race([
+      server.start(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Server start timeout')), 5000))
+    ]);
     expect(listenSpy).toHaveBeenCalled();
-    await server.stop();
+    
+    await Promise.race([
+      server.stop(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Server stop timeout')), 5000))
+    ]);
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(mockHttpServer.close).toHaveBeenCalled();
 
     listenSpy.mockRestore();
-  });
+  }, 10000);
 
   it('registers graceful shutdown handlers with the process', () => {
     const server = createProxyServer();

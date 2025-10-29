@@ -79,7 +79,9 @@ const mockHealthMonitor = {
 
 vi.mock('../src/monitoring/health-monitor.ts', () => {
   return {
-    HealthMonitor: vi.fn().mockImplementation(() => mockHealthMonitor),
+    HealthMonitor: vi.fn().mockImplementation(function() {
+      return mockHealthMonitor;
+    }),
     healthMonitor: mockHealthMonitor,
   };
 });

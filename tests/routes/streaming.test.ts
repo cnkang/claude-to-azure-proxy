@@ -89,7 +89,10 @@ describe('Streaming Functionality', () => {
       })),
     };
 
-    MockedAzureResponsesClient.mockImplementation(() => mockResponsesClient);
+    MockedAzureResponsesClient.mockImplementation(function(this: any, ..._args: any[]) {
+      Object.assign(this, mockResponsesClient);
+      return this;
+    });
 
     app = express();
     app.use(express.json());

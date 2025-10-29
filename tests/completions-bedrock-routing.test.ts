@@ -55,11 +55,19 @@ describe('Completions handler - Bedrock routing', () => {
     });
 
     vi.doMock('../src/clients/azure-responses-client.js', () => ({
-      AzureResponsesClient: vi.fn().mockImplementation(() => mocks.azureClient),
+      AzureResponsesClient: class MockAzureResponsesClient {
+        constructor(_config: unknown) {
+          return mocks.azureClient;
+        }
+      },
     }));
 
     vi.doMock('../src/clients/aws-bedrock-client.js', () => ({
-      AWSBedrockClient: vi.fn().mockImplementation(() => mocks.bedrockClient),
+      AWSBedrockClient: class MockAWSBedrockClient {
+        constructor(_config: unknown) {
+          return mocks.bedrockClient;
+        }
+      },
     }));
 
     vi.doMock('../src/utils/universal-request-processor.js', () => ({

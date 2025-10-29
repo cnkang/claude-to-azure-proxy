@@ -17,7 +17,6 @@ interface TestResponse {
 const toHeaderObject = (headers: Map<string, string>): IncomingHttpHeaders => {
   const result: IncomingHttpHeaders = {};
   for (const [key, value] of headers.entries()) {
-    // eslint-disable-next-line security/detect-object-injection
     result[key] = value;
   }
   return result;

@@ -1,6 +1,7 @@
 import net from 'node:net';
 import { vi } from 'vitest';
 import { setupTestEnvironment, createMockConfig } from './test-config.js';
+import { setupNodeJS24TestEnvironment, nodejs24TestUtils } from './nodejs24-test-config.js';
 
 declare global {
   var __AZURE_OPENAI_AXIOS_MOCK__:
@@ -356,8 +357,18 @@ vi.mock('openai', () => {
   return { OpenAI: MockOpenAI };
 });
 
+// Validate Node.js 24 environment
+try {
+  nodejs24TestUtils.validateNodeJS24Environment();
+} catch (error) {
+  console.warn('Node.js 24 validation warning:', (error as Error).message);
+}
+
 // Setup test environment variables
 setupTestEnvironment();
+
+// Setup Node.js 24 specific test environment
+setupNodeJS24TestEnvironment();
 
 // Mock the config module globally for all tests
 vi.mock('../src/config/index.js', () => createMockConfig());

@@ -54,12 +54,18 @@ const retryStrategyMocks = vi.hoisted(() => {
   const executeWithRetry = vi.fn();
   const getMetrics = vi.fn(() => ({ attempts: 1, totalDurationMs: 5 }));
   const resetMetrics = vi.fn();
-  const AzureRetryStrategy = vi.fn().mockImplementation(() => ({
-    executeWithRetry,
-    getMetrics,
-    resetMetrics,
-  }));
-  return { AzureRetryStrategy, executeWithRetry, getMetrics, resetMetrics };
+  
+  class MockAzureRetryStrategy {
+    executeWithRetry = executeWithRetry;
+    getMetrics = getMetrics;
+    resetMetrics = resetMetrics;
+    
+    constructor(_name: string, _config?: unknown) {
+      // Mock constructor
+    }
+  }
+  
+  return { AzureRetryStrategy: MockAzureRetryStrategy, executeWithRetry, getMetrics, resetMetrics };
 });
 
 vi.mock('../../src/utils/azure-retry-strategy.js', () => ({

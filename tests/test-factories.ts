@@ -375,7 +375,6 @@ export class AzureErrorFactory {
       overloaded_error: 'Service overloaded',
     };
 
-    // eslint-disable-next-line security/detect-object-injection
     const defaultMessage = messages[type] ?? 'Unknown error';
     return {
       error: {
@@ -654,7 +653,6 @@ export class PerformanceDataFactory {
     const result: Record<string, unknown> = {
       safe: `Safe content at level ${depth}`,
     };
-    // eslint-disable-next-line security/detect-object-injection
     result[levelKey] = PerformanceDataFactory.createDeepObject(depth - 1);
     return result;
   }
@@ -664,7 +662,6 @@ export class PerformanceDataFactory {
 
     for (let i = 0; i < width; i++) {
       const fieldKey = `field${i}`;
-      // eslint-disable-next-line security/detect-object-injection
       obj[fieldKey] =
         i % 10 === 0 ? '<script>alert("wide")</script>' : `Safe content ${i}`;
     }

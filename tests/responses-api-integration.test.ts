@@ -36,7 +36,11 @@ const mockAzureClient = {
 };
 
 vi.mock('../src/clients/azure-responses-client.js', () => ({
-  AzureResponsesClient: vi.fn().mockImplementation(() => mockAzureClient),
+  AzureResponsesClient: class MockAzureResponsesClient {
+    constructor(_config: unknown) {
+      return mockAzureClient;
+    }
+  },
 }));
 
 // Test configuration removed - not used in this test file

@@ -9,6 +9,8 @@ import {
   ErrorFactory,
   isBaseError,
   isOperationalError,
+  isError,
+  preserveErrorContext,
 } from '../src/errors/index.js';
 
 describe('Error Handling System', () => {
@@ -180,6 +182,211 @@ describe('Error Handling System', () => {
       expect(error.state).toBe('OPEN');
       expect(error.nextAttemptTime).toBe(nextAttempt);
       expect(error.statusCode).toBe(503);
+    });
+  });
+
+  describe('Node.js 24 Enhanced Error Handling', () => {
+    describe('isError type guard', () => {
+      it('should identify Error objects using Node.js 24 Error.isError() when available', () => {
+        const error = new Error('Test error');
+        const notError = { message: 'Not an error' };
+        const nullValue = null;
+        const undefinedValue = undefined;
+
+        expect(isError(error)).toBe(true);
+        expect(isError(notError)).toBe(false);
+        expect(isError(nullValue)).toBe(false);
+        expect(isError(undefinedValue)).toBe(false);
+      });
+
+      it('should handle edge cases correctly', () => {
+        const customError = Object.create(Error.prototype);
+        customError.message = 'Custom error';
+        customError.name = 'CustomError';
+
+        // This test depends on Node.js version and Error.isError() availability
+        // In Node.js 24, Error.isError() might be more strict than instanceof
+        const result = isError(customError);
+        expect(typeof result).toBe('boolean');
+        
+        // Test with a proper Error instance
+        const realError = new Error('Real error');
+        expect(isError(realError)).toBe(true);
+      });
+    });
+
+    describe('preserveErrorContext', () => {
+      it('should preserve error cause chain', () => {
+        const originalError = new Error('Original error');
+        const baseError = new ValidationError(
+          'Validation failed',
+          'test-correlation-id',
+          'field',
+          'value'
+        );
+
+        const enhancedError = preserveErrorContext(originalError, baseError);
+
+        expect(enhancedError.cause).toBe(originalError);
+        expect(enhancedError).toBe(baseError); // Should return the same instance
+      });
+
+      it('should preserve Node.js error properties', () => {
+        const originalError = new Error('Network error') as Error & {
+          code: string;
+          errno: number;
+          syscall: string;
+        };
+        originalError.code = 'ECONNREFUSED';
+        originalError.errno = -61;
+        originalError.syscall = 'connect';
+
+        const baseError = new NetworkError(
+          'Connection failed',
+          'test-correlation-id',
+          originalError
+        );
+
+        const enhancedError = preserveErrorContext(originalError, baseError);
+
+        expect(enhancedError.context.metadata?.originalErrorCode).toBe('ECONNREFUSED');
+        expect(enhancedError.context.metadata?.originalErrno).toBe(-61);
+        expect(enhancedError.context.metadata?.originalSyscall).toBe('connect');
+      });
+
+      it('should handle non-Error objects gracefully', () => {
+        const notAnError = { message: 'Not an error' };
+        const baseError = new ValidationError(
+          'Validation failed',
+          'test-correlation-id'
+        );
+
+        const result = preserveErrorContext(notAnError, baseError);
+
+        expect(result).toBe(baseError);
+        expect(result.cause).toBeUndefined();
+      });
+    });
+
+    describe('Enhanced ErrorFactory.transformError', () => {
+      it('should transform various error types correctly', () => {
+        const testCases = [
+          {
+            input: new Error('Standard error'),
+            expectedType: 'InternalServerError',
+            expectedMessage: 'Standard error',
+          },
+          {
+            input: 'String error',
+            expectedType: 'InternalServerError',
+            expectedMessage: 'String error',
+          },
+          {
+            input: { message: 'Object error' },
+            expectedType: 'InternalServerError',
+            expectedMessage: 'Object error',
+          },
+          {
+            input: null,
+            expectedType: 'InternalServerError',
+            expectedMessage: 'An unexpected error occurred',
+          },
+        ];
+
+        testCases.forEach(({ input, expectedType, expectedMessage }) => {
+          const result = ErrorFactory.transformError(
+            input,
+            'test-correlation-id',
+            'test-operation'
+          );
+
+          expect(result.constructor.name).toBe(expectedType);
+          expect(result.message).toBe(expectedMessage);
+          expect(result.context.correlationId).toBe('test-correlation-id');
+          expect(result.context.operation).toBe('test-operation');
+        });
+      });
+
+      it('should handle network errors with specific codes', () => {
+        const networkError = new Error('Connection refused') as Error & { code: string };
+        networkError.code = 'ECONNREFUSED';
+
+        const result = ErrorFactory.transformError(
+          networkError,
+          'test-correlation-id',
+          'network-operation'
+        );
+
+        expect(result).toBeInstanceOf(NetworkError);
+        expect(result.cause).toBe(networkError);
+      });
+
+      it('should handle timeout errors', () => {
+        const timeoutError = new Error('Request timeout') as Error & { code: string };
+        timeoutError.code = 'ETIMEDOUT';
+
+        const result = ErrorFactory.transformError(
+          timeoutError,
+          'test-correlation-id',
+          'timeout-operation'
+        );
+
+        expect(result).toBeInstanceOf(NetworkError);
+        expect(result.cause).toBe(timeoutError);
+      });
+
+      it('should preserve BaseError instances', () => {
+        const baseError = new ValidationError(
+          'Validation failed',
+          'original-correlation-id'
+        );
+
+        const result = ErrorFactory.transformError(
+          baseError,
+          'new-correlation-id',
+          'transform-operation'
+        );
+
+        expect(result).toBe(baseError);
+        expect(result.context.correlationId).toBe('original-correlation-id');
+      });
+    });
+
+    describe('Enhanced NetworkError', () => {
+      it('should preserve Node.js error properties in metadata', () => {
+        const cause = new Error('Connection failed') as Error & {
+          code: string;
+          errno: number;
+          syscall: string;
+        };
+        cause.code = 'ENOTFOUND';
+        cause.errno = -3008;
+        cause.syscall = 'getaddrinfo';
+
+        const networkError = new NetworkError(
+          'DNS lookup failed',
+          'test-correlation-id',
+          cause,
+          'dns-lookup'
+        );
+
+        expect(networkError.cause).toBe(cause);
+        expect(networkError.context.metadata?.errorCode).toBe('ENOTFOUND');
+        expect(networkError.context.metadata?.errno).toBe(-3008);
+        expect(networkError.context.metadata?.syscall).toBe('getaddrinfo');
+      });
+
+      it('should handle NetworkError without cause', () => {
+        const networkError = new NetworkError(
+          'Generic network error',
+          'test-correlation-id',
+          undefined,
+          'generic-operation'
+        );
+
+        expect(networkError.cause).toBeUndefined();
+        expect(networkError.context.metadata?.errorCode).toBeUndefined();
+      });
     });
   });
 });

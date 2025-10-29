@@ -14,12 +14,21 @@ const {
   restoreServiceLevel,
   triggerAlert,
   loggerMock,
+  getCurrentMemoryMetrics,
+  forceGarbageCollection,
+  getRequestMemoryInfo,
 } = vi.hoisted(() => {
   const executeGracefulDegradation = vi.fn();
   const autoAdjustServiceLevel = vi.fn();
   const degradeServiceLevel = vi.fn();
   const restoreServiceLevel = vi.fn();
   const triggerAlert = vi.fn();
+  const getCurrentMemoryMetrics = vi.fn(() => ({
+    pressure: { level: 'low', score: 0.3, recommendations: [] },
+    heap: { percentage: 30 },
+  }));
+  const forceGarbageCollection = vi.fn(() => true);
+  const getRequestMemoryInfo = vi.fn();
   const loggerMock = {
     info: vi.fn(),
     warn: vi.fn(),
@@ -35,6 +44,9 @@ const {
     restoreServiceLevel,
     triggerAlert,
     loggerMock,
+    getCurrentMemoryMetrics,
+    forceGarbageCollection,
+    getRequestMemoryInfo,
   };
 });
 
@@ -54,6 +66,22 @@ vi.mock('../../src/resilience/graceful-degradation.js', () => ({
 vi.mock('../../src/monitoring/health-monitor.js', () => ({
   healthMonitor: {
     triggerAlert,
+  },
+}));
+
+vi.mock('../../src/utils/memory-manager.js', () => ({
+  getCurrentMemoryMetrics,
+  forceGarbageCollection,
+}));
+
+vi.mock('../../src/middleware/memory-management.js', () => ({
+  getRequestMemoryInfo,
+}));
+
+vi.mock('../../src/config/index.js', () => ({
+  default: {
+    ENABLE_MEMORY_MANAGEMENT: true,
+    ENABLE_AUTO_GC: true,
   },
 }));
 
@@ -180,5 +208,183 @@ describe('EnhancedErrorHandler', () => {
       expect.stringContaining('Critical error'),
       'error-handler-test'
     );
+  });
+
+  describe('Node.js 24 Features', () => {
+    it('should gather memory information during error handling', async () => {
+      const handler = new EnhancedErrorHandler();
+      const req = buildRequest();
+      const res = createChainableResponse();
+      const error = new Error('Test error');
+
+      // Mock memory information
+      getRequestMemoryInfo.mockReturnValue({
+        startMemory: { heapUsed: 50 * 1024 * 1024 },
+        memoryDelta: 10 * 1024 * 1024,
+        duration: 1000,
+        pressureDetected: false,
+        resourcesCleanedUp: true,
+      });
+
+      await handler.handleError(error, req, res as unknown as Response, vi.fn());
+
+      expect(getCurrentMemoryMetrics).toHaveBeenCalled();
+      expect(getRequestMemoryInfo).toHaveBeenCalledWith(req);
+    });
+
+    it('should handle memory pressure during error scenarios', async () => {
+      const handler = new EnhancedErrorHandler();
+      const req = buildRequest();
+      const res = createChainableResponse();
+      const error = new Error('Test error');
+
+      // Mock high memory pressure
+      getCurrentMemoryMetrics.mockReturnValue({
+        pressure: { level: 'critical', score: 0.95, recommendations: [] },
+        heap: { percentage: 95 },
+      });
+
+      getRequestMemoryInfo.mockReturnValue({
+        pressureDetected: true,
+        resourcesCleanedUp: true,
+      });
+
+      await handler.handleError(error, req, res as unknown as Response, vi.fn());
+
+      expect(forceGarbageCollection).toHaveBeenCalled();
+      expect(loggerMock.warn).toHaveBeenCalledWith(
+        'Memory pressure detected during error handling',
+        'error-handler-test',
+        expect.objectContaining({
+          action: 'triggering_garbage_collection',
+        })
+      );
+    });
+
+    it('should handle Node.js 24 specific error codes', async () => {
+      const handler = new EnhancedErrorHandler();
+      const req = buildRequest();
+      const res = createChainableResponse();
+      
+      // Test ENOMEM error
+      const memoryError = new Error('Out of memory') as Error & { code: string };
+      memoryError.code = 'ENOMEM';
+
+      await handler.handleError(memoryError, req, res as unknown as Response, vi.fn());
+
+      expect(res.status).toHaveBeenCalledWith(503);
+      expect(res.json).toHaveBeenCalledWith({
+        error: expect.objectContaining({
+          type: 'memory_exhausted',
+          message: 'Server memory temporarily exhausted',
+        }),
+      });
+    });
+
+    it('should handle ERR_OUT_OF_RANGE error', async () => {
+      const handler = new EnhancedErrorHandler();
+      const req = buildRequest();
+      const res = createChainableResponse();
+      
+      const rangeError = new Error('Value out of range') as Error & { code: string };
+      rangeError.code = 'ERR_OUT_OF_RANGE';
+
+      await handler.handleError(rangeError, req, res as unknown as Response, vi.fn());
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        error: expect.objectContaining({
+          type: 'invalid_request',
+          message: 'Request parameter out of valid range',
+        }),
+      });
+    });
+
+    it('should handle ERR_INVALID_ARG_TYPE error', async () => {
+      const handler = new EnhancedErrorHandler();
+      const req = buildRequest();
+      const res = createChainableResponse();
+      
+      const typeError = new Error('Invalid argument type') as Error & { code: string };
+      typeError.code = 'ERR_INVALID_ARG_TYPE';
+
+      await handler.handleError(typeError, req, res as unknown as Response, vi.fn());
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        error: expect.objectContaining({
+          type: 'invalid_request',
+          message: 'Invalid request parameter type',
+        }),
+      });
+    });
+
+    it('should include Node.js version in error logs', async () => {
+      const handler = new EnhancedErrorHandler();
+      const req = buildRequest();
+      const res = createChainableResponse();
+      const error = new Error('Test error');
+
+      await handler.handleError(error, req, res as unknown as Response, vi.fn());
+
+      expect(loggerMock.error).toHaveBeenCalledWith(
+        expect.stringContaining('Unhandled error'),
+        'error-handler-test',
+        expect.objectContaining({
+          nodeVersion: process.version,
+          heapUsed: expect.any(Number),
+          heapTotal: expect.any(Number),
+        }),
+        error
+      );
+    });
+
+    it('should handle memory metrics gathering errors gracefully', async () => {
+      const handler = new EnhancedErrorHandler();
+      const req = buildRequest();
+      const res = createChainableResponse();
+      const error = new Error('Test error');
+
+      // Mock memory metrics error
+      getCurrentMemoryMetrics.mockImplementation(() => {
+        throw new Error('Memory metrics error');
+      });
+
+      await handler.handleError(error, req, res as unknown as Response, vi.fn());
+
+      // Should not throw and should still handle the original error
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalled();
+    });
+
+    it('should warn when GC is not available during memory pressure', async () => {
+      const handler = new EnhancedErrorHandler();
+      const req = buildRequest();
+      const res = createChainableResponse();
+      const error = new Error('Test error');
+
+      // Mock memory pressure but GC not available
+      getCurrentMemoryMetrics.mockReturnValue({
+        pressure: { level: 'critical', score: 0.95, recommendations: [] },
+        heap: { percentage: 95 },
+      });
+
+      getRequestMemoryInfo.mockReturnValue({
+        pressureDetected: true,
+        resourcesCleanedUp: true,
+      });
+
+      forceGarbageCollection.mockReturnValue(false);
+
+      await handler.handleError(error, req, res as unknown as Response, vi.fn());
+
+      expect(loggerMock.warn).toHaveBeenCalledWith(
+        'Could not trigger garbage collection during memory pressure',
+        'error-handler-test',
+        expect.objectContaining({
+          suggestion: 'Consider running with --expose-gc flag',
+        })
+      );
+    });
   });
 });
