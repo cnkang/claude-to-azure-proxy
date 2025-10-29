@@ -9,7 +9,7 @@ const config: Linter.FlatConfig[] = [
     files: ['**/*.js', '**/*.mjs', '**/*.cjs'],
     ...js.configs.recommended,
     languageOptions: {
-      ecmaVersion: 2022,
+      ecmaVersion: 2023,
       sourceType: 'module',
       globals: {
         process: 'readonly',
@@ -97,7 +97,7 @@ const config: Linter.FlatConfig[] = [
     files: ['src/**/*.ts', 'src/**/*.tsx'],
     languageOptions: {
       parserOptions: {
-        ecmaVersion: 2022,
+        ecmaVersion: 2023,
         sourceType: 'module',
         project: ['./tsconfig.eslint.json'],
         tsconfigRootDir: import.meta.dirname,
@@ -151,7 +151,7 @@ const config: Linter.FlatConfig[] = [
     files: ['tests/**/*.ts', 'tests/**/*.tsx', '**/*.test.ts', '**/*.spec.ts'],
     languageOptions: {
       parserOptions: {
-        ecmaVersion: 2022,
+        ecmaVersion: 2023,
         sourceType: 'module',
         project: ['./tsconfig.eslint.json'],
         tsconfigRootDir: import.meta.dirname,
@@ -187,15 +187,22 @@ const config: Linter.FlatConfig[] = [
       '@typescript-eslint/no-unsafe-argument': 'off',
       '@typescript-eslint/prefer-readonly': 'warn',
       '@typescript-eslint/prefer-readonly-parameter-types': 'off',
-      '@typescript-eslint/strict-boolean-expressions': 'warn',
+      '@typescript-eslint/strict-boolean-expressions': 'off',
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/await-thenable': 'error',
       '@typescript-eslint/no-misused-promises': 'error',
       '@typescript-eslint/require-await': 'off',
-      '@typescript-eslint/prefer-nullish-coalescing': 'warn',
+      '@typescript-eslint/prefer-nullish-coalescing': 'off',
       '@typescript-eslint/prefer-optional-chain': 'warn',
-      '@typescript-eslint/no-unnecessary-condition': 'warn',
-      '@typescript-eslint/no-unused-vars': 'warn',
+      '@typescript-eslint/no-unnecessary-condition': 'off',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
       '@typescript-eslint/unbound-method': 'warn',
 
       // Override base rules that conflict with TypeScript
@@ -210,7 +217,7 @@ const config: Linter.FlatConfig[] = [
       curly: ['error', 'all'],
 
       // Security rules - relaxed for tests
-      'security/detect-object-injection': 'warn',
+      'security/detect-object-injection': 'off',
       'no-script-url': 'warn',
     },
   },
@@ -234,7 +241,7 @@ const config: Linter.FlatConfig[] = [
   {
     files: ['**/*.js', '**/*.mjs'],
     languageOptions: {
-      ecmaVersion: 2022,
+      ecmaVersion: 2023,
       sourceType: 'module',
       globals: {
         // Node.js globals

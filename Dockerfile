@@ -1,8 +1,9 @@
-# Use Node.js 22 LTS Alpine base image with security updates
-FROM node:22-alpine AS base
+# Use Node.js 24 LTS Alpine base image with security updates
+FROM node:24-alpine AS base
 
-# Install security updates
+# Install security updates and required packages
 RUN apk update && apk upgrade && \
+    apk add --no-cache dumb-init && \
     rm -rf /var/cache/apk/*
 
 # Create non-root user for security
@@ -12,29 +13,33 @@ RUN addgroup -g 1001 -S nodejs && \
 # Set working directory
 WORKDIR /app
 
+# Install pnpm globally with specific version for consistency
+RUN npm install -g pnpm@10.19.0 && \
+    npm cache clean --force
+
 # Copy package manager files
 COPY package.json pnpm-lock.yaml ./
-
-# Install pnpm globally
-RUN npm install -g pnpm@10.18.3
 
 # Install dependencies in a separate layer for better caching
 FROM base AS deps
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --prod --ignore-scripts
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts && \
+    pnpm store prune
 
 # Build stage
 FROM base AS builder
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile --ignore-scripts
 COPY . .
-RUN pnpm run build
+RUN pnpm run build && \
+    pnpm store prune
 
-# Production stage
-FROM node:22-alpine AS runner
+# Production stage - optimized for Node.js 24 performance
+FROM node:24-alpine AS runner
 
-# Install security updates
+# Install security updates and dumb-init
 RUN apk update && apk upgrade && \
+    apk add --no-cache dumb-init && \
     rm -rf /var/cache/apk/*
 
 # Create non-root user
@@ -43,7 +48,7 @@ RUN addgroup -g 1001 -S nodejs && \
 
 WORKDIR /app
 
-# Copy built application and dependencies
+# Copy built application and dependencies with proper ownership
 COPY --from=deps --chown=appuser:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=appuser:nodejs /app/dist ./dist
 COPY --from=builder --chown=appuser:nodejs /app/package.json ./package.json
@@ -54,12 +59,23 @@ USER appuser
 # Expose port (will be set by PORT environment variable, default 8080)
 EXPOSE 8080
 
-# Add health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 8080) + '/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"
+# Enhanced health check with better error handling and timeout
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD node --enable-source-maps -e " \
+        const http = require('http'); \
+        const port = process.env.PORT || 8080; \
+        const req = http.get(\`http://localhost:\${port}/health\`, { timeout: 8000 }, (res) => { \
+            process.exit(res.statusCode === 200 ? 0 : 1); \
+        }); \
+        req.on('error', () => process.exit(1)); \
+        req.on('timeout', () => { req.destroy(); process.exit(1); }); \
+    "
 
-# No need for external init system - use Docker's built-in init
-# Run with: docker run --init your-image
+# Set Node.js 24 optimizations
+ENV NODE_ENV=production \
+    NODE_OPTIONS="--enable-source-maps --max-old-space-size=512" \
+    UV_THREADPOOL_SIZE=4
 
-# Start the application
-CMD ["node", "dist/index.js"]
+# Use dumb-init to handle signals properly and start the application
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "--enable-source-maps", "--max-old-space-size=512", "dist/index.js"]

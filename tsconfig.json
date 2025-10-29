@@ -2,11 +2,12 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "outDir": "./dist",
     "rootDir": "./src",
+    "lib": ["ES2022", "DOM"],
     
-    // Strict type checking options for maximum type safety
+    // Strict type checking options for maximum type safety with Node.js 24 enhancements
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
@@ -17,11 +18,11 @@
     "useUnknownInCatchVariables": true,
     "alwaysStrict": true,
     
-    // Additional checks for enhanced type safety
+    // Enhanced checks for Node.js 24 compatibility and type safety
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": false,
-    "noImplicitOverride": false,
+    "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": false,
     "exactOptionalPropertyTypes": false,
     
@@ -46,9 +47,13 @@
     "incremental": true,
     "tsBuildInfoFile": "./dist/.tsbuildinfo",
     
-    // Type definitions
+    // Type definitions for Node.js 24
     "types": ["node"],
-    "typeRoots": ["./node_modules/@types", "./src/types"]
+    "typeRoots": ["./node_modules/@types", "./src/types"],
+    
+    // Node.js 24 specific compiler options
+    "allowImportingTsExtensions": false,
+    "verbatimModuleSyntax": false
   },
   "include": [
     "src/**/*"

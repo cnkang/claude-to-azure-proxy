@@ -15,7 +15,7 @@ on:
 
 env:
   IMAGE_NAME: claude-to-azure-proxy
-  NODE_VERSION: 22
+  NODE_VERSION: 24
 
 jobs:
   # Code quality and security checks
