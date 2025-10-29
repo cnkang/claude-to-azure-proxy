@@ -87,11 +87,13 @@ export const modelsHandler = (
 
     // Create dynamic models response based on configuration
     const modelsResponse = createModelsResponse();
-    
+
     logger.info('Models response generated', correlationId, {
       modelCount: modelsResponse.data.length,
-      modelIds: modelsResponse.data.map(model => model.id),
-      providers: [...new Set(modelsResponse.data.map(model => model.provider))],
+      modelIds: modelsResponse.data.map((model) => model.id),
+      providers: [
+        ...new Set(modelsResponse.data.map((model) => model.provider)),
+      ],
     });
 
     // Return models response (Requirements 5.1, 5.3)

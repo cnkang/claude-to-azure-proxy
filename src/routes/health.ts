@@ -58,16 +58,13 @@ const checkAzureOpenAI = async (
     const baseURL = ensureResponsesBaseURL(endpointCandidate);
 
     // Simple connectivity check to Azure OpenAI models endpoint
-    const response = await axios.get(
-      `${baseURL}models`,
-      {
-        headers: {
-          Authorization: `Bearer ${config.azureOpenAI.apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        timeout: 5000, // 5 second timeout for health check
-      }
-    );
+    const response = await axios.get(`${baseURL}models`, {
+      headers: {
+        Authorization: `Bearer ${config.azureOpenAI.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      timeout: 5000, // 5 second timeout for health check
+    });
 
     const responseTime = Date.now() - startTime;
 
@@ -128,14 +125,14 @@ export const healthCheckHandler = (config: Readonly<ServerConfig>) => {
 
       // Check AWS Bedrock connectivity (Requirement 4.3: Extend health check endpoint to include AWS Bedrock service status validation)
       let awsBedrockStatus: HealthCheckResult['awsBedrock'] = undefined;
-      
+
       try {
         const healthMonitor = getHealthMonitor(config);
         const bedrockMonitor = healthMonitor.getBedrockMonitor();
-        
+
         if (bedrockMonitor) {
           awsBedrockStatus = await bedrockMonitor.checkBedrockHealth();
-          
+
           logger.debug('Bedrock health check completed', correlationId, {
             serviceId: 'bedrock',
             status: awsBedrockStatus?.status,
@@ -148,7 +145,7 @@ export const healthCheckHandler = (config: Readonly<ServerConfig>) => {
           serviceId: 'bedrock',
           error: error instanceof Error ? error.message : 'Unknown error',
         });
-        
+
         awsBedrockStatus = { status: 'disconnected' };
       }
 
@@ -157,11 +154,15 @@ export const healthCheckHandler = (config: Readonly<ServerConfig>) => {
       // In test environments, don't require Azure OpenAI connectivity
       const azureHealthy = azureOpenAIStatus.status === 'connected';
       const bedrockHealthy = awsBedrockStatus?.status === 'connected';
-      const isTestEnvironment = (config.azureOpenAI?.endpoint?.includes('test.openai.azure.com') ?? false) || 
-                               (config.azureOpenAI?.baseURL?.includes('test.openai.azure.com') ?? false);
-      
+      const isTestEnvironment =
+        (config.azureOpenAI?.endpoint?.includes('test.openai.azure.com') ??
+          false) ||
+        (config.azureOpenAI?.baseURL?.includes('test.openai.azure.com') ??
+          false);
+
       // System is healthy if memory is good AND at least one service is available (or in test environment)
-      const hasHealthyService = azureHealthy || bedrockHealthy || isTestEnvironment;
+      const hasHealthyService =
+        azureHealthy || bedrockHealthy || isTestEnvironment;
       const isHealthy = memory.percentage < 85 && hasHealthyService;
 
       // Get resilience metrics

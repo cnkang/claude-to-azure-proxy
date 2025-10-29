@@ -96,26 +96,29 @@ export const metricsHandler = (
     const allMetrics = metricsCollector.getMetrics();
 
     // Separate metrics by service (Azure vs Bedrock)
-    const azureMetrics = allMetrics.filter(metric => 
-      metric.tags?.service === 'azure' || 
-      metric.name.includes('azure') ||
-      (metric.tags?.service === undefined && !metric.name.includes('bedrock'))
+    const azureMetrics = allMetrics.filter(
+      (metric) =>
+        metric.tags?.service === 'azure' ||
+        metric.name.includes('azure') ||
+        (metric.tags?.service === undefined && !metric.name.includes('bedrock'))
     );
 
-    const bedrockMetrics = allMetrics.filter(metric => 
-      metric.tags?.service === 'bedrock' || 
-      metric.name.includes('bedrock')
+    const bedrockMetrics = allMetrics.filter(
+      (metric) =>
+        metric.tags?.service === 'bedrock' || metric.name.includes('bedrock')
     );
 
     // Calculate Azure metrics
     const azureStats = calculateServiceStats(azureMetrics);
-    
+
     // Calculate Bedrock metrics
     const bedrockStats = calculateServiceStats(bedrockMetrics);
 
     // Get Bedrock-specific metrics from monitor if available
-    let bedrockMonitorStats: import('../monitoring/bedrock-monitor.js').BedrockMetrics | undefined;
-    
+    let bedrockMonitorStats:
+      | import('../monitoring/bedrock-monitor.js').BedrockMetrics
+      | undefined;
+
     try {
       const healthMonitor = getHealthMonitor();
       const bedrockMonitor = healthMonitor.getBedrockMonitor();
@@ -129,19 +132,25 @@ export const metricsHandler = (
     }
 
     // Merge Bedrock stats with monitor stats if available
-    const finalBedrockStats = bedrockMonitorStats ? {
-      ...bedrockStats,
-      ...bedrockMonitorStats,
-    } : bedrockStats;
+    const finalBedrockStats = bedrockMonitorStats
+      ? {
+          ...bedrockStats,
+          ...bedrockMonitorStats,
+        }
+      : bedrockStats;
 
     // Calculate system-wide metrics
-    const totalRequests = azureStats.requestCount + finalBedrockStats.requestCount;
+    const totalRequests =
+      azureStats.requestCount + finalBedrockStats.requestCount;
     const totalErrors = azureStats.errorCount + finalBedrockStats.errorCount;
-    const overallErrorRate = totalRequests > 0 ? (totalErrors / totalRequests) * 100 : 0;
-    
-    const totalLatency = (azureStats.averageLatency * azureStats.requestCount) + 
-                        (finalBedrockStats.averageLatency * finalBedrockStats.requestCount);
-    const averageResponseTime = totalRequests > 0 ? totalLatency / totalRequests : 0;
+    const overallErrorRate =
+      totalRequests > 0 ? (totalErrors / totalRequests) * 100 : 0;
+
+    const totalLatency =
+      azureStats.averageLatency * azureStats.requestCount +
+      finalBedrockStats.averageLatency * finalBedrockStats.requestCount;
+    const averageResponseTime =
+      totalRequests > 0 ? totalLatency / totalRequests : 0;
 
     const serviceMetrics: ServiceMetrics = {
       azure: azureStats,
@@ -208,14 +217,22 @@ export const detailedMetricsHandler = (
 
     // Categorize business metrics
     const businessMetrics = {
-      requests: allMetrics.filter(m => m.name.includes('request') && !m.name.includes('error')),
-      completions: allMetrics.filter(m => m.name.includes('completion') || m.name.includes('success')),
-      errors: allMetrics.filter(m => m.name.includes('error') || m.name.includes('fail')),
-      authentication: allMetrics.filter(m => m.name.includes('auth')),
+      requests: allMetrics.filter(
+        (m) => m.name.includes('request') && !m.name.includes('error')
+      ),
+      completions: allMetrics.filter(
+        (m) => m.name.includes('completion') || m.name.includes('success')
+      ),
+      errors: allMetrics.filter(
+        (m) => m.name.includes('error') || m.name.includes('fail')
+      ),
+      authentication: allMetrics.filter((m) => m.name.includes('auth')),
     };
 
     // Get performance metrics
-    const performanceMetrics = allMetrics.filter(m => m.name.startsWith('performance.'));
+    const performanceMetrics = allMetrics.filter((m) =>
+      m.name.startsWith('performance.')
+    );
 
     const detailedResponse: DetailedMetricsResponse = {
       ...basicMetrics,
@@ -228,7 +245,10 @@ export const detailedMetricsHandler = (
     logger.info('Detailed metrics request completed', correlationId, {
       responseTime,
       performanceMetricsCount: performanceMetrics.length,
-      businessMetricsCount: Object.values(businessMetrics).reduce((sum, arr) => sum + arr.length, 0),
+      businessMetricsCount: Object.values(businessMetrics).reduce(
+        (sum, arr) => sum + arr.length,
+        0
+      ),
     });
 
     res.status(200).json(detailedResponse);
@@ -259,19 +279,16 @@ export const detailedMetricsHandler = (
 function calculateServiceStats(
   metrics: readonly import('../monitoring/metrics.js').MetricDataPoint[]
 ): ServiceMetrics['azure'] | ServiceMetrics['bedrock'] {
-  const requestMetrics = metrics.filter(m => 
-    m.name.includes('request') || 
-    m.name.includes('completion')
+  const requestMetrics = metrics.filter(
+    (m) => m.name.includes('request') || m.name.includes('completion')
   );
 
-  const errorMetrics = metrics.filter(m => 
-    m.name.includes('error') || 
-    m.name.includes('fail')
+  const errorMetrics = metrics.filter(
+    (m) => m.name.includes('error') || m.name.includes('fail')
   );
 
-  const performanceMetrics = metrics.filter(m => 
-    m.name.startsWith('performance.') && 
-    typeof m.value === 'number'
+  const performanceMetrics = metrics.filter(
+    (m) => m.name.startsWith('performance.') && typeof m.value === 'number'
   );
 
   const requestCount = requestMetrics.length;
@@ -281,16 +298,18 @@ function calculateServiceStats(
 
   // Calculate average latency from performance metrics
   const latencies = performanceMetrics
-    .map(m => typeof m.value === 'number' ? m.value : 0)
-    .filter(v => v > 0);
-  
-  const averageLatency = latencies.length > 0 
-    ? latencies.reduce((sum, val) => sum + val, 0) / latencies.length 
-    : 0;
+    .map((m) => (typeof m.value === 'number' ? m.value : 0))
+    .filter((v) => v > 0);
+
+  const averageLatency =
+    latencies.length > 0
+      ? latencies.reduce((sum, val) => sum + val, 0) / latencies.length
+      : 0;
 
   // Find last request time
-  const timestamps = requestMetrics.map(m => m.timestamp).sort();
-  const lastRequestTime = timestamps.length > 0 ? timestamps[timestamps.length - 1] : undefined;
+  const timestamps = requestMetrics.map((m) => m.timestamp).sort();
+  const lastRequestTime =
+    timestamps.length > 0 ? timestamps[timestamps.length - 1] : undefined;
 
   // Determine service status based on error rate
   let serviceStatus: 'available' | 'degraded' | 'unavailable' = 'available';
@@ -321,46 +340,55 @@ function getServiceMetrics(): ServiceMetrics {
   // This is a simplified version that reuses the main metrics handler logic
   const allMetrics = metricsCollector.getMetrics();
 
-  const azureMetrics = allMetrics.filter(metric => 
-    metric.tags?.service === 'azure' || 
-    metric.name.includes('azure') ||
-    (metric.tags?.service === undefined && !metric.name.includes('bedrock'))
+  const azureMetrics = allMetrics.filter(
+    (metric) =>
+      metric.tags?.service === 'azure' ||
+      metric.name.includes('azure') ||
+      (metric.tags?.service === undefined && !metric.name.includes('bedrock'))
   );
 
-  const bedrockMetrics = allMetrics.filter(metric => 
-    metric.tags?.service === 'bedrock' || 
-    metric.name.includes('bedrock')
+  const bedrockMetrics = allMetrics.filter(
+    (metric) =>
+      metric.tags?.service === 'bedrock' || metric.name.includes('bedrock')
   );
 
   const azureStats = calculateServiceStats(azureMetrics);
   const bedrockStats = calculateServiceStats(bedrockMetrics);
 
   // Get Bedrock monitor stats if available
-  let bedrockMonitorStats: import('../monitoring/bedrock-monitor.js').BedrockMetrics | undefined;
-  
+  let bedrockMonitorStats:
+    | import('../monitoring/bedrock-monitor.js').BedrockMetrics
+    | undefined;
+
   try {
     const healthMonitor = getHealthMonitor();
     const bedrockMonitor = healthMonitor.getBedrockMonitor();
     bedrockMonitorStats = bedrockMonitor?.getBedrockMetrics();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (_error: unknown) {
     // Bedrock monitor not available, use calculated stats
     bedrockMonitorStats = undefined;
   }
 
   // Merge Bedrock stats with monitor stats if available
-  const finalBedrockStats = bedrockMonitorStats ? {
-    ...bedrockStats,
-    ...bedrockMonitorStats,
-  } : bedrockStats;
+  const finalBedrockStats = bedrockMonitorStats
+    ? {
+        ...bedrockStats,
+        ...bedrockMonitorStats,
+      }
+    : bedrockStats;
 
-  const totalRequests = azureStats.requestCount + finalBedrockStats.requestCount;
+  const totalRequests =
+    azureStats.requestCount + finalBedrockStats.requestCount;
   const totalErrors = azureStats.errorCount + finalBedrockStats.errorCount;
-  const overallErrorRate = totalRequests > 0 ? (totalErrors / totalRequests) * 100 : 0;
-  
-  const totalLatency = (azureStats.averageLatency * azureStats.requestCount) + 
-                      (finalBedrockStats.averageLatency * finalBedrockStats.requestCount);
-  const averageResponseTime = totalRequests > 0 ? totalLatency / totalRequests : 0;
+  const overallErrorRate =
+    totalRequests > 0 ? (totalErrors / totalRequests) * 100 : 0;
+
+  const totalLatency =
+    azureStats.averageLatency * azureStats.requestCount +
+    finalBedrockStats.averageLatency * finalBedrockStats.requestCount;
+  const averageResponseTime =
+    totalRequests > 0 ? totalLatency / totalRequests : 0;
 
   return {
     azure: azureStats,

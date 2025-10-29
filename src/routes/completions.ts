@@ -43,12 +43,8 @@ import {
   getResponseFormat,
 } from '../utils/format-detection.js';
 
-import {
-  transformResponsesToClaude,
-} from '../utils/responses-to-claude-transformer.js';
-import {
-  transformResponsesToOpenAI,
-} from '../utils/responses-to-openai-transformer.js';
+import { transformResponsesToClaude } from '../utils/responses-to-claude-transformer.js';
+import { transformResponsesToOpenAI } from '../utils/responses-to-openai-transformer.js';
 import { AzureErrorMapper } from '../utils/azure-error-mapper.js';
 import { ensureResponsesBaseURL } from '../utils/azure-endpoint.js';
 import { AWSBedrockClient } from '../clients/aws-bedrock-client.js';
@@ -110,17 +106,16 @@ const AZURE_MODEL_ALIASES = Array.from(
 );
 
 const BEDROCK_MODEL_ID = 'qwen.qwen3-coder-480b-a35b-v1:0';
-const BEDROCK_MODEL_ALIASES = [
-  'qwen-3-coder',
-  BEDROCK_MODEL_ID,
-] as const;
+const BEDROCK_MODEL_ALIASES = ['qwen-3-coder', BEDROCK_MODEL_ID] as const;
 
 const bedrockConfiguration = isAWSBedrockConfigured(config)
   ? createAWSBedrockConfig(config)
   : null;
 
 const bedrockClientSingleton =
-  bedrockConfiguration !== null ? new AWSBedrockClient(bedrockConfiguration) : null;
+  bedrockConfiguration !== null
+    ? new AWSBedrockClient(bedrockConfiguration)
+    : null;
 
 const modelRoutingConfig: ModelRoutingConfig = {
   defaultProvider: 'azure',
@@ -171,12 +166,15 @@ async function makeResponsesAPIRequestWithResilience(
   );
 
   // Get retry strategy
-  const retryStrategy = retryStrategyRegistry.getStrategy('azure-responses-api', {
-    maxAttempts: 3,
-    baseDelayMs: 1000,
-    maxDelayMs: 10000,
-    timeoutMs: config.AZURE_OPENAI_TIMEOUT,
-  });
+  const retryStrategy = retryStrategyRegistry.getStrategy(
+    'azure-responses-api',
+    {
+      maxAttempts: 3,
+      baseDelayMs: 1000,
+      maxDelayMs: 10000,
+      timeoutMs: config.AZURE_OPENAI_TIMEOUT,
+    }
+  );
 
   // Execute with circuit breaker protection
   const circuitResult = await circuitBreaker.execute(
@@ -190,23 +188,33 @@ async function makeResponsesAPIRequestWithResilience(
               hasReasoning: Boolean(params.reasoning),
               reasoningEffort: params.reasoning?.effort,
               inputType: typeof params.input,
-              inputLength: Array.isArray(params.input) ? params.input.length : 
-                          typeof params.input === 'string' ? params.input.length : 0,
+              inputLength: Array.isArray(params.input)
+                ? params.input.length
+                : typeof params.input === 'string'
+                  ? params.input.length
+                  : 0,
             });
 
             const response = await client.createResponse(params);
 
-            logger.debug('Azure Responses API request successful', correlationId, {
-              responseId: response.id,
-              outputCount: response.output.length,
-              totalTokens: response.usage.total_tokens,
-              reasoningTokens: response.usage.reasoning_tokens,
-            });
+            logger.debug(
+              'Azure Responses API request successful',
+              correlationId,
+              {
+                responseId: response.id,
+                outputCount: response.output.length,
+                totalTokens: response.usage.total_tokens,
+                reasoningTokens: response.usage.reasoning_tokens,
+              }
+            );
 
             return response;
           } catch (error) {
             // Re-throw our custom errors as-is
-            if (error instanceof ValidationError || error instanceof AzureOpenAIError) {
+            if (
+              error instanceof ValidationError ||
+              error instanceof AzureOpenAIError
+            ) {
               throw error;
             }
 
@@ -220,7 +228,10 @@ async function makeResponsesAPIRequestWithResilience(
                 );
               }
 
-              if (error.message.includes('network') || error.message.includes('ECONNREFUSED')) {
+              if (
+                error.message.includes('network') ||
+                error.message.includes('ECONNREFUSED')
+              ) {
                 throw ErrorFactory.fromNetworkError(
                   error,
                   correlationId,
@@ -264,9 +275,7 @@ const createJsonHeaders = (correlationId: string): Record<string, string> => ({
   'X-Correlation-ID': correlationId,
 });
 
-const isResponsesApiResponse = (
-  value: unknown
-): value is ResponsesResponse => {
+const isResponsesApiResponse = (value: unknown): value is ResponsesResponse => {
   if (typeof value !== 'object' || value === null) {
     return false;
   }
@@ -415,8 +424,14 @@ const mapErrorToClientResponse = (
   readonly statusCode: number;
   readonly headers: Record<string, string>;
   readonly body:
-    | (ClaudeError & { readonly correlationId: string; readonly timestamp: string })
-    | (OpenAIError & { readonly correlationId: string; readonly timestamp: string });
+    | (ClaudeError & {
+        readonly correlationId: string;
+        readonly timestamp: string;
+      })
+    | (OpenAIError & {
+        readonly correlationId: string;
+        readonly timestamp: string;
+      });
 } => {
   const originalError = unwrapAzureError(error);
   const mapped = AzureErrorMapper.mapError({
@@ -498,7 +513,7 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
           path: req.path,
           userAgent: req.headers['user-agent'],
         };
-        
+
         const requestModel =
           typeof req.body === 'object' && req.body !== null
             ? (req.body as { model?: unknown }).model
@@ -637,12 +652,14 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
           req.headers['thread-id'];
 
         const headerConversationId =
-          Array.isArray(headerConversationIdRaw) && headerConversationIdRaw.length > 0
+          Array.isArray(headerConversationIdRaw) &&
+          headerConversationIdRaw.length > 0
             ? headerConversationIdRaw[0]
             : headerConversationIdRaw;
 
         const conversationId =
-          typeof headerConversationId === 'string' && headerConversationId.trim().length > 0
+          typeof headerConversationId === 'string' &&
+          headerConversationId.trim().length > 0
             ? headerConversationId.trim()
             : conversationManager.extractConversationId(
                 req.headers as Record<string, string>,
@@ -650,7 +667,8 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
               );
 
         // Get conversation context for reasoning adjustment
-        const conversationContext = conversationManager.getConversationContext(conversationId);
+        const conversationContext =
+          conversationManager.getConversationContext(conversationId);
 
         // Process request with universal processor
         const transformationStart = Date.now();
@@ -673,9 +691,13 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
         const routingDecision = processingResult.routingDecision;
 
         // Add previous_response_id for conversation continuity
-        const previousResponseId = conversationManager.getPreviousResponseId(conversationId);
+        const previousResponseId =
+          conversationManager.getPreviousResponseId(conversationId);
 
-        if (typeof previousResponseId === 'string' && previousResponseId.length > 0) {
+        if (
+          typeof previousResponseId === 'string' &&
+          previousResponseId.length > 0
+        ) {
           responsesParams = {
             ...responsesParams,
             previous_response_id: previousResponseId,
@@ -804,7 +826,8 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
             responsesAPIResponse.id,
             {
               totalTokensUsed: responsesAPIResponse.usage.total_tokens,
-              reasoningTokensUsed: responsesAPIResponse.usage.reasoning_tokens ?? 0,
+              reasoningTokensUsed:
+                responsesAPIResponse.usage.reasoning_tokens ?? 0,
               averageResponseTime: metrics.azureRequestTime,
               errorCount: 0,
             }
@@ -951,7 +974,8 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
             correlationId
           );
 
-          metrics.responseTransformationTime = Date.now() - responseTransformStart;
+          metrics.responseTransformationTime =
+            Date.now() - responseTransformStart;
 
           logger.debug('Response transformation successful', correlationId, {
             responseTransformationTime: metrics.responseTransformationTime,
@@ -959,7 +983,8 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
             outputCount: responsesAPIResponse.output.length,
           });
         } catch (error) {
-          metrics.responseTransformationTime = Date.now() - responseTransformStart;
+          metrics.responseTransformationTime =
+            Date.now() - responseTransformStart;
 
           logger.error('Response transformation failed', correlationId, {
             error: error instanceof Error ? error.message : 'Unknown error',
@@ -994,7 +1019,8 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
           transformationTime: metrics.transformationTime,
           azureRequestTime: metrics.azureRequestTime,
           responseTransformationTime: metrics.responseTransformationTime,
-          responseSize: JSON.stringify(responseTransformationResult.body).length,
+          responseSize: JSON.stringify(responseTransformationResult.body)
+            .length,
           responseFormat,
           conversationId,
           reasoningEffort: finalReasoningEffort,
@@ -1083,8 +1109,6 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
   );
 };
 
-
-
 /**
  * Make AWS Bedrock API request with circuit breaker and retry logic
  */
@@ -1123,8 +1147,11 @@ async function makeBedrockAPIRequestWithResilience(
               hasReasoning: Boolean(params.reasoning),
               reasoningEffort: params.reasoning?.effort,
               inputType: typeof params.input,
-              inputLength: Array.isArray(params.input) ? params.input.length : 
-                          typeof params.input === 'string' ? params.input.length : 0,
+              inputLength: Array.isArray(params.input)
+                ? params.input.length
+                : typeof params.input === 'string'
+                  ? params.input.length
+                  : 0,
             });
 
             const response = await client.createResponse(params);
@@ -1138,7 +1165,10 @@ async function makeBedrockAPIRequestWithResilience(
             return response;
           } catch (error) {
             // Re-throw our custom errors as-is
-            if (error instanceof ValidationError || error instanceof AzureOpenAIError) {
+            if (
+              error instanceof ValidationError ||
+              error instanceof AzureOpenAIError
+            ) {
               throw error;
             }
 
@@ -1152,7 +1182,10 @@ async function makeBedrockAPIRequestWithResilience(
                 );
               }
 
-              if (error.message.includes('network') || error.message.includes('ECONNREFUSED')) {
+              if (
+                error.message.includes('network') ||
+                error.message.includes('ECONNREFUSED')
+              ) {
                 throw ErrorFactory.fromNetworkError(
                   error,
                   correlationId,
@@ -1203,12 +1236,13 @@ async function handleBedrockRequest(
   routingDecision: ModelRoutingDecision
 ): Promise<void> {
   const { responsesParams, reasoningEffort } = processingResult;
-  
+
   // Track Bedrock request start (Requirement 4.1)
   const healthMonitor = getHealthMonitor();
   const bedrockMonitor = healthMonitor.getBedrockMonitor();
-  const requestType = responsesParams.stream === true ? 'streaming' : 'non-streaming';
-  
+  const requestType =
+    responsesParams.stream === true ? 'streaming' : 'non-streaming';
+
   if (bedrockMonitor) {
     bedrockMonitor.trackBedrockRequest(
       correlationId,
@@ -1216,7 +1250,7 @@ async function handleBedrockRequest(
       requestType
     );
   }
-  
+
   logger.debug('Starting Bedrock request handling', correlationId, {
     conversationId,
     provider: routingDecision.provider,
@@ -1291,7 +1325,8 @@ async function handleBedrockRequest(
 
     // Track Bedrock request error (Requirement 4.2)
     if (bedrockMonitor) {
-      const errorType = error instanceof Error ? error.constructor.name : 'UnknownError';
+      const errorType =
+        error instanceof Error ? error.constructor.name : 'UnknownError';
       bedrockMonitor.completeBedrockRequest(correlationId, false, errorType);
     }
 
@@ -1302,8 +1337,8 @@ async function handleBedrockRequest(
 
     // Try graceful degradation for Bedrock API failures
     const axiosStatus =
-      typeof (error as { response?: { status?: number } }).response
-        ?.status === 'number'
+      typeof (error as { response?: { status?: number } }).response?.status ===
+      'number'
         ? (error as { response: { status: number } }).response.status
         : undefined;
 
@@ -1329,10 +1364,14 @@ async function handleBedrockRequest(
           });
 
         if (degradationResult.success) {
-          logger.info('Graceful degradation successful for Bedrock', correlationId, {
-            fallback: degradationResult.fallbackUsed,
-            degraded: degradationResult.degraded,
-          });
+          logger.info(
+            'Graceful degradation successful for Bedrock',
+            correlationId,
+            {
+              fallback: degradationResult.fallbackUsed,
+              degraded: degradationResult.degraded,
+            }
+          );
 
           const fallbackResult = buildFallbackResponse(
             degradationResult.data,
@@ -1347,14 +1386,18 @@ async function handleBedrockRequest(
           return;
         }
       } catch (degradationError) {
-        logger.warn('Graceful degradation exception for Bedrock', correlationId, {
-          originalError:
-            error instanceof Error ? error.message : 'Unknown error',
-          degradationError:
-            degradationError instanceof Error
-              ? degradationError.message
-              : 'Unknown error',
-        });
+        logger.warn(
+          'Graceful degradation exception for Bedrock',
+          correlationId,
+          {
+            originalError:
+              error instanceof Error ? error.message : 'Unknown error',
+            degradationError:
+              degradationError instanceof Error
+                ? degradationError.message
+                : 'Unknown error',
+          }
+        );
       }
     }
 
@@ -1536,7 +1579,7 @@ async function handleBedrockSimulatedStreamingRequest(
   // Track Bedrock streaming request start (Requirement 4.1)
   const healthMonitor = getHealthMonitor();
   const bedrockMonitor = healthMonitor.getBedrockMonitor();
-  
+
   if (bedrockMonitor) {
     bedrockMonitor.trackBedrockRequest(
       correlationId,
@@ -1546,11 +1589,15 @@ async function handleBedrockSimulatedStreamingRequest(
   }
 
   try {
-    logger.debug('Starting Bedrock simulated streaming request', correlationId, {
-      conversationId,
-      responseFormat,
-      reasoningEffort: processingResult.reasoningEffort,
-    });
+    logger.debug(
+      'Starting Bedrock simulated streaming request',
+      correlationId,
+      {
+        conversationId,
+        responseFormat,
+        reasoningEffort: processingResult.reasoningEffort,
+      }
+    );
 
     // Set streaming headers
     res.setHeader('Content-Type', 'text/event-stream');
@@ -1595,23 +1642,27 @@ async function handleBedrockSimulatedStreamingRequest(
       bedrockMonitor.completeBedrockRequest(correlationId, true);
     }
 
-    logger.info('Bedrock simulated streaming request completed', correlationId, {
-      totalTime: metrics.totalTime,
-      bedrockRequestTime: metrics.bedrockRequestTime,
-      chunkCount: 'simulated',
-      totalTokens: bedrockAPIResponse.usage.total_tokens,
-      conversationId,
-      responseFormat,
-      provider: 'bedrock',
-    });
-
+    logger.info(
+      'Bedrock simulated streaming request completed',
+      correlationId,
+      {
+        totalTime: metrics.totalTime,
+        bedrockRequestTime: metrics.bedrockRequestTime,
+        chunkCount: 'simulated',
+        totalTokens: bedrockAPIResponse.usage.total_tokens,
+        conversationId,
+        responseFormat,
+        provider: 'bedrock',
+      }
+    );
   } catch (error) {
     metrics.totalTime = Date.now() - metrics.startTime;
     metrics.bedrockRequestTime = Date.now() - bedrockRequestStart;
 
     // Track Bedrock streaming request error (Requirement 4.2)
     if (bedrockMonitor) {
-      const errorType = error instanceof Error ? error.constructor.name : 'UnknownError';
+      const errorType =
+        error instanceof Error ? error.constructor.name : 'UnknownError';
       bedrockMonitor.completeBedrockRequest(correlationId, false, errorType);
     }
 
@@ -1629,22 +1680,26 @@ async function handleBedrockSimulatedStreamingRequest(
     // Send error event and close stream
     if (responseFormat === 'claude') {
       res.write('event: error\n');
-      res.write(`data: ${JSON.stringify({
-        type: 'error',
-        error: {
-          type: 'api_error',
-          message: error instanceof Error ? error.message : 'Unknown error'
-        }
-      })}\n\n`);
+      res.write(
+        `data: ${JSON.stringify({
+          type: 'error',
+          error: {
+            type: 'api_error',
+            message: error instanceof Error ? error.message : 'Unknown error',
+          },
+        })}\n\n`
+      );
       res.write('event: message_stop\n');
       res.write('data: {"type":"message_stop"}\n\n');
     } else {
-      res.write(`data: ${JSON.stringify({
-        error: {
-          message: error instanceof Error ? error.message : 'Unknown error',
-          type: 'api_error'
-        }
-      })}\n\n`);
+      res.write(
+        `data: ${JSON.stringify({
+          error: {
+            message: error instanceof Error ? error.message : 'Unknown error',
+            type: 'api_error',
+          },
+        })}\n\n`
+      );
       res.write('data: [DONE]\n\n');
     }
 
@@ -1722,7 +1777,6 @@ async function handleSimulatedStreamingRequest(
       conversationId,
       responseFormat,
     });
-
   } catch (error) {
     metrics.totalTime = Date.now() - metrics.startTime;
     metrics.azureRequestTime = Date.now() - azureRequestStart;
@@ -1741,22 +1795,26 @@ async function handleSimulatedStreamingRequest(
     // Send error event and close stream
     if (responseFormat === 'claude') {
       res.write('event: error\n');
-      res.write(`data: ${JSON.stringify({
-        type: 'error',
-        error: {
-          type: 'api_error',
-          message: error instanceof Error ? error.message : 'Unknown error'
-        }
-      })}\n\n`);
+      res.write(
+        `data: ${JSON.stringify({
+          type: 'error',
+          error: {
+            type: 'api_error',
+            message: error instanceof Error ? error.message : 'Unknown error',
+          },
+        })}\n\n`
+      );
       res.write('event: message_stop\n');
       res.write('data: {"type":"message_stop"}\n\n');
     } else {
-      res.write(`data: ${JSON.stringify({
-        error: {
-          message: error instanceof Error ? error.message : 'Unknown error',
-          type: 'api_error'
-        }
-      })}\n\n`);
+      res.write(
+        `data: ${JSON.stringify({
+          error: {
+            message: error instanceof Error ? error.message : 'Unknown error',
+            type: 'api_error',
+          },
+        })}\n\n`
+      );
       res.write('data: [DONE]\n\n');
     }
 
@@ -1775,140 +1833,161 @@ async function simulateStreamingResponse(
 ): Promise<void> {
   if (responseFormat === 'claude') {
     // Send Claude-format streaming events
-    
+
     // 1. Send message_start event
     res.write('event: message_start\n');
-    res.write(`data: ${JSON.stringify({
-      type: 'message_start',
-      message: {
-        id: response.id,
-        type: 'message',
-        role: 'assistant',
-        content: [],
-        model: 'claude-3-5-sonnet-20241022',
-        stop_reason: null,
-        usage: {
-          input_tokens: response.usage.prompt_tokens,
-          output_tokens: 0,
+    res.write(
+      `data: ${JSON.stringify({
+        type: 'message_start',
+        message: {
+          id: response.id,
+          type: 'message',
+          role: 'assistant',
+          content: [],
+          model: 'claude-3-5-sonnet-20241022',
+          stop_reason: null,
+          usage: {
+            input_tokens: response.usage.prompt_tokens,
+            output_tokens: 0,
+          },
         },
-      },
-    })}\n\n`);
+      })}\n\n`
+    );
 
     // 2. Extract text content from response
     const textContent = extractTextFromResponseOutput(response.output);
-    
+
     if (textContent && textContent.length > 0) {
       // 3. Send content_block_start event
       res.write('event: content_block_start\n');
-      res.write(`data: ${JSON.stringify({
-        type: 'content_block_start',
-        index: 0,
-        content_block: {
-          type: 'text',
-          text: '',
-        },
-      })}\n\n`);
+      res.write(
+        `data: ${JSON.stringify({
+          type: 'content_block_start',
+          index: 0,
+          content_block: {
+            type: 'text',
+            text: '',
+          },
+        })}\n\n`
+      );
 
       // 4. Simulate streaming by sending text in chunks
       const chunkSize = Math.max(1, Math.floor(textContent.length / 5)); // Break into ~5 chunks
       for (let i = 0; i < textContent.length; i += chunkSize) {
         const chunk = textContent.slice(i, i + chunkSize);
-        
+
         res.write('event: content_block_delta\n');
-        res.write(`data: ${JSON.stringify({
-          type: 'content_block_delta',
-          index: 0,
-          delta: {
-            type: 'text_delta',
-            text: chunk,
-          },
-        })}\n\n`);
+        res.write(
+          `data: ${JSON.stringify({
+            type: 'content_block_delta',
+            index: 0,
+            delta: {
+              type: 'text_delta',
+              text: chunk,
+            },
+          })}\n\n`
+        );
 
         // Small delay to simulate real streaming
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, 50));
       }
 
       // 5. Send content_block_stop event
       res.write('event: content_block_stop\n');
-      res.write(`data: ${JSON.stringify({
-        type: 'content_block_stop',
-        index: 0,
-      })}\n\n`);
+      res.write(
+        `data: ${JSON.stringify({
+          type: 'content_block_stop',
+          index: 0,
+        })}\n\n`
+      );
     }
 
     // 6. Send message_stop event
     res.write('event: message_stop\n');
-    res.write(`data: ${JSON.stringify({
-      type: 'message_stop',
-      usage: {
-        input_tokens: response.usage.prompt_tokens,
-        output_tokens: response.usage.completion_tokens,
-      },
-    })}\n\n`);
-
+    res.write(
+      `data: ${JSON.stringify({
+        type: 'message_stop',
+        usage: {
+          input_tokens: response.usage.prompt_tokens,
+          output_tokens: response.usage.completion_tokens,
+        },
+      })}\n\n`
+    );
   } else {
     // Send OpenAI-format streaming events
-    
+
     // 1. Send initial chunk with role
-    res.write(`data: ${JSON.stringify({
-      id: response.id,
-      object: 'chat.completion.chunk',
-      created: Math.floor(Date.now() / 1000),
-      model: 'gpt-5-codex',
-      choices: [{
-        index: 0,
-        delta: {
-          role: 'assistant',
-        },
-        finish_reason: null,
-      }],
-    })}\n\n`);
+    res.write(
+      `data: ${JSON.stringify({
+        id: response.id,
+        object: 'chat.completion.chunk',
+        created: Math.floor(Date.now() / 1000),
+        model: 'gpt-5-codex',
+        choices: [
+          {
+            index: 0,
+            delta: {
+              role: 'assistant',
+            },
+            finish_reason: null,
+          },
+        ],
+      })}\n\n`
+    );
 
     // 2. Extract text content from response
     const textContent = extractTextFromResponseOutput(response.output);
-    
+
     if (textContent && textContent.length > 0) {
       // 3. Simulate streaming by sending text in chunks
       const chunkSize = Math.max(1, Math.floor(textContent.length / 5)); // Break into ~5 chunks
       for (let i = 0; i < textContent.length; i += chunkSize) {
         const chunk = textContent.slice(i, i + chunkSize);
-        
-        res.write(`data: ${JSON.stringify({
-          id: response.id,
-          object: 'chat.completion.chunk',
-          created: Math.floor(Date.now() / 1000),
-          model: 'gpt-5-codex',
-          choices: [{
-            index: 0,
-            delta: {
-              content: chunk,
-            },
-            finish_reason: null,
-          }],
-        })}\n\n`);
+
+        res.write(
+          `data: ${JSON.stringify({
+            id: response.id,
+            object: 'chat.completion.chunk',
+            created: Math.floor(Date.now() / 1000),
+            model: 'gpt-5-codex',
+            choices: [
+              {
+                index: 0,
+                delta: {
+                  content: chunk,
+                },
+                finish_reason: null,
+              },
+            ],
+          })}\n\n`
+        );
 
         // Small delay to simulate real streaming
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, 50));
       }
     }
 
     // 4. Send final chunk
-    res.write(`data: ${JSON.stringify({
-      id: response.id,
-      object: 'chat.completion.chunk',
-      created: Math.floor(Date.now() / 1000),
-      model: 'gpt-5-codex',
-      choices: [{
-        index: 0,
-        delta: {},
-        finish_reason: 'stop',
-      }],
-      usage: {
-        prompt_tokens: response.usage.prompt_tokens,
-        completion_tokens: response.usage.completion_tokens,
-        total_tokens: response.usage.total_tokens,
-      },
-    })}\n\n`);
+    res.write(
+      `data: ${JSON.stringify({
+        id: response.id,
+        object: 'chat.completion.chunk',
+        created: Math.floor(Date.now() / 1000),
+        model: 'gpt-5-codex',
+        choices: [
+          {
+            index: 0,
+            delta: {},
+            finish_reason: 'stop',
+          },
+        ],
+        usage: {
+          prompt_tokens: response.usage.prompt_tokens,
+          completion_tokens: response.usage.completion_tokens,
+          total_tokens: response.usage.total_tokens,
+        },
+      })}\n\n`
+    );
 
     // 5. Send [DONE] marker
     res.write('data: [DONE]\n\n');
@@ -1920,7 +1999,9 @@ async function simulateStreamingResponse(
 /**
  * Extract text content from response output array
  */
-function extractTextFromResponseOutput(output: readonly import('../types/index.js').ResponseOutput[]): string {
+function extractTextFromResponseOutput(
+  output: readonly import('../types/index.js').ResponseOutput[]
+): string {
   for (const outputItem of output) {
     if (outputItem.type === 'text' && outputItem.text !== undefined) {
       return outputItem.text;
