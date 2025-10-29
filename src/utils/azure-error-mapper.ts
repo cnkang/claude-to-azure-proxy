@@ -6,10 +6,10 @@
 type DeepReadonly<T> = T extends (infer U)[]
   ? readonly DeepReadonly<U>[]
   : T extends ReadonlyArray<infer U>
-  ? readonly DeepReadonly<U>[]
-  : T extends object
-  ? { readonly [P in keyof T]: DeepReadonly<T[P]> }
-  : T;
+    ? readonly DeepReadonly<U>[]
+    : T extends object
+      ? { readonly [P in keyof T]: DeepReadonly<T[P]> }
+      : T;
 
 import {
   AzureOpenAIError,
@@ -47,7 +47,9 @@ export class AzureErrorMapper {
   /**
    * Map Azure OpenAI error to appropriate client format
    */
-  public static mapError(context: DeepReadonly<ErrorMappingContext>): MappedError {
+  public static mapError(
+    context: DeepReadonly<ErrorMappingContext>
+  ): MappedError {
     const baseError = this.createBaseError(context);
     const clientResponse = this.createClientResponse(baseError, context);
 
@@ -60,7 +62,9 @@ export class AzureErrorMapper {
   /**
    * Create BaseError from Azure OpenAI error
    */
-  private static createBaseError(context: DeepReadonly<ErrorMappingContext>): BaseError {
+  private static createBaseError(
+    context: DeepReadonly<ErrorMappingContext>
+  ): BaseError {
     const { correlationId, operation, originalError } = context;
 
     // Handle network and timeout errors
@@ -142,20 +146,14 @@ export class AzureErrorMapper {
         );
 
       case 'authentication_error':
-        return new AuthenticationError(
-          errorMessage,
-          correlationId,
-          operation,
-          { azureErrorCode: errorCode }
-        );
+        return new AuthenticationError(errorMessage, correlationId, operation, {
+          azureErrorCode: errorCode,
+        });
 
       case 'permission_error':
-        return new AuthenticationError(
-          errorMessage,
-          correlationId,
-          operation,
-          { azureErrorCode: errorCode }
-        );
+        return new AuthenticationError(errorMessage, correlationId, operation, {
+          azureErrorCode: errorCode,
+        });
 
       case 'rate_limit_error':
         const retryAfter = this.extractRetryAfter(azureError);
@@ -216,7 +214,9 @@ export class AzureErrorMapper {
   /**
    * Create Claude-format error response
    */
-  private static createClaudeError(baseError: DeepReadonly<BaseError>): ClaudeError {
+  private static createClaudeError(
+    baseError: DeepReadonly<BaseError>
+  ): ClaudeError {
     return {
       type: 'error',
       error: {
@@ -229,7 +229,9 @@ export class AzureErrorMapper {
   /**
    * Create OpenAI-format error response
    */
-  private static createOpenAIError(baseError: DeepReadonly<BaseError>): OpenAIError {
+  private static createOpenAIError(
+    baseError: DeepReadonly<BaseError>
+  ): OpenAIError {
     return {
       error: {
         message: baseError.message,
@@ -262,7 +264,10 @@ export class AzureErrorMapper {
     if (baseError instanceof ServiceUnavailableError) {
       return 'overloaded_error';
     }
-    if (baseError instanceof NetworkError || baseError instanceof TimeoutError) {
+    if (
+      baseError instanceof NetworkError ||
+      baseError instanceof TimeoutError
+    ) {
       return 'api_error';
     }
     return 'api_error';
@@ -271,7 +276,9 @@ export class AzureErrorMapper {
   /**
    * Map BaseError to OpenAI error type
    */
-  private static mapToOpenAIErrorType(baseError: DeepReadonly<BaseError>): string {
+  private static mapToOpenAIErrorType(
+    baseError: DeepReadonly<BaseError>
+  ): string {
     if (baseError instanceof ValidationError) {
       return 'invalid_request_error';
     }
@@ -284,7 +291,10 @@ export class AzureErrorMapper {
     if (baseError instanceof ServiceUnavailableError) {
       return 'server_error';
     }
-    if (baseError instanceof NetworkError || baseError instanceof TimeoutError) {
+    if (
+      baseError instanceof NetworkError ||
+      baseError instanceof TimeoutError
+    ) {
       return 'server_error';
     }
     return 'server_error';
@@ -333,7 +343,9 @@ export class AzureErrorMapper {
   /**
    * Check if error is an Azure OpenAI API error
    */
-  private static isAzureOpenAIError(error: unknown): error is AzureOpenAIErrorResponse {
+  private static isAzureOpenAIError(
+    error: unknown
+  ): error is AzureOpenAIErrorResponse {
     return (
       typeof error === 'object' &&
       error !== null &&
@@ -353,13 +365,17 @@ export class AzureErrorMapper {
     // Try to extract from error message
     const message = error instanceof Error ? error.message : '';
     const timeoutMatch = message.match(/(\d+)\s*ms/);
-    return timeoutMatch?.[1] !== undefined ? parseInt(timeoutMatch[1], 10) : 120000;
+    return timeoutMatch?.[1] !== undefined
+      ? parseInt(timeoutMatch[1], 10)
+      : 120000;
   }
 
   /**
    * Extract retry-after value from Azure error
    */
-  private static extractRetryAfter(azureError: Readonly<AzureOpenAIErrorResponse>): number {
+  private static extractRetryAfter(
+    azureError: Readonly<AzureOpenAIErrorResponse>
+  ): number {
     // Check for retry-after in error response
     if (azureError.error && typeof azureError.error === 'object') {
       const errorObj = azureError.error as Record<string, unknown>;
@@ -419,9 +435,10 @@ export class AzureErrorMapper {
       operation
     );
 
-    const clientResponse = requestFormat === 'claude'
-      ? this.createClaudeError(baseError)
-      : this.createOpenAIError(baseError);
+    const clientResponse =
+      requestFormat === 'claude'
+        ? this.createClaudeError(baseError)
+        : this.createOpenAIError(baseError);
 
     return {
       error: baseError,

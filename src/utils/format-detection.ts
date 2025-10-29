@@ -39,7 +39,9 @@ export class FormatDetectionService implements FormatDetector {
    * @param request - The incoming request to analyze
    * @returns The detected request format (defaults to Claude for backward compatibility)
    */
-  public detectRequestFormat(request: Readonly<IncomingRequest>): RequestFormat {
+  public detectRequestFormat(
+    request: Readonly<IncomingRequest>
+  ): RequestFormat {
     try {
       // Validate request structure
       if (!this.isValidRequest(request)) {
@@ -61,10 +63,14 @@ export class FormatDetectionService implements FormatDetector {
       return 'claude';
     } catch (error) {
       // Log error but don't throw - default to Claude format for robustness
-      logger.warn('Format detection error, defaulting to Claude format', 'format-detection', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
-      });
+      logger.warn(
+        'Format detection error, defaulting to Claude format',
+        'format-detection',
+        {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
+        }
+      );
       return 'claude';
     }
   }
@@ -74,7 +80,9 @@ export class FormatDetectionService implements FormatDetector {
    * @param requestFormat - The detected request format
    * @returns The matching response format
    */
-  public getResponseFormat(requestFormat: Readonly<RequestFormat>): ResponseFormat {
+  public getResponseFormat(
+    requestFormat: Readonly<RequestFormat>
+  ): ResponseFormat {
     // Response format always matches request format
     return requestFormat;
   }
@@ -185,16 +193,20 @@ export class FormatDetectionService implements FormatDetector {
 
       // Check if content is an array of content blocks (Claude format)
       if (Array.isArray(content)) {
-        return content.some(
-          (block: unknown) => {
-            const readonlyBlock = block as Readonly<unknown>;
-            if (!this.isRecord(readonlyBlock)) {return false;}
-            const typedBlock = readonlyBlock;
-            return 'type' in typedBlock &&
-            typeof typedBlock.type === 'string' &&
-            ['text', 'image', 'tool_use', 'tool_result'].includes(typedBlock.type);
+        return content.some((block: unknown) => {
+          const readonlyBlock = block as Readonly<unknown>;
+          if (!this.isRecord(readonlyBlock)) {
+            return false;
           }
-        );
+          const typedBlock = readonlyBlock;
+          return (
+            'type' in typedBlock &&
+            typeof typedBlock.type === 'string' &&
+            ['text', 'image', 'tool_use', 'tool_result'].includes(
+              typedBlock.type
+            )
+          );
+        });
       }
 
       return false;
@@ -216,16 +228,18 @@ export class FormatDetectionService implements FormatDetector {
       return false;
     }
 
-    return tools.some(
-      (tool: unknown) => {
-        const readonlyTool = tool as Readonly<unknown>;
-        if (!this.isRecord(readonlyTool)) {return false;}
-        const typedTool = readonlyTool;
-        return 'name' in typedTool &&
-        'description' in typedTool &&
-        'input_schema' in typedTool; // Claude uses input_schema
+    return tools.some((tool: unknown) => {
+      const readonlyTool = tool as Readonly<unknown>;
+      if (!this.isRecord(readonlyTool)) {
+        return false;
       }
-    );
+      const typedTool = readonlyTool;
+      return (
+        'name' in typedTool &&
+        'description' in typedTool &&
+        'input_schema' in typedTool
+      ); // Claude uses input_schema
+    });
   }
 
   /**
@@ -293,14 +307,14 @@ export class FormatDetectionService implements FormatDetector {
       return false;
     }
 
-    return messages.some(
-      (message: unknown) => {
-        const readonlyMessage = message as Readonly<unknown>;
-        if (!this.isRecord(readonlyMessage)) {return false;}
-        const typedMessage = readonlyMessage;
-        return 'role' in typedMessage && typedMessage.role === 'tool';
+    return messages.some((message: unknown) => {
+      const readonlyMessage = message as Readonly<unknown>;
+      if (!this.isRecord(readonlyMessage)) {
+        return false;
       }
-    );
+      const typedMessage = readonlyMessage;
+      return 'role' in typedMessage && typedMessage.role === 'tool';
+    });
   }
 
   /**
@@ -318,20 +332,26 @@ export class FormatDetectionService implements FormatDetector {
       return false;
     }
 
-    return tools.some(
-      (tool: unknown) => {
-        const readonlyTool = tool as Readonly<unknown>;
-        if (!this.isRecord(readonlyTool)) {return false;}
-        const typedTool = readonlyTool;
-        if (!('type' in typedTool) || typedTool.type !== 'function' || !('function' in typedTool)) {
-          return false;
-        }
-        const readonlyFunction = typedTool.function as Readonly<unknown>;
-        if (!this.isRecord(readonlyFunction)) {return false;}
-        const typedFunction = readonlyFunction;
-        return 'name' in typedFunction && 'parameters' in typedFunction; // OpenAI uses parameters
+    return tools.some((tool: unknown) => {
+      const readonlyTool = tool as Readonly<unknown>;
+      if (!this.isRecord(readonlyTool)) {
+        return false;
       }
-    );
+      const typedTool = readonlyTool;
+      if (
+        !('type' in typedTool) ||
+        typedTool.type !== 'function' ||
+        !('function' in typedTool)
+      ) {
+        return false;
+      }
+      const readonlyFunction = typedTool.function as Readonly<unknown>;
+      if (!this.isRecord(readonlyFunction)) {
+        return false;
+      }
+      const typedFunction = readonlyFunction;
+      return 'name' in typedFunction && 'parameters' in typedFunction; // OpenAI uses parameters
+    });
   }
 
   /**
@@ -398,42 +418,51 @@ export class ClaudeFormatAnalyzer {
   /**
    * Check for anthropic-version header
    */
-  private static hasAnthropicVersion(body: Readonly<Record<string, unknown>>): boolean {
+  private static hasAnthropicVersion(
+    body: Readonly<Record<string, unknown>>
+  ): boolean {
     return 'anthropic-version' in body;
   }
 
   /**
    * Check for Claude system message format
    */
-  private static hasSystemMessage(body: Readonly<Record<string, unknown>>): boolean {
+  private static hasSystemMessage(
+    body: Readonly<Record<string, unknown>>
+  ): boolean {
     return 'system' in body && typeof body.system === 'string';
   }
 
   /**
    * Check for Claude content blocks
    */
-  private static hasContentBlocks(body: Readonly<Record<string, unknown>>): boolean {
+  private static hasContentBlocks(
+    body: Readonly<Record<string, unknown>>
+  ): boolean {
     if (!('messages' in body) || !Array.isArray(body.messages)) {
       return false;
     }
 
     return body.messages.some((message: unknown) => {
       const readonlyMessage = message as Readonly<unknown>;
-      if (!ClaudeFormatAnalyzer.isRecord(readonlyMessage) || !('content' in readonlyMessage)) {
+      if (
+        !ClaudeFormatAnalyzer.isRecord(readonlyMessage) ||
+        !('content' in readonlyMessage)
+      ) {
         return false;
       }
       const typedMessage = readonlyMessage;
 
       return (
         Array.isArray(typedMessage.content) &&
-        (typedMessage.content as unknown[]).some(
-          (block: unknown) => {
-            const readonlyBlock = block as Readonly<unknown>;
-            if (!ClaudeFormatAnalyzer.isRecord(readonlyBlock)) {return false;}
-            const typedBlock = readonlyBlock;
-            return 'type' in typedBlock;
+        (typedMessage.content as unknown[]).some((block: unknown) => {
+          const readonlyBlock = block as Readonly<unknown>;
+          if (!ClaudeFormatAnalyzer.isRecord(readonlyBlock)) {
+            return false;
           }
-        )
+          const typedBlock = readonlyBlock;
+          return 'type' in typedBlock;
+        })
       );
     });
   }
@@ -441,29 +470,35 @@ export class ClaudeFormatAnalyzer {
   /**
    * Check for Claude tool format
    */
-  private static hasClaudeTools(body: Readonly<Record<string, unknown>>): boolean {
+  private static hasClaudeTools(
+    body: Readonly<Record<string, unknown>>
+  ): boolean {
     if (!('tools' in body) || !Array.isArray(body.tools)) {
       return false;
     }
 
-    return body.tools.some(
-      (tool: unknown) => {
-        const readonlyTool = tool as Readonly<unknown>;
-        if (!ClaudeFormatAnalyzer.isRecord(readonlyTool)) {return false;}
-        const typedTool = readonlyTool;
-        return 'input_schema' in typedTool;
+    return body.tools.some((tool: unknown) => {
+      const readonlyTool = tool as Readonly<unknown>;
+      if (!ClaudeFormatAnalyzer.isRecord(readonlyTool)) {
+        return false;
       }
-    );
+      const typedTool = readonlyTool;
+      return 'input_schema' in typedTool;
+    });
   }
 
   /**
    * Check for max_tokens without max_completion_tokens (Claude style)
    */
-  private static hasMaxTokensOnly(body: Readonly<Record<string, unknown>>): boolean {
+  private static hasMaxTokensOnly(
+    body: Readonly<Record<string, unknown>>
+  ): boolean {
     return 'max_tokens' in body && !('max_completion_tokens' in body);
   }
 
-  private static isRecord(value: Readonly<unknown>): value is Record<string, unknown> {
+  private static isRecord(
+    value: Readonly<unknown>
+  ): value is Record<string, unknown> {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     return typeof value === 'object' && value !== null;
   }
@@ -526,7 +561,10 @@ export class OpenAIFormatAnalyzer {
     // Check if all messages have simple string content
     const hasStringContent = body.messages.every((message: unknown) => {
       const readonlyMessage = message as Readonly<unknown>;
-      if (!OpenAIFormatAnalyzer.isRecord(readonlyMessage) || !('content' in readonlyMessage)) {
+      if (
+        !OpenAIFormatAnalyzer.isRecord(readonlyMessage) ||
+        !('content' in readonlyMessage)
+      ) {
         return false;
       }
       const typedMessage = readonlyMessage;
@@ -548,25 +586,33 @@ export class OpenAIFormatAnalyzer {
   /**
    * Check for OpenAI tool format
    */
-  private static hasOpenAITools(body: Readonly<Record<string, unknown>>): boolean {
+  private static hasOpenAITools(
+    body: Readonly<Record<string, unknown>>
+  ): boolean {
     if (!('tools' in body) || !Array.isArray(body.tools)) {
       return false;
     }
 
-    return body.tools.some(
-      (tool: unknown) => {
-        const readonlyTool = tool as Readonly<unknown>;
-        if (!OpenAIFormatAnalyzer.isRecord(readonlyTool)) {return false;}
-        const typedTool = readonlyTool;
-        if (!('type' in typedTool) || typedTool.type !== 'function' || !('function' in typedTool)) {
-          return false;
-        }
-        const readonlyFunction = typedTool.function as Readonly<unknown>;
-        if (!OpenAIFormatAnalyzer.isRecord(readonlyFunction)) {return false;}
-        const typedFunction = readonlyFunction;
-        return 'parameters' in typedFunction;
+    return body.tools.some((tool: unknown) => {
+      const readonlyTool = tool as Readonly<unknown>;
+      if (!OpenAIFormatAnalyzer.isRecord(readonlyTool)) {
+        return false;
       }
-    );
+      const typedTool = readonlyTool;
+      if (
+        !('type' in typedTool) ||
+        typedTool.type !== 'function' ||
+        !('function' in typedTool)
+      ) {
+        return false;
+      }
+      const readonlyFunction = typedTool.function as Readonly<unknown>;
+      if (!OpenAIFormatAnalyzer.isRecord(readonlyFunction)) {
+        return false;
+      }
+      const typedFunction = readonlyFunction;
+      return 'parameters' in typedFunction;
+    });
   }
 
   /**
@@ -581,7 +627,9 @@ export class OpenAIFormatAnalyzer {
 
     const { response_format: responseFormat } = body;
     const readonlyResponseFormat = responseFormat as Readonly<unknown>;
-    if (!OpenAIFormatAnalyzer.isRecord(readonlyResponseFormat)) {return false;}
+    if (!OpenAIFormatAnalyzer.isRecord(readonlyResponseFormat)) {
+      return false;
+    }
     const typedResponseFormat = readonlyResponseFormat;
     return (
       'type' in typedResponseFormat &&
@@ -597,17 +645,19 @@ export class OpenAIFormatAnalyzer {
       return false;
     }
 
-    return body.messages.some(
-      (message: unknown) => {
-        const readonlyMessage = message as Readonly<unknown>;
-        if (!OpenAIFormatAnalyzer.isRecord(readonlyMessage)) {return false;}
-        const typedMessage = readonlyMessage;
-        return 'role' in typedMessage && typedMessage.role === 'tool';
+    return body.messages.some((message: unknown) => {
+      const readonlyMessage = message as Readonly<unknown>;
+      if (!OpenAIFormatAnalyzer.isRecord(readonlyMessage)) {
+        return false;
       }
-    );
+      const typedMessage = readonlyMessage;
+      return 'role' in typedMessage && typedMessage.role === 'tool';
+    });
   }
 
-  private static isRecord(value: Readonly<unknown>): value is Record<string, unknown> {
+  private static isRecord(
+    value: Readonly<unknown>
+  ): value is Record<string, unknown> {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     return typeof value === 'object' && value !== null;
   }
@@ -626,7 +676,9 @@ export function createFormatDetectionService(): FormatDetectionService {
  * @param request - The incoming request
  * @returns The detected request format
  */
-export function detectRequestFormat(request: Readonly<IncomingRequest>): RequestFormat {
+export function detectRequestFormat(
+  request: Readonly<IncomingRequest>
+): RequestFormat {
   const detector = createFormatDetectionService();
   return detector.detectRequestFormat(request);
 }

@@ -30,10 +30,10 @@ import {
 type DeepReadonly<T> = T extends (infer U)[]
   ? readonly DeepReadonly<U>[]
   : T extends ReadonlyArray<infer U>
-  ? readonly DeepReadonly<U>[]
-  : T extends object
-  ? { readonly [P in keyof T]: DeepReadonly<T[P]> }
-  : T;
+    ? readonly DeepReadonly<U>[]
+    : T extends object
+      ? { readonly [P in keyof T]: DeepReadonly<T[P]> }
+      : T;
 
 export interface ContentBasedOptimizer {
   /**
@@ -59,7 +59,9 @@ export interface ContentBasedOptimizer {
    * @param request - The Claude request to analyze
    * @returns Adjusted reasoning effort or undefined
    */
-  adjustForDevelopmentTask(request: DeepReadonly<ClaudeRequest>): ReasoningEffort | undefined;
+  adjustForDevelopmentTask(
+    request: DeepReadonly<ClaudeRequest>
+  ): ReasoningEffort | undefined;
 
   /**
    * Apply language-specific optimizations
@@ -187,21 +189,44 @@ export const DEVELOPMENT_TASK_PATTERNS = {
 export const LANGUAGE_OPTIMIZATIONS = {
   python: {
     complexityBoost: 0.2,
-    frameworkKeywords: ['django', 'flask', 'fastapi', 'pandas', 'numpy', 'tensorflow'],
-    architecturalPatterns: ['models.py', 'views.py', 'settings.py', 'serializers.py'],
+    frameworkKeywords: [
+      'django',
+      'flask',
+      'fastapi',
+      'pandas',
+      'numpy',
+      'tensorflow',
+    ],
+    architecturalPatterns: [
+      'models.py',
+      'views.py',
+      'settings.py',
+      'serializers.py',
+    ],
     simplePatterns: ['print(', 'def ', 'import '],
     shouldTriggerReasoning: true,
   },
   java: {
     complexityBoost: 0.3,
     frameworkKeywords: ['spring', 'hibernate', 'maven', 'gradle', 'junit'],
-    architecturalPatterns: ['@RestController', '@Service', '@Repository', '@Entity'],
+    architecturalPatterns: [
+      '@RestController',
+      '@Service',
+      '@Repository',
+      '@Entity',
+    ],
     simplePatterns: ['System.out.println', 'public class'],
     shouldTriggerReasoning: true,
   },
   kotlin: {
     complexityBoost: 0.3,
-    frameworkKeywords: ['android', 'jetpack compose', 'coroutines', 'room', 'retrofit'],
+    frameworkKeywords: [
+      'android',
+      'jetpack compose',
+      'coroutines',
+      'room',
+      'retrofit',
+    ],
     architecturalPatterns: ['Activity', 'Fragment', 'ViewModel', 'Repository'],
     simplePatterns: ['fun main', 'println', 'data class'],
     shouldTriggerReasoning: true,
@@ -240,7 +265,7 @@ const LANGUAGE_OPTIMIZATIONS_MAP = new Map(
   Object.entries(LANGUAGE_OPTIMIZATIONS) as ReadonlyArray<
     [
       keyof typeof LANGUAGE_OPTIMIZATIONS,
-      (typeof LANGUAGE_OPTIMIZATIONS)[keyof typeof LANGUAGE_OPTIMIZATIONS]
+      (typeof LANGUAGE_OPTIMIZATIONS)[keyof typeof LANGUAGE_OPTIMIZATIONS],
     ]
   >
 );
@@ -249,27 +274,44 @@ const LANGUAGE_OPTIMIZATIONS_MAP = new Map(
  * Framework-specific optimization configurations
  */
 export const FRAMEWORK_OPTIMIZATIONS = {
-  'django': {
+  django: {
     complexityBoost: 0.3,
     reasoningThreshold: 500,
-    architecturalKeywords: ['models', 'views', 'serializers', 'middleware', 'signals'],
+    architecturalKeywords: [
+      'models',
+      'views',
+      'serializers',
+      'middleware',
+      'signals',
+    ],
   },
   'spring-boot': {
     complexityBoost: 0.4,
     reasoningThreshold: 600,
-    architecturalKeywords: ['controller', 'service', 'repository', 'configuration'],
+    architecturalKeywords: [
+      'controller',
+      'service',
+      'repository',
+      'configuration',
+    ],
   },
   'spring-cloud': {
     complexityBoost: 0.5,
     reasoningThreshold: 400,
-    architecturalKeywords: ['microservices', 'eureka', 'zuul', 'hystrix', 'config'],
+    architecturalKeywords: [
+      'microservices',
+      'eureka',
+      'zuul',
+      'hystrix',
+      'config',
+    ],
   },
-  'react': {
+  react: {
     complexityBoost: 0.3,
     reasoningThreshold: 400,
     architecturalKeywords: ['component', 'hooks', 'context', 'redux', 'state'],
   },
-  'vue': {
+  vue: {
     complexityBoost: 0.3,
     reasoningThreshold: 400,
     architecturalKeywords: ['component', 'composition api', 'vuex', 'router'],
@@ -277,9 +319,15 @@ export const FRAMEWORK_OPTIMIZATIONS = {
   'android-sdk': {
     complexityBoost: 0.4,
     reasoningThreshold: 500,
-    architecturalKeywords: ['activity', 'fragment', 'service', 'broadcast', 'content provider'],
+    architecturalKeywords: [
+      'activity',
+      'fragment',
+      'service',
+      'broadcast',
+      'content provider',
+    ],
   },
-  'fastapi': {
+  fastapi: {
     complexityBoost: 0.25,
     reasoningThreshold: 300,
     architecturalKeywords: ['pydantic', 'dependency injection', 'middleware'],
@@ -290,7 +338,7 @@ const FRAMEWORK_OPTIMIZATIONS_MAP = new Map(
   Object.entries(FRAMEWORK_OPTIMIZATIONS) as ReadonlyArray<
     [
       keyof typeof FRAMEWORK_OPTIMIZATIONS,
-      (typeof FRAMEWORK_OPTIMIZATIONS)[keyof typeof FRAMEWORK_OPTIMIZATIONS]
+      (typeof FRAMEWORK_OPTIMIZATIONS)[keyof typeof FRAMEWORK_OPTIMIZATIONS],
     ]
   >
 );
@@ -310,7 +358,8 @@ export class ContentBasedOptimizerService implements ContentBasedOptimizer {
   ) {
     this.baseAnalyzer = baseAnalyzer ?? new ReasoningEffortAnalysisService();
     this.languageDetector = languageDetector ?? new LanguageDetectionService();
-    this.complexityAnalyzer = complexityAnalyzer ?? new ComplexityAnalysisService();
+    this.complexityAnalyzer =
+      complexityAnalyzer ?? new ComplexityAnalysisService();
   }
 
   /**
@@ -326,9 +375,7 @@ export class ContentBasedOptimizerService implements ContentBasedOptimizer {
     }
 
     // Get base effort if not provided
-    const effort =
-      baseEffort ??
-      this.baseAnalyzer.analyzeRequest(request);
+    const effort = baseEffort ?? this.baseAnalyzer.analyzeRequest(request);
 
     // Apply development task optimizations
     const taskOptimized = this.adjustForDevelopmentTask(request);
@@ -338,7 +385,10 @@ export class ContentBasedOptimizerService implements ContentBasedOptimizer {
 
     // Apply language-specific optimizations
     const languageContext = this.baseAnalyzer.detectLanguageContext(request);
-    const languageOptimized = this.applyLanguageOptimizations(request, languageContext);
+    const languageOptimized = this.applyLanguageOptimizations(
+      request,
+      languageContext
+    );
     if (languageOptimized !== undefined) {
       return this.combineEfforts(effort, languageOptimized);
     }
@@ -363,16 +413,16 @@ export class ContentBasedOptimizerService implements ContentBasedOptimizer {
     const normalizedContent = content.toLowerCase();
 
     // Check for simple completion patterns
-    const isSimpleCompletion = DEVELOPMENT_TASK_PATTERNS.simpleCompletion.some(pattern =>
-      normalizedContent.includes(pattern)
+    const isSimpleCompletion = DEVELOPMENT_TASK_PATTERNS.simpleCompletion.some(
+      (pattern) => normalizedContent.includes(pattern)
     );
 
     // Check content length (very short requests are likely simple)
     const isShortContent = content.length < 100;
 
     // Check for explanation requests (don't need reasoning for explanations)
-    const isExplanation = DEVELOPMENT_TASK_PATTERNS.explanation.some(pattern =>
-      normalizedContent.includes(pattern)
+    const isExplanation = DEVELOPMENT_TASK_PATTERNS.explanation.some(
+      (pattern) => normalizedContent.includes(pattern)
     );
 
     return (
@@ -385,7 +435,9 @@ export class ContentBasedOptimizerService implements ContentBasedOptimizer {
   /**
    * Detect development task type and adjust reasoning accordingly
    */
-  public adjustForDevelopmentTask(request: DeepReadonly<ClaudeRequest>): ReasoningEffort | undefined {
+  public adjustForDevelopmentTask(
+    request: DeepReadonly<ClaudeRequest>
+  ): ReasoningEffort | undefined {
     const content = this.extractAllContent(request).toLowerCase();
 
     // DevOps tasks need enhanced reasoning
@@ -394,17 +446,29 @@ export class ContentBasedOptimizerService implements ContentBasedOptimizer {
     }
 
     // Architectural tasks need high reasoning
-    if (DEVELOPMENT_TASK_PATTERNS.architecture.some(pattern => content.includes(pattern))) {
+    if (
+      DEVELOPMENT_TASK_PATTERNS.architecture.some((pattern) =>
+        content.includes(pattern)
+      )
+    ) {
       return 'high';
     }
 
     // Multi-language projects need medium reasoning
-    if (DEVELOPMENT_TASK_PATTERNS.multiLanguage.some(pattern => content.includes(pattern))) {
+    if (
+      DEVELOPMENT_TASK_PATTERNS.multiLanguage.some((pattern) =>
+        content.includes(pattern)
+      )
+    ) {
       return 'medium';
     }
 
     // Implementation tasks need at least low reasoning
-    if (DEVELOPMENT_TASK_PATTERNS.implementation.some(pattern => content.includes(pattern))) {
+    if (
+      DEVELOPMENT_TASK_PATTERNS.implementation.some((pattern) =>
+        content.includes(pattern)
+      )
+    ) {
       return 'low';
     }
 
@@ -433,17 +497,17 @@ export class ContentBasedOptimizerService implements ContentBasedOptimizer {
 
     // Check for framework keywords
     const normalizedContent = content.toLowerCase();
-    const hasFrameworkKeywords = langConfig.frameworkKeywords.some(keyword =>
+    const hasFrameworkKeywords = langConfig.frameworkKeywords.some((keyword) =>
       normalizedContent.includes(keyword)
     );
 
     // Check for architectural patterns
-    const hasArchitecturalPatterns = langConfig.architecturalPatterns.some(pattern =>
-      normalizedContent.includes(pattern)
+    const hasArchitecturalPatterns = langConfig.architecturalPatterns.some(
+      (pattern) => normalizedContent.includes(pattern)
     );
 
     // Check for simple patterns (should reduce reasoning)
-    const hasSimplePatterns = langConfig.simplePatterns.some(pattern =>
+    const hasSimplePatterns = langConfig.simplePatterns.some((pattern) =>
       normalizedContent.includes(pattern)
     );
 
@@ -491,9 +555,10 @@ export class ContentBasedOptimizerService implements ContentBasedOptimizer {
       }
 
       // Check for architectural keywords
-      const hasArchitecturalKeywords = frameworkConfig.architecturalKeywords.some(keyword =>
-        normalizedContent.includes(keyword)
-      );
+      const hasArchitecturalKeywords =
+        frameworkConfig.architecturalKeywords.some((keyword) =>
+          normalizedContent.includes(keyword)
+        );
 
       if (hasArchitecturalKeywords) {
         // Determine reasoning level based on complexity boost and content length
@@ -524,7 +589,9 @@ export class ContentBasedOptimizerService implements ContentBasedOptimizer {
    */
   public isDevOpsTask(request: DeepReadonly<ClaudeRequest>): boolean {
     const content = this.extractAllContent(request).toLowerCase();
-    return DEVELOPMENT_TASK_PATTERNS.devops.some(pattern => content.includes(pattern));
+    return DEVELOPMENT_TASK_PATTERNS.devops.some((pattern) =>
+      content.includes(pattern)
+    );
   }
 
   /**
@@ -532,15 +599,15 @@ export class ContentBasedOptimizerService implements ContentBasedOptimizer {
    */
   private extractAllContent(request: DeepReadonly<ClaudeRequest>): string {
     const contents: string[] = [];
-    
+
     if (typeof request.system === 'string' && request.system.length > 0) {
       contents.push(request.system);
     }
-    
+
     for (const message of request.messages) {
       contents.push(this.extractMessageContent(message));
     }
-    
+
     return contents.join('\n');
   }
 
@@ -551,7 +618,7 @@ export class ContentBasedOptimizerService implements ContentBasedOptimizer {
     if (typeof message.content === 'string') {
       return message.content;
     }
-    
+
     if (Array.isArray(message.content)) {
       const textSegments: string[] = [];
       for (const block of message.content as readonly ClaudeContentBlock[]) {
@@ -561,7 +628,7 @@ export class ContentBasedOptimizerService implements ContentBasedOptimizer {
       }
       return textSegments.join('\n');
     }
-    
+
     return '';
   }
 
@@ -582,7 +649,7 @@ export class ContentBasedOptimizerService implements ContentBasedOptimizer {
       'microservice',
     ];
 
-    return complexPatterns.some(pattern => content.includes(pattern));
+    return complexPatterns.some((pattern) => content.includes(pattern));
   }
 
   private getLanguageOptimization(
@@ -592,9 +659,7 @@ export class ContentBasedOptimizerService implements ContentBasedOptimizer {
     return LANGUAGE_OPTIMIZATIONS_MAP.get(key);
   }
 
-  private getFrameworkOptimization(
-    framework: Framework
-  ) {
+  private getFrameworkOptimization(framework: Framework) {
     const key = framework as keyof typeof FRAMEWORK_OPTIMIZATIONS;
     return FRAMEWORK_OPTIMIZATIONS_MAP.get(key);
   }
@@ -614,14 +679,21 @@ export class ContentBasedOptimizerService implements ContentBasedOptimizer {
       return effort1;
     }
 
-    return this.compareReasoningLevels(effort1, effort2) >= 0 ? effort1 : effort2;
+    return this.compareReasoningLevels(effort1, effort2) >= 0
+      ? effort1
+      : effort2;
   }
 
   /**
    * Compare reasoning levels (higher number = more reasoning)
    */
-  private compareReasoningLevels(level1: ReasoningEffort, level2: ReasoningEffort): number {
-    return this.getReasoningLevelValue(level1) - this.getReasoningLevelValue(level2);
+  private compareReasoningLevels(
+    level1: ReasoningEffort,
+    level2: ReasoningEffort
+  ): number {
+    return (
+      this.getReasoningLevelValue(level1) - this.getReasoningLevelValue(level2)
+    );
   }
 
   private getReasoningLevelValue(level: ReasoningEffort): number {
@@ -643,7 +715,9 @@ export class ContentBasedOptimizerService implements ContentBasedOptimizer {
 /**
  * Enhanced reasoning effort analyzer with content-based optimizations
  */
-export class EnhancedReasoningEffortAnalyzer implements ReasoningEffortAnalyzer {
+export class EnhancedReasoningEffortAnalyzer
+  implements ReasoningEffortAnalyzer
+{
   private readonly baseAnalyzer: ReasoningEffortAnalyzer;
   private readonly optimizer: ContentBasedOptimizer;
 
@@ -652,7 +726,8 @@ export class EnhancedReasoningEffortAnalyzer implements ReasoningEffortAnalyzer 
     optimizer?: ContentBasedOptimizer
   ) {
     this.baseAnalyzer = baseAnalyzer ?? new ReasoningEffortAnalysisService();
-    this.optimizer = optimizer ?? new ContentBasedOptimizerService(this.baseAnalyzer);
+    this.optimizer =
+      optimizer ?? new ContentBasedOptimizerService(this.baseAnalyzer);
   }
 
   /**
@@ -664,7 +739,7 @@ export class EnhancedReasoningEffortAnalyzer implements ReasoningEffortAnalyzer 
   ): ReasoningEffort | undefined {
     // Get base analysis
     const baseEffort = this.baseAnalyzer.analyzeRequest(request, context);
-    
+
     // Apply content-based optimizations
     return this.optimizer.optimizeReasoningEffort(request, baseEffort);
   }
@@ -684,7 +759,9 @@ export class EnhancedReasoningEffortAnalyzer implements ReasoningEffortAnalyzer 
   /**
    * Delegate to base analyzer
    */
-  public detectComplexityFactors(request: DeepReadonly<ClaudeRequest>): ComplexityFactors {
+  public detectComplexityFactors(
+    request: DeepReadonly<ClaudeRequest>
+  ): ComplexityFactors {
     return this.baseAnalyzer.detectComplexityFactors(request);
   }
 
@@ -701,7 +778,9 @@ export class EnhancedReasoningEffortAnalyzer implements ReasoningEffortAnalyzer 
   /**
    * Delegate to base analyzer
    */
-  public detectLanguageContext(request: DeepReadonly<ClaudeRequest>): LanguageContext {
+  public detectLanguageContext(
+    request: DeepReadonly<ClaudeRequest>
+  ): LanguageContext {
     return this.baseAnalyzer.detectLanguageContext(request);
   }
 }

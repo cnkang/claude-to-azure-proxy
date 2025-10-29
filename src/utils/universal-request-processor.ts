@@ -63,8 +63,13 @@ export interface UniversalProcessorConfig {
 export class UniversalRequestProcessor {
   private readonly formatDetector: FormatDetectionService;
   private readonly config: UniversalProcessorConfig;
-  private readonly reasoningAnalyzer: ReturnType<typeof createReasoningEffortAnalyzer>;
-  private readonly modelRoutingMap: Map<string, { readonly provider: ModelProvider; readonly backendModel: string }>;
+  private readonly reasoningAnalyzer: ReturnType<
+    typeof createReasoningEffortAnalyzer
+  >;
+  private readonly modelRoutingMap: Map<
+    string,
+    { readonly provider: ModelProvider; readonly backendModel: string }
+  >;
   private readonly supportedModels: readonly string[];
 
   constructor(config: Readonly<UniversalProcessorConfig>) {
@@ -161,8 +166,7 @@ export class UniversalRequestProcessor {
         correlationId,
         'processRequest',
         {
-          originalError:
-            error instanceof Error ? error.message : String(error),
+          originalError: error instanceof Error ? error.message : String(error),
         }
       );
     }
@@ -211,10 +215,7 @@ export class UniversalRequestProcessor {
     }
 
     const requestBody = body as Record<string, unknown>;
-    const normalizedBody = this.normalizeLegacyRequest(
-      requestBody,
-      format
-    );
+    const normalizedBody = this.normalizeLegacyRequest(requestBody, format);
 
     // Only perform content security validation if enabled
     if (this.config.enableContentSecurityValidation) {
@@ -412,10 +413,12 @@ export class UniversalRequestProcessor {
     request: Readonly<DeepReadonly<ClaudeRequest>>
   ): ClaudeRequest {
     // Sanitize message content
-    const sanitizedMessages = request.messages.map((message: Readonly<DeepReadonly<ClaudeMessage>>) => ({
-      ...message,
-      content: this.sanitizeContent(message.content),
-    }));
+    const sanitizedMessages = request.messages.map(
+      (message: Readonly<DeepReadonly<ClaudeMessage>>) => ({
+        ...message,
+        content: this.sanitizeContent(message.content),
+      })
+    );
 
     const hasSystemMessage =
       typeof request.system === 'string' && request.system.trim().length > 0;
@@ -437,21 +440,23 @@ export class UniversalRequestProcessor {
     request: Readonly<DeepReadonly<OpenAIRequest>>
   ): OpenAIRequest {
     // Sanitize message content
-    const sanitizedMessages = request.messages.map((message: Readonly<DeepReadonly<OpenAIMessage>>) => {
-      // Type guard for content - safely handle any type
-       
-      const messageContent = message.content as unknown;
-      let sanitizedContent: unknown = messageContent;
-      
-      if (typeof messageContent === 'string' && messageContent.length > 0) {
-        sanitizedContent = this.sanitizeString(messageContent);
+    const sanitizedMessages = request.messages.map(
+      (message: Readonly<DeepReadonly<OpenAIMessage>>) => {
+        // Type guard for content - safely handle any type
+
+        const messageContent = message.content as unknown;
+        let sanitizedContent: unknown = messageContent;
+
+        if (typeof messageContent === 'string' && messageContent.length > 0) {
+          sanitizedContent = this.sanitizeString(messageContent);
+        }
+
+        return {
+          ...message,
+          content: sanitizedContent,
+        };
       }
-      
-      return {
-        ...message,
-        content: sanitizedContent,
-      };
-    });
+    );
 
     return {
       ...request,
@@ -487,10 +492,7 @@ export class UniversalRequestProcessor {
    * Sanitize Claude content (string or content blocks)
    */
   private sanitizeContent(
-    content: Readonly<DeepReadonly<
-      | string
-      | readonly ClaudeContentBlock[]
-    >>
+    content: Readonly<DeepReadonly<string | readonly ClaudeContentBlock[]>>
   ): string | readonly ClaudeContentBlock[] {
     if (typeof content === 'string') {
       return this.sanitizeString(content);
@@ -532,10 +534,7 @@ export class UniversalRequestProcessor {
       );
     };
 
-    const inspectContentBlocks = (
-      content: unknown,
-      field: string
-    ): void => {
+    const inspectContentBlocks = (content: unknown, field: string): void => {
       if (typeof content === 'string') {
         checkString(content, field);
         return;
@@ -551,7 +550,10 @@ export class UniversalRequestProcessor {
             item !== null &&
             'text' in (item as Record<string, unknown>)
           ) {
-            checkString((item as { text?: unknown }).text, `${nestedField}.text`);
+            checkString(
+              (item as { text?: unknown }).text,
+              `${nestedField}.text`
+            );
           }
         });
       }
@@ -691,26 +693,27 @@ export class UniversalRequestProcessor {
 
     // For Claude requests, check message content
     return (request as ClaudeRequest).messages.some((message) => {
-        const content =
-          typeof message.content === 'string'
+      const content =
+        typeof message.content === 'string'
+          ? message.content
+          : Array.isArray(message.content)
             ? message.content
-            : Array.isArray(message.content)
-              ? message.content
-                  .filter(
-                    (block: Readonly<DeepReadonly<ClaudeContentBlock>>): block is {
-                      readonly type: 'text';
-                      readonly text?: string;
-                    } =>
-                      block.type === 'text' && typeof block.text === 'string'
-                  )
-                  .map((block) => block.text ?? '')
-                  .join(' ')
-              : '';
+                .filter(
+                  (
+                    block: Readonly<DeepReadonly<ClaudeContentBlock>>
+                  ): block is {
+                    readonly type: 'text';
+                    readonly text?: string;
+                  } => block.type === 'text' && typeof block.text === 'string'
+                )
+                .map((block) => block.text ?? '')
+                .join(' ')
+            : '';
 
-        return allKeywords.some((keyword) =>
-          content.toLowerCase().includes(keyword.toLowerCase())
-        );
-      });
+      return allKeywords.some((keyword) =>
+        content.toLowerCase().includes(keyword.toLowerCase())
+      );
+    });
   }
 
   /**
@@ -735,7 +738,9 @@ export class UniversalRequestProcessor {
   private transformRequest(
     request: Readonly<DeepReadonly<UniversalRequest>>,
     reasoningEffort: Readonly<ReasoningEffort>,
-    conversationContext: Readonly<DeepReadonly<ConversationContext> | undefined>,
+    conversationContext: Readonly<
+      DeepReadonly<ConversationContext> | undefined
+    >,
     correlationId: Readonly<string>,
     format: Readonly<RequestFormat>
   ): ResponsesCreateParams {
@@ -798,7 +803,10 @@ export class UniversalRequestProcessor {
 
   private createModelRoutingMap(
     routingConfig: ModelRoutingConfig
-  ): Map<string, { readonly provider: ModelProvider; readonly backendModel: string }> {
+  ): Map<
+    string,
+    { readonly provider: ModelProvider; readonly backendModel: string }
+  > {
     const map = new Map<
       string,
       { readonly provider: ModelProvider; readonly backendModel: string }
@@ -806,9 +814,7 @@ export class UniversalRequestProcessor {
 
     for (const entry of routingConfig.entries) {
       const backendModel =
-        typeof entry.backendModel === 'string'
-          ? entry.backendModel.trim()
-          : '';
+        typeof entry.backendModel === 'string' ? entry.backendModel.trim() : '';
       const aliasSet = new Set<string>();
 
       if (backendModel.length > 0) {
@@ -828,7 +834,8 @@ export class UniversalRequestProcessor {
 
         map.set(alias, {
           provider: entry.provider,
-          backendModel: backendModel.length > 0 ? backendModel : entry.backendModel,
+          backendModel:
+            backendModel.length > 0 ? backendModel : entry.backendModel,
         });
       }
     }
@@ -842,7 +849,10 @@ export class UniversalRequestProcessor {
     const models = new Set<string>();
 
     for (const entry of routingConfig.entries) {
-      if (typeof entry.backendModel === 'string' && entry.backendModel.trim().length > 0) {
+      if (
+        typeof entry.backendModel === 'string' &&
+        entry.backendModel.trim().length > 0
+      ) {
         models.add(entry.backendModel.trim());
       }
 

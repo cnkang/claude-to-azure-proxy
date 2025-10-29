@@ -6,23 +6,19 @@ import type {
   ResponsesAPIError,
 } from '../types/index.js';
 import { logger } from '../middleware/logging.js';
-import { 
-  createResponsesToClaudeTransformer,
-} from './responses-to-claude-transformer.js';
-import { 
-  createResponsesToOpenAITransformer,
-} from './responses-to-openai-transformer.js';
+import { createResponsesToClaudeTransformer } from './responses-to-claude-transformer.js';
+import { createResponsesToOpenAITransformer } from './responses-to-openai-transformer.js';
 import { ValidationError } from '../errors/index.js';
 
 /**
  * Handles streaming responses from Azure OpenAI Responses API
- * 
+ *
  * This handler provides:
  * - Streaming support for both Claude and OpenAI formats
  * - Proper event flow and formatting for each client type
  * - Stream error handling and recovery
  * - Chunk transformation and validation
- * 
+ *
  * Requirements: 1.4, 4.4, 7.3
  */
 export class ResponsesStreamingHandler {
@@ -40,13 +36,17 @@ export class ResponsesStreamingHandler {
 
   /**
    * Process a stream chunk and transform it to the appropriate format
-   * 
+   *
    * @param chunk - The Responses API stream chunk
    * @returns Transformed stream chunk in the requested format
    */
   public processStreamChunk(
     chunk: ResponsesStreamChunk
-  ): ClaudeStreamChunk | OpenAIStreamChunk | readonly ClaudeStreamChunk[] | readonly OpenAIStreamChunk[] {
+  ):
+    | ClaudeStreamChunk
+    | OpenAIStreamChunk
+    | readonly ClaudeStreamChunk[]
+    | readonly OpenAIStreamChunk[] {
     logger.debug('Processing stream chunk', this.correlationId, {
       chunkId: chunk.id,
       responseFormat: this.responseFormat,
@@ -55,22 +55,32 @@ export class ResponsesStreamingHandler {
 
     try {
       if (this.responseFormat === 'claude') {
-        const transformedChunk = this.claudeTransformer.transformStreamChunk(chunk);
-        
-        logger.debug('Stream chunk transformed to Claude format', this.correlationId, {
-          chunkId: chunk.id,
-          chunkType: transformedChunk.type,
-        });
+        const transformedChunk =
+          this.claudeTransformer.transformStreamChunk(chunk);
+
+        logger.debug(
+          'Stream chunk transformed to Claude format',
+          this.correlationId,
+          {
+            chunkId: chunk.id,
+            chunkType: transformedChunk.type,
+          }
+        );
 
         return transformedChunk;
       } else {
-        const transformedChunk = this.openAITransformer.transformStreamChunk(chunk);
-        
-        logger.debug('Stream chunk transformed to OpenAI format', this.correlationId, {
-          chunkId: chunk.id,
-          object: transformedChunk.object,
-          choicesCount: transformedChunk.choices.length,
-        });
+        const transformedChunk =
+          this.openAITransformer.transformStreamChunk(chunk);
+
+        logger.debug(
+          'Stream chunk transformed to OpenAI format',
+          this.correlationId,
+          {
+            chunkId: chunk.id,
+            object: transformedChunk.object,
+            choicesCount: transformedChunk.choices.length,
+          }
+        );
 
         return transformedChunk;
       }
@@ -87,13 +97,13 @@ export class ResponsesStreamingHandler {
 
   /**
    * Handle stream errors and create appropriate error responses
-   * 
+   *
    * @param error - The error that occurred during streaming
    * @returns Error response in the requested format
    */
-  public handleStreamError(error: Readonly<ResponsesAPIError | Error>):
-    | readonly ClaudeStreamChunk[]
-    | readonly OpenAIStreamChunk[] {
+  public handleStreamError(
+    error: Readonly<ResponsesAPIError | Error>
+  ): readonly ClaudeStreamChunk[] | readonly OpenAIStreamChunk[] {
     const { errorType, errorMessage } = this.extractStreamErrorDetails(error);
 
     logger.error('Handling stream error', this.correlationId, {
@@ -155,12 +165,15 @@ export class ResponsesStreamingHandler {
 
   /**
    * Create stream start event for the appropriate format
-   * 
+   *
    * @param responseId - The response ID from the Responses API
    * @param model - The model name
    * @returns Stream start chunk in the requested format
    */
-  public createStreamStart(responseId: string, model: string): ClaudeStreamChunk | OpenAIStreamChunk {
+  public createStreamStart(
+    responseId: string,
+    model: string
+  ): ClaudeStreamChunk | OpenAIStreamChunk {
     logger.debug('Creating stream start event', this.correlationId, {
       responseId,
       model,
@@ -204,7 +217,7 @@ export class ResponsesStreamingHandler {
 
   /**
    * Create content block start event for Claude format
-   * 
+   *
    * @param index - The content block index
    * @returns Claude content block start chunk
    */
@@ -236,7 +249,7 @@ export class ResponsesStreamingHandler {
 
   /**
    * Create content block stop event for Claude format
-   * 
+   *
    * @param index - The content block index
    * @returns Claude content block stop chunk
    */
@@ -264,7 +277,7 @@ export class ResponsesStreamingHandler {
 
   /**
    * Validate stream chunk structure
-   * 
+   *
    * @param chunk - The chunk to validate
    * @returns True if the chunk is valid
    */
@@ -284,13 +297,17 @@ export class ResponsesStreamingHandler {
       typeof typedChunk.model !== 'string' ||
       !Array.isArray(typedChunk.output)
     ) {
-      logger.warn('Invalid stream chunk: missing or invalid required fields', this.correlationId, {
-        id: typeof typedChunk.id,
-        object: typedChunk.object,
-        created: typeof typedChunk.created,
-        model: typeof typedChunk.model,
-        output: Array.isArray(typedChunk.output),
-      });
+      logger.warn(
+        'Invalid stream chunk: missing or invalid required fields',
+        this.correlationId,
+        {
+          id: typeof typedChunk.id,
+          object: typedChunk.object,
+          created: typeof typedChunk.created,
+          model: typeof typedChunk.model,
+          output: Array.isArray(typedChunk.output),
+        }
+      );
       return false;
     }
 
@@ -299,14 +316,16 @@ export class ResponsesStreamingHandler {
 
   /**
    * Check if a stream chunk indicates completion
-   * 
+   *
    * @param chunk - The stream chunk to check
    * @returns True if the stream is complete
    */
   public isStreamComplete(chunk: ResponsesStreamChunk): boolean {
     // Check if there's reasoning with completed status
-    const reasoningOutput = chunk.output.find(item => item.type === 'reasoning');
-    
+    const reasoningOutput = chunk.output.find(
+      (item) => item.type === 'reasoning'
+    );
+
     if (reasoningOutput?.reasoning?.status === 'completed') {
       logger.debug('Stream completed: reasoning finished', this.correlationId, {
         chunkId: chunk.id,
@@ -316,13 +335,18 @@ export class ResponsesStreamingHandler {
 
     // Stream is NOT complete if we have ongoing reasoning
     const hasOngoingReasoning = chunk.output.some(
-      item => item.type === 'reasoning' && item.reasoning?.status === 'in_progress'
+      (item) =>
+        item.type === 'reasoning' && item.reasoning?.status === 'in_progress'
     );
 
     if (hasOngoingReasoning) {
-      logger.debug('Stream not complete: ongoing reasoning', this.correlationId, {
-        chunkId: chunk.id,
-      });
+      logger.debug(
+        'Stream not complete: ongoing reasoning',
+        this.correlationId,
+        {
+          chunkId: chunk.id,
+        }
+      );
       return false;
     }
 
@@ -362,18 +386,25 @@ export class ResponsesStreamingHandler {
       return false;
     }
 
-    const candidate = error as { readonly type?: unknown; readonly message?: unknown };
+    const candidate = error as {
+      readonly type?: unknown;
+      readonly message?: unknown;
+    };
 
-    return typeof candidate.type === 'string' && typeof candidate.message === 'string';
+    return (
+      typeof candidate.type === 'string' &&
+      typeof candidate.message === 'string'
+    );
   }
 
   /**
    * Create an error chunk in the appropriate format
    */
-  private createErrorChunk(error: unknown):
-    | readonly ClaudeStreamChunk[]
-    | readonly OpenAIStreamChunk[] {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown streaming error';
+  private createErrorChunk(
+    error: unknown
+  ): readonly ClaudeStreamChunk[] | readonly OpenAIStreamChunk[] {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown streaming error';
 
     if (this.responseFormat === 'claude') {
       return [
@@ -442,16 +473,19 @@ export class ResponsesStreamProcessor {
 
   constructor(correlationId: string, responseFormat: ResponseFormat) {
     this.correlationId = correlationId;
-    this.handler = createResponsesStreamingHandler(correlationId, responseFormat);
+    this.handler = createResponsesStreamingHandler(
+      correlationId,
+      responseFormat
+    );
   }
 
   /**
    * Process an async iterable of Responses API stream chunks
-   * 
+   *
    * @param stream - The async iterable of stream chunks
    * @returns Async generator of transformed chunks
    */
-  public async* processStream(
+  public async *processStream(
     stream: AsyncIterable<ResponsesStreamChunk>
   ): AsyncGenerator<ClaudeStreamChunk | OpenAIStreamChunk, void, unknown> {
     logger.debug('Starting stream processing', this.correlationId);
@@ -478,7 +512,10 @@ export class ResponsesStreamProcessor {
 
         // Send stream start event if this is the first chunk
         if (!hasStarted) {
-          const startChunk = this.handler.createStreamStart(chunk.id, chunk.model);
+          const startChunk = this.handler.createStreamStart(
+            chunk.id,
+            chunk.model
+          );
           yield startChunk;
           hasStarted = true;
 

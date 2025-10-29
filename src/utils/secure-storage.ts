@@ -14,7 +14,8 @@ import { ConfigurationError } from '../errors/index.js';
 export class SecureCredentialManager {
   private static instance: SecureCredentialManager | undefined;
   private readonly credentialHashes: Map<string, string> = new Map();
-  private readonly credentialMetadata: Map<string, CredentialMetadata> = new Map();
+  private readonly credentialMetadata: Map<string, CredentialMetadata> =
+    new Map();
 
   private constructor() {
     this.initializeCredentials();
@@ -70,7 +71,10 @@ export class SecureCredentialManager {
   /**
    * Validate proxy API key with timing-safe comparison
    */
-  public validateProxyApiKey(providedKey: string, correlationId: string): boolean {
+  public validateProxyApiKey(
+    providedKey: string,
+    correlationId: string
+  ): boolean {
     return this.validateCredential('proxy_api_key', providedKey, correlationId);
   }
 
@@ -93,9 +97,13 @@ export class SecureCredentialManager {
     try {
       const storedHash = this.credentialHashes.get(credentialId);
       if (storedHash === undefined) {
-        logger.warn('Credential validation failed - unknown credential ID', correlationId, {
-          credentialId,
-        });
+        logger.warn(
+          'Credential validation failed - unknown credential ID',
+          correlationId,
+          {
+            credentialId,
+          }
+        );
         return false;
       }
 
@@ -157,7 +165,9 @@ export class SecureCredentialManager {
   /**
    * Get credential metadata (for monitoring)
    */
-  public getCredentialMetadata(credentialId: string): CredentialMetadata | undefined {
+  public getCredentialMetadata(
+    credentialId: string
+  ): CredentialMetadata | undefined {
     return this.credentialMetadata.get(credentialId);
   }
 
@@ -166,12 +176,12 @@ export class SecureCredentialManager {
    */
   public getAllCredentialMetadata(): Record<string, CredentialMetadata> {
     const metadata: Record<string, CredentialMetadata> = {};
-    
+
     for (const [id, data] of this.credentialMetadata) {
       // Use Object.assign to safely set property
       Object.assign(metadata, { [id]: { ...data } });
     }
-    
+
     return metadata;
   }
 
@@ -182,7 +192,7 @@ export class SecureCredentialManager {
     if (credential.length <= 8) {
       return '[REDACTED]';
     }
-    
+
     return `${credential.substring(0, 4)}...[REDACTED]...${credential.substring(credential.length - 4)}`;
   }
 
@@ -213,7 +223,7 @@ export class SecureCredentialManager {
       /^password/i,
     ];
 
-    if (dummyPatterns.some(pattern => pattern.test(credential))) {
+    if (dummyPatterns.some((pattern) => pattern.test(credential))) {
       return false;
     }
 
@@ -223,7 +233,10 @@ export class SecureCredentialManager {
   /**
    * Rotate credentials (for future use)
    */
-  public rotateCredential(credentialId: string, newCredential: string): boolean {
+  public rotateCredential(
+    credentialId: string,
+    newCredential: string
+  ): boolean {
     try {
       if (!SecureCredentialManager.isValidCredentialFormat(newCredential)) {
         logger.warn('Credential rotation failed - invalid format', '', {
@@ -302,21 +315,43 @@ export class SecureConfigManager {
   /**
    * Sanitize configuration for logging
    */
-  public sanitizeConfig(config: Readonly<Record<string, unknown>>): Record<string, unknown> {
-    const sanitized: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
+  public sanitizeConfig(
+    config: Readonly<Record<string, unknown>>
+  ): Record<string, unknown> {
+    const sanitized: Record<string, unknown> = Object.create(null) as Record<
+      string,
+      unknown
+    >;
 
     for (const [key, value] of Object.entries(config)) {
       // Validate key to prevent prototype pollution
-      if (typeof key !== 'string' || key === '__proto__' || key === 'constructor' || key === 'prototype') {
+      if (
+        typeof key !== 'string' ||
+        key === '__proto__' ||
+        key === 'constructor' ||
+        key === 'prototype'
+      ) {
         continue;
       }
-      
+
       if (this.isSensitiveKey(key)) {
-        Object.defineProperty(sanitized, key, { value: '[REDACTED]', enumerable: true, configurable: true });
+        Object.defineProperty(sanitized, key, {
+          value: '[REDACTED]',
+          enumerable: true,
+          configurable: true,
+        });
       } else if (typeof value === 'string' && this.looksLikeSecret(value)) {
-        Object.defineProperty(sanitized, key, { value: '[REDACTED]', enumerable: true, configurable: true });
+        Object.defineProperty(sanitized, key, {
+          value: '[REDACTED]',
+          enumerable: true,
+          configurable: true,
+        });
       } else {
-        Object.defineProperty(sanitized, key, { value, enumerable: true, configurable: true });
+        Object.defineProperty(sanitized, key, {
+          value,
+          enumerable: true,
+          configurable: true,
+        });
       }
     }
 
@@ -328,10 +363,12 @@ export class SecureConfigManager {
    */
   private isSensitiveKey(key: string): boolean {
     const upperKey = key.toUpperCase();
-    return this.sensitiveKeys.has(upperKey) || 
-           Array.from(this.sensitiveKeys).some(sensitiveKey => 
-             upperKey.includes(sensitiveKey)
-           );
+    return (
+      this.sensitiveKeys.has(upperKey) ||
+      Array.from(this.sensitiveKeys).some((sensitiveKey) =>
+        upperKey.includes(sensitiveKey)
+      )
+    );
   }
 
   /**
@@ -349,8 +386,10 @@ export class SecureConfigManager {
     const hasDigit = /\d/.test(value);
     const hasSpecial = /[^a-zA-Z0-9]/.test(value);
 
-    const entropyScore = [hasLower, hasUpper, hasDigit, hasSpecial].filter(Boolean).length;
-    
+    const entropyScore = [hasLower, hasUpper, hasDigit, hasSpecial].filter(
+      Boolean
+    ).length;
+
     return entropyScore >= 3;
   }
 
@@ -366,12 +405,21 @@ export class SecureConfigManager {
     // Check for sensitive data in environment
     for (const [key, value] of Object.entries(process.env)) {
       if (typeof value === 'string') {
-        if (this.isSensitiveKey(key) && !SecureCredentialManager.isValidCredentialFormat(value)) {
+        if (
+          this.isSensitiveKey(key) &&
+          !SecureCredentialManager.isValidCredentialFormat(value)
+        ) {
           issues.push(`Environment variable ${key} has invalid format`);
         }
 
-        if (value.includes('test') || value.includes('example') || value.includes('placeholder')) {
-          issues.push(`Environment variable ${key} appears to contain test/placeholder value`);
+        if (
+          value.includes('test') ||
+          value.includes('example') ||
+          value.includes('placeholder')
+        ) {
+          issues.push(
+            `Environment variable ${key} appears to contain test/placeholder value`
+          );
         }
       }
     }

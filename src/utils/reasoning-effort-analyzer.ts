@@ -23,10 +23,10 @@ import type {
 type DeepReadonly<T> = T extends (infer U)[]
   ? readonly DeepReadonly<U>[]
   : T extends ReadonlyArray<infer U>
-  ? readonly DeepReadonly<U>[]
-  : T extends object
-  ? { readonly [K in keyof T]: DeepReadonly<T[K]> }
-  : T;
+    ? readonly DeepReadonly<U>[]
+    : T extends object
+      ? { readonly [K in keyof T]: DeepReadonly<T[K]> }
+      : T;
 
 /**
  * Interface for reasoning effort analysis
@@ -55,7 +55,9 @@ export interface ReasoningEffortAnalyzer {
    * @param request - The Claude request to analyze
    * @returns Complexity factors analysis
    */
-  detectComplexityFactors(request: DeepReadonly<ClaudeRequest>): ComplexityFactors;
+  detectComplexityFactors(
+    request: DeepReadonly<ClaudeRequest>
+  ): ComplexityFactors;
 
   /**
    * Adjust reasoning effort based on conversation context
@@ -126,7 +128,9 @@ export interface ComplexityAnalyzer {
    * @param request - The Claude request to analyze
    * @returns Complexity factors
    */
-  analyzeContentComplexity(request: DeepReadonly<ClaudeRequest>): ComplexityFactors;
+  analyzeContentComplexity(
+    request: DeepReadonly<ClaudeRequest>
+  ): ComplexityFactors;
 
   /**
    * Determine if reasoning should be used based on complexity factors
@@ -140,7 +144,9 @@ export interface ComplexityAnalyzer {
    * @param factors - Complexity factors to evaluate
    * @returns Reasoning effort level
    */
-  determineReasoningLevel(factors: DeepReadonly<ComplexityFactors>): ReasoningEffort;
+  determineReasoningLevel(
+    factors: DeepReadonly<ComplexityFactors>
+  ): ReasoningEffort;
 
   /**
    * Analyze content length category
@@ -189,7 +195,9 @@ export interface ComplexityAnalyzer {
    * @param messages - Array of Claude messages
    * @returns True if multiple languages detected
    */
-  detectMultiLanguageContext(messages: readonly DeepReadonly<ClaudeMessage>[]): boolean;
+  detectMultiLanguageContext(
+    messages: readonly DeepReadonly<ClaudeMessage>[]
+  ): boolean;
 
   /**
    * Analyze framework complexity
@@ -232,200 +240,478 @@ export interface ReasoningDecisionEngine {
  */
 export const TASK_COMPLEXITY_INDICATORS: TaskComplexityIndicators = {
   algorithmKeywords: [
-    'algorithm', 'complexity', 'optimization', 'performance', 'efficient',
-    'sorting', 'searching', 'graph', 'tree', 'dynamic programming',
-    'recursion', 'iteration', 'big o', 'time complexity', 'space complexity',
-    'data structure', 'heap', 'stack', 'queue', 'hash', 'binary search',
-    'merge sort', 'quick sort', 'dijkstra', 'breadth first', 'depth first',
+    'algorithm',
+    'complexity',
+    'optimization',
+    'performance',
+    'efficient',
+    'sorting',
+    'searching',
+    'graph',
+    'tree',
+    'dynamic programming',
+    'recursion',
+    'iteration',
+    'big o',
+    'time complexity',
+    'space complexity',
+    'data structure',
+    'heap',
+    'stack',
+    'queue',
+    'hash',
+    'binary search',
+    'merge sort',
+    'quick sort',
+    'dijkstra',
+    'breadth first',
+    'depth first',
   ],
   architectureKeywords: [
-    'architecture', 'design pattern', 'microservices', 'monolith',
-    'scalability', 'distributed', 'system design', 'infrastructure',
-    'deployment', 'containerization', 'kubernetes', 'docker',
-    'load balancing', 'caching', 'database design', 'schema',
-    'api design', 'rest', 'graphql', 'event driven', 'message queue',
-    'pub/sub', 'saga pattern', 'cqrs', 'event sourcing', 'clean architecture',
+    'architecture',
+    'design pattern',
+    'microservices',
+    'monolith',
+    'scalability',
+    'distributed',
+    'system design',
+    'infrastructure',
+    'deployment',
+    'containerization',
+    'kubernetes',
+    'docker',
+    'load balancing',
+    'caching',
+    'database design',
+    'schema',
+    'api design',
+    'rest',
+    'graphql',
+    'event driven',
+    'message queue',
+    'pub/sub',
+    'saga pattern',
+    'cqrs',
+    'event sourcing',
+    'clean architecture',
   ],
   debuggingKeywords: [
-    'debug', 'error', 'exception', 'bug', 'fix', 'troubleshoot',
-    'stack trace', 'breakpoint', 'logging', 'monitoring', 'profiling',
-    'memory leak', 'performance issue', 'crash', 'hang', 'deadlock',
-    'race condition', 'null pointer', 'segmentation fault', 'timeout',
+    'debug',
+    'error',
+    'exception',
+    'bug',
+    'fix',
+    'troubleshoot',
+    'stack trace',
+    'breakpoint',
+    'logging',
+    'monitoring',
+    'profiling',
+    'memory leak',
+    'performance issue',
+    'crash',
+    'hang',
+    'deadlock',
+    'race condition',
+    'null pointer',
+    'segmentation fault',
+    'timeout',
   ],
   simpleTaskKeywords: [
-    'hello world', 'basic example', 'simple function', 'quick fix',
-    'one liner', 'snippet', 'template', 'boilerplate', 'starter',
-    'tutorial', 'getting started', 'basic usage', 'simple implementation',
+    'hello world',
+    'basic example',
+    'simple function',
+    'quick fix',
+    'one liner',
+    'snippet',
+    'template',
+    'boilerplate',
+    'starter',
+    'tutorial',
+    'getting started',
+    'basic usage',
+    'simple implementation',
   ],
   languageSpecific: {
     python: {
       complexityKeywords: [
-        'django', 'flask', 'fastapi', 'asyncio', 'multiprocessing',
-        'pandas', 'numpy', 'tensorflow', 'pytorch', 'scikit-learn',
-        'celery', 'gunicorn', 'uwsgi', 'sqlalchemy', 'alembic',
+        'django',
+        'flask',
+        'fastapi',
+        'asyncio',
+        'multiprocessing',
+        'pandas',
+        'numpy',
+        'tensorflow',
+        'pytorch',
+        'scikit-learn',
+        'celery',
+        'gunicorn',
+        'uwsgi',
+        'sqlalchemy',
+        'alembic',
       ],
       frameworkKeywords: [
-        'django', 'flask', 'fastapi', 'tornado', 'bottle', 'pyramid',
-        'starlette', 'sanic', 'quart', 'falcon',
+        'django',
+        'flask',
+        'fastapi',
+        'tornado',
+        'bottle',
+        'pyramid',
+        'starlette',
+        'sanic',
+        'quart',
+        'falcon',
       ],
-      simplePatterns: [
-        'print(', 'def ', 'import ', 'for i in', 'if __name__',
-      ],
+      simplePatterns: ['print(', 'def ', 'import ', 'for i in', 'if __name__'],
       architecturalPatterns: [
-        'settings.py', 'models.py', 'views.py', 'serializers.py',
-        'middleware', 'signals', 'migrations', 'admin.py',
+        'settings.py',
+        'models.py',
+        'views.py',
+        'serializers.py',
+        'middleware',
+        'signals',
+        'migrations',
+        'admin.py',
       ],
     },
     java: {
       complexityKeywords: [
-        'spring boot', 'spring cloud', 'hibernate', 'jpa', 'maven',
-        'gradle', 'microservices', 'kafka', 'redis', 'elasticsearch',
-        'junit', 'mockito', 'jackson', 'lombok', 'actuator',
+        'spring boot',
+        'spring cloud',
+        'hibernate',
+        'jpa',
+        'maven',
+        'gradle',
+        'microservices',
+        'kafka',
+        'redis',
+        'elasticsearch',
+        'junit',
+        'mockito',
+        'jackson',
+        'lombok',
+        'actuator',
       ],
       frameworkKeywords: [
-        'spring', 'hibernate', 'struts', 'jsf', 'wicket', 'vaadin',
-        'play', 'dropwizard', 'micronaut', 'quarkus',
+        'spring',
+        'hibernate',
+        'struts',
+        'jsf',
+        'wicket',
+        'vaadin',
+        'play',
+        'dropwizard',
+        'micronaut',
+        'quarkus',
       ],
       simplePatterns: [
-        'public static void main', 'System.out.println', 'public class',
+        'public static void main',
+        'System.out.println',
+        'public class',
       ],
       architecturalPatterns: [
-        '@RestController', '@Service', '@Repository', '@Component',
-        '@Configuration', '@Entity', '@Table', 'application.properties',
+        '@RestController',
+        '@Service',
+        '@Repository',
+        '@Component',
+        '@Configuration',
+        '@Entity',
+        '@Table',
+        'application.properties',
       ],
     },
     kotlin: {
       complexityKeywords: [
-        'android', 'jetpack compose', 'coroutines', 'flow', 'room',
-        'retrofit', 'dagger', 'hilt', 'navigation', 'lifecycle',
-        'viewmodel', 'livedata', 'databinding', 'workmanager',
+        'android',
+        'jetpack compose',
+        'coroutines',
+        'flow',
+        'room',
+        'retrofit',
+        'dagger',
+        'hilt',
+        'navigation',
+        'lifecycle',
+        'viewmodel',
+        'livedata',
+        'databinding',
+        'workmanager',
       ],
       frameworkKeywords: [
-        'android', 'ktor', 'spring', 'exposed', 'koin', 'kodein',
+        'android',
+        'ktor',
+        'spring',
+        'exposed',
+        'koin',
+        'kodein',
       ],
-      simplePatterns: [
-        'fun main', 'println', 'class ', 'data class',
-      ],
+      simplePatterns: ['fun main', 'println', 'class ', 'data class'],
       architecturalPatterns: [
-        'Activity', 'Fragment', 'ViewModel', 'Repository', 'UseCase',
-        'MainActivity', 'AndroidManifest.xml', 'build.gradle',
+        'Activity',
+        'Fragment',
+        'ViewModel',
+        'Repository',
+        'UseCase',
+        'MainActivity',
+        'AndroidManifest.xml',
+        'build.gradle',
       ],
     },
     typescript: {
       complexityKeywords: [
-        'react', 'vue', 'angular', 'next.js', 'nuxt', 'nest.js',
-        'express', 'fastify', 'prisma', 'typeorm', 'graphql',
-        'apollo', 'redux', 'mobx', 'rxjs', 'webpack', 'vite',
+        'react',
+        'vue',
+        'angular',
+        'next.js',
+        'nuxt',
+        'nest.js',
+        'express',
+        'fastify',
+        'prisma',
+        'typeorm',
+        'graphql',
+        'apollo',
+        'redux',
+        'mobx',
+        'rxjs',
+        'webpack',
+        'vite',
       ],
       frameworkKeywords: [
-        'react', 'vue', 'angular', 'svelte', 'solid', 'lit',
-        'express', 'koa', 'fastify', 'nest', 'next', 'nuxt',
+        'react',
+        'vue',
+        'angular',
+        'svelte',
+        'solid',
+        'lit',
+        'express',
+        'koa',
+        'fastify',
+        'nest',
+        'next',
+        'nuxt',
       ],
       simplePatterns: [
-        'console.log', 'function ', 'const ', 'let ', 'interface ',
+        'console.log',
+        'function ',
+        'const ',
+        'let ',
+        'interface ',
       ],
       architecturalPatterns: [
-        'component', 'service', 'module', 'decorator', 'middleware',
-        'tsconfig.json', 'package.json', 'types/', 'interfaces/',
+        'component',
+        'service',
+        'module',
+        'decorator',
+        'middleware',
+        'tsconfig.json',
+        'package.json',
+        'types/',
+        'interfaces/',
       ],
     },
     javascript: {
       complexityKeywords: [
-        'react', 'vue', 'angular', 'node.js', 'express', 'webpack',
-        'babel', 'eslint', 'jest', 'cypress', 'mongodb', 'mongoose',
+        'react',
+        'vue',
+        'angular',
+        'node.js',
+        'express',
+        'webpack',
+        'babel',
+        'eslint',
+        'jest',
+        'cypress',
+        'mongodb',
+        'mongoose',
       ],
       frameworkKeywords: [
-        'react', 'vue', 'angular', 'svelte', 'express', 'koa',
-        'fastify', 'hapi', 'meteor', 'ember',
+        'react',
+        'vue',
+        'angular',
+        'svelte',
+        'express',
+        'koa',
+        'fastify',
+        'hapi',
+        'meteor',
+        'ember',
       ],
-      simplePatterns: [
-        'console.log', 'function', 'const', 'let', 'var',
-      ],
+      simplePatterns: ['console.log', 'function', 'const', 'let', 'var'],
       architecturalPatterns: [
-        'component', 'module', 'middleware', 'router', 'controller',
-        'package.json', 'webpack.config', '.babelrc',
+        'component',
+        'module',
+        'middleware',
+        'router',
+        'controller',
+        'package.json',
+        'webpack.config',
+        '.babelrc',
       ],
     },
     shell: {
       complexityKeywords: [
-        'docker', 'kubernetes', 'terraform', 'ansible', 'jenkins',
-        'gitlab-ci', 'github actions', 'aws', 'azure', 'gcp',
-        'systemd', 'cron', 'nginx', 'apache', 'monitoring',
+        'docker',
+        'kubernetes',
+        'terraform',
+        'ansible',
+        'jenkins',
+        'gitlab-ci',
+        'github actions',
+        'aws',
+        'azure',
+        'gcp',
+        'systemd',
+        'cron',
+        'nginx',
+        'apache',
+        'monitoring',
       ],
       frameworkKeywords: [
-        'bash', 'zsh', 'fish', 'powershell', 'docker', 'kubernetes',
+        'bash',
+        'zsh',
+        'fish',
+        'powershell',
+        'docker',
+        'kubernetes',
       ],
-      simplePatterns: [
-        'echo', 'ls', 'cd', 'mkdir', 'cp', 'mv', 'rm',
-      ],
+      simplePatterns: ['echo', 'ls', 'cd', 'mkdir', 'cp', 'mv', 'rm'],
       architecturalPatterns: [
-        'Dockerfile', 'docker-compose', 'kubernetes', 'terraform',
-        'ansible', 'pipeline', 'deployment', 'infrastructure',
+        'Dockerfile',
+        'docker-compose',
+        'kubernetes',
+        'terraform',
+        'ansible',
+        'pipeline',
+        'deployment',
+        'infrastructure',
       ],
     },
     bash: {
       complexityKeywords: [
-        'docker', 'kubernetes', 'terraform', 'ansible', 'jenkins',
-        'gitlab-ci', 'github actions', 'aws', 'azure', 'gcp',
-        'systemd', 'cron', 'nginx', 'apache', 'monitoring',
+        'docker',
+        'kubernetes',
+        'terraform',
+        'ansible',
+        'jenkins',
+        'gitlab-ci',
+        'github actions',
+        'aws',
+        'azure',
+        'gcp',
+        'systemd',
+        'cron',
+        'nginx',
+        'apache',
+        'monitoring',
       ],
       frameworkKeywords: [
-        'bash', 'docker', 'kubernetes', 'terraform', 'ansible',
+        'bash',
+        'docker',
+        'kubernetes',
+        'terraform',
+        'ansible',
       ],
-      simplePatterns: [
-        'echo', 'ls', 'cd', 'mkdir', 'cp', 'mv', 'rm',
-      ],
+      simplePatterns: ['echo', 'ls', 'cd', 'mkdir', 'cp', 'mv', 'rm'],
       architecturalPatterns: [
-        'Dockerfile', 'docker-compose', 'kubernetes', 'terraform',
-        'ansible', 'pipeline', 'deployment', 'infrastructure',
+        'Dockerfile',
+        'docker-compose',
+        'kubernetes',
+        'terraform',
+        'ansible',
+        'pipeline',
+        'deployment',
+        'infrastructure',
       ],
     },
     swift: {
       complexityKeywords: [
-        'ios', 'macos', 'swiftui', 'uikit', 'core data', 'combine',
-        'async/await', 'actor', 'concurrency', 'networking', 'keychain',
-        'push notifications', 'app store', 'xcode', 'cocoapods', 'spm',
+        'ios',
+        'macos',
+        'swiftui',
+        'uikit',
+        'core data',
+        'combine',
+        'async/await',
+        'actor',
+        'concurrency',
+        'networking',
+        'keychain',
+        'push notifications',
+        'app store',
+        'xcode',
+        'cocoapods',
+        'spm',
       ],
       frameworkKeywords: [
-        'swiftui', 'uikit', 'appkit', 'foundation', 'core data',
-        'combine', 'vapor', 'perfect', 'kitura',
+        'swiftui',
+        'uikit',
+        'appkit',
+        'foundation',
+        'core data',
+        'combine',
+        'vapor',
+        'perfect',
+        'kitura',
       ],
-      simplePatterns: [
-        'print(', 'func ', 'var ', 'let ', 'class ', 'struct ',
-      ],
+      simplePatterns: ['print(', 'func ', 'var ', 'let ', 'class ', 'struct '],
       architecturalPatterns: [
-        'ViewController', 'AppDelegate', 'SceneDelegate', 'Model',
-        'ViewModel', 'Coordinator', 'Info.plist', 'Package.swift',
+        'ViewController',
+        'AppDelegate',
+        'SceneDelegate',
+        'Model',
+        'ViewModel',
+        'Coordinator',
+        'Info.plist',
+        'Package.swift',
       ],
     },
     go: {
       complexityKeywords: [
-        'goroutines', 'channels', 'context', 'sync', 'http server',
-        'grpc', 'protobuf', 'docker', 'kubernetes', 'microservices',
+        'goroutines',
+        'channels',
+        'context',
+        'sync',
+        'http server',
+        'grpc',
+        'protobuf',
+        'docker',
+        'kubernetes',
+        'microservices',
       ],
-      frameworkKeywords: [
-        'gin', 'echo', 'fiber', 'beego', 'revel', 'buffalo',
-      ],
-      simplePatterns: [
-        'fmt.Println', 'func main', 'package main', 'import',
-      ],
+      frameworkKeywords: ['gin', 'echo', 'fiber', 'beego', 'revel', 'buffalo'],
+      simplePatterns: ['fmt.Println', 'func main', 'package main', 'import'],
       architecturalPatterns: [
-        'main.go', 'go.mod', 'go.sum', 'Dockerfile', 'handler',
+        'main.go',
+        'go.mod',
+        'go.sum',
+        'Dockerfile',
+        'handler',
       ],
     },
     rust: {
       complexityKeywords: [
-        'async', 'tokio', 'serde', 'diesel', 'actix', 'warp',
-        'ownership', 'borrowing', 'lifetimes', 'traits', 'macros',
+        'async',
+        'tokio',
+        'serde',
+        'diesel',
+        'actix',
+        'warp',
+        'ownership',
+        'borrowing',
+        'lifetimes',
+        'traits',
+        'macros',
       ],
-      frameworkKeywords: [
-        'actix', 'warp', 'rocket', 'tide', 'axum', 'diesel',
-      ],
-      simplePatterns: [
-        'println!', 'fn main', 'let ', 'mut ', 'struct ',
-      ],
+      frameworkKeywords: ['actix', 'warp', 'rocket', 'tide', 'axum', 'diesel'],
+      simplePatterns: ['println!', 'fn main', 'let ', 'mut ', 'struct '],
       architecturalPatterns: [
-        'Cargo.toml', 'main.rs', 'lib.rs', 'mod.rs', 'use ',
+        'Cargo.toml',
+        'main.rs',
+        'lib.rs',
+        'mod.rs',
+        'use ',
       ],
     },
     unknown: {
@@ -437,11 +723,13 @@ export const TASK_COMPLEXITY_INDICATORS: TaskComplexityIndicators = {
   },
 } as const;
 
-const LANGUAGE_INDICATORS_MAP = new Map<ProgrammingLanguage, LanguageIndicators>(
-  Object.entries(TASK_COMPLEXITY_INDICATORS.languageSpecific).map(([language, indicators]) => [
-    language as ProgrammingLanguage,
-    indicators,
-  ])
+const LANGUAGE_INDICATORS_MAP = new Map<
+  ProgrammingLanguage,
+  LanguageIndicators
+>(
+  Object.entries(TASK_COMPLEXITY_INDICATORS.languageSpecific).map(
+    ([language, indicators]) => [language as ProgrammingLanguage, indicators]
+  )
 );
 
 const FRAMEWORK_LANGUAGE_MAP = new Map<Framework, ProgrammingLanguage>([
@@ -470,10 +758,13 @@ export class LanguageDetectionService implements LanguageDetector {
    */
   public detectPrimaryLanguage(content: string): ProgrammingLanguage {
     const contentLower = content.toLowerCase();
-    
+
     // Language detection patterns (order matters - more specific first)
     const languagePatterns: Array<[ProgrammingLanguage, readonly string[]]> = [
-      ['kotlin', ['kotlin', 'android', 'jetpack compose', 'fun main', 'data class']],
+      [
+        'kotlin',
+        ['kotlin', 'android', 'jetpack compose', 'fun main', 'data class'],
+      ],
       ['swift', ['swift', 'swiftui', 'uikit', 'ios', 'macos', 'xcode']],
       ['typescript', ['typescript', '.ts', 'interface ', 'type ', 'as const']],
       ['python', ['python', '.py', 'def ', 'import ', 'django', 'flask']],
@@ -486,7 +777,7 @@ export class LanguageDetectionService implements LanguageDetector {
     ];
 
     for (const [language, patterns] of languagePatterns) {
-      if (patterns.some(pattern => contentLower.includes(pattern))) {
+      if (patterns.some((pattern) => contentLower.includes(pattern))) {
         return language;
       }
     }
@@ -509,7 +800,10 @@ export class LanguageDetectionService implements LanguageDetector {
       ['django', ['django', 'models.py', 'views.py', 'settings.py']],
       ['fastapi', ['fastapi', 'pydantic', 'uvicorn', '@app.']],
       ['flask', ['flask', 'app.route', 'from flask']],
-      ['spring-boot', ['spring boot', '@springbootapplication', 'application.properties']],
+      [
+        'spring-boot',
+        ['spring boot', '@springbootapplication', 'application.properties'],
+      ],
       ['spring-cloud', ['spring cloud', 'eureka', 'zuul', 'hystrix']],
       ['react', ['react', 'jsx', 'usestate', 'useeffect', 'component']],
       ['vue', ['vue', 'vue.js', 'composition api', 'setup()', 'ref(']],
@@ -523,13 +817,14 @@ export class LanguageDetectionService implements LanguageDetector {
 
     for (const [framework, patterns] of frameworkPatterns) {
       if (language !== 'unknown') {
-        const frameworkLanguage = FRAMEWORK_LANGUAGE_MAP.get(framework) ?? 'unknown';
+        const frameworkLanguage =
+          FRAMEWORK_LANGUAGE_MAP.get(framework) ?? 'unknown';
         if (frameworkLanguage !== 'unknown' && frameworkLanguage !== language) {
           continue;
         }
       }
 
-      if (patterns.some(pattern => contentLower.includes(pattern))) {
+      if (patterns.some((pattern) => contentLower.includes(pattern))) {
         frameworks.push(framework);
       }
     }
@@ -546,18 +841,22 @@ export class LanguageDetectionService implements LanguageDetector {
   ): TaskComplexity {
     const contentLower = content.toLowerCase();
     const indicators = TASK_COMPLEXITY_INDICATORS;
-    
+
     // Check for architectural complexity
-    if (indicators.architectureKeywords.some(keyword => 
-      contentLower.includes(keyword)
-    )) {
+    if (
+      indicators.architectureKeywords.some((keyword) =>
+        contentLower.includes(keyword)
+      )
+    ) {
       return 'architectural';
     }
 
     // Check for algorithmic complexity
-    if (indicators.algorithmKeywords.some(keyword => 
-      contentLower.includes(keyword)
-    )) {
+    if (
+      indicators.algorithmKeywords.some((keyword) =>
+        contentLower.includes(keyword)
+      )
+    ) {
       return 'complex';
     }
 
@@ -572,9 +871,11 @@ export class LanguageDetectionService implements LanguageDetector {
     }
 
     // Check for simple patterns
-    if (indicators.simpleTaskKeywords.some(keyword => 
-      contentLower.includes(keyword)
-    )) {
+    if (
+      indicators.simpleTaskKeywords.some((keyword) =>
+        contentLower.includes(keyword)
+      )
+    ) {
       return 'simple';
     }
 
@@ -598,15 +899,19 @@ export class LanguageDetectionService implements LanguageDetector {
     const contentLower = content.toLowerCase();
     const indicators = TASK_COMPLEXITY_INDICATORS;
 
-    if (indicators.debuggingKeywords.some(keyword => 
-      contentLower.includes(keyword)
-    )) {
+    if (
+      indicators.debuggingKeywords.some((keyword) =>
+        contentLower.includes(keyword)
+      )
+    ) {
       return 'debugging';
     }
 
-    if (indicators.architectureKeywords.some(keyword => 
-      contentLower.includes(keyword)
-    )) {
+    if (
+      indicators.architectureKeywords.some((keyword) =>
+        contentLower.includes(keyword)
+      )
+    ) {
       return 'architecture';
     }
 
@@ -614,8 +919,11 @@ export class LanguageDetectionService implements LanguageDetector {
       return 'testing';
     }
 
-    if (contentLower.includes('deploy') || contentLower.includes('devops') || 
-        contentLower.includes('infrastructure')) {
+    if (
+      contentLower.includes('deploy') ||
+      contentLower.includes('devops') ||
+      contentLower.includes('infrastructure')
+    ) {
       return 'devops';
     }
 
@@ -629,24 +937,36 @@ export class LanguageDetectionService implements LanguageDetector {
 export class ComplexityAnalysisService implements ComplexityAnalyzer {
   private readonly languageDetector: LanguageDetector;
 
-  constructor(languageDetector: LanguageDetector = new LanguageDetectionService()) {
+  constructor(
+    languageDetector: LanguageDetector = new LanguageDetectionService()
+  ) {
     this.languageDetector = languageDetector;
   }
 
   /**
    * Analyze content complexity factors
    */
-  public analyzeContentComplexity(request: DeepReadonly<ClaudeRequest>): ComplexityFactors {
+  public analyzeContentComplexity(
+    request: DeepReadonly<ClaudeRequest>
+  ): ComplexityFactors {
     const allContent = this.extractAllContent(request);
     const contentLength = allContent.length;
     const messages = request.messages;
     const messageCount = messages.length;
     const codeBlockCount = this.countCodeBlocks(messages);
-    
-    const primaryLanguage = this.languageDetector.detectPrimaryLanguage(allContent);
-    const frameworks = this.languageDetector.detectFrameworks(allContent, primaryLanguage);
-    const complexity = this.languageDetector.analyzeTaskComplexity(allContent, primaryLanguage);
-    const developmentType = this.languageDetector.determineDevelopmentType(allContent);
+
+    const primaryLanguage =
+      this.languageDetector.detectPrimaryLanguage(allContent);
+    const frameworks = this.languageDetector.detectFrameworks(
+      allContent,
+      primaryLanguage
+    );
+    const complexity = this.languageDetector.analyzeTaskComplexity(
+      allContent,
+      primaryLanguage
+    );
+    const developmentType =
+      this.languageDetector.determineDevelopmentType(allContent);
 
     const languageContext: LanguageContext = {
       primaryLanguage,
@@ -666,7 +986,10 @@ export class ComplexityAnalysisService implements ComplexityAnalyzer {
       isSimpleCompletion: this.isSimpleCompletion(allContent),
       conversationDepth: messageCount,
       hasMultipleLanguages: this.detectMultiLanguageContext(messages),
-      hasComplexFrameworkPatterns: this.analyzeFrameworkComplexity(frameworks, allContent),
+      hasComplexFrameworkPatterns: this.analyzeFrameworkComplexity(
+        frameworks,
+        allContent
+      ),
     };
   }
 
@@ -694,7 +1017,9 @@ export class ComplexityAnalysisService implements ComplexityAnalyzer {
   /**
    * Determine reasoning level based on complexity factors
    */
-  public determineReasoningLevel(factors: DeepReadonly<ComplexityFactors>): ReasoningEffort {
+  public determineReasoningLevel(
+    factors: DeepReadonly<ComplexityFactors>
+  ): ReasoningEffort {
     // High reasoning for architectural or very complex tasks
     if (
       factors.languageContext.complexity === 'architectural' ||
@@ -733,17 +1058,23 @@ export class ComplexityAnalysisService implements ComplexityAnalyzer {
    */
   public analyzeContentLength(content: string): 'short' | 'medium' | 'long' {
     const length = content.length;
-    if (length < 500) {return 'short';}
-    if (length < 2000) {return 'medium';}
+    if (length < 500) {
+      return 'short';
+    }
+    if (length < 2000) {
+      return 'medium';
+    }
     return 'long';
   }
 
   /**
    * Count code blocks in messages
    */
-  public countCodeBlocks(messages: readonly DeepReadonly<ClaudeMessage>[]): number {
+  public countCodeBlocks(
+    messages: readonly DeepReadonly<ClaudeMessage>[]
+  ): number {
     let count = 0;
-    
+
     for (const message of messages) {
       const content = this.extractMessageContent(message);
       // Count code blocks (```...``` patterns)
@@ -757,7 +1088,7 @@ export class ComplexityAnalysisService implements ComplexityAnalyzer {
         count += Math.ceil(inlineCodeMatches.length / 5); // Weight inline code less
       }
     }
-    
+
     return count;
   }
 
@@ -766,7 +1097,7 @@ export class ComplexityAnalysisService implements ComplexityAnalyzer {
    */
   public detectArchitecturalPatterns(content: string): boolean {
     const contentLower = content.toLowerCase();
-    return TASK_COMPLEXITY_INDICATORS.architectureKeywords.some(keyword =>
+    return TASK_COMPLEXITY_INDICATORS.architectureKeywords.some((keyword) =>
       contentLower.includes(keyword)
     );
   }
@@ -776,7 +1107,7 @@ export class ComplexityAnalysisService implements ComplexityAnalyzer {
    */
   public detectAlgorithmicComplexity(content: string): boolean {
     const contentLower = content.toLowerCase();
-    return TASK_COMPLEXITY_INDICATORS.algorithmKeywords.some(keyword =>
+    return TASK_COMPLEXITY_INDICATORS.algorithmKeywords.some((keyword) =>
       contentLower.includes(keyword)
     );
   }
@@ -786,7 +1117,7 @@ export class ComplexityAnalysisService implements ComplexityAnalyzer {
    */
   private detectDebuggingKeywords(content: string): boolean {
     const contentLower = content.toLowerCase();
-    return TASK_COMPLEXITY_INDICATORS.debuggingKeywords.some(keyword =>
+    return TASK_COMPLEXITY_INDICATORS.debuggingKeywords.some((keyword) =>
       contentLower.includes(keyword)
     );
   }
@@ -796,7 +1127,7 @@ export class ComplexityAnalysisService implements ComplexityAnalyzer {
    */
   public isSimpleCompletion(content: string): boolean {
     const contentLower = content.toLowerCase();
-    return TASK_COMPLEXITY_INDICATORS.simpleTaskKeywords.some(keyword =>
+    return TASK_COMPLEXITY_INDICATORS.simpleTaskKeywords.some((keyword) =>
       contentLower.includes(keyword)
     );
   }
@@ -804,18 +1135,26 @@ export class ComplexityAnalysisService implements ComplexityAnalyzer {
   /**
    * Analyze conversation depth
    */
-  public analyzeConversationDepth(messageCount: number): 'shallow' | 'medium' | 'deep' {
-    if (messageCount <= 3) {return 'shallow';}
-    if (messageCount <= 10) {return 'medium';}
+  public analyzeConversationDepth(
+    messageCount: number
+  ): 'shallow' | 'medium' | 'deep' {
+    if (messageCount <= 3) {
+      return 'shallow';
+    }
+    if (messageCount <= 10) {
+      return 'medium';
+    }
     return 'deep';
   }
 
   /**
    * Detect multi-language context
    */
-  public detectMultiLanguageContext(messages: readonly DeepReadonly<ClaudeMessage>[]): boolean {
+  public detectMultiLanguageContext(
+    messages: readonly DeepReadonly<ClaudeMessage>[]
+  ): boolean {
     const languages = new Set<ProgrammingLanguage>();
-    
+
     for (const message of messages) {
       const content = this.extractMessageContent(message);
       const language = this.languageDetector.detectPrimaryLanguage(content);
@@ -823,7 +1162,7 @@ export class ComplexityAnalysisService implements ComplexityAnalyzer {
         languages.add(language);
       }
     }
-    
+
     return languages.size > 1;
   }
 
@@ -834,18 +1173,28 @@ export class ComplexityAnalysisService implements ComplexityAnalyzer {
     frameworks: readonly Framework[],
     content: string
   ): boolean {
-    if (frameworks.length === 0) {return false;}
-    
+    if (frameworks.length === 0) {
+      return false;
+    }
+
     const contentLower = content.toLowerCase();
-    const complexFrameworks = ['spring-cloud', 'django', 'react', 'vue', 'android-sdk'];
-    
+    const complexFrameworks = [
+      'spring-cloud',
+      'django',
+      'react',
+      'vue',
+      'android-sdk',
+    ];
+
     // Check if any complex frameworks are detected
-    const hasComplexFramework = frameworks.some(framework =>
+    const hasComplexFramework = frameworks.some((framework) =>
       complexFrameworks.includes(framework)
     );
-    
-    if (!hasComplexFramework) {return false;}
-    
+
+    if (!hasComplexFramework) {
+      return false;
+    }
+
     // Check for architectural patterns in the content
     for (const framework of frameworks) {
       const languageKey = this.getLanguageForFramework(framework);
@@ -860,7 +1209,7 @@ export class ComplexityAnalysisService implements ComplexityAnalyzer {
         }
       }
     }
-    
+
     return false;
   }
 
@@ -869,7 +1218,7 @@ export class ComplexityAnalysisService implements ComplexityAnalyzer {
    */
   private extractAllContent(request: DeepReadonly<ClaudeRequest>): string {
     const contents: string[] = [];
-    
+
     if (typeof request.system === 'string' && request.system.length > 0) {
       contents.push(request.system);
     }
@@ -928,7 +1277,10 @@ export class ReasoningDecisionEngineService implements ReasoningDecisionEngine {
     factors: DeepReadonly<ComplexityFactors>
   ): ReasoningEffort | undefined {
     // Skip reasoning for very simple completions
-    if (factors.isSimpleCompletion && factors.contentLength < this.simpleCompletionThreshold) {
+    if (
+      factors.isSimpleCompletion &&
+      factors.contentLength < this.simpleCompletionThreshold
+    ) {
       return undefined;
     }
 
@@ -1022,7 +1374,7 @@ export class ReasoningEffortAnalysisService implements ReasoningEffortAnalyzer {
     context?: DeepReadonly<ConversationContext>
   ): ReasoningEffort | undefined {
     const factors = this.detectComplexityFactors(request);
-    
+
     if (!this.shouldApplyReasoning(request)) {
       return undefined;
     }
@@ -1051,7 +1403,9 @@ export class ReasoningEffortAnalysisService implements ReasoningEffortAnalyzer {
   /**
    * Detect complexity factors in the request
    */
-  public detectComplexityFactors(request: DeepReadonly<ClaudeRequest>): ComplexityFactors {
+  public detectComplexityFactors(
+    request: DeepReadonly<ClaudeRequest>
+  ): ComplexityFactors {
     return this.complexityAnalyzer.analyzeContentComplexity(request);
   }
 
@@ -1065,15 +1419,21 @@ export class ReasoningEffortAnalysisService implements ReasoningEffortAnalyzer {
     // If conversation is already complex, maintain or increase reasoning
     if (context.taskComplexity === 'complex') {
       const baseEffort = this.decisionEngine.decideReasoningEffort(factors);
-      if (baseEffort === 'minimal') {return 'low';}
-      if (baseEffort === 'low') {return 'medium';}
+      if (baseEffort === 'minimal') {
+        return 'low';
+      }
+      if (baseEffort === 'low') {
+        return 'medium';
+      }
       return baseEffort;
     }
 
     // For long conversations, slightly increase reasoning
     if (context.messageCount > 15) {
       const baseEffort = this.decisionEngine.decideReasoningEffort(factors);
-      if (baseEffort === 'minimal') {return 'low';}
+      if (baseEffort === 'minimal') {
+        return 'low';
+      }
       return baseEffort;
     }
 
@@ -1083,7 +1443,9 @@ export class ReasoningEffortAnalysisService implements ReasoningEffortAnalyzer {
   /**
    * Detect language context from request content
    */
-  public detectLanguageContext(request: DeepReadonly<ClaudeRequest>): LanguageContext {
+  public detectLanguageContext(
+    request: DeepReadonly<ClaudeRequest>
+  ): LanguageContext {
     const factors = this.detectComplexityFactors(request);
     return factors.languageContext;
   }

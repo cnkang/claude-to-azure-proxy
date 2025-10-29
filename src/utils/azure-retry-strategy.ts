@@ -4,7 +4,10 @@
  */
 
 import { RetryStrategy, type RetryConfig } from '../resilience/retry.js';
-import { AzureErrorMapper, type ErrorMappingContext } from './azure-error-mapper.js';
+import {
+  AzureErrorMapper,
+  type ErrorMappingContext,
+} from './azure-error-mapper.js';
 import { logger } from '../middleware/logging.js';
 import type {
   ResponsesCreateParams,
@@ -15,10 +18,10 @@ import type {
 type DeepReadonly<T> = T extends (infer U)[]
   ? readonly DeepReadonly<U>[]
   : T extends ReadonlyArray<infer U>
-  ? readonly DeepReadonly<U>[]
-  : T extends object
-  ? { readonly [P in keyof T]: DeepReadonly<T[P]> }
-  : T;
+    ? readonly DeepReadonly<U>[]
+    : T extends object
+      ? { readonly [P in keyof T]: DeepReadonly<T[P]> }
+      : T;
 
 type ReadonlyFunction<T> = T extends (...args: infer A) => infer R
   ? (...args: DeepReadonly<A>) => R
@@ -47,7 +50,10 @@ export class AzureRetryStrategy {
   private readonly retryStrategy: RetryStrategy;
   private readonly config: RetryConfig;
 
-  constructor(name: string = 'azure-openai', config: Partial<RetryConfig> = {}) {
+  constructor(
+    name: string = 'azure-openai',
+    config: Partial<RetryConfig> = {}
+  ) {
     this.config = {
       maxAttempts: 3,
       baseDelayMs: 1000,
@@ -129,7 +135,10 @@ export class AzureRetryStrategy {
   /**
    * Map final error to appropriate client format
    */
-  private mapFinalError(error: Readonly<Error>, context: DeepReadonly<AzureRetryContext>): ReturnType<typeof AzureErrorMapper.mapError> {
+  private mapFinalError(
+    error: Readonly<Error>,
+    context: DeepReadonly<AzureRetryContext>
+  ): ReturnType<typeof AzureErrorMapper.mapError> {
     const mappingContext: ErrorMappingContext = {
       correlationId: context.correlationId,
       operation: context.operation,
@@ -182,8 +191,7 @@ export class AzureRetryStrategy {
     const errorName = error.name.toLowerCase();
 
     return retryableTypes.some(
-      (type) => errorMessage.includes(type) || 
-                errorName.includes(type)
+      (type) => errorMessage.includes(type) || errorName.includes(type)
     );
   }
 
@@ -256,20 +264,27 @@ export async function withAzureRetry<T>(
   context: DeepReadonly<AzureRetryContext>,
   config?: DeepReadonly<Partial<RetryConfig>>
 ): Promise<T> {
-  const retryStrategy = new AzureRetryStrategy('azure-openai-operation', config);
+  const retryStrategy = new AzureRetryStrategy(
+    'azure-openai-operation',
+    config
+  );
   const result = await retryStrategy.executeWithRetry(operation, context);
 
   if (result.success && result.data !== undefined) {
     return result.data;
   }
 
-  throw result.error ?? new Error('Azure OpenAI operation failed after all retries');
+  throw (
+    result.error ?? new Error('Azure OpenAI operation failed after all retries')
+  );
 }
 
 /**
  * Create Azure-specific retry configuration
  */
-export function createAzureRetryConfig(overrides: Readonly<Partial<RetryConfig>> = {}): RetryConfig {
+export function createAzureRetryConfig(
+  overrides: Readonly<Partial<RetryConfig>> = {}
+): RetryConfig {
   return {
     maxAttempts: 3,
     baseDelayMs: 1000,

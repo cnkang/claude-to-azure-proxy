@@ -21,10 +21,10 @@ const isRecord = (value: unknown): value is UnknownRecord =>
 type DeepReadonly<T> = T extends (infer U)[]
   ? readonly DeepReadonly<U>[]
   : T extends ReadonlyArray<infer U>
-  ? readonly DeepReadonly<U>[]
-  : T extends object
-  ? { readonly [P in keyof T]: DeepReadonly<T[P]> }
-  : T;
+    ? readonly DeepReadonly<U>[]
+    : T extends object
+      ? { readonly [P in keyof T]: DeepReadonly<T[P]> }
+      : T;
 
 /**
  * Transforms OpenAI API requests to Azure OpenAI Responses API format
@@ -182,12 +182,12 @@ export class OpenAIToResponsesTransformer {
       response_format?: ResponseFormat;
     } = {};
 
-    if ('max_tokens' in requestRecord && requestRecord.max_tokens !== undefined) {
+    if (
+      'max_tokens' in requestRecord &&
+      requestRecord.max_tokens !== undefined
+    ) {
       const maxTokensValue = requestRecord.max_tokens;
-      if (
-        typeof maxTokensValue !== 'number' ||
-        Number.isNaN(maxTokensValue)
-      ) {
+      if (typeof maxTokensValue !== 'number' || Number.isNaN(maxTokensValue)) {
         throw new ValidationError(
           'max_tokens must be a number',
           this.correlationId,
@@ -337,15 +337,14 @@ export class OpenAIToResponsesTransformer {
     }
 
     // Allow missing content for assistant messages with tool calls
-    const hasToolCalls = 'tool_calls' in message && Array.isArray(message.tool_calls) && message.tool_calls.length > 0;
-    
+    const hasToolCalls =
+      'tool_calls' in message &&
+      Array.isArray(message.tool_calls) &&
+      message.tool_calls.length > 0;
+
     // Allow empty content for messages that may have been sanitized
     // Only require content for user messages without tool calls
-    if (
-      contentValue === undefined &&
-      roleValue === 'user' &&
-      !hasToolCalls
-    ) {
+    if (contentValue === undefined && roleValue === 'user' && !hasToolCalls) {
       // Provide default content instead of throwing error
       contentValue = '[Content was sanitized and removed for security]';
     }
@@ -480,9 +479,7 @@ export class OpenAIToResponsesTransformer {
   /**
    * Validate OpenAI tool definitions
    */
-  private validateOpenAITools(
-    tools: unknown
-  ): readonly OpenAIToolDefinition[] {
+  private validateOpenAITools(tools: unknown): readonly OpenAIToolDefinition[] {
     if (!Array.isArray(tools)) {
       throw new ValidationError(
         'tools must be an array when provided',
@@ -721,11 +718,17 @@ export class OpenAIToResponsesTransformer {
 
     const toolChoiceObject = openaiToolChoice as Extract<
       ToolChoice,
-      { readonly type: 'function'; readonly function: { readonly name: string } }
+      {
+        readonly type: 'function';
+        readonly function: { readonly name: string };
+      }
     >;
 
     const functionDescriptor = toolChoiceObject.function;
-    if (!isRecord(functionDescriptor) || typeof functionDescriptor.name !== 'string') {
+    if (
+      !isRecord(functionDescriptor) ||
+      typeof functionDescriptor.name !== 'string'
+    ) {
       return 'auto';
     }
 
@@ -760,9 +763,7 @@ export class OpenAIToResponsesTransformer {
   /**
    * Generate conversation ID from request context
    */
-  public generateConversationId(
-    request: DeepReadonly<OpenAIRequest>
-  ): string {
+  public generateConversationId(request: DeepReadonly<OpenAIRequest>): string {
     const firstUserMessage = request.messages.find(
       (message) => message.role === 'user'
     );
@@ -833,9 +834,7 @@ export class OpenAIToResponsesTransformer {
   /**
    * Detect if request contains Swift/iOS development content
    */
-  public detectSwiftIOSContent(
-    request: DeepReadonly<OpenAIRequest>
-  ): boolean {
+  public detectSwiftIOSContent(request: DeepReadonly<OpenAIRequest>): boolean {
     const swiftKeywords = [
       'swift',
       'ios',

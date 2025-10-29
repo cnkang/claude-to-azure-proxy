@@ -20,10 +20,10 @@ const isRecord = (value: unknown): value is UnknownRecord =>
 type DeepReadonly<T> = T extends (infer U)[]
   ? readonly DeepReadonly<U>[]
   : T extends ReadonlyArray<infer U>
-  ? readonly DeepReadonly<U>[]
-  : T extends object
-  ? { readonly [P in keyof T]: DeepReadonly<T[P]> }
-  : T;
+    ? readonly DeepReadonly<U>[]
+    : T extends object
+      ? { readonly [P in keyof T]: DeepReadonly<T[P]> }
+      : T;
 
 /**
  * Transforms Claude API requests to Azure OpenAI Responses API format
@@ -180,10 +180,7 @@ export class ClaudeToResponsesTransformer {
       requestRecord.max_tokens !== undefined
     ) {
       const maxTokensValue = requestRecord.max_tokens;
-      if (
-        typeof maxTokensValue !== 'number' ||
-        Number.isNaN(maxTokensValue)
-      ) {
+      if (typeof maxTokensValue !== 'number' || Number.isNaN(maxTokensValue)) {
         throw new ValidationError(
           'max_tokens must be a number',
           this.correlationId,
@@ -423,10 +420,12 @@ export class ClaudeToResponsesTransformer {
     if (typeValue === 'text') {
       // If text is not a string, provide a default message instead of throwing error
       if (typeof block.text !== 'string') {
-        (block as { text: string }).text = '[Content was processed and converted to text]';
+        (block as { text: string }).text =
+          '[Content was processed and converted to text]';
       } else if (block.text.trim().length === 0) {
         // If text block is empty after sanitization, provide a default message
-        (block as { text: string }).text = '[Content was sanitized and removed for security]';
+        (block as { text: string }).text =
+          '[Content was sanitized and removed for security]';
       }
     }
 
@@ -450,9 +449,7 @@ export class ClaudeToResponsesTransformer {
   /**
    * Validate Claude tool definitions
    */
-  private validateClaudeTools(
-    tools: unknown
-  ): readonly ClaudeToolDefinition[] {
+  private validateClaudeTools(tools: unknown): readonly ClaudeToolDefinition[] {
     if (!Array.isArray(tools)) {
       throw new ValidationError(
         'tools must be an array when provided',
@@ -688,7 +685,10 @@ export class ClaudeToResponsesTransformer {
       return 'auto';
     }
 
-    const toolChoiceObject = claudeToolChoice as Extract<ToolChoice, { readonly type: 'tool'; readonly name: string }>;
+    const toolChoiceObject = claudeToolChoice as Extract<
+      ToolChoice,
+      { readonly type: 'tool'; readonly name: string }
+    >;
     return {
       type: 'function',
       function: {

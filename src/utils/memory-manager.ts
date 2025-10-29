@@ -137,7 +137,7 @@ export interface MemoryManagerConfig {
   /** Memory pressure thresholds */
   readonly pressureThresholds: {
     readonly medium: number; // Percentage
-    readonly high: number;   // Percentage
+    readonly high: number; // Percentage
     readonly critical: number; // Percentage
   };
   /** Enable automatic garbage collection suggestions */
@@ -201,7 +201,7 @@ export class MemoryManager {
 
     this.setupGCObserver();
     this.startMemorySampling();
-    
+
     if (this.config.enableLeakDetection) {
       this.startLeakDetection();
     }
@@ -254,15 +254,16 @@ export class MemoryManager {
   public getMemoryMetrics(): MemoryMetrics {
     const memoryUsage = process.memoryUsage();
     const heapPercentage = (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
-    
+
     // Calculate pressure level and score
     const pressure = this.calculateMemoryPressure(heapPercentage);
-    
+
     // Calculate GC statistics
     const recentGCEvents = this.gcEvents.slice(-10); // Last 10 GC events
-    const averageGCDuration = this.totalGCCollections > 0 
-      ? this.totalGCDuration / this.totalGCCollections 
-      : 0;
+    const averageGCDuration =
+      this.totalGCCollections > 0
+        ? this.totalGCDuration / this.totalGCCollections
+        : 0;
 
     return {
       timestamp: new Date().toISOString(),
@@ -306,7 +307,9 @@ export class MemoryManager {
           growthAcceleration: 0,
           memoryEfficiency: 1,
         },
-        recommendations: ['Insufficient data - need at least 10 samples for analysis'],
+        recommendations: [
+          'Insufficient data - need at least 10 samples for analysis',
+        ],
       };
     }
 
@@ -314,12 +317,16 @@ export class MemoryManager {
     const analysis = this.analyzeMemoryTrend();
     const growthRate = this.calculateMemoryGrowthRate();
     const confidence = this.calculateLeakConfidence(analysis, growthRate);
-    
+
     // Determine if leak is detected based on multiple factors
     const leakThreshold = 1024 * 1024; // 1MB per sample interval
     const leakDetected = confidence > 0.7 && growthRate > leakThreshold;
 
-    const recommendations = this.generateRecommendations(analysis, growthRate, leakDetected);
+    const recommendations = this.generateRecommendations(
+      analysis,
+      growthRate,
+      leakDetected
+    );
 
     return {
       leakDetected,
@@ -348,9 +355,9 @@ export class MemoryManager {
 
     const beforeMemory = process.memoryUsage();
     const startTime = performance.now();
-    
+
     global.gc();
-    
+
     const afterMemory = process.memoryUsage();
     const duration = performance.now() - startTime;
     const memoryFreed = beforeMemory.heapUsed - afterMemory.heapUsed;
@@ -388,7 +395,7 @@ export class MemoryManager {
     try {
       this.gcObserver = new PerformanceObserver((list) => {
         const entries = list.getEntries();
-        
+
         for (const entry of entries) {
           const gcEntry = entry as PerformanceEntry & {
             readonly kind?: number;
@@ -398,11 +405,11 @@ export class MemoryManager {
           // Map GC kind to readable type
           const gcType = this.mapGCKindToType(gcEntry.kind ?? 0);
           const duration = gcEntry.duration;
-          
+
           // Estimate memory before/after (approximation)
           const currentMemory = process.memoryUsage().heapUsed;
           const estimatedFreed = Math.max(0, duration * 1000); // Rough estimation
-          
+
           const gcEvent: GCEvent = {
             type: gcType,
             duration,
@@ -422,7 +429,8 @@ export class MemoryManager {
           }
 
           // Log significant GC events
-          if (duration > 100) { // Log GC events longer than 100ms
+          if (duration > 100) {
+            // Log GC events longer than 100ms
             logger.warn('Long garbage collection detected', '', {
               type: gcType,
               duration: Math.round(duration),
@@ -438,12 +446,13 @@ export class MemoryManager {
       });
 
       this.gcObserver.observe({ entryTypes: ['gc'] });
-      
+
       logger.debug('GC observer initialized', '', {});
     } catch (error) {
       logger.warn('Failed to initialize GC observer', '', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        suggestion: 'GC monitoring may not be available in this Node.js version',
+        suggestion:
+          'GC monitoring may not be available in this Node.js version',
       });
     }
   }
@@ -456,7 +465,7 @@ export class MemoryManager {
   private startMemorySampling(): void {
     this.memoryMonitorInterval = setInterval(() => {
       const memoryUsage = process.memoryUsage();
-      
+
       const sample: MemorySample = {
         timestamp: Date.now(),
         heapUsed: memoryUsage.heapUsed,
@@ -473,13 +482,15 @@ export class MemoryManager {
       }
 
       // Check for memory pressure
-      const heapPercentage = (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
+      const heapPercentage =
+        (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
       if (heapPercentage > this.config.pressureThresholds.critical) {
         logger.error('Critical memory pressure detected', '', {
           heapUsage: Math.round(heapPercentage),
           heapUsed: memoryUsage.heapUsed,
           heapTotal: memoryUsage.heapTotal,
-          recommendation: 'Consider immediate garbage collection or request throttling',
+          recommendation:
+            'Consider immediate garbage collection or request throttling',
         });
       } else if (heapPercentage > this.config.pressureThresholds.high) {
         logger.warn('High memory pressure detected', '', {
@@ -498,11 +509,14 @@ export class MemoryManager {
    */
   private startLeakDetection(): void {
     // Run leak detection every 5 minutes
-    const leakDetectionInterval = Math.max(this.config.sampleInterval * 10, 300000);
-    
+    const leakDetectionInterval = Math.max(
+      this.config.sampleInterval * 10,
+      300000
+    );
+
     this.leakDetectionInterval = setInterval(() => {
       const detection = this.detectMemoryLeaks();
-      
+
       if (detection.leakDetected) {
         logger.error('Memory leak detected', '', {
           confidence: Math.round(detection.confidence * 100),
@@ -518,7 +532,7 @@ export class MemoryManager {
         });
       }
     }, leakDetectionInterval);
-  }  /**
+  } /**
 
    * Maps GC kind number to readable type.
    *
@@ -526,7 +540,9 @@ export class MemoryManager {
    * @param kind - GC kind number
    * @returns Readable GC type
    */
-  private mapGCKindToType(kind: number): 'minor' | 'major' | 'incremental' | 'unknown' {
+  private mapGCKindToType(
+    kind: number
+  ): 'minor' | 'major' | 'incremental' | 'unknown' {
     // Based on Node.js GC kind constants
     switch (kind) {
       case 1:
@@ -551,7 +567,9 @@ export class MemoryManager {
    * @param heapPercentage - Current heap usage percentage
    * @returns Memory pressure information
    */
-  private calculateMemoryPressure(heapPercentage: number): MemoryMetrics['pressure'] {
+  private calculateMemoryPressure(
+    heapPercentage: number
+  ): MemoryMetrics['pressure'] {
     let level: 'low' | 'medium' | 'high' | 'critical';
     let score: number;
     const recommendations: string[] = [];
@@ -559,7 +577,9 @@ export class MemoryManager {
     if (heapPercentage >= this.config.pressureThresholds.critical) {
       level = 'critical';
       score = 1.0;
-      recommendations.push('Immediate action required - consider request throttling');
+      recommendations.push(
+        'Immediate action required - consider request throttling'
+      );
       recommendations.push('Force garbage collection if possible');
       recommendations.push('Review memory-intensive operations');
     } else if (heapPercentage >= this.config.pressureThresholds.high) {
@@ -598,13 +618,16 @@ export class MemoryManager {
     }
 
     const samples = this.memorySamples.slice(-20); // Analyze last 20 samples
-    const heapUsages = samples.map(s => s.heapUsed);
-    
+    const heapUsages = samples.map((s) => s.heapUsed);
+
     // Calculate linear regression for trend
     const n = heapUsages.length;
     const sumX = (n * (n - 1)) / 2; // Sum of indices 0, 1, 2, ..., n-1
     const sumY = heapUsages.reduce((sum, usage) => sum + usage, 0);
-    const sumXY = heapUsages.reduce((sum, usage, index) => sum + (index * usage), 0);
+    const sumXY = heapUsages.reduce(
+      (sum, usage, index) => sum + index * usage,
+      0
+    );
     const sumXX = (n * (n - 1) * (2 * n - 1)) / 6; // Sum of squares of indices
 
     const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
@@ -612,18 +635,22 @@ export class MemoryManager {
 
     // Calculate R-squared for trend strength
     const yMean = sumY / n;
-    const ssTotal = heapUsages.reduce((sum, usage) => sum + Math.pow(usage - yMean, 2), 0);
+    const ssTotal = heapUsages.reduce(
+      (sum, usage) => sum + Math.pow(usage - yMean, 2),
+      0
+    );
     const ssResidual = heapUsages.reduce((sum, usage, index) => {
       const predicted = slope * index + intercept;
       return sum + Math.pow(usage - predicted, 2);
     }, 0);
-    const rSquared = 1 - (ssResidual / ssTotal);
+    const rSquared = 1 - ssResidual / ssTotal;
 
     // Determine trend
     let trend: 'stable' | 'growing' | 'declining' | 'volatile';
     if (rSquared < 0.5) {
       trend = 'volatile';
-    } else if (Math.abs(slope) < 1000) { // Less than 1KB change per sample
+    } else if (Math.abs(slope) < 1000) {
+      // Less than 1KB change per sample
       trend = 'stable';
     } else if (slope > 0) {
       trend = 'growing';
@@ -694,7 +721,7 @@ export class MemoryManager {
 
     const n = samples.length;
     const denominator = n * sumXX - sumX * sumX;
-    
+
     if (denominator === 0) {
       return 0;
     }
@@ -725,13 +752,17 @@ export class MemoryManager {
 
     // Factor 2: Growth rate magnitude
     const growthRateKB = growthRate / 1024;
-    if (growthRateKB > 1024) { // > 1MB per interval
+    if (growthRateKB > 1024) {
+      // > 1MB per interval
       confidence += 0.4;
-    } else if (growthRateKB > 256) { // > 256KB per interval
+    } else if (growthRateKB > 256) {
+      // > 256KB per interval
       confidence += 0.25;
-    } else if (growthRateKB > 64) { // > 64KB per interval
+    } else if (growthRateKB > 64) {
+      // > 64KB per interval
       confidence += 0.1;
-    } else if (growthRateKB > 10) { // > 10KB per interval
+    } else if (growthRateKB > 10) {
+      // > 10KB per interval
       confidence += 0.1;
     }
 
@@ -760,8 +791,14 @@ export class MemoryManager {
     }
 
     const recentGCEvents = this.gcEvents.slice(-10);
-    const totalMemoryFreed = recentGCEvents.reduce((sum, event) => sum + event.memoryFreed, 0);
-    const totalGCTime = recentGCEvents.reduce((sum, event) => sum + event.duration, 0);
+    const totalMemoryFreed = recentGCEvents.reduce(
+      (sum, event) => sum + event.memoryFreed,
+      0
+    );
+    const totalGCTime = recentGCEvents.reduce(
+      (sum, event) => sum + event.duration,
+      0
+    );
 
     if (totalGCTime === 0) {
       return 1;
@@ -769,7 +806,7 @@ export class MemoryManager {
 
     // Calculate memory freed per millisecond of GC time
     const efficiency = totalMemoryFreed / totalGCTime;
-    
+
     // Normalize to 0-1 scale (arbitrary scaling based on typical values)
     return Math.min(1, efficiency / 10000);
   }
@@ -791,28 +828,42 @@ export class MemoryManager {
     const recommendations: string[] = [];
 
     if (leakDetected) {
-      recommendations.push('Memory leak detected - immediate investigation required');
+      recommendations.push(
+        'Memory leak detected - immediate investigation required'
+      );
       recommendations.push('Review recent code changes for unclosed resources');
-      recommendations.push('Check for event listener leaks and unclosed connections');
-      recommendations.push('Consider taking heap snapshots for detailed analysis');
+      recommendations.push(
+        'Check for event listener leaks and unclosed connections'
+      );
+      recommendations.push(
+        'Consider taking heap snapshots for detailed analysis'
+      );
     }
 
     if (analysis.trend === 'growing') {
       recommendations.push('Memory usage is consistently growing');
       recommendations.push('Review object lifecycle and cleanup patterns');
-      recommendations.push('Consider implementing object pooling for frequently created objects');
+      recommendations.push(
+        'Consider implementing object pooling for frequently created objects'
+      );
     }
 
     if (analysis.trend === 'volatile') {
       recommendations.push('Memory usage is highly variable');
-      recommendations.push('Review request handling patterns for memory spikes');
-      recommendations.push('Consider implementing request-based memory monitoring');
+      recommendations.push(
+        'Review request handling patterns for memory spikes'
+      );
+      recommendations.push(
+        'Consider implementing request-based memory monitoring'
+      );
     }
 
     if (analysis.memoryEfficiency < 0.5) {
       recommendations.push('Garbage collection appears ineffective');
       recommendations.push('Review large object allocations and retention');
-      recommendations.push('Consider manual garbage collection during low-traffic periods');
+      recommendations.push(
+        'Consider manual garbage collection during low-traffic periods'
+      );
     }
 
     if (analysis.growthAcceleration > 0) {
@@ -822,7 +873,9 @@ export class MemoryManager {
 
     const growthRateKB = growthRate / 1024;
     if (growthRateKB > 100) {
-      recommendations.push(`High memory growth rate: ${Math.round(growthRateKB)}KB per sample`);
+      recommendations.push(
+        `High memory growth rate: ${Math.round(growthRateKB)}KB per sample`
+      );
       recommendations.push('Monitor memory usage more frequently');
     }
 
@@ -844,15 +897,21 @@ export class MemoryManager {
     const suggestions: string[] = [];
 
     if (gcEvent.duration > 100) {
-      suggestions.push('Consider reducing heap size or optimizing object allocation patterns');
+      suggestions.push(
+        'Consider reducing heap size or optimizing object allocation patterns'
+      );
     }
 
     if (gcEvent.type === 'major' && gcEvent.duration > 50) {
-      suggestions.push('Major GC taking significant time - review large object retention');
+      suggestions.push(
+        'Major GC taking significant time - review large object retention'
+      );
     }
 
     if (gcEvent.memoryFreed < 1024 * 1024 && gcEvent.duration > 20) {
-      suggestions.push('GC freed little memory but took significant time - check for memory fragmentation');
+      suggestions.push(
+        'GC freed little memory but took significant time - check for memory fragmentation'
+      );
     }
 
     if (suggestions.length > 0) {
@@ -894,7 +953,9 @@ export const memoryManager = new MemoryManager();
  * @param config - Optional configuration overrides
  * @returns Memory manager instance
  */
-export function startMemoryMonitoring(config?: Partial<MemoryManagerConfig>): MemoryManager {
+export function startMemoryMonitoring(
+  config?: Partial<MemoryManagerConfig>
+): MemoryManager {
   const manager = config ? new MemoryManager(config) : memoryManager;
   manager.startMonitoring();
   return manager;

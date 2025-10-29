@@ -105,7 +105,8 @@ export class StructuredLogger {
     event: Readonly<StructuredSecurityEvent>
   ): void {
     const correlationId =
-      typeof context.correlationId === 'string' && context.correlationId.length > 0
+      typeof context.correlationId === 'string' &&
+      context.correlationId.length > 0
         ? context.correlationId
         : 'unknown';
 
@@ -114,10 +115,7 @@ export class StructuredLogger {
         ? `Security event recorded: ${context.operation}`
         : 'Security event recorded';
 
-    const source =
-      context.operation ??
-      context.source ??
-      'structured-logger';
+    const source = context.operation ?? context.source ?? 'structured-logger';
 
     const details = buildSecurityDetails(context, event);
 
@@ -155,7 +153,11 @@ export class StructuredLogger {
         threshold: 1000,
       });
     } else {
-      logger.debug('Performance metrics recorded', correlationId, entry as unknown as Record<string, unknown>);
+      logger.debug(
+        'Performance metrics recorded',
+        correlationId,
+        entry as unknown as Record<string, unknown>
+      );
     }
   }
 
@@ -172,7 +174,7 @@ export class StructuredLogger {
     };
 
     const message = `Garbage collection completed: ${entry.type}`;
-    
+
     // Log warning for long GC pauses
     if (entry.duration > 100) {
       logger.warn(message, '', {
@@ -206,18 +208,23 @@ export class StructuredLogger {
           };
 
           const memoryBefore = process.memoryUsage();
-          
+
           // Force a small delay to get memory after GC
           setImmediate(() => {
             const memoryAfter = process.memoryUsage();
-            
+
             const logEntry: GCLogEntry = {
               type: String(gcEntry.kind ?? gcEntry.detail?.kind ?? 0),
               duration: entry.duration,
-              timestamp: new Date(performance.timeOrigin + entry.startTime).toISOString(),
+              timestamp: new Date(
+                performance.timeOrigin + entry.startTime
+              ).toISOString(),
               heapBefore: memoryBefore.heapUsed,
               heapAfter: memoryAfter.heapUsed,
-              freedMemory: Math.max(0, memoryBefore.heapUsed - memoryAfter.heapUsed),
+              freedMemory: Math.max(
+                0,
+                memoryBefore.heapUsed - memoryAfter.heapUsed
+              ),
             };
 
             StructuredLogger.logGCEvent(logEntry);
@@ -256,8 +263,8 @@ export class StructuredLogger {
         }
       });
 
-      StructuredLogger.performanceObserver.observe({ 
-        entryTypes: ['measure', 'resource'] 
+      StructuredLogger.performanceObserver.observe({
+        entryTypes: ['measure', 'resource'],
       });
     } catch (error) {
       logger.warn('Failed to setup performance monitoring', '', {
@@ -285,14 +292,14 @@ export class StructuredLogger {
    * Create a performance measure between two marks
    */
   public static measure(
-    name: string, 
-    startMark: string, 
+    name: string,
+    startMark: string,
     endMark?: string,
     correlationId?: string
   ): number {
     try {
       performance.measure(name, startMark, endMark);
-      
+
       const measures = performance.getEntriesByName(name, 'measure');
       if (measures.length === 0) {
         return 0;
@@ -315,7 +322,7 @@ export class StructuredLogger {
           }
         );
       }
-      
+
       return latestMeasure.duration;
     } catch (error) {
       logger.debug('Failed to create performance measure', '', {
@@ -331,10 +338,14 @@ export class StructuredLogger {
   /**
    * Log memory usage with Node.js 24 enhanced details
    */
-  public static logMemoryUsage(correlationId: string, operation?: string): void {
+  public static logMemoryUsage(
+    correlationId: string,
+    operation?: string
+  ): void {
     const memoryUsage = process.memoryUsage();
-    const heapUsagePercent = (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
-    
+    const heapUsagePercent =
+      (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
+
     const logData = {
       operation,
       memory: {

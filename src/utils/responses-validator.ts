@@ -6,10 +6,7 @@ import type {
   ResponsesResponse,
   ResponsesStreamChunk,
 } from '../types/index.js';
-import {
-  isResponsesResponse,
-  isResponsesStreamChunk,
-} from '../types/index.js';
+import { isResponsesResponse, isResponsesStreamChunk } from '../types/index.js';
 
 /**
  * Validate Responses API create parameters using shared rules.
@@ -17,9 +14,9 @@ import {
  * @param params - Parameters to validate
  * @throws {ValidationError} When validation fails
  */
-export function validateResponsesCreateParams<
-  T extends ResponsesCreateParams
->(params: Readonly<T>): void {
+export function validateResponsesCreateParams<T extends ResponsesCreateParams>(
+  params: Readonly<T>
+): void {
   const correlationId = uuidv4();
 
   if (!params.model || typeof params.model !== 'string') {

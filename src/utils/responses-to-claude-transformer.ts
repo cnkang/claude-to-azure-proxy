@@ -12,14 +12,14 @@ import { logger } from '../middleware/logging.js';
 
 /**
  * Transforms Azure OpenAI Responses API responses to Claude format
- * 
+ *
  * This transformer handles:
  * - Text content extraction from Responses API output array
  * - Reasoning content filtering (excluded from final response)
  * - Usage statistics mapping to Claude format
  * - Error response transformation
  * - Tool call and tool result handling
- * 
+ *
  * Requirements: 1.4, 4.1, 4.4, 9.1, 9.2, 9.3
  */
 export class ResponsesToClaudeTransformer {
@@ -31,19 +31,25 @@ export class ResponsesToClaudeTransformer {
 
   /**
    * Transform Responses API response to Claude format
-   * 
+   *
    * @param responsesResponse - The Responses API response
    * @returns Claude-formatted response
    */
-  public transformResponse(responsesResponse: ResponsesResponse): ClaudeResponse {
-    logger.debug('Transforming Responses API response to Claude format', this.correlationId, {
-      responseId: responsesResponse.id,
-      outputCount: responsesResponse.output.length,
-    });
+  public transformResponse(
+    responsesResponse: ResponsesResponse
+  ): ClaudeResponse {
+    logger.debug(
+      'Transforming Responses API response to Claude format',
+      this.correlationId,
+      {
+        responseId: responsesResponse.id,
+        outputCount: responsesResponse.output.length,
+      }
+    );
 
     // Extract text content from output array, excluding reasoning
     const contentBlocks = this.extractContentBlocks(responsesResponse.output);
-    
+
     // Map usage statistics to Claude format
     const usage = this.mapUsageStatistics(responsesResponse.usage);
 
@@ -60,36 +66,48 @@ export class ResponsesToClaudeTransformer {
       usage,
     };
 
-    logger.debug('Successfully transformed response to Claude format', this.correlationId, {
-      responseId: claudeResponse.id,
-      contentBlockCount: contentBlocks.length,
-      stopReason: claudeResponse.stop_reason,
-      inputTokens: usage.input_tokens,
-      outputTokens: usage.output_tokens,
-    });
+    logger.debug(
+      'Successfully transformed response to Claude format',
+      this.correlationId,
+      {
+        responseId: claudeResponse.id,
+        contentBlockCount: contentBlocks.length,
+        stopReason: claudeResponse.stop_reason,
+        inputTokens: usage.input_tokens,
+        outputTokens: usage.output_tokens,
+      }
+    );
 
     return claudeResponse;
   }
 
   /**
    * Transform Responses API stream chunk to Claude format
-   * 
+   *
    * @param streamChunk - The Responses API stream chunk
    * @returns Claude-formatted stream chunk
    */
-  public transformStreamChunk(streamChunk: ResponsesStreamChunk): ClaudeStreamChunk {
-    logger.debug('Transforming Responses API stream chunk to Claude format', this.correlationId, {
-      chunkId: streamChunk.id,
-      outputCount: streamChunk.output.length,
-    });
+  public transformStreamChunk(
+    streamChunk: ResponsesStreamChunk
+  ): ClaudeStreamChunk {
+    logger.debug(
+      'Transforming Responses API stream chunk to Claude format',
+      this.correlationId,
+      {
+        chunkId: streamChunk.id,
+        outputCount: streamChunk.output.length,
+      }
+    );
 
     // Check if this is the final chunk
     const isComplete = this.isStreamComplete(streamChunk.output);
-    
+
     if (isComplete) {
       const claudeStreamChunk: ClaudeStreamChunk = {
         type: 'message_stop',
-        usage: streamChunk.usage ? this.mapUsageStatistics(streamChunk.usage) : undefined,
+        usage: streamChunk.usage
+          ? this.mapUsageStatistics(streamChunk.usage)
+          : undefined,
       };
 
       logger.debug('Stream completed', this.correlationId, {
@@ -132,15 +150,19 @@ export class ResponsesToClaudeTransformer {
 
   /**
    * Transform Responses API error to Claude format
-   * 
+   *
    * @param error - The Responses API error
    * @returns Claude-formatted error
    */
   public transformError(error: ResponsesAPIError): ClaudeError {
-    logger.debug('Transforming Responses API error to Claude format', this.correlationId, {
-      errorType: error.type,
-      errorCode: error.code,
-    });
+    logger.debug(
+      'Transforming Responses API error to Claude format',
+      this.correlationId,
+      {
+        errorType: error.type,
+        errorCode: error.code,
+      }
+    );
 
     const claudeErrorType = this.mapErrorType(error.type);
     const sanitizedMessage = this.sanitizeErrorMessage(error.message);
@@ -166,16 +188,22 @@ export class ResponsesToClaudeTransformer {
    * Extract content blocks from Responses API output array
    * Filters out reasoning content and processes text, tool calls, and tool results
    */
-  private extractContentBlocks(output: readonly ResponseOutput[]): readonly ClaudeContentBlock[] {
+  private extractContentBlocks(
+    output: readonly ResponseOutput[]
+  ): readonly ClaudeContentBlock[] {
     const contentBlocks: ClaudeContentBlock[] = [];
 
     for (const outputItem of output) {
       // Skip reasoning content - it should not be included in final response
       if (outputItem.type === 'reasoning') {
-        logger.debug('Skipping reasoning content from output', this.correlationId, {
-          reasoningStatus: outputItem.reasoning?.status,
-          reasoningLength: outputItem.reasoning?.content.length ?? 0,
-        });
+        logger.debug(
+          'Skipping reasoning content from output',
+          this.correlationId,
+          {
+            reasoningStatus: outputItem.reasoning?.status,
+            reasoningLength: outputItem.reasoning?.content.length ?? 0,
+          }
+        );
         continue;
       }
 
@@ -212,7 +240,10 @@ export class ResponsesToClaudeTransformer {
 
     // Ensure we have at least one content block
     if (contentBlocks.length === 0) {
-      logger.warn('No content blocks extracted from output, adding empty text block', this.correlationId);
+      logger.warn(
+        'No content blocks extracted from output, adding empty text block',
+        this.correlationId
+      );
       contentBlocks.push({
         type: 'text',
         text: '',
@@ -263,7 +294,7 @@ export class ResponsesToClaudeTransformer {
     output: readonly ResponseOutput[]
   ): 'end_turn' | 'max_tokens' | 'tool_use' | null {
     // Check if there are any tool calls
-    const hasToolCalls = output.some(item => item.type === 'tool_call');
+    const hasToolCalls = output.some((item) => item.type === 'tool_call');
     if (hasToolCalls) {
       return 'tool_use';
     }
@@ -279,15 +310,16 @@ export class ResponsesToClaudeTransformer {
    */
   private isStreamComplete(output: readonly ResponseOutput[]): boolean {
     // Stream is complete when we have reasoning with completed status
-    const reasoningOutput = output.find(item => item.type === 'reasoning');
-    
+    const reasoningOutput = output.find((item) => item.type === 'reasoning');
+
     if (reasoningOutput?.reasoning?.status === 'completed') {
       return true;
     }
 
     // Stream is NOT complete if we have ongoing reasoning
     const hasOngoingReasoning = output.some(
-      item => item.type === 'reasoning' && item.reasoning?.status === 'in_progress'
+      (item) =>
+        item.type === 'reasoning' && item.reasoning?.status === 'in_progress'
     );
 
     if (hasOngoingReasoning) {
@@ -303,8 +335,16 @@ export class ResponsesToClaudeTransformer {
    * Map Responses API error type to Claude error type
    */
   private mapErrorType(
-    errorType: 'invalid_request' | 'authentication' | 'rate_limit' | 'server_error'
-  ): 'invalid_request_error' | 'authentication_error' | 'rate_limit_error' | 'api_error' {
+    errorType:
+      | 'invalid_request'
+      | 'authentication'
+      | 'rate_limit'
+      | 'server_error'
+  ):
+    | 'invalid_request_error'
+    | 'authentication_error'
+    | 'rate_limit_error'
+    | 'api_error' {
     switch (errorType) {
       case 'invalid_request':
         return 'invalid_request_error';
@@ -325,10 +365,16 @@ export class ResponsesToClaudeTransformer {
     // Remove potential API keys, tokens, and other sensitive data
     return message
       .replace(/sk-[A-Za-z0-9\-._~+/]+=*/gi, 'api_key=[REDACTED]')
-      .replace(/api[_-]?key[:\s=]+[A-Za-z0-9\-._~+/]+=*/gi, 'api_key=[REDACTED]')
+      .replace(
+        /api[_-]?key[:\s=]+[A-Za-z0-9\-._~+/]+=*/gi,
+        'api_key=[REDACTED]'
+      )
       .replace(/Bearer\s+[A-Za-z0-9\-._~+/]+=*/gi, 'Bearer [REDACTED]')
       .replace(/token[:\s=]+[A-Za-z0-9\-._~+/]+=*/gi, 'token=[REDACTED]')
-      .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, '[EMAIL_REDACTED]');
+      .replace(
+        /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,
+        '[EMAIL_REDACTED]'
+      );
   }
 
   /**
@@ -338,10 +384,14 @@ export class ResponsesToClaudeTransformer {
     try {
       return JSON.parse(argumentsJson) as Record<string, unknown>;
     } catch (error) {
-      logger.warn('Failed to parse tool arguments, returning empty object', this.correlationId, {
-        argumentsJson,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      logger.warn(
+        'Failed to parse tool arguments, returning empty object',
+        this.correlationId,
+        {
+          argumentsJson,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        }
+      );
       return {};
     }
   }

@@ -48,22 +48,22 @@ import { ValidationError } from '../errors/index.js';
 export interface MultiTurnConversationConfig {
   /** Maximum number of messages to keep in conversation history */
   readonly maxHistoryLength: number;
-  
+
   /** Maximum age of conversation history in milliseconds */
   readonly maxHistoryAge: number;
-  
+
   /** Whether to enable context-aware response tracking */
   readonly enableContextTracking: boolean;
-  
+
   /** Whether to enable automatic conversation cleanup */
   readonly enableAutoCleanup: boolean;
-  
+
   /** Interval for automatic cleanup in milliseconds */
   readonly cleanupInterval: number;
-  
+
   /** Maximum number of concurrent conversations to track */
   readonly maxConcurrentConversations: number;
-  
+
   /** Whether to preserve conversation state across restarts */
   readonly enablePersistence: boolean;
 }
@@ -155,7 +155,7 @@ export interface MultiTurnConversationHandler {
    */
   recordConversationTurn<
     TRequest extends ClaudeRequest,
-    TResponse extends ResponsesResponse
+    TResponse extends ResponsesResponse,
   >(
     conversationId: string,
     request: Readonly<TRequest>,
@@ -272,7 +272,9 @@ const MANUAL_HISTORY_MODEL = 'manual-history-entry' as const;
  * @class MultiTurnConversationHandlerImpl
  * @implements {MultiTurnConversationHandler}
  */
-export class MultiTurnConversationHandlerImpl implements MultiTurnConversationHandler {
+export class MultiTurnConversationHandlerImpl
+  implements MultiTurnConversationHandler
+{
   private readonly conversationStates = new Map<string, ConversationState>();
   private readonly config: MultiTurnConversationConfig;
   private readonly conversationManager: ConversationManager;
@@ -289,7 +291,8 @@ export class MultiTurnConversationHandlerImpl implements MultiTurnConversationHa
     conversationManager?: ConversationManager
   ) {
     this.config = { ...DEFAULT_MULTI_TURN_CONFIG, ...config };
-    this.conversationManager = conversationManager ?? createConversationManager();
+    this.conversationManager =
+      conversationManager ?? createConversationManager();
   }
 
   /**
@@ -343,20 +346,22 @@ export class MultiTurnConversationHandlerImpl implements MultiTurnConversationHa
 
       // Get or create conversation state
       let conversationState = this.conversationStates.get(conversationId);
-      
+
       if (!conversationState) {
         conversationState = this.createNewConversationState(conversationId);
         this.conversationStates.set(conversationId, conversationState);
       }
 
       // Get previous response ID for continuity
-      const previousResponseId = this.conversationManager.getPreviousResponseId(conversationId);
-      
+      const previousResponseId =
+        this.conversationManager.getPreviousResponseId(conversationId);
+
       // Analyze context complexity
-      const contextComplexity = this.conversationManager.analyzeConversationContext(
-        conversationId,
-        request
-      );
+      const contextComplexity =
+        this.conversationManager.analyzeConversationContext(
+          conversationId,
+          request
+        );
 
       // Determine if we should use previous response for continuity
       const shouldUsePreviousResponse = this.shouldUsePreviousResponse(
@@ -372,14 +377,17 @@ export class MultiTurnConversationHandlerImpl implements MultiTurnConversationHa
         temperature: request.temperature,
         top_p: request.top_p,
         stream: request.stream,
-        ...(shouldUsePreviousResponse && typeof previousResponseId === 'string' && {
-          previous_response_id: previousResponseId,
-        }),
+        ...(shouldUsePreviousResponse &&
+          typeof previousResponseId === 'string' && {
+            previous_response_id: previousResponseId,
+          }),
       };
 
       const result: MultiTurnProcessingResult = {
         conversationId,
-        previousResponseId: shouldUsePreviousResponse ? previousResponseId : undefined,
+        previousResponseId: shouldUsePreviousResponse
+          ? previousResponseId
+          : undefined,
         enhancedRequest,
         contextComplexity,
         historyLength: conversationState.history.length,
@@ -411,7 +419,7 @@ export class MultiTurnConversationHandlerImpl implements MultiTurnConversationHa
    */
   public async recordConversationTurn<
     TRequest extends ClaudeRequest,
-    TResponse extends ResponsesResponse
+    TResponse extends ResponsesResponse,
   >(
     conversationId: string,
     request: Readonly<TRequest>,
@@ -477,7 +485,10 @@ export class MultiTurnConversationHandlerImpl implements MultiTurnConversationHa
 
       // Validate input parameters
       const responseIdCandidate = responseRecord.id;
-      if (typeof responseIdCandidate !== 'string' || responseIdCandidate.length === 0) {
+      if (
+        typeof responseIdCandidate !== 'string' ||
+        responseIdCandidate.length === 0
+      ) {
         throw new ValidationError(
           'Response ID is required',
           correlationId,
@@ -489,11 +500,15 @@ export class MultiTurnConversationHandlerImpl implements MultiTurnConversationHa
       }
 
       const conversationState = this.conversationStates.get(conversationId);
-      
+
       if (!conversationState) {
-        logger.warn('Attempted to record turn for non-existent conversation', correlationId, {
-          conversationId,
-        });
+        logger.warn(
+          'Attempted to record turn for non-existent conversation',
+          correlationId,
+          {
+            conversationId,
+          }
+        );
         return Promise.resolve();
       }
 
@@ -518,15 +533,19 @@ export class MultiTurnConversationHandlerImpl implements MultiTurnConversationHa
 
       // Update conversation state
       const updatedHistory = [...conversationState.history, historyEntry];
-      
+
       // Enforce history length limits
       const trimmedHistory = this.trimHistoryToLimits(updatedHistory);
 
       // Update metrics
       const updatedMetrics: ConversationMetrics = {
         messageCount: conversationState.metrics.messageCount + 1,
-        totalTokensUsed: conversationState.metrics.totalTokensUsed + response.usage.total_tokens,
-        reasoningTokensUsed: conversationState.metrics.reasoningTokensUsed + (response.usage.reasoning_tokens ?? 0),
+        totalTokensUsed:
+          conversationState.metrics.totalTokensUsed +
+          response.usage.total_tokens,
+        reasoningTokensUsed:
+          conversationState.metrics.reasoningTokensUsed +
+          (response.usage.reasoning_tokens ?? 0),
         averageResponseTime: this.calculateAverageResponseTime(
           conversationState.metrics.averageResponseTime,
           conversationState.metrics.messageCount,
@@ -597,9 +616,10 @@ export class MultiTurnConversationHandlerImpl implements MultiTurnConversationHa
       const timestampValue =
         entry.timestamp instanceof Date
           ? entry.timestamp.getTime()
-          : typeof entry.timestamp === 'number' && Number.isFinite(entry.timestamp)
-          ? entry.timestamp
-          : Date.now();
+          : typeof entry.timestamp === 'number' &&
+              Number.isFinite(entry.timestamp)
+            ? entry.timestamp
+            : Date.now();
 
       const tokenCount =
         entry.tokenCount !== undefined && Number.isFinite(entry.tokenCount)
@@ -623,10 +643,11 @@ export class MultiTurnConversationHandlerImpl implements MultiTurnConversationHa
         ],
       };
 
-      const contextComplexity = this.conversationManager.analyzeConversationContext(
-        conversationId,
-        manualRequest
-      );
+      const contextComplexity =
+        this.conversationManager.analyzeConversationContext(
+          conversationId,
+          manualRequest
+        );
 
       const messageId = `manual-${conversationId}-${timestampValue}-${Math.random()
         .toString(16)
@@ -702,10 +723,14 @@ export class MultiTurnConversationHandlerImpl implements MultiTurnConversationHa
 
       this.conversationStates.set(conversationId, updatedState);
 
-      this.conversationManager.trackConversation(conversationId, historyEntry.messageId, {
-        totalTokensUsed: tokenCount,
-        averageResponseTime: 0,
-      });
+      this.conversationManager.trackConversation(
+        conversationId,
+        historyEntry.messageId,
+        {
+          totalTokensUsed: tokenCount,
+          averageResponseTime: 0,
+        }
+      );
 
       logger.debug('Manual conversation history entry added', correlationId, {
         conversationId,
@@ -714,10 +739,14 @@ export class MultiTurnConversationHandlerImpl implements MultiTurnConversationHa
         historyLength: trimmedHistory.length,
       });
     } catch (error) {
-      logger.error('Failed to add manual conversation history entry', correlationId, {
-        conversationId,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      logger.error(
+        'Failed to add manual conversation history entry',
+        correlationId,
+        {
+          conversationId,
+          error: error instanceof Error ? error.message : String(error),
+        }
+      );
     }
   }
 
@@ -729,13 +758,13 @@ export class MultiTurnConversationHandlerImpl implements MultiTurnConversationHa
     limit?: number
   ): readonly ConversationHistoryEntry[] {
     const conversationState = this.conversationStates.get(conversationId);
-    
+
     if (!conversationState) {
       return [];
     }
 
     const history = conversationState.history;
-    
+
     if (limit !== undefined && limit > 0) {
       return history.slice(-limit); // Get most recent entries
     }
@@ -746,7 +775,9 @@ export class MultiTurnConversationHandlerImpl implements MultiTurnConversationHa
   /**
    * Get complete conversation state.
    */
-  public getConversationState(conversationId: string): ConversationState | undefined {
+  public getConversationState(
+    conversationId: string
+  ): ConversationState | undefined {
     return this.conversationStates.get(conversationId);
   }
 
@@ -766,10 +797,12 @@ export class MultiTurnConversationHandlerImpl implements MultiTurnConversationHa
 
       for (const id of conversationsToClean) {
         const state = this.conversationStates.get(id);
-        if (!state) {continue;}
+        if (!state) {
+          continue;
+        }
 
         // Clean old history entries
-        const filteredHistory = state.history.filter(entry => {
+        const filteredHistory = state.history.filter((entry) => {
           const age = now - entry.timestamp;
           return age <= maxAge;
         });
@@ -795,14 +828,19 @@ export class MultiTurnConversationHandlerImpl implements MultiTurnConversationHa
       }
 
       // Enforce concurrent conversation limits
-      if (this.conversationStates.size > this.config.maxConcurrentConversations) {
+      if (
+        this.conversationStates.size > this.config.maxConcurrentConversations
+      ) {
         const conversations = Array.from(this.conversationStates.entries());
-        const sortedByAge = conversations.sort(([, a], [, b]) => a.lastUpdatedAt - b.lastUpdatedAt);
-        
-        const toRemove = sortedByAge.slice(0, 
+        const sortedByAge = conversations.sort(
+          ([, a], [, b]) => a.lastUpdatedAt - b.lastUpdatedAt
+        );
+
+        const toRemove = sortedByAge.slice(
+          0,
           this.conversationStates.size - this.config.maxConcurrentConversations
         );
-        
+
         for (const [id] of toRemove) {
           this.conversationStates.delete(id);
           cleanedCount++;
@@ -819,10 +857,14 @@ export class MultiTurnConversationHandlerImpl implements MultiTurnConversationHa
 
       return Promise.resolve(cleanedCount);
     } catch (error) {
-      logger.error('Failed to cleanup conversation history', 'multi-turn-cleanup', {
-        conversationId,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      logger.error(
+        'Failed to cleanup conversation history',
+        'multi-turn-cleanup',
+        {
+          conversationId,
+          error: error instanceof Error ? error.message : String(error),
+        }
+      );
       return Promise.resolve(cleanedCount);
     }
   }
@@ -832,7 +874,7 @@ export class MultiTurnConversationHandlerImpl implements MultiTurnConversationHa
    */
   public archiveConversation(conversationId: string): boolean {
     const state = this.conversationStates.get(conversationId);
-    
+
     if (!state) {
       return false;
     }
@@ -871,16 +913,15 @@ export class MultiTurnConversationHandlerImpl implements MultiTurnConversationHa
     readonly estimatedMemoryUsage: number;
   } {
     const conversations = Array.from(this.conversationStates.values());
-    const activeConversations = conversations.filter(state => state.isActive);
-    
+    const activeConversations = conversations.filter((state) => state.isActive);
+
     const totalHistoryEntries = conversations.reduce(
-      (sum, state) => sum + state.history.length, 
+      (sum, state) => sum + state.history.length,
       0
     );
-    
-    const averageHistoryLength = conversations.length > 0 
-      ? totalHistoryEntries / conversations.length 
-      : 0;
+
+    const averageHistoryLength =
+      conversations.length > 0 ? totalHistoryEntries / conversations.length : 0;
 
     const sortedByAge = conversations.sort((a, b) => a.createdAt - b.createdAt);
     const oldestConversation = sortedByAge[0]?.conversationId;
@@ -913,9 +954,13 @@ export class MultiTurnConversationHandlerImpl implements MultiTurnConversationHa
       });
     }, this.config.cleanupInterval);
 
-    logger.info('Multi-turn conversation maintenance started', 'multi-turn-handler', {
-      cleanupInterval: this.config.cleanupInterval,
-    });
+    logger.info(
+      'Multi-turn conversation maintenance started',
+      'multi-turn-handler',
+      {
+        cleanupInterval: this.config.cleanupInterval,
+      }
+    );
   }
 
   /**
@@ -925,7 +970,10 @@ export class MultiTurnConversationHandlerImpl implements MultiTurnConversationHa
     if (this.maintenanceTimer) {
       clearInterval(this.maintenanceTimer);
       this.maintenanceTimer = undefined;
-      logger.info('Multi-turn conversation maintenance stopped', 'multi-turn-handler');
+      logger.info(
+        'Multi-turn conversation maintenance stopped',
+        'multi-turn-handler'
+      );
     }
   }
 
@@ -934,9 +982,11 @@ export class MultiTurnConversationHandlerImpl implements MultiTurnConversationHa
    *
    * @private
    */
-  private createNewConversationState(conversationId: string): ConversationState {
+  private createNewConversationState(
+    conversationId: string
+  ): ConversationState {
     const now = Date.now();
-    
+
     return {
       conversationId,
       createdAt: now,
@@ -970,7 +1020,10 @@ export class MultiTurnConversationHandlerImpl implements MultiTurnConversationHa
     previousResponseId?: string
   ): boolean {
     // Don't use previous response if not available
-    if (typeof previousResponseId !== 'string' || previousResponseId.length === 0) {
+    if (
+      typeof previousResponseId !== 'string' ||
+      previousResponseId.length === 0
+    ) {
       return false;
     }
 
@@ -1041,7 +1094,7 @@ export class MultiTurnConversationHandlerImpl implements MultiTurnConversationHa
     history: ReadonlyArray<Readonly<TEntry>>
   ): readonly ConversationHistoryEntry[] {
     const maxLength = this.config.maxHistoryLength;
-    
+
     if (history.length <= maxLength) {
       return history;
     }
@@ -1063,7 +1116,9 @@ export class MultiTurnConversationHandlerImpl implements MultiTurnConversationHa
     if (messageCount === 0) {
       return newResponseTime;
     }
-    return (currentAverage * messageCount + newResponseTime) / (messageCount + 1);
+    return (
+      (currentAverage * messageCount + newResponseTime) / (messageCount + 1)
+    );
   }
 }
 
@@ -1096,4 +1151,5 @@ export function createMultiTurnConversationHandler(
  *
  * @public
  */
-export const multiTurnConversationHandler = createMultiTurnConversationHandler();
+export const multiTurnConversationHandler =
+  createMultiTurnConversationHandler();

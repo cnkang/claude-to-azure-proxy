@@ -6,14 +6,17 @@
 type DeepReadonly<T> = T extends (infer U)[]
   ? readonly DeepReadonly<U>[]
   : T extends ReadonlyArray<infer U>
-  ? readonly DeepReadonly<U>[]
-  : T extends object
-  ? { readonly [P in keyof T]: DeepReadonly<T[P]> }
-  : T;
+    ? readonly DeepReadonly<U>[]
+    : T extends object
+      ? { readonly [P in keyof T]: DeepReadonly<T[P]> }
+      : T;
 
 import { logger } from '../middleware/logging.js';
 import { gracefulDegradationManager } from '../resilience/graceful-degradation.js';
-import { AzureErrorMapper, type ErrorMappingContext } from './azure-error-mapper.js';
+import {
+  AzureErrorMapper,
+  type ErrorMappingContext,
+} from './azure-error-mapper.js';
 import type {
   ClaudeRequest,
   ClaudeResponse,
@@ -50,7 +53,9 @@ export class FallbackHandler {
   /**
    * Execute fallback strategy when Azure OpenAI is unavailable
    */
-  public static async executeFallback(context: DeepReadonly<FallbackContext>): Promise<FallbackResult> {
+  public static async executeFallback(
+    context: DeepReadonly<FallbackContext>
+  ): Promise<FallbackResult> {
     logger.warn('Executing fallback strategy', context.correlationId, {
       operation: context.operation,
       requestFormat: context.requestFormat,
@@ -60,18 +65,23 @@ export class FallbackHandler {
 
     // Try graceful degradation first
     try {
-      const degradationResult = await gracefulDegradationManager.executeGracefulDegradation({
-        correlationId: context.correlationId,
-        operation: context.operation,
-        error: context.error,
-        attempt: context.attempt,
-        metadata: {
-          requestFormat: context.requestFormat,
-          originalRequest: this.sanitizeRequest(context.originalRequest),
-        },
-      });
+      const degradationResult =
+        await gracefulDegradationManager.executeGracefulDegradation({
+          correlationId: context.correlationId,
+          operation: context.operation,
+          error: context.error,
+          attempt: context.attempt,
+          metadata: {
+            requestFormat: context.requestFormat,
+            originalRequest: this.sanitizeRequest(context.originalRequest),
+          },
+        });
 
-      if (degradationResult.success && degradationResult.data !== null && degradationResult.data !== undefined) {
+      if (
+        degradationResult.success &&
+        degradationResult.data !== null &&
+        degradationResult.data !== undefined
+      ) {
         return {
           success: true,
           response: degradationResult.data as UniversalResponse,
@@ -81,7 +91,10 @@ export class FallbackHandler {
       }
     } catch (degradationError) {
       logger.warn('Graceful degradation failed', context.correlationId, {
-        error: degradationError instanceof Error ? degradationError.message : 'Unknown error',
+        error:
+          degradationError instanceof Error
+            ? degradationError.message
+            : 'Unknown error',
       });
     }
 
@@ -92,7 +105,9 @@ export class FallbackHandler {
   /**
    * Create static fallback response based on request format
    */
-  private static createStaticFallbackResponse(context: DeepReadonly<FallbackContext>): FallbackResult {
+  private static createStaticFallbackResponse(
+    context: DeepReadonly<FallbackContext>
+  ): FallbackResult {
     if (context.requestFormat === 'claude') {
       return this.createClaudeFallbackResponse(context);
     } else {
@@ -103,16 +118,19 @@ export class FallbackHandler {
   /**
    * Create Claude-format fallback response
    */
-  private static createClaudeFallbackResponse(context: DeepReadonly<FallbackContext>): FallbackResult {
+  private static createClaudeFallbackResponse(
+    context: DeepReadonly<FallbackContext>
+  ): FallbackResult {
     const claudeRequest = context.originalRequest as ClaudeRequest;
-    
+
     // Check if this is a service unavailable error
     if (this.isServiceUnavailableError(context.error)) {
       const error: ClaudeError = {
         type: 'error',
         error: {
           type: 'api_error',
-          message: 'The service is temporarily overloaded. Please try again in a few moments.',
+          message:
+            'The service is temporarily overloaded. Please try again in a few moments.',
         },
       };
 
@@ -159,14 +177,17 @@ export class FallbackHandler {
   /**
    * Create OpenAI-format fallback response
    */
-  private static createOpenAIFallbackResponse(context: DeepReadonly<FallbackContext>): FallbackResult {
+  private static createOpenAIFallbackResponse(
+    context: DeepReadonly<FallbackContext>
+  ): FallbackResult {
     const openAIRequest = context.originalRequest as OpenAIRequest;
 
     // Check if this is a service unavailable error
     if (this.isServiceUnavailableError(context.error)) {
       const error: OpenAIError = {
         error: {
-          message: 'The service is temporarily overloaded. Please try again in a few moments.',
+          message:
+            'The service is temporarily overloaded. Please try again in a few moments.',
           type: 'server_error',
           code: 'service_unavailable',
         },
@@ -224,38 +245,45 @@ export class FallbackHandler {
   ): string {
     const messages = 'messages' in request ? request.messages : [];
     const lastMessage = messages[messages.length - 1];
-    
+
     // Analyze the request to provide contextual fallback
     if (this.isCodeRequest(lastMessage)) {
-      return 'I apologize, but I\'m experiencing temporary difficulties processing your coding request. The service should be restored shortly. Please try again in a few moments.';
+      return "I apologize, but I'm experiencing temporary difficulties processing your coding request. The service should be restored shortly. Please try again in a few moments.";
     }
 
     if (this.isQuestionRequest(lastMessage)) {
-      return 'I\'m currently experiencing technical difficulties and cannot process your question at the moment. Please try again shortly, and I\'ll be happy to help.';
+      return "I'm currently experiencing technical difficulties and cannot process your question at the moment. Please try again shortly, and I'll be happy to help.";
     }
 
     // Generic fallback message
-    return 'I apologize, but I\'m temporarily unable to process your request due to technical difficulties. Please try again in a few moments.';
+    return "I apologize, but I'm temporarily unable to process your request due to technical difficulties. Please try again in a few moments.";
   }
 
   /**
    * Check if request is code-related
    */
   private static isCodeRequest(message: unknown): boolean {
-    if (message === null || message === undefined || typeof message !== 'object') {
+    if (
+      message === null ||
+      message === undefined ||
+      typeof message !== 'object'
+    ) {
       return false;
     }
 
     const messageObj = message as { content?: unknown };
-    const content = typeof messageObj.content === 'string' 
-      ? messageObj.content 
-      : Array.isArray(messageObj.content) 
-        ? messageObj.content.map(block => 
-            typeof block === 'object' && block !== null && 'text' in block 
-              ? (block as { text: string }).text 
-              : ''
-          ).join(' ')
-        : '';
+    const content =
+      typeof messageObj.content === 'string'
+        ? messageObj.content
+        : Array.isArray(messageObj.content)
+          ? messageObj.content
+              .map((block) =>
+                typeof block === 'object' && block !== null && 'text' in block
+                  ? (block as { text: string }).text
+                  : ''
+              )
+              .join(' ')
+          : '';
 
     const codeIndicators = [
       'function',
@@ -278,7 +306,7 @@ export class FallbackHandler {
       'bug',
     ];
 
-    return codeIndicators.some(indicator => 
+    return codeIndicators.some((indicator) =>
       content.toLowerCase().includes(indicator)
     );
   }
@@ -287,20 +315,27 @@ export class FallbackHandler {
    * Check if request is a question
    */
   private static isQuestionRequest(message: unknown): boolean {
-    if (message === null || message === undefined || typeof message !== 'object') {
+    if (
+      message === null ||
+      message === undefined ||
+      typeof message !== 'object'
+    ) {
       return false;
     }
 
     const messageObj = message as { content?: unknown };
-    const content = typeof messageObj.content === 'string' 
-      ? messageObj.content 
-      : Array.isArray(messageObj.content) 
-        ? messageObj.content.map(block => 
-            typeof block === 'object' && block !== null && 'text' in block 
-              ? (block as { text: string }).text 
-              : ''
-          ).join(' ')
-        : '';
+    const content =
+      typeof messageObj.content === 'string'
+        ? messageObj.content
+        : Array.isArray(messageObj.content)
+          ? messageObj.content
+              .map((block) =>
+                typeof block === 'object' && block !== null && 'text' in block
+                  ? (block as { text: string }).text
+                  : ''
+              )
+              .join(' ')
+          : '';
 
     const questionIndicators = [
       '?',
@@ -318,7 +353,7 @@ export class FallbackHandler {
       'tell me',
     ];
 
-    return questionIndicators.some(indicator => 
+    return questionIndicators.some((indicator) =>
       content.toLowerCase().includes(indicator)
     );
   }
@@ -326,7 +361,9 @@ export class FallbackHandler {
   /**
    * Estimate input tokens for fallback usage calculation
    */
-  private static estimateInputTokens(request: DeepReadonly<UniversalRequest>): number {
+  private static estimateInputTokens(
+    request: DeepReadonly<UniversalRequest>
+  ): number {
     const messages = 'messages' in request ? request.messages : [];
     let totalLength = 0;
 
@@ -349,7 +386,9 @@ export class FallbackHandler {
   /**
    * Check if error indicates service unavailability
    */
-  private static isServiceUnavailableError(error: DeepReadonly<Error>): boolean {
+  private static isServiceUnavailableError(
+    error: DeepReadonly<Error>
+  ): boolean {
     const unavailableIndicators = [
       'service unavailable',
       'overloaded',
@@ -364,18 +403,22 @@ export class FallbackHandler {
     const errorName = error.name.toLowerCase();
 
     return unavailableIndicators.some(
-      indicator => errorMessage.includes(indicator) || errorName.includes(indicator)
+      (indicator) =>
+        errorMessage.includes(indicator) || errorName.includes(indicator)
     );
   }
 
   /**
    * Sanitize request for logging (remove sensitive data)
    */
-  private static sanitizeRequest(request: DeepReadonly<UniversalRequest>): Record<string, unknown> {
+  private static sanitizeRequest(
+    request: DeepReadonly<UniversalRequest>
+  ): Record<string, unknown> {
     return {
       model: 'model' in request ? request.model : 'unknown',
       messageCount: 'messages' in request ? request.messages.length : 0,
-      hasTools: 'tools' in request && request.tools ? request.tools.length > 0 : false,
+      hasTools:
+        'tools' in request && request.tools ? request.tools.length > 0 : false,
       stream: 'stream' in request ? request.stream : false,
       maxTokens: 'max_tokens' in request ? request.max_tokens : undefined,
     };
@@ -403,7 +446,7 @@ export class FallbackHandler {
     const errorName = error.name;
 
     return fallbackTriggers.some(
-      trigger => errorMessage.includes(trigger) || errorName.includes(trigger)
+      (trigger) => errorMessage.includes(trigger) || errorName.includes(trigger)
     );
   }
 

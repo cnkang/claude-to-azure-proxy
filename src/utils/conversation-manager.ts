@@ -40,10 +40,10 @@ import { logger } from '../middleware/logging.js';
 type DeepReadonly<T> = T extends (infer U)[]
   ? readonly DeepReadonly<U>[]
   : T extends ReadonlyArray<infer U>
-  ? readonly DeepReadonly<U>[]
-  : T extends object
-  ? { readonly [P in keyof T]: DeepReadonly<T[P]> }
-  : T;
+    ? readonly DeepReadonly<U>[]
+    : T extends object
+      ? { readonly [P in keyof T]: DeepReadonly<T[P]> }
+      : T;
 
 /**
  * Interface for conversation management operations.
@@ -89,7 +89,9 @@ export interface ConversationManager {
    * @param conversationId - Conversation identifier
    * @returns Conversation metrics or undefined if not found
    */
-  getConversationMetrics(conversationId: string): ConversationMetrics | undefined;
+  getConversationMetrics(
+    conversationId: string
+  ): ConversationMetrics | undefined;
 
   /**
    * Get conversation context for reasoning adjustment.
@@ -97,7 +99,9 @@ export interface ConversationManager {
    * @param conversationId - Conversation identifier
    * @returns Conversation context or undefined if not found
    */
-  getConversationContext(conversationId: string): ConversationContext | undefined;
+  getConversationContext(
+    conversationId: string
+  ): ConversationContext | undefined;
 
   /**
    * Update conversation metrics with new data.
@@ -179,7 +183,7 @@ interface ConversationData {
  */
 const DEFAULT_CONVERSATION_CONFIG: ConversationConfig = {
   maxConversationAge: 3600000, // 1 hour
-  cleanupInterval: 300000,     // 5 minutes
+  cleanupInterval: 300000, // 5 minutes
   maxStoredConversations: 1000,
 } as const;
 
@@ -225,14 +229,19 @@ export class ConversationManagerImpl implements ConversationManager {
         const safeMetrics = metrics ?? {};
         const updatedMetrics: ConversationMetrics = {
           messageCount: existingData.metrics.messageCount + 1,
-          totalTokensUsed: existingData.metrics.totalTokensUsed + (safeMetrics.totalTokensUsed ?? 0),
-          reasoningTokensUsed: existingData.metrics.reasoningTokensUsed + (safeMetrics.reasoningTokensUsed ?? 0),
+          totalTokensUsed:
+            existingData.metrics.totalTokensUsed +
+            (safeMetrics.totalTokensUsed ?? 0),
+          reasoningTokensUsed:
+            existingData.metrics.reasoningTokensUsed +
+            (safeMetrics.reasoningTokensUsed ?? 0),
           averageResponseTime: this.calculateAverageResponseTime(
             existingData.metrics.averageResponseTime,
             existingData.metrics.messageCount,
             safeMetrics.averageResponseTime ?? 0
           ),
-          errorCount: existingData.metrics.errorCount + (safeMetrics.errorCount ?? 0),
+          errorCount:
+            existingData.metrics.errorCount + (safeMetrics.errorCount ?? 0),
         };
 
         const updatedContext: ConversationContext = {
@@ -289,7 +298,8 @@ export class ConversationManagerImpl implements ConversationManager {
 
       logger.debug('Conversation tracked successfully', conversationId, {
         responseId,
-        messageCount: this.conversations.get(conversationId)?.metrics.messageCount,
+        messageCount:
+          this.conversations.get(conversationId)?.metrics.messageCount,
         totalConversations: this.conversations.size,
       });
     } catch (error) {
@@ -346,7 +356,9 @@ export class ConversationManagerImpl implements ConversationManager {
   /**
    * Get comprehensive metrics for a conversation.
    */
-  public getConversationMetrics(conversationId: string): ConversationMetrics | undefined {
+  public getConversationMetrics(
+    conversationId: string
+  ): ConversationMetrics | undefined {
     const data = this.conversations.get(conversationId);
     return data?.metrics;
   }
@@ -354,7 +366,9 @@ export class ConversationManagerImpl implements ConversationManager {
   /**
    * Get conversation context for reasoning adjustment.
    */
-  public getConversationContext(conversationId: string): ConversationContext | undefined {
+  public getConversationContext(
+    conversationId: string
+  ): ConversationContext | undefined {
     const data = this.conversations.get(conversationId);
     return data?.context;
   }
@@ -368,16 +382,22 @@ export class ConversationManagerImpl implements ConversationManager {
   ): void {
     const data = this.conversations.get(conversationId);
     if (!data) {
-      logger.warn('Attempted to update metrics for non-existent conversation', conversationId);
+      logger.warn(
+        'Attempted to update metrics for non-existent conversation',
+        conversationId
+      );
       return;
     }
 
     try {
       const updatedMetrics: ConversationMetrics = {
         messageCount: metrics.messageCount ?? data.metrics.messageCount,
-        totalTokensUsed: metrics.totalTokensUsed ?? data.metrics.totalTokensUsed,
-        reasoningTokensUsed: metrics.reasoningTokensUsed ?? data.metrics.reasoningTokensUsed,
-        averageResponseTime: metrics.averageResponseTime ?? data.metrics.averageResponseTime,
+        totalTokensUsed:
+          metrics.totalTokensUsed ?? data.metrics.totalTokensUsed,
+        reasoningTokensUsed:
+          metrics.reasoningTokensUsed ?? data.metrics.reasoningTokensUsed,
+        averageResponseTime:
+          metrics.averageResponseTime ?? data.metrics.averageResponseTime,
         errorCount: metrics.errorCount ?? data.metrics.errorCount,
       };
 
@@ -416,7 +436,7 @@ export class ConversationManagerImpl implements ConversationManager {
     request: DeepReadonly<ClaudeRequest>
   ): 'simple' | 'medium' | 'complex' {
     const data = this.conversations.get(conversationId);
-    
+
     if (!data) {
       // New conversation, analyze based on request content
       return this.analyzeRequestComplexity(request);
@@ -424,7 +444,7 @@ export class ConversationManagerImpl implements ConversationManager {
 
     try {
       const { metrics, context } = data;
-      
+
       // Factors that increase complexity:
       // 1. High message count (deep conversation)
       // 2. High token usage (complex topics)
@@ -443,7 +463,8 @@ export class ConversationManagerImpl implements ConversationManager {
       }
 
       // Token usage factor (0-2 points)
-      const avgTokensPerMessage = metrics.totalTokensUsed / metrics.messageCount;
+      const avgTokensPerMessage =
+        metrics.totalTokensUsed / metrics.messageCount;
       if (avgTokensPerMessage > 2000) {
         complexityScore += 2;
       } else if (avgTokensPerMessage > 1000) {
@@ -459,13 +480,15 @@ export class ConversationManagerImpl implements ConversationManager {
       }
 
       // Response time factor (0-1 point)
-      if (metrics.averageResponseTime > 10000) { // > 10 seconds
+      if (metrics.averageResponseTime > 10000) {
+        // > 10 seconds
         complexityScore += 1;
       }
 
       // Reasoning token usage factor (0-2 points)
       if (metrics.reasoningTokensUsed > 0) {
-        const reasoningRatio = metrics.reasoningTokensUsed / metrics.totalTokensUsed;
+        const reasoningRatio =
+          metrics.reasoningTokensUsed / metrics.totalTokensUsed;
         if (reasoningRatio > 0.3) {
           complexityScore += 2;
         } else if (reasoningRatio > 0.1) {
@@ -530,7 +553,7 @@ export class ConversationManagerImpl implements ConversationManager {
     correlationId: string
   ): string {
     // Try to extract from various header formats
-    const conversationId = 
+    const conversationId =
       headers['x-conversation-id'] ||
       headers['conversation-id'] ||
       headers['x-session-id'] ||
@@ -538,7 +561,11 @@ export class ConversationManagerImpl implements ConversationManager {
       headers['x-thread-id'] ||
       headers['thread-id'];
 
-    if (conversationId && typeof conversationId === 'string' && conversationId.trim()) {
+    if (
+      conversationId &&
+      typeof conversationId === 'string' &&
+      conversationId.trim()
+    ) {
       return conversationId.trim();
     }
 
@@ -556,7 +583,7 @@ export class ConversationManagerImpl implements ConversationManager {
     readonly estimatedMemoryUsage: number;
   } {
     const conversations = Array.from(this.conversations.values());
-    
+
     if (conversations.length === 0) {
       return {
         conversationCount: 0,
@@ -622,7 +649,9 @@ export class ConversationManagerImpl implements ConversationManager {
     if (messageCount === 0) {
       return newResponseTime;
     }
-    return (currentAverage * messageCount + newResponseTime) / (messageCount + 1);
+    return (
+      (currentAverage * messageCount + newResponseTime) / (messageCount + 1)
+    );
   }
 
   /**
@@ -630,23 +659,43 @@ export class ConversationManagerImpl implements ConversationManager {
    *
    * @private
    */
-  private analyzeRequestComplexity(request: DeepReadonly<ClaudeRequest>): 'simple' | 'medium' | 'complex' {
+  private analyzeRequestComplexity(
+    request: DeepReadonly<ClaudeRequest>
+  ): 'simple' | 'medium' | 'complex' {
     try {
       const messages = request.messages;
       const totalContent = messages
-        .map(msg => typeof msg.content === 'string' ? msg.content : 
-          Array.isArray(msg.content) ? 
-            msg.content.filter((block: DeepReadonly<ClaudeContentBlock>) => block.type === 'text').map((block: DeepReadonly<ClaudeContentBlock>) => block.text ?? '').join(' ') : 
-            ''
+        .map((msg) =>
+          typeof msg.content === 'string'
+            ? msg.content
+            : Array.isArray(msg.content)
+              ? msg.content
+                  .filter(
+                    (block: DeepReadonly<ClaudeContentBlock>) =>
+                      block.type === 'text'
+                  )
+                  .map(
+                    (block: DeepReadonly<ClaudeContentBlock>) =>
+                      block.text ?? ''
+                  )
+                  .join(' ')
+              : ''
         )
         .join(' ');
 
       const contentLength = totalContent.length;
       const hasCodeBlocks = /```/.test(totalContent);
-      const hasComplexKeywords = /\b(algorithm|architecture|design pattern|refactor|optimize|debug|troubleshoot)\b/i.test(totalContent);
+      const hasComplexKeywords =
+        /\b(algorithm|architecture|design pattern|refactor|optimize|debug|troubleshoot)\b/i.test(
+          totalContent
+        );
       const hasMultipleQuestions = (totalContent.match(/\?/g) ?? []).length > 2;
 
-      if (contentLength > 2000 || (hasCodeBlocks && hasComplexKeywords) || hasMultipleQuestions) {
+      if (
+        contentLength > 2000 ||
+        (hasCodeBlocks && hasComplexKeywords) ||
+        hasMultipleQuestions
+      ) {
         return 'complex';
       } else if (contentLength > 500 || hasCodeBlocks || hasComplexKeywords) {
         return 'medium';
@@ -654,9 +703,13 @@ export class ConversationManagerImpl implements ConversationManager {
         return 'simple';
       }
     } catch (error) {
-      logger.warn('Failed to analyze request complexity', 'conversation-manager', {
-        error: error instanceof Error ? error.message : String(error),
-      });
+      logger.warn(
+        'Failed to analyze request complexity',
+        'conversation-manager',
+        {
+          error: error instanceof Error ? error.message : String(error),
+        }
+      );
       return 'simple'; // Safe fallback
     }
   }
@@ -668,16 +721,21 @@ export class ConversationManagerImpl implements ConversationManager {
    */
   private enforceStorageLimits(): void {
     const maxConversations = this.config.maxStoredConversations;
-    
+
     if (this.conversations.size <= maxConversations) {
       return;
     }
 
     const conversations = Array.from(this.conversations.entries());
-    const sortedByAge = conversations.sort(([, a], [, b]) => a.lastUpdatedAt - b.lastUpdatedAt);
-    
-    const toRemove = sortedByAge.slice(0, this.conversations.size - maxConversations);
-    
+    const sortedByAge = conversations.sort(
+      ([, a], [, b]) => a.lastUpdatedAt - b.lastUpdatedAt
+    );
+
+    const toRemove = sortedByAge.slice(
+      0,
+      this.conversations.size - maxConversations
+    );
+
     for (const [conversationId] of toRemove) {
       this.conversations.delete(conversationId);
     }

@@ -14,14 +14,14 @@ import { logger } from '../middleware/logging.js';
 
 /**
  * Transforms Azure OpenAI Responses API responses to OpenAI format
- * 
+ *
  * This transformer handles:
  * - Response structure mapping to OpenAI choices array
  * - Usage statistics mapping to OpenAI format
  * - Tool call transformation
  * - Error response transformation
  * - Streaming response handling
- * 
+ *
  * Requirements: 1.4, 10.5, 10.6
  */
 export class ResponsesToOpenAITransformer {
@@ -33,19 +33,25 @@ export class ResponsesToOpenAITransformer {
 
   /**
    * Transform Responses API response to OpenAI format
-   * 
+   *
    * @param responsesResponse - The Responses API response
    * @returns OpenAI-formatted response
    */
-  public transformResponse(responsesResponse: ResponsesResponse): OpenAIResponse {
-    logger.debug('Transforming Responses API response to OpenAI format', this.correlationId, {
-      responseId: responsesResponse.id,
-      outputCount: responsesResponse.output.length,
-    });
+  public transformResponse(
+    responsesResponse: ResponsesResponse
+  ): OpenAIResponse {
+    logger.debug(
+      'Transforming Responses API response to OpenAI format',
+      this.correlationId,
+      {
+        responseId: responsesResponse.id,
+        outputCount: responsesResponse.output.length,
+      }
+    );
 
     // Create OpenAI message from output
     const message = this.createOpenAIMessage(responsesResponse.output);
-    
+
     // Determine finish reason
     const finishReason = this.determineFinishReason(responsesResponse.output);
 
@@ -71,32 +77,42 @@ export class ResponsesToOpenAITransformer {
       },
     };
 
-    logger.debug('Successfully transformed response to OpenAI format', this.correlationId, {
-      responseId: openAIResponse.id,
-      choicesCount: choices.length,
-      finishReason,
-      promptTokens: openAIResponse.usage?.prompt_tokens,
-      completionTokens: openAIResponse.usage?.completion_tokens,
-    });
+    logger.debug(
+      'Successfully transformed response to OpenAI format',
+      this.correlationId,
+      {
+        responseId: openAIResponse.id,
+        choicesCount: choices.length,
+        finishReason,
+        promptTokens: openAIResponse.usage?.prompt_tokens,
+        completionTokens: openAIResponse.usage?.completion_tokens,
+      }
+    );
 
     return openAIResponse;
   }
 
   /**
    * Transform Responses API stream chunk to OpenAI format
-   * 
+   *
    * @param streamChunk - The Responses API stream chunk
    * @returns OpenAI-formatted stream chunk
    */
-  public transformStreamChunk(streamChunk: ResponsesStreamChunk): OpenAIStreamChunk {
-    logger.debug('Transforming Responses API stream chunk to OpenAI format', this.correlationId, {
-      chunkId: streamChunk.id,
-      outputCount: streamChunk.output.length,
-    });
+  public transformStreamChunk(
+    streamChunk: ResponsesStreamChunk
+  ): OpenAIStreamChunk {
+    logger.debug(
+      'Transforming Responses API stream chunk to OpenAI format',
+      this.correlationId,
+      {
+        chunkId: streamChunk.id,
+        outputCount: streamChunk.output.length,
+      }
+    );
 
     // Check if this is the final chunk
     const isComplete = this.isStreamComplete(streamChunk.output);
-    
+
     if (isComplete) {
       const choices: readonly OpenAIChoice[] = [
         {
@@ -128,7 +144,7 @@ export class ResponsesToOpenAITransformer {
 
     // Create delta object
     let delta: Partial<OpenAIMessage>;
-    
+
     if (textContent) {
       delta = { content: textContent };
     } else if (toolCalls.length > 0) {
@@ -165,15 +181,19 @@ export class ResponsesToOpenAITransformer {
 
   /**
    * Transform Responses API error to OpenAI format
-   * 
+   *
    * @param error - The Responses API error
    * @returns OpenAI-formatted error
    */
   public transformError(error: ResponsesAPIError): OpenAIError {
-    logger.debug('Transforming Responses API error to OpenAI format', this.correlationId, {
-      errorType: error.type,
-      errorCode: error.code,
-    });
+    logger.debug(
+      'Transforming Responses API error to OpenAI format',
+      this.correlationId,
+      {
+        errorType: error.type,
+        errorCode: error.code,
+      }
+    );
 
     const openAIErrorType = this.mapErrorType(error.type);
     const sanitizedMessage = this.sanitizeErrorMessage(error.message);
@@ -199,17 +219,23 @@ export class ResponsesToOpenAITransformer {
   /**
    * Create OpenAI message from Responses API output array
    */
-  private createOpenAIMessage(output: readonly ResponseOutput[]): OpenAIMessage {
+  private createOpenAIMessage(
+    output: readonly ResponseOutput[]
+  ): OpenAIMessage {
     let content = '';
     const toolCalls: OpenAIToolCall[] = [];
 
     for (const outputItem of output) {
       // Skip reasoning content - it should not be included in final response
       if (outputItem.type === 'reasoning') {
-        logger.debug('Skipping reasoning content from output', this.correlationId, {
-          reasoningStatus: outputItem.reasoning?.status,
-          reasoningLength: outputItem.reasoning?.content.length ?? 0,
-        });
+        logger.debug(
+          'Skipping reasoning content from output',
+          this.correlationId,
+          {
+            reasoningStatus: outputItem.reasoning?.status,
+            reasoningLength: outputItem.reasoning?.content.length ?? 0,
+          }
+        );
         continue;
       }
 
@@ -273,7 +299,9 @@ export class ResponsesToOpenAITransformer {
   /**
    * Extract tool calls from output array for streaming
    */
-  private extractToolCallsFromOutput(output: readonly ResponseOutput[]): readonly OpenAIToolCall[] {
+  private extractToolCallsFromOutput(
+    output: readonly ResponseOutput[]
+  ): readonly OpenAIToolCall[] {
     const toolCalls: OpenAIToolCall[] = [];
 
     for (const outputItem of output) {
@@ -300,7 +328,7 @@ export class ResponsesToOpenAITransformer {
     output: readonly ResponseOutput[]
   ): 'stop' | 'length' | 'content_filter' | 'tool_calls' | null {
     // Check if there are any tool calls
-    const hasToolCalls = output.some(item => item.type === 'tool_call');
+    const hasToolCalls = output.some((item) => item.type === 'tool_call');
     if (hasToolCalls) {
       return 'tool_calls';
     }
@@ -316,15 +344,16 @@ export class ResponsesToOpenAITransformer {
    */
   private isStreamComplete(output: readonly ResponseOutput[]): boolean {
     // Stream is complete when we have reasoning with completed status
-    const reasoningOutput = output.find(item => item.type === 'reasoning');
-    
+    const reasoningOutput = output.find((item) => item.type === 'reasoning');
+
     if (reasoningOutput?.reasoning?.status === 'completed') {
       return true;
     }
 
     // Stream is NOT complete if we have ongoing reasoning
     const hasOngoingReasoning = output.some(
-      item => item.type === 'reasoning' && item.reasoning?.status === 'in_progress'
+      (item) =>
+        item.type === 'reasoning' && item.reasoning?.status === 'in_progress'
     );
 
     if (hasOngoingReasoning) {
@@ -340,7 +369,11 @@ export class ResponsesToOpenAITransformer {
    * Map Responses API error type to OpenAI error type
    */
   private mapErrorType(
-    errorType: 'invalid_request' | 'authentication' | 'rate_limit' | 'server_error'
+    errorType:
+      | 'invalid_request'
+      | 'authentication'
+      | 'rate_limit'
+      | 'server_error'
   ): string {
     switch (errorType) {
       case 'invalid_request':
@@ -362,10 +395,16 @@ export class ResponsesToOpenAITransformer {
     // Remove potential API keys, tokens, and other sensitive data
     return message
       .replace(/sk-[A-Za-z0-9\-._~+/]+=*/gi, 'api_key=[REDACTED]')
-      .replace(/api[_-]?key[:\s=]+[A-Za-z0-9\-._~+/]+=*/gi, 'api_key=[REDACTED]')
+      .replace(
+        /api[_-]?key[:\s=]+[A-Za-z0-9\-._~+/]+=*/gi,
+        'api_key=[REDACTED]'
+      )
       .replace(/Bearer\s+[A-Za-z0-9\-._~+/]+=*/gi, 'Bearer [REDACTED]')
       .replace(/token[:\s=]+[A-Za-z0-9\-._~+/]+=*/gi, 'token=[REDACTED]')
-      .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, '[EMAIL_REDACTED]');
+      .replace(
+        /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,
+        '[EMAIL_REDACTED]'
+      );
   }
 }
 
