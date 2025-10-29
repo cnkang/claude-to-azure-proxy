@@ -71,7 +71,7 @@ fi
 
 # 7. Test health check
 echo "7️⃣ Testing container health check..."
-CONTAINER_ID=$(docker run -d -p 8080:8080 -e PROXY_API_KEY=test -e AZURE_OPENAI_ENDPOINT=https://test.openai.azure.com -e AZURE_OPENAI_API_KEY=test -e AZURE_OPENAI_MODEL=test "${FULL_IMAGE_NAME}")
+CONTAINER_ID=$(docker run --init -d -p 8080:8080 -e PROXY_API_KEY=test -e AZURE_OPENAI_ENDPOINT=https://test.openai.azure.com -e AZURE_OPENAI_API_KEY=test -e AZURE_OPENAI_MODEL=test "${FULL_IMAGE_NAME}")
 
 # Wait for container to start
 sleep 10

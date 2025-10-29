@@ -161,7 +161,7 @@ jobs:
       - name: Test health check endpoint
         run: |
           # Start container
-          CONTAINER_ID=$(docker run -d -p 8080:8080 \
+          CONTAINER_ID=$(docker run --init -d -p 8080:8080 \
             -e PROXY_API_KEY=test-proxy-api-key-32-characters-long \
             -e AZURE_OPENAI_ENDPOINT=https://test.openai.azure.com \
             -e AZURE_OPENAI_API_KEY=test-azure-openai-api-key-32-characters \
