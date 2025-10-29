@@ -69,13 +69,20 @@ describe('PerformanceProfiler', () => {
     expect(measures.length).toBeGreaterThan(0);
 
     performanceProfiler.clearPerformanceData();
-    expect(performance.getEntriesByName('unit-test-op_duration').length).toBe(0);
+    expect(performance.getEntriesByName('unit-test-op_duration').length).toBe(
+      0
+    );
   });
 
   it('emits warnings and errors during memory leak monitoring', () => {
     vi.useFakeTimers();
     const profilerInternals = performanceProfiler as unknown as {
-      memorySamples: Array<{ timestamp: number; heapUsed: number; heapTotal: number; rss: number }>;
+      memorySamples: Array<{
+        timestamp: number;
+        heapUsed: number;
+        heapTotal: number;
+        rss: number;
+      }>;
     };
     profilerInternals.memorySamples.length = 0;
     for (let i = 0; i < 12; i++) {
@@ -136,7 +143,7 @@ describe('PerformanceProfiler', () => {
 
     it('should handle enhanced memory monitoring with detailed thresholds', () => {
       vi.useFakeTimers();
-      
+
       // Mock high memory usage scenario
       const memoryUsageSpy = vi
         .spyOn(process, 'memoryUsage')
@@ -150,10 +157,10 @@ describe('PerformanceProfiler', () => {
 
       const profiler = new PerformanceProfiler(10, 100);
       profiler.startProfiling();
-      
+
       // Advance time to trigger memory monitoring
       vi.advanceTimersByTime(100);
-      
+
       profiler.stopProfiling();
 
       // Should log critical memory usage
@@ -172,16 +179,16 @@ describe('PerformanceProfiler', () => {
 
     it('should handle enhanced GC monitoring with type names', () => {
       const profiler = new PerformanceProfiler();
-      
+
       // Start profiling to trigger the setup
       profiler.startProfiling();
-      
+
       // Test GC profile creation and logging
       const profile = profiler.getCurrentProfile();
-      
+
       // GC profiles should be an array (may be empty if no GC events occurred)
       expect(Array.isArray(profile.gc)).toBe(true);
-      
+
       // The profiler should have been set up to observe GC events
       expect(logger.info).toHaveBeenCalledWith(
         'Performance profiling started',
@@ -191,14 +198,14 @@ describe('PerformanceProfiler', () => {
           sampleInterval: expect.any(Number),
         })
       );
-      
+
       // Clean up
       profiler.stopProfiling();
     });
 
     it('should handle external memory monitoring', () => {
       vi.useFakeTimers();
-      
+
       // Mock high external memory usage
       const memoryUsageSpy = vi
         .spyOn(process, 'memoryUsage')
@@ -212,10 +219,10 @@ describe('PerformanceProfiler', () => {
 
       const profiler = new PerformanceProfiler(10, 100);
       profiler.startProfiling();
-      
+
       // Advance time to trigger memory monitoring
       vi.advanceTimersByTime(100);
-      
+
       profiler.stopProfiling();
 
       // Should warn about high external memory usage
@@ -233,19 +240,21 @@ describe('PerformanceProfiler', () => {
 
     it('should provide enhanced memory leak detection recommendations', () => {
       const profiler = new PerformanceProfiler();
-      
+
       // Test with insufficient data
       const detection = profiler.detectMemoryLeaks();
-      
+
       expect(detection.leakDetected).toBe(false);
-      expect(detection.recommendations).toContain('Insufficient data - need at least 10 samples');
+      expect(detection.recommendations).toContain(
+        'Insufficient data - need at least 10 samples'
+      );
     });
 
     it('should handle GC observer setup gracefully when not available', () => {
       // This test verifies that the profiler handles cases where GC observation
       // might not be available (older Node.js versions or restricted environments)
       const profiler = new PerformanceProfiler();
-      
+
       // Starting profiling should not throw even if GC observer fails
       expect(() => profiler.startProfiling()).not.toThrow();
       expect(() => profiler.stopProfiling()).not.toThrow();
@@ -253,7 +262,7 @@ describe('PerformanceProfiler', () => {
 
     it('should calculate memory growth rate accurately', () => {
       vi.useFakeTimers();
-      
+
       // Create a scenario with steady memory growth
       let heapUsed = 50_000_000;
       const memoryUsageSpy = vi
@@ -268,18 +277,18 @@ describe('PerformanceProfiler', () => {
 
       const profiler = new PerformanceProfiler(20, 50);
       profiler.startProfiling();
-      
+
       // Generate enough samples for leak detection
       vi.advanceTimersByTime(500); // 10 samples
-      
+
       profiler.stopProfiling();
-      
+
       const detection = profiler.detectMemoryLeaks();
-      
+
       // Should detect the growth pattern
       expect(detection.samples.length).toBeGreaterThanOrEqual(10);
       expect(detection.growthRate).toBeGreaterThan(0);
-      
+
       memoryUsageSpy.mockRestore();
     });
   });

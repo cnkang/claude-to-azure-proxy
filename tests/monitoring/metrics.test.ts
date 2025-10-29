@@ -59,7 +59,9 @@ describe('InMemoryMetricCollector', () => {
 
   it('rejects invalid metrics', () => {
     const collector = new InMemoryMetricCollector();
-    expect(() => collector.recordPerformance({} as any)).toThrow('Metric name is required');
+    expect(() => collector.recordPerformance({} as any)).toThrow(
+      'Metric name is required'
+    );
   });
 
   it('clears metrics on demand', () => {
@@ -88,21 +90,30 @@ describe('Performance timers and global helpers', () => {
     const timer = new PerformanceTimer('responses.create', 'timer-test');
     const metric = timer.stop(true);
 
-    expect(recordSpy).toHaveBeenCalledWith(expect.objectContaining({ name: 'responses.create' }));
+    expect(recordSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'responses.create' })
+    );
     expect(metric.success).toBe(true);
     recordSpy.mockRestore();
   });
 
   it('creates timers and business metrics via helper functions', () => {
-    const recordPerformanceSpy = vi.spyOn(metricsCollector, 'recordPerformance');
+    const recordPerformanceSpy = vi.spyOn(
+      metricsCollector,
+      'recordPerformance'
+    );
     const recordBusinessSpy = vi.spyOn(metricsCollector, 'recordBusiness');
 
     const timer = createTimer('claude.request');
     timer.stop(false, 'timeout');
     expect(recordPerformanceSpy).toHaveBeenCalled();
 
-    recordBusinessMetric('api_requests', 'requests', 1, { endpoint: '/v1/completions' });
-    expect(recordBusinessSpy).toHaveBeenCalledWith(expect.objectContaining({ name: 'api_requests' }));
+    recordBusinessMetric('api_requests', 'requests', 1, {
+      endpoint: '/v1/completions',
+    });
+    expect(recordBusinessSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'api_requests' })
+    );
 
     recordPerformanceSpy.mockRestore();
     recordBusinessSpy.mockRestore();
@@ -119,7 +130,9 @@ describe('SystemResourceMonitor', () => {
     const recordSpy = vi.spyOn(metricsCollector, 'recordResource');
 
     await (
-      monitor as unknown as { collectResourceMetrics: () => Promise<void> | void }
+      monitor as unknown as {
+        collectResourceMetrics: () => Promise<void> | void;
+      }
     ).collectResourceMetrics();
 
     await new Promise((resolve) => setImmediate(resolve));
