@@ -11,7 +11,11 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { BedrockMonitor, createBedrockTimer, recordBedrockBusinessMetric } from '../src/monitoring/bedrock-monitor.js';
+import {
+  BedrockMonitor,
+  createBedrockTimer,
+  recordBedrockBusinessMetric,
+} from '../src/monitoring/bedrock-monitor.js';
 import type { AWSBedrockConfig } from '../src/types/index.js';
 
 // Mock axios for Bedrock health checks
@@ -62,7 +66,7 @@ describe('BedrockMonitor', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     mockConfig = {
       baseURL: 'https://bedrock-runtime.us-west-2.amazonaws.com',
       apiKey: 'test-bedrock-api-key',
@@ -157,10 +161,10 @@ describe('BedrockMonitor', () => {
           data: { foundationModels: [] },
         }),
       };
-      
+
       // Mock axios.create to return our mock instance
       mockedAxios.create = vi.fn().mockReturnValue(mockAxiosInstance);
-      
+
       // Mock the default axios import to have the create method
       mockedAxios.default = {
         create: vi.fn().mockReturnValue(mockAxiosInstance),
@@ -173,7 +177,7 @@ describe('BedrockMonitor', () => {
       expect(mockAxiosInstance.get).toHaveBeenCalledWith('/foundation-models', {
         timeout: 5000,
         headers: {
-          'Accept': 'application/json',
+          Accept: 'application/json',
         },
       });
     });
@@ -181,11 +185,11 @@ describe('BedrockMonitor', () => {
     it('should handle Bedrock health check failure', async () => {
       // Create a fresh monitor instance to avoid state pollution
       const freshMonitor = new BedrockMonitor(mockConfig);
-      
+
       const mockAxiosInstance = {
         get: vi.fn().mockRejectedValue(new Error('Connection failed')),
       };
-      
+
       mockedAxios.create = vi.fn().mockReturnValue(mockAxiosInstance);
       mockedAxios.default = {
         create: vi.fn().mockReturnValue(mockAxiosInstance),
@@ -200,14 +204,14 @@ describe('BedrockMonitor', () => {
     it('should handle Bedrock health check timeout', async () => {
       // Create a fresh monitor instance to avoid state pollution
       const freshMonitor = new BedrockMonitor(mockConfig);
-      
+
       const mockAxiosInstance = {
         get: vi.fn().mockRejectedValue({
           code: 'ECONNABORTED',
           message: 'timeout of 5000ms exceeded',
         }),
       };
-      
+
       mockedAxios.create = vi.fn().mockReturnValue(mockAxiosInstance);
       mockedAxios.default = {
         create: vi.fn().mockReturnValue(mockAxiosInstance),
@@ -237,11 +241,23 @@ describe('BedrockMonitor', () => {
       const correlationId1 = 'test-1';
       const correlationId2 = 'test-2';
 
-      bedrockMonitor.trackBedrockRequest(correlationId1, 'qwen-3-coder', 'streaming');
+      bedrockMonitor.trackBedrockRequest(
+        correlationId1,
+        'qwen-3-coder',
+        'streaming'
+      );
       bedrockMonitor.completeBedrockRequest(correlationId1, true);
 
-      bedrockMonitor.trackBedrockRequest(correlationId2, 'qwen-3-coder', 'non-streaming');
-      bedrockMonitor.completeBedrockRequest(correlationId2, false, 'rate_limit_error');
+      bedrockMonitor.trackBedrockRequest(
+        correlationId2,
+        'qwen-3-coder',
+        'non-streaming'
+      );
+      bedrockMonitor.completeBedrockRequest(
+        correlationId2,
+        false,
+        'rate_limit_error'
+      );
 
       const metrics = bedrockMonitor.getBedrockMetrics();
 
@@ -263,7 +279,11 @@ describe('BedrockMonitor', () => {
 
       // Test degraded status (medium error rate)
       for (let i = 2; i <= 10; i++) {
-        bedrockMonitor.trackBedrockRequest(`test-${i}`, 'qwen-3-coder', 'streaming');
+        bedrockMonitor.trackBedrockRequest(
+          `test-${i}`,
+          'qwen-3-coder',
+          'streaming'
+        );
         bedrockMonitor.completeBedrockRequest(`test-${i}`, i <= 8); // 20% error rate
       }
 
@@ -272,8 +292,16 @@ describe('BedrockMonitor', () => {
 
       // Test unavailable status (high error rate)
       for (let i = 11; i <= 20; i++) {
-        bedrockMonitor.trackBedrockRequest(`test-${i}`, 'qwen-3-coder', 'streaming');
-        bedrockMonitor.completeBedrockRequest(`test-${i}`, false, 'service_error'); // High error rate
+        bedrockMonitor.trackBedrockRequest(
+          `test-${i}`,
+          'qwen-3-coder',
+          'streaming'
+        );
+        bedrockMonitor.completeBedrockRequest(
+          `test-${i}`,
+          false,
+          'service_error'
+        ); // High error rate
       }
 
       metrics = bedrockMonitor.getBedrockMetrics();
@@ -281,7 +309,11 @@ describe('BedrockMonitor', () => {
     });
 
     it('should clear metrics correctly', () => {
-      bedrockMonitor.trackBedrockRequest('test-clear', 'qwen-3-coder', 'streaming');
+      bedrockMonitor.trackBedrockRequest(
+        'test-clear',
+        'qwen-3-coder',
+        'streaming'
+      );
       bedrockMonitor.completeBedrockRequest('test-clear', true);
 
       let metrics = bedrockMonitor.getBedrockMetrics();
@@ -340,7 +372,11 @@ describe('BedrockMonitor', () => {
       const { logger } = await import('../src/middleware/logging.js');
       const correlationId = 'test-logging';
 
-      bedrockMonitor.trackBedrockRequest(correlationId, 'qwen-3-coder', 'streaming');
+      bedrockMonitor.trackBedrockRequest(
+        correlationId,
+        'qwen-3-coder',
+        'streaming'
+      );
 
       expect(logger.info).toHaveBeenCalledWith(
         'Bedrock request started',
@@ -371,17 +407,17 @@ describe('BedrockMonitor', () => {
 
     it('should log health check failures without exposing sensitive data', async () => {
       const { logger } = await import('../src/middleware/logging.js');
-      
+
       // Create a fresh monitor instance to avoid state pollution
       const freshMonitor = new BedrockMonitor(mockConfig);
-      
+
       const mockAxiosInstance = {
         get: vi.fn().mockRejectedValue(new Error('Authentication failed')),
       };
-      
+
       // Mock axios.create to return our mock instance
       mockedAxios.create = vi.fn().mockReturnValue(mockAxiosInstance);
-      
+
       // Mock the default axios import to have the create method
       mockedAxios.default = {
         create: vi.fn().mockReturnValue(mockAxiosInstance),
@@ -401,9 +437,9 @@ describe('BedrockMonitor', () => {
 
       // Verify no sensitive data (API keys, etc.) are logged
       const logCalls = vi.mocked(logger.warn).mock.calls;
-      const loggedData = logCalls.map(call => JSON.stringify(call));
+      const loggedData = logCalls.map((call) => JSON.stringify(call));
       const combinedLogs = loggedData.join(' ');
-      
+
       expect(combinedLogs).not.toContain('test-bedrock-api-key');
       expect(combinedLogs).not.toContain('Bearer');
     });

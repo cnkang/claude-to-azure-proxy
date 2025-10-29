@@ -44,7 +44,7 @@ describe('Bedrock Security Tests', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     validConfig = {
       baseURL: 'https://bedrock-runtime.us-west-2.amazonaws.com',
       apiKey: 'test-bedrock-api-key-32-characters-long-secret',
@@ -87,11 +87,11 @@ describe('Bedrock Security Tests', () => {
 
     it('should not expose API key in network error handling', async () => {
       const client = new AWSBedrockClient(validConfig);
-      
+
       // Mock network error
       const networkError = new Error('ECONNREFUSED');
       (networkError as any).code = 'ECONNREFUSED';
-      
+
       vi.spyOn(client['client'], 'post').mockRejectedValue(networkError);
 
       try {
@@ -108,7 +108,7 @@ describe('Bedrock Security Tests', () => {
 
     it('should not expose API key in timeout error handling', async () => {
       const client = new AWSBedrockClient(validConfig);
-      
+
       // Mock timeout error
       const timeoutError = new Error('timeout of 30000ms exceeded');
       vi.spyOn(client['client'], 'post').mockRejectedValue(timeoutError);
@@ -127,7 +127,7 @@ describe('Bedrock Security Tests', () => {
 
     it('should not expose API key in API error responses', async () => {
       const client = new AWSBedrockClient(validConfig);
-      
+
       // Mock API error
       const apiError = {
         isAxiosError: true,
@@ -142,7 +142,7 @@ describe('Bedrock Security Tests', () => {
         },
         message: 'Request failed with status code 401',
       };
-      
+
       vi.spyOn(client['client'], 'post').mockRejectedValue(apiError);
 
       try {
@@ -249,20 +249,22 @@ describe('Bedrock Security Tests', () => {
     it('should accept zero maxRetries', () => {
       const validConfigWithZeroRetries = { ...validConfig, maxRetries: 0 };
 
-      expect(() => new AWSBedrockClient(validConfigWithZeroRetries)).not.toThrow();
+      expect(
+        () => new AWSBedrockClient(validConfigWithZeroRetries)
+      ).not.toThrow();
     });
   });
 
   describe('Sensitive Data Exposure Prevention', () => {
     it('should not log API keys in debug messages', async () => {
       const client = new AWSBedrockClient(validConfig);
-      
+
       // Import the mocked logger
       const { logger } = await import('../src/middleware/logging.js');
-      
+
       // Trigger some operation that might log
       client.getConfig();
-      
+
       // Check that no log calls contain the actual API key
       const allLogCalls = [
         ...(logger.debug as any).mock.calls,
@@ -270,7 +272,7 @@ describe('Bedrock Security Tests', () => {
         ...(logger.warn as any).mock.calls,
         ...(logger.error as any).mock.calls,
       ];
-      
+
       for (const call of allLogCalls) {
         for (const arg of call) {
           if (typeof arg === 'string') {
@@ -294,7 +296,7 @@ describe('Bedrock Security Tests', () => {
         expect(error).toBeInstanceOf(ValidationError);
         const errorString = error.toString();
         const errorStack = (error as Error).stack ?? '';
-        
+
         expect(errorString).not.toContain(validConfig.apiKey);
         expect(errorStack).not.toContain(validConfig.apiKey);
         expect(errorString).not.toContain('test-bedrock-api-key');
@@ -310,10 +312,10 @@ describe('Bedrock Security Tests', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(ValidationError);
         const serialized = JSON.stringify(error);
-        
+
         expect(serialized).not.toContain(validConfig.apiKey);
         expect(serialized).not.toContain('test-bedrock-api-key');
-        
+
         // Should contain redacted value instead
         expect(serialized).toContain('[REDACTED]');
       }
@@ -321,7 +323,7 @@ describe('Bedrock Security Tests', () => {
 
     it('should handle API key exposure in nested error objects', async () => {
       const client = new AWSBedrockClient(validConfig);
-      
+
       // Mock complex error with nested data
       const complexError = {
         isAxiosError: true,
@@ -347,7 +349,7 @@ describe('Bedrock Security Tests', () => {
         },
         message: 'Request failed with status code 400',
       };
-      
+
       vi.spyOn(client['client'], 'post').mockRejectedValue(complexError);
 
       try {
@@ -358,7 +360,7 @@ describe('Bedrock Security Tests', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(Error);
         const errorString = JSON.stringify(error);
-        
+
         expect(errorString).not.toContain(validConfig.apiKey);
         expect(errorString).not.toContain('test-bedrock-api-key');
       }
@@ -368,10 +370,10 @@ describe('Bedrock Security Tests', () => {
   describe('Security Headers and Request Validation', () => {
     it('should create client with secure configuration', () => {
       const client = new AWSBedrockClient(validConfig);
-      
+
       // Verify client was created successfully with secure configuration
       expect(client).toBeDefined();
-      
+
       // Verify configuration is properly sanitized
       const sanitizedConfig = client.getConfig();
       expect(sanitizedConfig.baseURL).toBe(validConfig.baseURL);
@@ -382,7 +384,10 @@ describe('Bedrock Security Tests', () => {
     });
 
     it('should validate HTTPS requirement for baseURL', () => {
-      const httpConfig = { ...validConfig, baseURL: 'http://bedrock.amazonaws.com' };
+      const httpConfig = {
+        ...validConfig,
+        baseURL: 'http://bedrock.amazonaws.com',
+      };
 
       expect(() => new AWSBedrockClient(httpConfig)).toThrow(
         'Invalid baseURL: must use HTTPS protocol'
@@ -390,7 +395,10 @@ describe('Bedrock Security Tests', () => {
     });
 
     it('should validate region format', () => {
-      const invalidRegionConfig = { ...validConfig, region: 'invalid-region-format!' };
+      const invalidRegionConfig = {
+        ...validConfig,
+        region: 'invalid-region-format!',
+      };
 
       // Should not throw for region format (AWS handles region validation)
       expect(() => new AWSBedrockClient(invalidRegionConfig)).not.toThrow();
@@ -398,35 +406,44 @@ describe('Bedrock Security Tests', () => {
 
     it('should enforce minimum security standards', () => {
       // Test that client enforces HTTPS
-      expect(() => new AWSBedrockClient({
-        ...validConfig,
-        baseURL: 'http://example.com',
-      })).toThrow('must use HTTPS protocol');
+      expect(
+        () =>
+          new AWSBedrockClient({
+            ...validConfig,
+            baseURL: 'http://example.com',
+          })
+      ).toThrow('must use HTTPS protocol');
 
       // Test that client requires non-empty API key
-      expect(() => new AWSBedrockClient({
-        ...validConfig,
-        apiKey: '',
-      })).toThrow('must be a non-empty string');
+      expect(
+        () =>
+          new AWSBedrockClient({
+            ...validConfig,
+            apiKey: '',
+          })
+      ).toThrow('must be a non-empty string');
 
       // Test that client requires valid timeout
-      expect(() => new AWSBedrockClient({
-        ...validConfig,
-        timeout: 0,
-      })).toThrow('must be a positive number');
+      expect(
+        () =>
+          new AWSBedrockClient({
+            ...validConfig,
+            timeout: 0,
+          })
+      ).toThrow('must be a positive number');
     });
   });
 
   describe('Configuration Immutability', () => {
     it('should freeze configuration object to prevent modification', () => {
       const client = new AWSBedrockClient(validConfig);
-      
+
       // Access the private config
       const config = client['config'];
-      
+
       // Should be frozen
       expect(Object.isFrozen(config)).toBe(true);
-      
+
       // Attempting to modify should not work
       expect(() => {
         (config as any).apiKey = 'modified-key';
@@ -436,14 +453,14 @@ describe('Bedrock Security Tests', () => {
     it('should not allow modification of original config object', () => {
       const originalConfig = { ...validConfig };
       const client = new AWSBedrockClient(originalConfig);
-      
+
       // Modify original config
       originalConfig.apiKey = 'modified-key';
-      
+
       // Client config should remain unchanged
       const clientConfig = client.getConfig();
       expect(clientConfig.apiKey).toBe('[REDACTED]');
-      
+
       // Internal config should not be affected
       expect(client['config'].apiKey).toBe(validConfig.apiKey);
     });

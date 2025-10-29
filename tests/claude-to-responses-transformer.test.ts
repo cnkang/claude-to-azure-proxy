@@ -314,7 +314,9 @@ describe('ClaudeToResponsesTransformer', () => {
       // Missing text property is now handled with default content
       const result = transformer.transformRequest(requestWithMissingText);
       expect(result).toBeDefined();
-      expect(result.input).toContain('[Content was processed and converted to text]');
+      expect(result.input).toContain(
+        '[Content was processed and converted to text]'
+      );
     });
   });
 

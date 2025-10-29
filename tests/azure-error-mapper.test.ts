@@ -3,7 +3,10 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { AzureErrorMapper, type ErrorMappingContext } from '../src/utils/azure-error-mapper.js';
+import {
+  AzureErrorMapper,
+  type ErrorMappingContext,
+} from '../src/utils/azure-error-mapper.js';
 import {
   AzureOpenAIError,
   ValidationError,
@@ -143,7 +146,8 @@ describe('AzureErrorMapper', () => {
         type: 'error',
         error: {
           type: 'api_error',
-          message: 'Network error occurred while communicating with Azure OpenAI',
+          message:
+            'Network error occurred while communicating with Azure OpenAI',
         },
       });
     });
@@ -346,8 +350,11 @@ describe('AzureErrorMapper', () => {
         };
 
         const result = AzureErrorMapper.mapError(context);
-        
-        if (result.error instanceof RateLimitError || result.error instanceof ServiceUnavailableError) {
+
+        if (
+          result.error instanceof RateLimitError ||
+          result.error instanceof ServiceUnavailableError
+        ) {
           expect(result.error.retryAfter).toBe(expectedRetryAfter);
         }
       }

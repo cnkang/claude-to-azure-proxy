@@ -3,7 +3,10 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { AzureResponsesMonitor, createHealthCheckHandler } from '../src/monitoring/azure-responses-monitor.js';
+import {
+  AzureResponsesMonitor,
+  createHealthCheckHandler,
+} from '../src/monitoring/azure-responses-monitor.js';
 import type {
   ResponsesCreateParams,
   ResponsesResponse,
@@ -46,7 +49,7 @@ describe('AzureResponsesMonitor', () => {
     it('should return the same instance', () => {
       const instance1 = AzureResponsesMonitor.getInstance();
       const instance2 = AzureResponsesMonitor.getInstance();
-      
+
       expect(instance1).toBe(instance2);
     });
   });
@@ -66,7 +69,10 @@ describe('AzureResponsesMonitor', () => {
       model: 'claude-3-5-sonnet-20241022',
       output: [
         { type: 'text', text: 'Test response' },
-        { type: 'reasoning', reasoning: { content: 'Test reasoning', status: 'completed' } },
+        {
+          type: 'reasoning',
+          reasoning: { content: 'Test reasoning', status: 'completed' },
+        },
       ],
       usage: {
         prompt_tokens: 10,
@@ -118,10 +124,13 @@ describe('AzureResponsesMonitor', () => {
     it('should track reasoning effort distribution', () => {
       // Record requests with different reasoning efforts
       monitor.recordRequest(mockParams, mockResponse, mockMetadata);
-      
-      const highEffortParams = { ...mockParams, reasoning: { effort: 'high' as const } };
+
+      const highEffortParams = {
+        ...mockParams,
+        reasoning: { effort: 'high' as const },
+      };
       monitor.recordRequest(highEffortParams, mockResponse, mockMetadata);
-      
+
       const noReasoningParams = { ...mockParams, reasoning: undefined };
       monitor.recordRequest(noReasoningParams, mockResponse, mockMetadata);
 
@@ -133,8 +142,11 @@ describe('AzureResponsesMonitor', () => {
 
     it('should track format distribution', () => {
       monitor.recordRequest(mockParams, mockResponse, mockMetadata);
-      
-      const openaiMetadata = { ...mockMetadata, requestFormat: 'openai' as const };
+
+      const openaiMetadata = {
+        ...mockMetadata,
+        requestFormat: 'openai' as const,
+      };
       monitor.recordRequest(mockParams, mockResponse, openaiMetadata);
 
       const metrics = monitor.getMetrics();
@@ -199,7 +211,7 @@ describe('AzureResponsesMonitor', () => {
 
     it('should track different event types', () => {
       monitor.recordSecurityEvent(mockSecurityEvent);
-      
+
       const rateLimitEvent = {
         ...mockSecurityEvent,
         eventType: 'rate_limit' as const,
@@ -227,8 +239,10 @@ describe('AzureResponsesMonitor', () => {
       });
 
       const securityMetrics = monitor.getSecurityMetrics();
-      const authEvents = securityMetrics.securityEvents.find(e => e.eventType === 'authentication');
-      
+      const authEvents = securityMetrics.securityEvents.find(
+        (e) => e.eventType === 'authentication'
+      );
+
       expect(authEvents).toBeDefined();
       expect(authEvents!.count).toBe(2);
       expect(authEvents!.severity).toBe('medium');
@@ -338,7 +352,10 @@ describe('AzureResponsesMonitor', () => {
         model: 'claude-3-5-sonnet-20241022',
         output: [
           { type: 'text', text: 'Test response' },
-          { type: 'reasoning', reasoning: { content: 'Test reasoning', status: 'completed' } },
+          {
+            type: 'reasoning',
+            reasoning: { content: 'Test reasoning', status: 'completed' },
+          },
         ],
         usage: {
           prompt_tokens: 10,
@@ -359,7 +376,11 @@ describe('AzureResponsesMonitor', () => {
         fallbackUsed: false,
       };
 
-      monitor.recordRequest(reasoningParams, reasoningResponse, reasoningMetadata);
+      monitor.recordRequest(
+        reasoningParams,
+        reasoningResponse,
+        reasoningMetadata
+      );
 
       const insights = monitor.getPerformanceInsights();
       expect(insights.reasoningEfficiency.length).toBe(1);
@@ -412,12 +433,12 @@ describe('AzureResponsesMonitor', () => {
       };
 
       monitor.recordRequest(mockParams, mockResponse, mockMetadata);
-      
+
       let metrics = monitor.getMetrics();
       expect(metrics.requestCount).toBe(1);
 
       monitor.clearMetrics();
-      
+
       metrics = monitor.getMetrics();
       expect(metrics.requestCount).toBe(0);
     });
@@ -452,7 +473,7 @@ describe('createHealthCheckHandler', () => {
 
   it('should determine health status based on metrics', () => {
     const monitor = AzureResponsesMonitor.getInstance();
-    
+
     // Record some failed requests to affect health status
     const mockParams: ResponsesCreateParams = {
       model: 'claude-3-5-sonnet-20241022',

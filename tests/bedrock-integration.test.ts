@@ -166,8 +166,12 @@ describe('Bedrock Integration Tests', () => {
 
       expect(result.requestFormat).toBe('claude');
       expect(result.responseFormat).toBe('claude');
-      expect(result.responsesParams.model).toBe('qwen.qwen3-coder-480b-a35b-v1:0'); // Backend model ID
-      expect(result.responsesParams.input).toBe('Write a simple Python function');
+      expect(result.responsesParams.model).toBe(
+        'qwen.qwen3-coder-480b-a35b-v1:0'
+      ); // Backend model ID
+      expect(result.responsesParams.input).toBe(
+        'Write a simple Python function'
+      );
       expect(result.responsesParams.max_output_tokens).toBe(1000);
       expect(result.correlationId).toMatch(/^req_[a-f0-9-]+$/);
     });
@@ -195,7 +199,9 @@ describe('Bedrock Integration Tests', () => {
 
       expect(result.requestFormat).toBe('claude');
       expect(result.responseFormat).toBe('claude');
-      expect(result.responsesParams.model).toBe('qwen.qwen3-coder-480b-a35b-v1:0');
+      expect(result.responsesParams.model).toBe(
+        'qwen.qwen3-coder-480b-a35b-v1:0'
+      );
       expect(result.responsesParams.input).toBe('Explain recursion');
       expect(result.responsesParams.max_output_tokens).toBe(500);
     });
@@ -252,7 +258,9 @@ describe('Bedrock Integration Tests', () => {
         expect.fail('Expected an error to be thrown');
       } catch (error) {
         expect(error).toBeInstanceOf(Error);
-        expect((error as Error).message).toContain('Unsupported model "unsupported-model-xyz"');
+        expect((error as Error).message).toContain(
+          'Unsupported model "unsupported-model-xyz"'
+        );
       }
     });
   });
@@ -324,7 +332,7 @@ describe('Bedrock Integration Tests', () => {
         expect.objectContaining({
           responseType: 'stream',
           headers: expect.objectContaining({
-            'Accept': 'application/vnd.amazon.eventstream',
+            Accept: 'application/vnd.amazon.eventstream',
           }),
         })
       );
@@ -492,7 +500,9 @@ describe('Bedrock Integration Tests', () => {
 
       // Verify request transformation to Bedrock format
       expect(mockAxiosInstance.post).toHaveBeenCalledWith(
-        expect.stringContaining('/model/qwen.qwen3-coder-480b-a35b-v1:0/converse'),
+        expect.stringContaining(
+          '/model/qwen.qwen3-coder-480b-a35b-v1:0/converse'
+        ),
         expect.objectContaining({
           messages: [
             {
@@ -500,9 +510,7 @@ describe('Bedrock Integration Tests', () => {
               content: [{ text: 'Write a hello world function in Python' }],
             },
           ],
-          system: [
-            { text: 'You are a helpful coding assistant' },
-          ],
+          system: [{ text: 'You are a helpful coding assistant' }],
           inferenceConfig: {
             maxTokens: 200,
             temperature: 0.7,

@@ -78,7 +78,9 @@ describe('Build Pipeline Tests', () => {
       expect(packageJson.scripts.build).toContain('--build --verbose');
       expect(packageJson.scripts['build:clean']).toBeDefined();
       expect(packageJson.scripts.start).toContain('--enable-source-maps');
-      expect(packageJson.scripts['start:prod']).toContain('--max-old-space-size=1024');
+      expect(packageJson.scripts['start:prod']).toContain(
+        '--max-old-space-size=1024'
+      );
     });
 
     it('should have Node.js 24 optimized development scripts', () => {
@@ -95,7 +97,9 @@ describe('Build Pipeline Tests', () => {
       expect(packageJson.dependencies.axios).toMatch(/^\^1\.13\./);
       expect(packageJson.dependencies.openai).toMatch(/^\^6\.7\./);
       expect(packageJson.devDependencies.vitest).toMatch(/^\^4\./);
-      expect(packageJson.devDependencies['@vitest/coverage-v8']).toMatch(/^\^4\./);
+      expect(packageJson.devDependencies['@vitest/coverage-v8']).toMatch(
+        /^\^4\./
+      );
     });
   });
 
@@ -115,15 +119,15 @@ describe('Build Pipeline Tests', () => {
       expect(existsSync(dockerfilePath)).toBe(true);
       const dockerfile = readFileSync(dockerfilePath, 'utf-8');
       expect(dockerfile).toContain('FROM node:24-alpine');
-      expect(dockerfile).toContain('dumb-init');
+      expect(dockerfile).toContain('--init');
       expect(dockerfile).toContain('--enable-source-maps');
     });
 
     it('should build Docker image successfully', () => {
       expect(() => {
-        execSync(`docker build -t ${testImageName} .`, { 
+        execSync(`docker build -t ${testImageName} .`, {
           stdio: 'pipe',
-          timeout: 120000 // 2 minutes timeout
+          timeout: 120000, // 2 minutes timeout
         });
       }).not.toThrow();
     });
@@ -144,7 +148,9 @@ describe('Build Pipeline Tests', () => {
 
     it('should have proper Node.js 24 optimizations', () => {
       const dockerfile = readFileSync(dockerfilePath, 'utf-8');
-      expect(dockerfile).toContain('NODE_OPTIONS="--enable-source-maps --max-old-space-size=512"');
+      expect(dockerfile).toContain(
+        'NODE_OPTIONS="--enable-source-maps --max-old-space-size=512"'
+      );
       expect(dockerfile).toContain('UV_THREADPOOL_SIZE=4');
     });
 
@@ -155,9 +161,10 @@ describe('Build Pipeline Tests', () => {
       expect(dockerfile).toContain('--start-period=15s');
     });
 
-    it('should use dumb-init for proper signal handling', () => {
+    it('should use Docker init for proper signal handling', () => {
       const dockerfile = readFileSync(dockerfilePath, 'utf-8');
-      expect(dockerfile).toContain('ENTRYPOINT ["dumb-init", "--"]');
+      expect(dockerfile).toContain('docker run --init');
+      expect(dockerfile).toContain('CMD ["node"');
     });
   });
 
@@ -172,11 +179,14 @@ describe('Build Pipeline Tests', () => {
     });
 
     it('should validate Docker image exists after build', () => {
-      const output = execSync('docker images claude-to-azure-proxy --format "{{.Repository}}:{{.Tag}}"', { 
-        encoding: 'utf-8', 
-        stdio: 'pipe' 
-      });
-      
+      const output = execSync(
+        'docker images claude-to-azure-proxy --format "{{.Repository}}:{{.Tag}}"',
+        {
+          encoding: 'utf-8',
+          stdio: 'pipe',
+        }
+      );
+
       expect(output).toContain('claude-to-azure-proxy:');
       expect(output.trim()).not.toBe('');
     });
@@ -212,11 +222,11 @@ describe('Build Pipeline Tests', () => {
   describe('Deployment Compatibility', () => {
     it('should have AWS App Runner compatible configuration', () => {
       const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
-      
+
       // Should have proper start script
       expect(packageJson.scripts.start).toBeDefined();
       expect(packageJson.scripts.start).toContain('dist/index.js');
-      
+
       // Should support PORT environment variable
       const dockerfile = readFileSync(dockerfilePath, 'utf-8');
       expect(dockerfile).toContain('EXPOSE 8080');
@@ -225,18 +235,21 @@ describe('Build Pipeline Tests', () => {
     it('should have proper environment variable documentation in config', () => {
       // Check that the built application has proper configuration validation
       expect(existsSync(join(distDir, 'config', 'index.js'))).toBe(true);
-      
-      const configJs = readFileSync(join(distDir, 'config', 'index.js'), 'utf-8');
+
+      const configJs = readFileSync(
+        join(distDir, 'config', 'index.js'),
+        'utf-8'
+      );
       expect(configJs).toContain('PROXY_API_KEY');
       expect(configJs).toContain('AZURE_OPENAI_ENDPOINT');
       expect(configJs).toContain('AZURE_OPENAI_API_KEY');
     });
 
     it('should handle graceful shutdown', () => {
-      // This test verifies that dumb-init is properly handling signals
+      // This test verifies that Docker's built-in init is properly configured
       const dockerfile = readFileSync(dockerfilePath, 'utf-8');
-      expect(dockerfile).toContain('dumb-init');
-      expect(dockerfile).toContain('ENTRYPOINT ["dumb-init", "--"]');
+      expect(dockerfile).toContain('docker run --init');
+      expect(dockerfile).toContain('CMD ["node"');
     });
   });
 });

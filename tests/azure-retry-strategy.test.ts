@@ -3,7 +3,12 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { AzureRetryStrategy, withAzureRetry, createAzureRetryConfig, type AzureRetryContext } from '../src/utils/azure-retry-strategy.js';
+import {
+  AzureRetryStrategy,
+  withAzureRetry,
+  createAzureRetryConfig,
+  type AzureRetryContext,
+} from '../src/utils/azure-retry-strategy.js';
 import type { ResponsesCreateParams } from '../src/types/index.js';
 
 describe('AzureRetryStrategy', () => {
@@ -33,10 +38,16 @@ describe('AzureRetryStrategy', () => {
         correlationId: mockCorrelationId,
         operation: mockOperation,
         requestFormat: 'claude',
-        originalParams: { model: 'test-model', input: 'test' } as ResponsesCreateParams,
+        originalParams: {
+          model: 'test-model',
+          input: 'test',
+        } as ResponsesCreateParams,
       };
 
-      const result = await retryStrategy.executeWithRetry(mockOperation, context);
+      const result = await retryStrategy.executeWithRetry(
+        mockOperation,
+        context
+      );
 
       expect(result.success).toBe(true);
       expect(result.data).toBe('success');
@@ -47,7 +58,8 @@ describe('AzureRetryStrategy', () => {
     it('should retry on retryable errors', async () => {
       const retryableError = new Error('rate_limit_error occurred');
 
-      const mockOperation = vi.fn()
+      const mockOperation = vi
+        .fn()
         .mockRejectedValueOnce(retryableError)
         .mockRejectedValueOnce(retryableError)
         .mockResolvedValue('success');
@@ -56,10 +68,16 @@ describe('AzureRetryStrategy', () => {
         correlationId: mockCorrelationId,
         operation: mockOperation,
         requestFormat: 'claude',
-        originalParams: { model: 'test-model', input: 'test' } as ResponsesCreateParams,
+        originalParams: {
+          model: 'test-model',
+          input: 'test',
+        } as ResponsesCreateParams,
       };
 
-      const result = await retryStrategy.executeWithRetry(mockOperation, context);
+      const result = await retryStrategy.executeWithRetry(
+        mockOperation,
+        context
+      );
 
       expect(result.success).toBe(true);
       expect(result.data).toBe('success');
@@ -76,10 +94,16 @@ describe('AzureRetryStrategy', () => {
         correlationId: mockCorrelationId,
         operation: mockOperation,
         requestFormat: 'claude',
-        originalParams: { model: 'test-model', input: 'test' } as ResponsesCreateParams,
+        originalParams: {
+          model: 'test-model',
+          input: 'test',
+        } as ResponsesCreateParams,
       };
 
-      const result = await retryStrategy.executeWithRetry(mockOperation, context);
+      const result = await retryStrategy.executeWithRetry(
+        mockOperation,
+        context
+      );
 
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
@@ -96,10 +120,16 @@ describe('AzureRetryStrategy', () => {
         correlationId: mockCorrelationId,
         operation: mockOperation,
         requestFormat: 'claude',
-        originalParams: { model: 'test-model', input: 'test' } as ResponsesCreateParams,
+        originalParams: {
+          model: 'test-model',
+          input: 'test',
+        } as ResponsesCreateParams,
       };
 
-      const result = await retryStrategy.executeWithRetry(mockOperation, context);
+      const result = await retryStrategy.executeWithRetry(
+        mockOperation,
+        context
+      );
 
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
@@ -108,18 +138,26 @@ describe('AzureRetryStrategy', () => {
     });
 
     it('should handle timeout correctly', async () => {
-      const slowOperation = vi.fn().mockImplementation(() => 
-        new Promise(resolve => setTimeout(resolve, 10000))
-      );
+      const slowOperation = vi
+        .fn()
+        .mockImplementation(
+          () => new Promise((resolve) => setTimeout(resolve, 10000))
+        );
 
       const context: AzureRetryContext = {
         correlationId: mockCorrelationId,
         operation: mockOperation,
         requestFormat: 'claude',
-        originalParams: { model: 'test-model', input: 'test' } as ResponsesCreateParams,
+        originalParams: {
+          model: 'test-model',
+          input: 'test',
+        } as ResponsesCreateParams,
       };
 
-      const result = await retryStrategy.executeWithRetry(slowOperation, context);
+      const result = await retryStrategy.executeWithRetry(
+        slowOperation,
+        context
+      );
 
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
@@ -166,7 +204,13 @@ describe('AzureRetryStrategy', () => {
     });
 
     it('should identify network errors by code', () => {
-      const networkCodes = ['ECONNRESET', 'ECONNREFUSED', 'ENOTFOUND', 'ENETUNREACH', 'EHOSTUNREACH'];
+      const networkCodes = [
+        'ECONNRESET',
+        'ECONNREFUSED',
+        'ENOTFOUND',
+        'ENETUNREACH',
+        'EHOSTUNREACH',
+      ];
 
       for (const code of networkCodes) {
         const error = new Error('Network error');
@@ -228,7 +272,8 @@ describe('AzureRetryStrategy', () => {
     it('should track retry metrics', async () => {
       const retryableError = new Error('rate_limit_error occurred');
 
-      const mockOperation = vi.fn()
+      const mockOperation = vi
+        .fn()
         .mockRejectedValueOnce(retryableError)
         .mockResolvedValue('success');
 
@@ -236,7 +281,10 @@ describe('AzureRetryStrategy', () => {
         correlationId: mockCorrelationId,
         operation: mockOperation,
         requestFormat: 'claude',
-        originalParams: { model: 'test-model', input: 'test' } as ResponsesCreateParams,
+        originalParams: {
+          model: 'test-model',
+          input: 'test',
+        } as ResponsesCreateParams,
       };
 
       await retryStrategy.executeWithRetry(mockOperation, context);
@@ -252,16 +300,19 @@ describe('AzureRetryStrategy', () => {
         correlationId: mockCorrelationId,
         operation: mockOperation,
         requestFormat: 'claude',
-        originalParams: { model: 'test-model', input: 'test' } as ResponsesCreateParams,
+        originalParams: {
+          model: 'test-model',
+          input: 'test',
+        } as ResponsesCreateParams,
       };
 
       await retryStrategy.executeWithRetry(mockOperation, context);
-      
+
       let metrics = retryStrategy.getMetrics();
       expect(metrics.totalAttempts).toBeGreaterThan(0);
 
       retryStrategy.resetMetrics();
-      
+
       metrics = retryStrategy.getMetrics();
       expect(metrics.totalAttempts).toBe(0);
       expect(metrics.successfulAttempts).toBe(0);
@@ -277,7 +328,10 @@ describe('withAzureRetry', () => {
       correlationId: 'test-id',
       operation: 'test-op',
       requestFormat: 'claude',
-      originalParams: { model: 'test-model', input: 'test' } as ResponsesCreateParams,
+      originalParams: {
+        model: 'test-model',
+        input: 'test',
+      } as ResponsesCreateParams,
     };
 
     const result = await withAzureRetry(mockOperation, context);
@@ -289,17 +343,21 @@ describe('withAzureRetry', () => {
   it('should throw error when all retries fail', async () => {
     const mockError = new Error('Persistent error');
     mockError.name = 'NETWORK_ERROR';
-    
+
     const mockOperation = vi.fn().mockRejectedValue(mockError);
     const context: AzureRetryContext = {
       correlationId: 'test-id',
       operation: 'test-op',
       requestFormat: 'claude',
-      originalParams: { model: 'test-model', input: 'test' } as ResponsesCreateParams,
+      originalParams: {
+        model: 'test-model',
+        input: 'test',
+      } as ResponsesCreateParams,
     };
 
-    await expect(withAzureRetry(mockOperation, context, { maxAttempts: 2 }))
-      .rejects.toThrow('Persistent error');
+    await expect(
+      withAzureRetry(mockOperation, context, { maxAttempts: 2 })
+    ).rejects.toThrow('Persistent error');
   });
 });
 
@@ -335,7 +393,9 @@ describe('createAzureRetryConfig', () => {
 
 describe('AzureRetryConfigs', () => {
   it('should provide predefined configurations for different operations', async () => {
-    const { AzureRetryConfigs } = await import('../src/utils/azure-retry-strategy.js');
+    const { AzureRetryConfigs } = await import(
+      '../src/utils/azure-retry-strategy.js'
+    );
 
     expect(AzureRetryConfigs.completions).toBeDefined();
     expect(AzureRetryConfigs.streaming).toBeDefined();
@@ -344,10 +404,10 @@ describe('AzureRetryConfigs', () => {
 
     // Completions should have longer timeout
     expect(AzureRetryConfigs.completions.timeoutMs).toBe(240000);
-    
+
     // Streaming should have fewer retries
     expect(AzureRetryConfigs.streaming.maxAttempts).toBe(2);
-    
+
     // Health checks should be fast
     expect(AzureRetryConfigs.healthCheck.timeoutMs).toBe(10000);
   });
