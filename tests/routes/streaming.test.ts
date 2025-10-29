@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import request from 'supertest';
 import express from 'express';
-import type { 
+import type {
   ServerConfig,
   ResponsesStreamChunk,
   ClaudeRequest,
@@ -89,7 +89,10 @@ describe('Streaming Functionality', () => {
       })),
     };
 
-    MockedAzureResponsesClient.mockImplementation(function(this: any, ..._args: any[]) {
+    MockedAzureResponsesClient.mockImplementation(function (
+      this: any,
+      ..._args: any[]
+    ) {
       Object.assign(this, mockResponsesClient);
       return this;
     });
@@ -157,8 +160,10 @@ describe('Streaming Functionality', () => {
         }
       }
 
-      mockResponsesClient.createResponseStream.mockReturnValue(mockStreamGenerator());
-      
+      mockResponsesClient.createResponseStream.mockReturnValue(
+        mockStreamGenerator()
+      );
+
       // Also mock createResponse for fallback non-streaming simulation
       mockResponsesClient.createResponse.mockResolvedValue({
         id: 'resp_test123',
@@ -210,7 +215,8 @@ describe('Streaming Functionality', () => {
         messages: [
           {
             role: 'user',
-            content: 'Design and implement a complex algorithm for graph traversal with optimization for large datasets',
+            content:
+              'Design and implement a complex algorithm for graph traversal with optimization for large datasets',
           },
         ],
         max_tokens: 2000,
@@ -227,7 +233,8 @@ describe('Streaming Functionality', () => {
             {
               type: 'reasoning',
               reasoning: {
-                content: 'Let me think about the optimal approach for graph traversal...',
+                content:
+                  'Let me think about the optimal approach for graph traversal...',
                 status: 'in_progress',
               },
             },
@@ -268,7 +275,9 @@ describe('Streaming Functionality', () => {
         }
       }
 
-      mockResponsesClient.createResponseStream.mockReturnValue(mockStreamGenerator());
+      mockResponsesClient.createResponseStream.mockReturnValue(
+        mockStreamGenerator()
+      );
 
       const response = await request(app)
         .post('/v1/completions')
@@ -333,7 +342,9 @@ describe('Streaming Functionality', () => {
         }
       }
 
-      mockResponsesClient.createResponseStream.mockReturnValue(mockStreamGenerator());
+      mockResponsesClient.createResponseStream.mockReturnValue(
+        mockStreamGenerator()
+      );
 
       const response = await request(app)
         .post('/v1/completions')
@@ -411,7 +422,9 @@ describe('Streaming Functionality', () => {
         };
       }
 
-      mockResponsesClient.createResponseStream.mockReturnValue(mockInvalidStreamGenerator());
+      mockResponsesClient.createResponseStream.mockReturnValue(
+        mockInvalidStreamGenerator()
+      );
 
       const response = await request(app)
         .post('/v1/completions')
@@ -459,11 +472,13 @@ describe('Streaming Functionality', () => {
         for (const chunk of manyChunks) {
           yield chunk;
           // Small delay to simulate real streaming
-          await new Promise(resolve => setTimeout(resolve, 1));
+          await new Promise((resolve) => setTimeout(resolve, 1));
         }
       }
 
-      mockResponsesClient.createResponseStream.mockReturnValue(mockHighFrequencyStreamGenerator());
+      mockResponsesClient.createResponseStream.mockReturnValue(
+        mockHighFrequencyStreamGenerator()
+      );
 
       const startTime = Date.now();
       const response = await request(app)
@@ -474,7 +489,7 @@ describe('Streaming Functionality', () => {
 
       expect(response.headers['content-type']).toBe('text/event-stream');
       expect(endTime - startTime).toBeLessThan(5000); // Should complete within 5 seconds
-      
+
       // Simulated streaming processes content differently
       expect(response.text).toContain('error'); // Error handling in simulated streaming
     });
@@ -515,7 +530,9 @@ describe('Streaming Functionality', () => {
         }
       }
 
-      mockResponsesClient.createResponseStream.mockReturnValue(mockStreamGenerator());
+      mockResponsesClient.createResponseStream.mockReturnValue(
+        mockStreamGenerator()
+      );
 
       const response = await request(app)
         .post('/v1/completions')

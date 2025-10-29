@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import request from 'supertest';
 import express from 'express';
-import type { 
+import type {
   ServerConfig,
   ResponsesResponse,
   ResponsesStreamChunk,
@@ -14,7 +14,7 @@ import type {
   OpenAIRequest,
 } from '../../src/types/index.js';
 import { completionsHandler } from '../../src/routes/completions.js';
-import { 
+import {
   correlationIdMiddleware,
   requestLoggingMiddleware,
 } from '../../src/middleware/index.js';
@@ -97,7 +97,10 @@ describe('Completions Route - Responses API Integration', () => {
       })),
     };
 
-    MockedAzureResponsesClient.mockImplementation(function(this: any, ..._args: any[]) {
+    MockedAzureResponsesClient.mockImplementation(function (
+      this: any,
+      ..._args: any[]
+    ) {
       Object.assign(this, mockResponsesClient);
       return this;
     });
@@ -107,7 +110,7 @@ describe('Completions Route - Responses API Integration', () => {
     app.use(express.json());
     app.use(correlationIdMiddleware);
     app.use(requestLoggingMiddleware);
-    
+
     // Skip authentication for tests
     app.use((req, res, next) => {
       (req as any).correlationId = 'test-correlation-id';
@@ -154,7 +157,9 @@ describe('Completions Route - Responses API Integration', () => {
     };
 
     it('should handle Claude format request successfully', async () => {
-      mockResponsesClient.createResponse.mockResolvedValue(mockResponsesAPIResponse);
+      mockResponsesClient.createResponse.mockResolvedValue(
+        mockResponsesAPIResponse
+      );
 
       const response = await request(app)
         .post('/v1/completions')
@@ -165,7 +170,10 @@ describe('Completions Route - Responses API Integration', () => {
       expect(response.body).toHaveProperty('id');
       expect(response.body).toHaveProperty('object', 'chat.completion');
       expect(response.body.choices[0]).toHaveProperty('message');
-      expect(response.body.choices[0].message).toHaveProperty('role', 'assistant');
+      expect(response.body.choices[0].message).toHaveProperty(
+        'role',
+        'assistant'
+      );
       expect(response.body.choices[0].message).toHaveProperty('content');
       // In OpenAI format, content is a string, not an array
       expect(typeof response.body.choices[0].message.content).toBe('string');
@@ -190,7 +198,9 @@ describe('Completions Route - Responses API Integration', () => {
         system: 'You are a helpful TypeScript expert.',
       };
 
-      mockResponsesClient.createResponse.mockResolvedValue(mockResponsesAPIResponse);
+      mockResponsesClient.createResponse.mockResolvedValue(
+        mockResponsesAPIResponse
+      );
 
       const response = await request(app)
         .post('/v1/completions')
@@ -200,7 +210,10 @@ describe('Completions Route - Responses API Integration', () => {
       // Verify OpenAI format response structure
       expect(response.body).toHaveProperty('object', 'chat.completion');
       expect(response.body.choices[0]).toHaveProperty('message');
-      expect(response.body.choices[0].message).toHaveProperty('role', 'assistant');
+      expect(response.body.choices[0].message).toHaveProperty(
+        'role',
+        'assistant'
+      );
       expect(mockResponsesClient.createResponse).toHaveBeenCalledWith(
         expect.objectContaining({
           input: expect.arrayContaining([
@@ -229,7 +242,9 @@ describe('Completions Route - Responses API Integration', () => {
         ],
       };
 
-      mockResponsesClient.createResponse.mockResolvedValue(mockResponsesAPIResponse);
+      mockResponsesClient.createResponse.mockResolvedValue(
+        mockResponsesAPIResponse
+      );
 
       const response = await request(app)
         .post('/v1/completions')
@@ -239,7 +254,10 @@ describe('Completions Route - Responses API Integration', () => {
       // Verify OpenAI format response structure
       expect(response.body).toHaveProperty('object', 'chat.completion');
       expect(response.body.choices[0]).toHaveProperty('message');
-      expect(response.body.choices[0].message).toHaveProperty('role', 'assistant');
+      expect(response.body.choices[0].message).toHaveProperty(
+        'role',
+        'assistant'
+      );
       expect(mockResponsesClient.createResponse).toHaveBeenCalled();
     });
   });
@@ -277,7 +295,9 @@ describe('Completions Route - Responses API Integration', () => {
     };
 
     it('should handle OpenAI format request successfully', async () => {
-      mockResponsesClient.createResponse.mockResolvedValue(mockResponsesAPIResponse);
+      mockResponsesClient.createResponse.mockResolvedValue(
+        mockResponsesAPIResponse
+      );
 
       const response = await request(app)
         .post('/v1/completions')
@@ -289,7 +309,10 @@ describe('Completions Route - Responses API Integration', () => {
       expect(response.body).toHaveProperty('choices');
       expect(response.body.choices).toBeInstanceOf(Array);
       expect(response.body.choices[0]).toHaveProperty('message');
-      expect(response.body.choices[0].message).toHaveProperty('role', 'assistant');
+      expect(response.body.choices[0].message).toHaveProperty(
+        'role',
+        'assistant'
+      );
       expect(response.body.choices[0].message).toHaveProperty('content');
 
       // Verify Azure Responses API was called
@@ -310,7 +333,9 @@ describe('Completions Route - Responses API Integration', () => {
       };
       delete (openAIRequestWithMaxCompletionTokens as any).max_tokens;
 
-      mockResponsesClient.createResponse.mockResolvedValue(mockResponsesAPIResponse);
+      mockResponsesClient.createResponse.mockResolvedValue(
+        mockResponsesAPIResponse
+      );
 
       const response = await request(app)
         .post('/v1/completions')
@@ -374,7 +399,9 @@ describe('Completions Route - Responses API Integration', () => {
         }
       }
 
-      mockResponsesClient.createResponseStream.mockReturnValue(mockStreamGenerator());
+      mockResponsesClient.createResponseStream.mockReturnValue(
+        mockStreamGenerator()
+      );
 
       const response = await request(app)
         .post('/v1/completions')
@@ -412,7 +439,9 @@ describe('Completions Route - Responses API Integration', () => {
         }
       }
 
-      mockResponsesClient.createResponseStream.mockReturnValue(mockStreamGenerator());
+      mockResponsesClient.createResponseStream.mockReturnValue(
+        mockStreamGenerator()
+      );
 
       const response = await request(app)
         .post('/v1/completions')
@@ -487,7 +516,10 @@ describe('Completions Route - Responses API Integration', () => {
 
       // Config without Azure OpenAI
       const invalidConfig: ServerConfig = {};
-      appWithoutConfig.post('/v1/completions', completionsHandler(invalidConfig));
+      appWithoutConfig.post(
+        '/v1/completions',
+        completionsHandler(invalidConfig)
+      );
 
       const response = await request(appWithoutConfig)
         .post('/v1/completions')
@@ -554,7 +586,10 @@ describe('Completions Route - Responses API Integration', () => {
       // Should return OpenAI format (format detection working correctly)
       expect(response.body).toHaveProperty('object', 'chat.completion');
       expect(response.body.choices[0]).toHaveProperty('message');
-      expect(response.body.choices[0].message).toHaveProperty('role', 'assistant');
+      expect(response.body.choices[0].message).toHaveProperty(
+        'role',
+        'assistant'
+      );
     });
 
     it('should detect OpenAI format correctly', async () => {
@@ -598,7 +633,8 @@ describe('Completions Route - Responses API Integration', () => {
         messages: [
           {
             role: 'user',
-            content: 'Design a microservices architecture for a large-scale e-commerce platform with high availability, scalability, and security requirements. Include database design, API gateway configuration, service mesh implementation, and deployment strategies using Kubernetes.',
+            content:
+              'Design a microservices architecture for a large-scale e-commerce platform with high availability, scalability, and security requirements. Include database design, API gateway configuration, service mesh implementation, and deployment strategies using Kubernetes.',
           },
         ],
         max_tokens: 2000,
@@ -610,9 +646,9 @@ describe('Completions Route - Responses API Integration', () => {
         created: Date.now(),
         model: 'gpt-5-codex',
         output: [{ type: 'text', text: 'Complex architecture response...' }],
-        usage: { 
-          prompt_tokens: 100, 
-          completion_tokens: 500, 
+        usage: {
+          prompt_tokens: 100,
+          completion_tokens: 500,
           total_tokens: 600,
           reasoning_tokens: 200,
         },
@@ -628,7 +664,10 @@ describe('Completions Route - Responses API Integration', () => {
       // Verify OpenAI format response structure
       expect(response.body).toHaveProperty('object', 'chat.completion');
       expect(response.body.choices[0]).toHaveProperty('message');
-      expect(response.body.choices[0].message).toHaveProperty('role', 'assistant');
+      expect(response.body.choices[0].message).toHaveProperty(
+        'role',
+        'assistant'
+      );
 
       // Verify reasoning effort was applied
       expect(mockResponsesClient.createResponse).toHaveBeenCalledWith(
@@ -671,7 +710,10 @@ describe('Completions Route - Responses API Integration', () => {
       // Verify OpenAI format response structure
       expect(response.body).toHaveProperty('object', 'chat.completion');
       expect(response.body.choices[0]).toHaveProperty('message');
-      expect(response.body.choices[0].message).toHaveProperty('role', 'assistant');
+      expect(response.body.choices[0].message).toHaveProperty(
+        'role',
+        'assistant'
+      );
 
       // Verify minimal or no reasoning was applied
       expect(mockResponsesClient.createResponse).toHaveBeenCalledWith(
@@ -702,7 +744,9 @@ describe('Completions Route - Responses API Integration', () => {
         object: 'response',
         created: Date.now(),
         model: 'gpt-5-codex',
-        output: [{ type: 'text', text: 'TypeScript is a programming language...' }],
+        output: [
+          { type: 'text', text: 'TypeScript is a programming language...' },
+        ],
         usage: { prompt_tokens: 20, completion_tokens: 50, total_tokens: 70 },
       };
 
@@ -717,10 +761,15 @@ describe('Completions Route - Responses API Integration', () => {
       // Verify OpenAI format response structure
       expect(response.body).toHaveProperty('object', 'chat.completion');
       expect(response.body.choices[0]).toHaveProperty('message');
-      expect(response.body.choices[0].message).toHaveProperty('role', 'assistant');
+      expect(response.body.choices[0].message).toHaveProperty(
+        'role',
+        'assistant'
+      );
 
       // Verify conversation was tracked
-      const { conversationManager } = await import('../../src/utils/conversation-manager.js');
+      const { conversationManager } = await import(
+        '../../src/utils/conversation-manager.js'
+      );
       // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(conversationManager.trackConversation).toHaveBeenCalledWith(
         'test-conversation-123',
