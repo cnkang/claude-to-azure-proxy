@@ -311,7 +311,10 @@ export class RetryManager {
 
     let strategyConfig: Partial<RetryConfig> = strategyOverrides;
 
-    if (jitterMs !== undefined && strategyOverrides.jitterFactor === undefined) {
+    if (
+      jitterMs !== undefined &&
+      strategyOverrides.jitterFactor === undefined
+    ) {
       const baseDelayMs = strategyOverrides.baseDelayMs ?? 1000;
       const denominator = baseDelayMs > 0 ? baseDelayMs : 1;
       strategyConfig = {
@@ -328,7 +331,11 @@ export class RetryManager {
     correlationId: string,
     operationName?: string
   ): Promise<T> {
-    const result = await this.strategy.execute(operation, correlationId, operationName);
+    const result = await this.strategy.execute(
+      operation,
+      correlationId,
+      operationName
+    );
 
     if (result.success) {
       return result.data as T;
@@ -336,7 +343,9 @@ export class RetryManager {
 
     const error =
       result.error ??
-      new Error('Retry operation failed after all attempts without error details');
+      new Error(
+        'Retry operation failed after all attempts without error details'
+      );
     throw error;
   }
 

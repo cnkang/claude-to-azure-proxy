@@ -164,7 +164,10 @@ export class CircuitBreaker {
    */
   private openCircuit(): void {
     this.state = CircuitBreakerState.OPEN;
-    this.currentBackoffMs = Math.max(this.currentBackoffMs, this.initialBackoffMs);
+    this.currentBackoffMs = Math.max(
+      this.currentBackoffMs,
+      this.initialBackoffMs
+    );
     this.calculateNextAttemptTime();
   }
 
@@ -218,9 +221,9 @@ export class CircuitBreaker {
   public reset(): void {
     this.state = CircuitBreakerState.CLOSED;
     this.failureCount = 0;
-   this.successCount = 0;
-   this.lastFailureTime = undefined;
-   this.nextAttemptTime = undefined;
+    this.successCount = 0;
+    this.lastFailureTime = undefined;
+    this.nextAttemptTime = undefined;
     this.currentBackoffMs = this.initialBackoffMs;
   }
 
