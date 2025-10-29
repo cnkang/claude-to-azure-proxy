@@ -1,9 +1,8 @@
 # Use Node.js 24 LTS Alpine base image with security updates
 FROM node:24-alpine AS base
 
-# Install security updates and required packages
+# Install security updates
 RUN apk update && apk upgrade && \
-    apk add --no-cache dumb-init && \
     rm -rf /var/cache/apk/*
 
 # Create non-root user for security
@@ -37,9 +36,8 @@ RUN pnpm run build && \
 # Production stage - optimized for Node.js 24 performance
 FROM node:24-alpine AS runner
 
-# Install security updates and dumb-init
+# Install security updates
 RUN apk update && apk upgrade && \
-    apk add --no-cache dumb-init && \
     rm -rf /var/cache/apk/*
 
 # Create non-root user
@@ -62,13 +60,13 @@ EXPOSE 8080
 # Enhanced health check with better error handling and timeout
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD node --enable-source-maps -e " \
-        const http = require('http'); \
-        const port = process.env.PORT || 8080; \
-        const req = http.get(\`http://localhost:\${port}/health\`, { timeout: 8000 }, (res) => { \
-            process.exit(res.statusCode === 200 ? 0 : 1); \
-        }); \
-        req.on('error', () => process.exit(1)); \
-        req.on('timeout', () => { req.destroy(); process.exit(1); }); \
+    const http = require('http'); \
+    const port = process.env.PORT || 8080; \
+    const req = http.get(\`http://localhost:\${port}/health\`, { timeout: 8000 }, (res) => { \
+    process.exit(res.statusCode === 200 ? 0 : 1); \
+    }); \
+    req.on('error', () => process.exit(1)); \
+    req.on('timeout', () => { req.destroy(); process.exit(1); }); \
     "
 
 # Set Node.js 24 optimizations
@@ -76,6 +74,8 @@ ENV NODE_ENV=production \
     NODE_OPTIONS="--enable-source-maps --max-old-space-size=512" \
     UV_THREADPOOL_SIZE=4
 
-# Use dumb-init to handle signals properly and start the application
-ENTRYPOINT ["dumb-init", "--"]
+# No need for external init system - use Docker's built-in init
+# Run with: docker run --init your-image
+
+# Start the application
 CMD ["node", "--enable-source-maps", "--max-old-space-size=512", "dist/index.js"]
