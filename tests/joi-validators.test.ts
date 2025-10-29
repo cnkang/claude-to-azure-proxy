@@ -1,6 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { Request, Response, NextFunction } from 'express';
-import { claudeCompletionSchema, createJoiValidator, validateHeadersWithJoi } from '../src/validation/joi-validators.js';
+import {
+  claudeCompletionSchema,
+  createJoiValidator,
+  validateHeadersWithJoi,
+} from '../src/validation/joi-validators.js';
 import type { RequestWithCorrelationId } from '../src/types/index.js';
 import { createMockResponse } from './types.js';
 
@@ -31,7 +35,9 @@ vi.mock('../src/middleware/logging.js', () => ({
   },
 }));
 
-const buildRequest = (body: Record<string, unknown>): Request & RequestWithCorrelationId => {
+const buildRequest = (
+  body: Record<string, unknown>
+): Request & RequestWithCorrelationId => {
   return {
     body,
     headers: {
@@ -125,7 +131,11 @@ describe('Joi validators', () => {
     const res = createChainableResponse();
     const next = vi.fn();
 
-    validateHeadersWithJoi(req as Request, res as unknown as Response, next as NextFunction);
+    validateHeadersWithJoi(
+      req as Request,
+      res as unknown as Response,
+      next as NextFunction
+    );
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(loggerWarn).toHaveBeenCalled();

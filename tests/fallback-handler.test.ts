@@ -3,26 +3,28 @@ import { FallbackHandler } from '../src/utils/fallback-handler.js';
 import type { FallbackContext } from '../src/utils/fallback-handler.js';
 import type { ClaudeRequest, OpenAIRequest } from '../src/types/index.js';
 
-const { executeGracefulDegradation, mapAzureError, loggerMock } = vi.hoisted(() => {
-  const executeGracefulDegradation = vi.fn();
-  const mapAzureError = vi.fn(() => ({
-    clientResponse: {
-      error: {
-        type: 'api_error',
-        message: 'Fallback unavailable',
+const { executeGracefulDegradation, mapAzureError, loggerMock } = vi.hoisted(
+  () => {
+    const executeGracefulDegradation = vi.fn();
+    const mapAzureError = vi.fn(() => ({
+      clientResponse: {
+        error: {
+          type: 'api_error',
+          message: 'Fallback unavailable',
+        },
       },
-    },
-  }));
+    }));
 
-  const loggerMock = {
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn(),
-  };
+    const loggerMock = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      debug: vi.fn(),
+    };
 
-  return { executeGracefulDegradation, mapAzureError, loggerMock };
-});
+    return { executeGracefulDegradation, mapAzureError, loggerMock };
+  }
+);
 
 vi.mock('../src/middleware/logging.js', () => ({
   logger: loggerMock,
@@ -40,7 +42,10 @@ vi.mock('../src/utils/azure-error-mapper.js', () => ({
   },
 }));
 
-const createClaudeContext = (text: string, errorMessage: string): FallbackContext => {
+const createClaudeContext = (
+  text: string,
+  errorMessage: string
+): FallbackContext => {
   const claudeRequest: ClaudeRequest = {
     model: 'claude-3-5-sonnet-20241022',
     messages: [
@@ -61,7 +66,10 @@ const createClaudeContext = (text: string, errorMessage: string): FallbackContex
   };
 };
 
-const createOpenAIContext = (text: string, errorMessage: string): FallbackContext => {
+const createOpenAIContext = (
+  text: string,
+  errorMessage: string
+): FallbackContext => {
   const openAIRequest: OpenAIRequest = {
     model: 'gpt-4',
     messages: [
@@ -110,8 +118,13 @@ describe('FallbackHandler', () => {
   });
 
   it('returns Claude service-unavailable error when infrastructure is overloaded', async () => {
-    executeGracefulDegradation.mockRejectedValue(new Error('degradation failed'));
-    const context = createClaudeContext('regular request', 'Service Unavailable');
+    executeGracefulDegradation.mockRejectedValue(
+      new Error('degradation failed')
+    );
+    const context = createClaudeContext(
+      'regular request',
+      'Service Unavailable'
+    );
 
     const result = await FallbackHandler.executeFallback(context);
 
@@ -122,8 +135,16 @@ describe('FallbackHandler', () => {
   });
 
   it('creates OpenAI-formatted fallback responses when degradation is not available', async () => {
-    executeGracefulDegradation.mockResolvedValue({ success: false, data: null, fallbackUsed: 'none', degraded: false });
-    const context = createOpenAIContext('Please summarize this paragraph', 'transient failure');
+    executeGracefulDegradation.mockResolvedValue({
+      success: false,
+      data: null,
+      fallbackUsed: 'none',
+      degraded: false,
+    });
+    const context = createOpenAIContext(
+      'Please summarize this paragraph',
+      'transient failure'
+    );
 
     const result = await FallbackHandler.executeFallback(context);
 
@@ -133,8 +154,16 @@ describe('FallbackHandler', () => {
   });
 
   it('generates contextual fallback messages for coding requests', async () => {
-    executeGracefulDegradation.mockResolvedValue({ success: false, data: null, fallbackUsed: 'none', degraded: false });
-    const context = createClaudeContext('```ts\nfunction add(a, b) { return a + b; }\n```', 'network error');
+    executeGracefulDegradation.mockResolvedValue({
+      success: false,
+      data: null,
+      fallbackUsed: 'none',
+      degraded: false,
+    });
+    const context = createClaudeContext(
+      '```ts\nfunction add(a, b) { return a + b; }\n```',
+      'network error'
+    );
 
     const result = await FallbackHandler.executeFallback(context);
     const message = (result.response?.content?.[0] as { text: string }).text;
@@ -143,7 +172,12 @@ describe('FallbackHandler', () => {
   });
 
   it('estimates input tokens to keep usage metadata consistent', async () => {
-    executeGracefulDegradation.mockResolvedValue({ success: false, data: null, fallbackUsed: 'none', degraded: false });
+    executeGracefulDegradation.mockResolvedValue({
+      success: false,
+      data: null,
+      fallbackUsed: 'none',
+      degraded: false,
+    });
     const text = 'a'.repeat(40);
     const context = createClaudeContext(text, 'transient issue');
 
@@ -153,7 +187,9 @@ describe('FallbackHandler', () => {
   });
 
   it('detects fallback-worthy errors and maps fallback failures to Azure errors', () => {
-    const shouldFallback = FallbackHandler.shouldUseFallback(new Error('NETWORK_ERROR: reset'));
+    const shouldFallback = FallbackHandler.shouldUseFallback(
+      new Error('NETWORK_ERROR: reset')
+    );
     expect(shouldFallback).toBe(true);
 
     const context = createOpenAIContext('hello', 'hard failure');

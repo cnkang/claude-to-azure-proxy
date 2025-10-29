@@ -13,7 +13,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
-import { metricsHandler, detailedMetricsHandler } from '../src/routes/metrics.js';
+import {
+  metricsHandler,
+  detailedMetricsHandler,
+} from '../src/routes/metrics.js';
 
 // Mock the metrics collector
 const mockMetrics = [
@@ -105,17 +108,19 @@ describe('Metrics Route', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    
+
     // Re-setup mocks after clearing
     const { metricsCollector } = await import('../src/monitoring/metrics.js');
     // eslint-disable-next-line @typescript-eslint/unbound-method
     vi.mocked(metricsCollector.getMetrics).mockReturnValue(mockMetrics);
-    
-    const { getHealthMonitor } = await import('../src/monitoring/health-monitor.js');
+
+    const { getHealthMonitor } = await import(
+      '../src/monitoring/health-monitor.js'
+    );
     vi.mocked(getHealthMonitor).mockReturnValue(mockHealthMonitor as any);
-    
+
     app = express();
-    
+
     // Add correlation ID middleware
     app.use((req: any, res, next) => {
       req.correlationId = 'test-correlation-id';
@@ -143,7 +148,9 @@ describe('Metrics Route', () => {
           errorRate: expect.any(Number),
           successCount: expect.any(Number),
           errorCount: expect.any(Number),
-          serviceStatus: expect.stringMatching(/^(available|degraded|unavailable)$/),
+          serviceStatus: expect.stringMatching(
+            /^(available|degraded|unavailable)$/
+          ),
         }),
         bedrock: expect.objectContaining({
           requestCount: 5,
@@ -168,11 +175,13 @@ describe('Metrics Route', () => {
       const response = await request(app).get('/metrics');
 
       expect(response.status).toBe(200);
-      
+
       const { azure, bedrock, system } = response.body;
-      
+
       // Verify system metrics are calculated from both services
-      expect(system.totalRequests).toBe(azure.requestCount + bedrock.requestCount);
+      expect(system.totalRequests).toBe(
+        azure.requestCount + bedrock.requestCount
+      );
       expect(system.overallErrorRate).toBeGreaterThanOrEqual(0);
       expect(system.overallErrorRate).toBeLessThanOrEqual(100);
       expect(system.averageResponseTime).toBeGreaterThanOrEqual(0);
@@ -181,12 +190,16 @@ describe('Metrics Route', () => {
 
     it('should handle missing Bedrock monitor gracefully', async () => {
       // Mock missing Bedrock monitor
-      const { getHealthMonitor } = await import('../src/monitoring/health-monitor.js');
+      const { getHealthMonitor } = await import(
+        '../src/monitoring/health-monitor.js'
+      );
       const mockHealthMonitorWithoutBedrock = {
         getBedrockMonitor: vi.fn(() => null),
       };
-      
-      vi.mocked(getHealthMonitor).mockReturnValue(mockHealthMonitorWithoutBedrock as any);
+
+      vi.mocked(getHealthMonitor).mockReturnValue(
+        mockHealthMonitorWithoutBedrock as any
+      );
 
       const response = await request(app).get('/metrics');
 
@@ -198,7 +211,9 @@ describe('Metrics Route', () => {
         errorRate: expect.any(Number),
         successCount: expect.any(Number),
         errorCount: expect.any(Number),
-        serviceStatus: expect.stringMatching(/^(available|degraded|unavailable)$/),
+        serviceStatus: expect.stringMatching(
+          /^(available|degraded|unavailable)$/
+        ),
       });
     });
 
@@ -206,16 +221,18 @@ describe('Metrics Route', () => {
       const response = await request(app).get('/metrics');
 
       expect(response.status).toBe(200);
-      
+
       // Debug the response
       console.log('Bedrock response:', response.body.bedrock);
-      
+
       // Azure metrics should be calculated from azure-tagged metrics
       expect(response.body.azure.requestCount).toBeGreaterThanOrEqual(0);
-      
+
       // Bedrock metrics should come from the Bedrock monitor (merged with filtered metrics)
       expect(response.body.bedrock.requestCount).toBeGreaterThanOrEqual(0); // Allow any value for now
-      expect(response.body.bedrock.serviceStatus).toMatch(/^(available|degraded|unavailable)$/);
+      expect(response.body.bedrock.serviceStatus).toMatch(
+        /^(available|degraded|unavailable)$/
+      );
     });
   });
 
@@ -229,7 +246,7 @@ describe('Metrics Route', () => {
         azure: expect.any(Object),
         bedrock: expect.any(Object),
         system: expect.any(Object),
-        
+
         // Detailed breakdowns
         performanceMetrics: expect.any(Array),
         businessMetrics: expect.objectContaining({
@@ -245,9 +262,9 @@ describe('Metrics Route', () => {
       const response = await request(app).get('/metrics/detailed');
 
       expect(response.status).toBe(200);
-      
+
       const { businessMetrics } = response.body;
-      
+
       // Verify business metrics are categorized
       expect(businessMetrics.requests).toEqual(
         expect.arrayContaining([
@@ -256,7 +273,7 @@ describe('Metrics Route', () => {
           }),
         ])
       );
-      
+
       expect(businessMetrics.completions).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
@@ -270,18 +287,22 @@ describe('Metrics Route', () => {
       const response = await request(app).get('/metrics/detailed');
 
       expect(response.status).toBe(200);
-      
+
       const { performanceMetrics } = response.body;
-      
+
       // Should include performance metrics from both services
-      const azurePerformanceMetrics = performanceMetrics.filter((m: any) => 
-        (typeof m.name === 'string' && m.name.includes('azure')) ?? (m.tags?.service === 'azure')
+      const azurePerformanceMetrics = performanceMetrics.filter(
+        (m: any) =>
+          (typeof m.name === 'string' && m.name.includes('azure')) ??
+          m.tags?.service === 'azure'
       );
-      
-      const bedrockPerformanceMetrics = performanceMetrics.filter((m: any) => 
-        (typeof m.name === 'string' && m.name.includes('bedrock')) ?? (m.tags?.service === 'bedrock')
+
+      const bedrockPerformanceMetrics = performanceMetrics.filter(
+        (m: any) =>
+          (typeof m.name === 'string' && m.name.includes('bedrock')) ??
+          m.tags?.service === 'bedrock'
       );
-      
+
       expect(azurePerformanceMetrics.length).toBeGreaterThanOrEqual(0);
       expect(bedrockPerformanceMetrics.length).toBeGreaterThanOrEqual(0);
     });
@@ -379,9 +400,9 @@ describe('Metrics Route', () => {
 
       // Verify no sensitive data is logged
       const logCalls = vi.mocked(logger.info).mock.calls;
-      const loggedData = logCalls.map(call => JSON.stringify(call));
+      const loggedData = logCalls.map((call) => JSON.stringify(call));
       const combinedLogs = loggedData.join(' ');
-      
+
       expect(combinedLogs).not.toContain('api-key');
       expect(combinedLogs).not.toContain('Bearer');
       expect(combinedLogs).not.toContain('password');
@@ -392,33 +413,39 @@ describe('Metrics Route', () => {
   describe('Performance Metrics Collection', () => {
     it('should track separate performance metrics for Azure and Bedrock', async () => {
       // Requirement 4.2: Implement separate performance metrics collection for AWS Bedrock vs Azure OpenAI
-      
+
       const response = await request(app).get('/metrics/detailed');
 
       expect(response.status).toBe(200);
-      
+
       const { performanceMetrics } = response.body;
-      
+
       // Check for Azure performance metrics
-      const azureMetrics = performanceMetrics.filter((m: any) => 
-        (typeof m.name === 'string' && m.name.includes('azure')) ?? (m.tags?.service === 'azure')
+      const azureMetrics = performanceMetrics.filter(
+        (m: any) =>
+          (typeof m.name === 'string' && m.name.includes('azure')) ??
+          m.tags?.service === 'azure'
       );
-      
+
       // Check for Bedrock performance metrics
-      const bedrockMetrics = performanceMetrics.filter((m: any) => 
-        (typeof m.name === 'string' && m.name.includes('bedrock')) ?? (m.tags?.service === 'bedrock')
+      const bedrockMetrics = performanceMetrics.filter(
+        (m: any) =>
+          (typeof m.name === 'string' && m.name.includes('bedrock')) ??
+          m.tags?.service === 'bedrock'
       );
-      
+
       // Both services should have separate tracking
-      expect(azureMetrics.length + bedrockMetrics.length).toBeGreaterThanOrEqual(0);
-      
+      expect(
+        azureMetrics.length + bedrockMetrics.length
+      ).toBeGreaterThanOrEqual(0);
+
       // Verify service tags are present
       azureMetrics.forEach((metric: any) => {
         if (metric.tags !== undefined) {
           expect(metric.tags.service).toBe('azure');
         }
       });
-      
+
       bedrockMetrics.forEach((metric: any) => {
         if (metric.tags !== undefined) {
           expect(metric.tags.service).toBe('bedrock');
@@ -430,22 +457,26 @@ describe('Metrics Route', () => {
       const response = await request(app).get('/metrics');
 
       expect(response.status).toBe(200);
-      
+
       const { azure, bedrock } = response.body;
-      
+
       // Azure metrics
       expect(azure.averageLatency).toBeGreaterThanOrEqual(0);
       expect(azure.errorRate).toBeGreaterThanOrEqual(0);
       expect(azure.errorRate).toBeLessThanOrEqual(100);
-      
+
       // Bedrock metrics - use the actual values from the mock
       expect(bedrock.averageLatency).toBeGreaterThanOrEqual(0);
       expect(bedrock.errorRate).toBeGreaterThanOrEqual(0);
       expect(bedrock.errorRate).toBeLessThanOrEqual(100);
-      
+
       // Service status should reflect performance
-      expect(['available', 'degraded', 'unavailable']).toContain(azure.serviceStatus);
-      expect(['available', 'degraded', 'unavailable']).toContain(bedrock.serviceStatus);
+      expect(['available', 'degraded', 'unavailable']).toContain(
+        azure.serviceStatus
+      );
+      expect(['available', 'degraded', 'unavailable']).toContain(
+        bedrock.serviceStatus
+      );
     });
   });
 });

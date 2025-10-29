@@ -146,7 +146,7 @@ describe('Memory Leak Prevention Integration Tests', () => {
       await withResources(
         async () => {
           // Simulate some work with streams
-          await new Promise(resolve => setTimeout(resolve, 10));
+          await new Promise((resolve) => setTimeout(resolve, 10));
         },
         ...streams
       );
@@ -207,7 +207,7 @@ describe('Memory Leak Prevention Integration Tests', () => {
       // Simulate gradual memory increase
       for (let i = 0; i < 10; i++) {
         heapUsed += 3 * 1024 * 1024; // Increase by 3MB each iteration
-        
+
         process.memoryUsage = vi.fn(() => ({
           rss: 100 * 1024 * 1024,
           heapTotal,
@@ -216,7 +216,7 @@ describe('Memory Leak Prevention Integration Tests', () => {
           arrayBuffers: 2 * 1024 * 1024,
         }));
 
-        await new Promise(resolve => setTimeout(resolve, 60));
+        await new Promise((resolve) => setTimeout(resolve, 60));
       }
 
       const metrics: MemoryMetrics = memoryManager.getMemoryMetrics();
@@ -242,7 +242,7 @@ describe('Memory Leak Prevention Integration Tests', () => {
       // Simulate consistent memory growth (potential leak)
       for (let i = 0; i < 20; i++) {
         heapUsed += growthPerSample;
-        
+
         process.memoryUsage = vi.fn(() => ({
           rss: 150 * 1024 * 1024,
           heapTotal: 120 * 1024 * 1024,
@@ -251,7 +251,7 @@ describe('Memory Leak Prevention Integration Tests', () => {
           arrayBuffers: 2 * 1024 * 1024,
         }));
 
-        await new Promise(resolve => setTimeout(resolve, 60));
+        await new Promise((resolve) => setTimeout(resolve, 60));
       }
 
       const detection = memoryManager.detectMemoryLeaks();
@@ -263,7 +263,7 @@ describe('Memory Leak Prevention Integration Tests', () => {
           'Memory leak detected - immediate investigation required'
         );
       }
-      
+
       // Should at least detect growing trend and significant growth rate
       expect(detection.analysis.trend).toBe('growing');
       expect(detection.growthRate).toBeGreaterThan(1024 * 1024); // > 1MB growth
@@ -279,7 +279,7 @@ describe('Memory Leak Prevention Integration Tests', () => {
       for (let i = 0; i < 15; i++) {
         // Gradual decrease in memory usage
         heapUsed = Math.max(25 * 1024 * 1024, heapUsed - 2 * 1024 * 1024);
-        
+
         process.memoryUsage = vi.fn(() => ({
           rss: 100 * 1024 * 1024,
           heapTotal,
@@ -288,7 +288,7 @@ describe('Memory Leak Prevention Integration Tests', () => {
           arrayBuffers: 2 * 1024 * 1024,
         }));
 
-        await new Promise(resolve => setTimeout(resolve, 60));
+        await new Promise((resolve) => setTimeout(resolve, 60));
       }
 
       const detection = memoryManager.detectMemoryLeaks();
@@ -314,7 +314,7 @@ describe('Memory Leak Prevention Integration Tests', () => {
         // Create resources (simulate memory allocation)
         for (let i = 0; i < 10; i++) {
           heapUsed += 1024 * 1024; // 1MB per resource
-          
+
           const stream = new Readable({
             read() {
               this.push(`data-${cycle}-${i}`);
@@ -322,7 +322,10 @@ describe('Memory Leak Prevention Integration Tests', () => {
             },
           });
 
-          const resource = createStreamResource(stream, `Cycle ${cycle} Stream ${i}`);
+          const resource = createStreamResource(
+            stream,
+            `Cycle ${cycle} Stream ${i}`
+          );
           resources.push(resource);
           resourceManager.registerResource(resource);
         }
@@ -335,7 +338,7 @@ describe('Memory Leak Prevention Integration Tests', () => {
           arrayBuffers: 2 * 1024 * 1024,
         }));
 
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
 
         // Dispose resources (simulate memory cleanup)
         for (const resource of resources) {
@@ -352,7 +355,7 @@ describe('Memory Leak Prevention Integration Tests', () => {
         }));
 
         resourceManager.cleanupDisposedResources();
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
       const detection = memoryManager.detectMemoryLeaks();
@@ -398,12 +401,16 @@ describe('Memory Leak Prevention Integration Tests', () => {
 
       // Create resources but don't dispose them (simulate leak)
       for (let i = 0; i < 20; i++) {
-        const resource = createManagedTimeout(() => {}, 10000, `Leaked timer ${i}`);
+        const resource = createManagedTimeout(
+          () => {},
+          10000,
+          `Leaked timer ${i}`
+        );
         leakDetectionManager.registerResource(resource);
       }
 
       // Wait for leak detection to run
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, 300));
 
       const stats = leakDetectionManager.getResourceStats();
       expect(stats.active).toBe(20);
@@ -419,11 +426,9 @@ describe('Memory Leak Prevention Integration Tests', () => {
         throw new Error('Cleanup failed');
       });
 
-      const resource = new (await import('../src/runtime/resource-manager.js')).BaseDisposableResource(
-        'custom',
-        'Failing resource',
-        failingCleanup
-      );
+      const resource = new (
+        await import('../src/runtime/resource-manager.js')
+      ).BaseDisposableResource('custom', 'Failing resource', failingCleanup);
 
       resourceManager.registerResource(resource);
 
@@ -445,7 +450,7 @@ describe('Memory Leak Prevention Integration Tests', () => {
 
       // Should not throw
       expect(() => memoryManager.getMemoryMetrics()).not.toThrow();
-      
+
       const metrics: MemoryMetrics = memoryManager.getMemoryMetrics();
       expect(metrics).toBeDefined();
       expect(metrics.timestamp).toBeDefined();
@@ -453,12 +458,16 @@ describe('Memory Leak Prevention Integration Tests', () => {
 
     it('should handle concurrent resource operations', async () => {
       const concurrentOperations = Array.from({ length: 10 }, async (_, i) => {
-        const resource = createManagedTimeout(() => {}, 1000, `Concurrent ${i}`);
+        const resource = createManagedTimeout(
+          () => {},
+          1000,
+          `Concurrent ${i}`
+        );
         resourceManager.registerResource(resource);
-        
+
         // Random delay
-        await new Promise(resolve => setTimeout(resolve, Math.random() * 50));
-        
+        await new Promise((resolve) => setTimeout(resolve, Math.random() * 50));
+
         resource[Symbol.dispose]();
         resourceManager.unregisterResource(resource.resourceInfo.id);
       });

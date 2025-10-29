@@ -208,7 +208,7 @@ describe('Error Handling System', () => {
         // In Node.js 24, Error.isError() might be more strict than instanceof
         const result = isError(customError);
         expect(typeof result).toBe('boolean');
-        
+
         // Test with a proper Error instance
         const realError = new Error('Real error');
         expect(isError(realError)).toBe(true);
@@ -249,7 +249,9 @@ describe('Error Handling System', () => {
 
         const enhancedError = preserveErrorContext(originalError, baseError);
 
-        expect(enhancedError.context.metadata?.originalErrorCode).toBe('ECONNREFUSED');
+        expect(enhancedError.context.metadata?.originalErrorCode).toBe(
+          'ECONNREFUSED'
+        );
         expect(enhancedError.context.metadata?.originalErrno).toBe(-61);
         expect(enhancedError.context.metadata?.originalSyscall).toBe('connect');
       });
@@ -308,7 +310,9 @@ describe('Error Handling System', () => {
       });
 
       it('should handle network errors with specific codes', () => {
-        const networkError = new Error('Connection refused') as Error & { code: string };
+        const networkError = new Error('Connection refused') as Error & {
+          code: string;
+        };
         networkError.code = 'ECONNREFUSED';
 
         const result = ErrorFactory.transformError(
@@ -322,7 +326,9 @@ describe('Error Handling System', () => {
       });
 
       it('should handle timeout errors', () => {
-        const timeoutError = new Error('Request timeout') as Error & { code: string };
+        const timeoutError = new Error('Request timeout') as Error & {
+          code: string;
+        };
         timeoutError.code = 'ETIMEDOUT';
 
         const result = ErrorFactory.transformError(

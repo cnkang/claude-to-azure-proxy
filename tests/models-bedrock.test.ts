@@ -34,7 +34,10 @@ describe('Models endpoint with Bedrock enabled', () => {
   it('includes Bedrock model entries when configuration is present', async () => {
     const response = await request(app)
       .get('/v1/models')
-      .set('Authorization', 'Bearer test-api-key-12345678901234567890123456789012')
+      .set(
+        'Authorization',
+        'Bearer test-api-key-12345678901234567890123456789012'
+      )
       .expect(200);
 
     const providers = new Set(

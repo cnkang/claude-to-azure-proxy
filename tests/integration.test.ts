@@ -79,7 +79,7 @@ const mockHealthMonitor = {
 
 vi.mock('../src/monitoring/health-monitor.ts', () => {
   return {
-    HealthMonitor: vi.fn().mockImplementation(function() {
+    HealthMonitor: vi.fn().mockImplementation(function () {
       return mockHealthMonitor;
     }),
     healthMonitor: mockHealthMonitor,
@@ -111,8 +111,9 @@ describe('Integration Tests', () => {
 
     mockedAxios.create = vi.fn().mockReturnValue(mockAxiosInstance);
 
-    (globalThis as { __AZURE_OPENAI_AXIOS_MOCK__?: typeof mockAxiosInstance }).__AZURE_OPENAI_AXIOS_MOCK__ =
-      mockAxiosInstance;
+    (
+      globalThis as { __AZURE_OPENAI_AXIOS_MOCK__?: typeof mockAxiosInstance }
+    ).__AZURE_OPENAI_AXIOS_MOCK__ = mockAxiosInstance;
 
     // Import modules after mocking
     const securityModule = await import('../src/middleware/security.js');
@@ -203,7 +204,10 @@ describe('Integration Tests', () => {
       expect(response.body).toHaveProperty('choices');
       expect(Array.isArray(response.body.choices)).toBe(true);
       expect(response.body.choices[0]).toHaveProperty('message');
-      expect(response.body.choices[0].message).toHaveProperty('role', 'assistant');
+      expect(response.body.choices[0].message).toHaveProperty(
+        'role',
+        'assistant'
+      );
       expect(response.body.choices[0].message).toHaveProperty('content');
       expect(response.body.choices[0]).toHaveProperty('finish_reason');
       expect(response.body).toHaveProperty('usage');
@@ -231,9 +235,9 @@ describe('Integration Tests', () => {
       const messages = data.messages as Array<{ content: string }>;
       expect(messages).toHaveLength(1);
       // Extract text from content blocks for comparison
-      const expectedContent = Array.isArray(claudeRequest.messages[0].content) 
-        ? (claudeRequest.messages[0].content as Array<{text: string}>)[0].text
-        : claudeRequest.messages[0].content as string;
+      const expectedContent = Array.isArray(claudeRequest.messages[0].content)
+        ? (claudeRequest.messages[0].content as Array<{ text: string }>)[0].text
+        : (claudeRequest.messages[0].content as string);
       expect(messages[0].content).toBe(expectedContent);
       const headers = config.headers as Record<string, string>;
       expect(headers['api-key']).toBe(
@@ -259,7 +263,10 @@ describe('Integration Tests', () => {
       expect(response.body).toHaveProperty('choices');
       expect(Array.isArray(response.body.choices)).toBe(true);
       expect(response.body.choices[0]).toHaveProperty('message');
-      expect(response.body.choices[0].message).toHaveProperty('role', 'assistant');
+      expect(response.body.choices[0].message).toHaveProperty(
+        'role',
+        'assistant'
+      );
       expect(response.body.choices[0].message).toHaveProperty('content');
 
       // Verify all parameters were passed to Azure OpenAI
@@ -289,7 +296,10 @@ describe('Integration Tests', () => {
       expect(response.body).toHaveProperty('choices');
       expect(Array.isArray(response.body.choices)).toBe(true);
       expect(response.body.choices[0]).toHaveProperty('message');
-      expect(response.body.choices[0].message).toHaveProperty('role', 'assistant');
+      expect(response.body.choices[0].message).toHaveProperty(
+        'role',
+        'assistant'
+      );
       expect(response.body.choices[0].message).toHaveProperty('content');
 
       // Verify minimal parameters were passed
@@ -449,7 +459,7 @@ describe('Integration Tests', () => {
         // Malicious content is now sanitized rather than rejected
         // The request should succeed but content should be sanitized
         expect([200, 400]).toContain(response.status);
-        
+
         if (response.status === 200) {
           // If successful, verify the response is properly formatted (OpenAI format)
           expect(response.body).toHaveProperty('id');
@@ -608,7 +618,10 @@ describe('Integration Tests', () => {
       expect(response.body).toHaveProperty('id');
       expect(response.body).toHaveProperty('object', 'chat.completion');
       expect(response.body.choices[0]).toHaveProperty('message');
-      expect(response.body.choices[0].message).toHaveProperty('role', 'assistant');
+      expect(response.body.choices[0].message).toHaveProperty(
+        'role',
+        'assistant'
+      );
     });
   });
 
@@ -713,7 +726,10 @@ describe('Integration Tests', () => {
         expect(response.body).toHaveProperty('id');
         expect(response.body).toHaveProperty('object', 'chat.completion');
         expect(response.body.choices[0]).toHaveProperty('message');
-        expect(response.body.choices[0].message).toHaveProperty('role', 'assistant');
+        expect(response.body.choices[0].message).toHaveProperty(
+          'role',
+          'assistant'
+        );
       });
 
       // Verify all requests were processed
@@ -806,7 +822,10 @@ describe('Integration Tests', () => {
         expect(response.body).toHaveProperty('id');
         expect(response.body).toHaveProperty('object', 'chat.completion');
         expect(response.body.choices[0]).toHaveProperty('message');
-        expect(response.body.choices[0].message).toHaveProperty('role', 'assistant');
+        expect(response.body.choices[0].message).toHaveProperty(
+          'role',
+          'assistant'
+        );
         expect(response.body.choices[0].message).toHaveProperty('content');
         // OpenAI format - content is in choices[0].message.content, not response.body.content
         expect(typeof response.body.choices[0].message.content).toBe('string');
@@ -845,7 +864,10 @@ describe('Integration Tests', () => {
         expect(response.body).toHaveProperty('id');
         expect(response.body).toHaveProperty('object', 'chat.completion');
         expect(response.body.choices[0]).toHaveProperty('message');
-        expect(response.body.choices[0].message).toHaveProperty('role', 'assistant');
+        expect(response.body.choices[0].message).toHaveProperty(
+          'role',
+          'assistant'
+        );
         expect(response.body.choices[0]).toHaveProperty('finish_reason');
       }
     });
@@ -865,7 +887,10 @@ describe('Integration Tests', () => {
       expect(response.body).toHaveProperty('id');
       expect(response.body).toHaveProperty('object', 'chat.completion');
       expect(response.body.choices[0]).toHaveProperty('message');
-      expect(response.body.choices[0].message).toHaveProperty('role', 'assistant');
+      expect(response.body.choices[0].message).toHaveProperty(
+        'role',
+        'assistant'
+      );
 
       // Verify Unicode was preserved in Azure request
       const mockPost3 = mockAxiosInstance.post as ReturnType<typeof vi.fn>;
@@ -893,7 +918,10 @@ describe('Integration Tests', () => {
       expect(response.body).toHaveProperty('id');
       expect(response.body).toHaveProperty('object', 'chat.completion');
       expect(response.body.choices[0]).toHaveProperty('message');
-      expect(response.body.choices[0].message).toHaveProperty('role', 'assistant');
+      expect(response.body.choices[0].message).toHaveProperty(
+        'role',
+        'assistant'
+      );
     });
 
     it('should handle null content in Azure responses', async () => {
@@ -915,7 +943,10 @@ describe('Integration Tests', () => {
       expect(response.body).toHaveProperty('id');
       expect(response.body).toHaveProperty('object', 'chat.completion');
       expect(response.body.choices[0]).toHaveProperty('message');
-      expect(response.body.choices[0].message).toHaveProperty('role', 'assistant');
+      expect(response.body.choices[0].message).toHaveProperty(
+        'role',
+        'assistant'
+      );
       // OpenAI format can return null for empty content
       expect(response.body.choices[0].message.content).toBeNull();
     });

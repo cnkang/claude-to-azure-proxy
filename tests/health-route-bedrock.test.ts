@@ -69,9 +69,9 @@ describe('Health Route with Bedrock Integration', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     app = express();
-    
+
     // Add correlation ID middleware
     app.use((req: any, res, next) => {
       req.correlationId = 'test-correlation-id';
@@ -99,7 +99,9 @@ describe('Health Route with Bedrock Integration', () => {
   describe('Bedrock Health Integration', () => {
     it('should include Bedrock health status when Bedrock is configured', async () => {
       // Requirement 4.3: Extend health check endpoint to include AWS Bedrock service status validation
-      const { getHealthMonitor } = await import('../src/monitoring/health-monitor.js');
+      const { getHealthMonitor } = await import(
+        '../src/monitoring/health-monitor.js'
+      );
       const mockHealthMonitor = {
         getBedrockMonitor: vi.fn(() => ({
           checkBedrockHealth: vi.fn().mockResolvedValue({
@@ -108,7 +110,7 @@ describe('Health Route with Bedrock Integration', () => {
           }),
         })),
       };
-      
+
       vi.mocked(getHealthMonitor).mockReturnValue(mockHealthMonitor as any);
 
       const response = await request(app).get('/health');
@@ -131,7 +133,9 @@ describe('Health Route with Bedrock Integration', () => {
     });
 
     it('should handle Bedrock health check failure gracefully', async () => {
-      const { getHealthMonitor } = await import('../src/monitoring/health-monitor.js');
+      const { getHealthMonitor } = await import(
+        '../src/monitoring/health-monitor.js'
+      );
       const mockHealthMonitor = {
         getBedrockMonitor: vi.fn(() => ({
           checkBedrockHealth: vi.fn().mockResolvedValue({
@@ -139,7 +143,7 @@ describe('Health Route with Bedrock Integration', () => {
           }),
         })),
       };
-      
+
       vi.mocked(getHealthMonitor).mockReturnValue(mockHealthMonitor as any);
 
       const response = await request(app).get('/health');
@@ -150,11 +154,13 @@ describe('Health Route with Bedrock Integration', () => {
     });
 
     it('should handle missing Bedrock monitor gracefully', async () => {
-      const { getHealthMonitor } = await import('../src/monitoring/health-monitor.js');
+      const { getHealthMonitor } = await import(
+        '../src/monitoring/health-monitor.js'
+      );
       const mockHealthMonitor = {
         getBedrockMonitor: vi.fn(() => null), // No Bedrock monitor available
       };
-      
+
       vi.mocked(getHealthMonitor).mockReturnValue(mockHealthMonitor as any);
 
       const response = await request(app).get('/health');
@@ -164,13 +170,15 @@ describe('Health Route with Bedrock Integration', () => {
     });
 
     it('should handle Bedrock monitor initialization error', async () => {
-      const { getHealthMonitor } = await import('../src/monitoring/health-monitor.js');
+      const { getHealthMonitor } = await import(
+        '../src/monitoring/health-monitor.js'
+      );
       const mockHealthMonitor = {
         getBedrockMonitor: vi.fn(() => {
           throw new Error('Bedrock monitor initialization failed');
         }),
       };
-      
+
       vi.mocked(getHealthMonitor).mockReturnValue(mockHealthMonitor as any);
 
       const response = await request(app).get('/health');
@@ -193,7 +201,9 @@ describe('Health Route with Bedrock Integration', () => {
       });
 
       // Mock successful Bedrock
-      const { getHealthMonitor } = await import('../src/monitoring/health-monitor.js');
+      const { getHealthMonitor } = await import(
+        '../src/monitoring/health-monitor.js'
+      );
       const mockHealthMonitor = {
         getBedrockMonitor: vi.fn(() => ({
           checkBedrockHealth: vi.fn().mockResolvedValue({
@@ -202,7 +212,7 @@ describe('Health Route with Bedrock Integration', () => {
           }),
         })),
       };
-      
+
       vi.mocked(getHealthMonitor).mockReturnValue(mockHealthMonitor as any);
 
       const response = await request(app).get('/health');
@@ -223,11 +233,13 @@ describe('Health Route with Bedrock Integration', () => {
       });
 
       // Mock no Bedrock monitor
-      const { getHealthMonitor } = await import('../src/monitoring/health-monitor.js');
+      const { getHealthMonitor } = await import(
+        '../src/monitoring/health-monitor.js'
+      );
       const mockHealthMonitor = {
         getBedrockMonitor: vi.fn(() => null),
       };
-      
+
       vi.mocked(getHealthMonitor).mockReturnValue(mockHealthMonitor as any);
 
       const response = await request(app).get('/health');
@@ -242,10 +254,14 @@ describe('Health Route with Bedrock Integration', () => {
       // Mock failed Azure OpenAI
       const mockedAxios = await import('axios');
       // eslint-disable-next-line @typescript-eslint/unbound-method
-      vi.mocked(mockedAxios.default.get).mockRejectedValue(new Error('Azure connection failed'));
+      vi.mocked(mockedAxios.default.get).mockRejectedValue(
+        new Error('Azure connection failed')
+      );
 
       // Mock successful Bedrock
-      const { getHealthMonitor } = await import('../src/monitoring/health-monitor.js');
+      const { getHealthMonitor } = await import(
+        '../src/monitoring/health-monitor.js'
+      );
       const mockHealthMonitor = {
         getBedrockMonitor: vi.fn(() => ({
           checkBedrockHealth: vi.fn().mockResolvedValue({
@@ -254,7 +270,7 @@ describe('Health Route with Bedrock Integration', () => {
           }),
         })),
       };
-      
+
       vi.mocked(getHealthMonitor).mockReturnValue(mockHealthMonitor as any);
 
       const response = await request(app).get('/health');
@@ -289,10 +305,14 @@ describe('Health Route with Bedrock Integration', () => {
       // Mock failed Azure OpenAI
       const mockedAxios = await import('axios');
       // eslint-disable-next-line @typescript-eslint/unbound-method
-      vi.mocked(mockedAxios.default.get).mockRejectedValue(new Error('Azure connection failed'));
+      vi.mocked(mockedAxios.default.get).mockRejectedValue(
+        new Error('Azure connection failed')
+      );
 
       // Mock failed Bedrock
-      const { getHealthMonitor } = await import('../src/monitoring/health-monitor.js');
+      const { getHealthMonitor } = await import(
+        '../src/monitoring/health-monitor.js'
+      );
       const mockHealthMonitor = {
         getBedrockMonitor: vi.fn(() => ({
           checkBedrockHealth: vi.fn().mockResolvedValue({
@@ -300,7 +320,7 @@ describe('Health Route with Bedrock Integration', () => {
           }),
         })),
       };
-      
+
       vi.mocked(getHealthMonitor).mockReturnValue(mockHealthMonitor as any);
 
       const response = await request(prodApp).get('/health');
@@ -316,7 +336,7 @@ describe('Health Route with Bedrock Integration', () => {
     it('should log health check completion with service status information', async () => {
       // Requirement 4.4: Add structured logging for Bedrock operations without exposing sensitive data
       const { logger } = await import('../src/middleware/logging.js');
-      
+
       // Mock successful services
       const mockedAxios = await import('axios');
       // eslint-disable-next-line @typescript-eslint/unbound-method
@@ -325,7 +345,9 @@ describe('Health Route with Bedrock Integration', () => {
         data: { object: 'list', data: [] },
       });
 
-      const { getHealthMonitor } = await import('../src/monitoring/health-monitor.js');
+      const { getHealthMonitor } = await import(
+        '../src/monitoring/health-monitor.js'
+      );
       const mockHealthMonitor = {
         getBedrockMonitor: vi.fn(() => ({
           checkBedrockHealth: vi.fn().mockResolvedValue({
@@ -334,7 +356,7 @@ describe('Health Route with Bedrock Integration', () => {
           }),
         })),
       };
-      
+
       vi.mocked(getHealthMonitor).mockReturnValue(mockHealthMonitor as any);
 
       await request(app).get('/health');
@@ -357,17 +379,19 @@ describe('Health Route with Bedrock Integration', () => {
 
       // Verify no sensitive data is logged
       const logCalls = vi.mocked(logger.info).mock.calls;
-      const loggedData = logCalls.map(call => JSON.stringify(call));
+      const loggedData = logCalls.map((call) => JSON.stringify(call));
       const combinedLogs = loggedData.join(' ');
-      
+
       expect(combinedLogs).not.toContain('test-azure-key');
       expect(combinedLogs).not.toContain('test-proxy-key');
     });
 
     it('should log Bedrock debug information when available', async () => {
       const { logger } = await import('../src/middleware/logging.js');
-      
-      const { getHealthMonitor } = await import('../src/monitoring/health-monitor.js');
+
+      const { getHealthMonitor } = await import(
+        '../src/monitoring/health-monitor.js'
+      );
       const mockHealthMonitor = {
         getBedrockMonitor: vi.fn(() => ({
           checkBedrockHealth: vi.fn().mockResolvedValue({
@@ -376,7 +400,7 @@ describe('Health Route with Bedrock Integration', () => {
           }),
         })),
       };
-      
+
       vi.mocked(getHealthMonitor).mockReturnValue(mockHealthMonitor as any);
 
       await request(app).get('/health');
