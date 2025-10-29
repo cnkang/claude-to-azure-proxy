@@ -4,7 +4,7 @@ Get the Claude-to-Azure Proxy running in 5 minutes.
 
 ## 🚀 Prerequisites
 
-- **Node.js** 22+ and **pnpm** 10.18+
+- **Node.js** 24+ and **pnpm** 10.19+
 - **Docker** (for containerized deployment)
 - **Azure OpenAI** resource with API access
 

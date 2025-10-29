@@ -1,6 +1,40 @@
 # Deployment Guide
 
-Complete guide for deploying the Claude-to-Azure Proxy in production environments.
+Complete guide for deploying the Claude-to-Azure Proxy in production environments with Node.js 24 LTS optimizations.
+
+## 🚀 Node.js 24 LTS Features
+
+This application is optimized for Node.js 24 LTS and leverages:
+
+- **Enhanced V8 13.6 Engine**: Improved JavaScript execution performance
+- **Advanced Garbage Collection**: Better memory management and reduced GC pauses
+- **Explicit Resource Management**: Automatic cleanup using `Symbol.dispose` and `Symbol.asyncDispose`
+- **Improved HTTP Performance**: Enhanced HTTP/2 and streaming capabilities
+- **Memory Leak Detection**: Built-in profiling tools for production monitoring
+- **Performance Optimizations**: Optimized startup time and reduced memory footprint
+
+### Node.js 24 Runtime Configuration
+
+The application includes optimized Node.js 24 startup parameters:
+
+```bash
+# Production optimized startup
+node --enable-source-maps \
+     --max-old-space-size=1024 \
+     --max-new-space-size=128 \
+     --optimize-for-size \
+     --gc-interval=100 \
+     --incremental-marking \
+     --concurrent-marking \
+     --parallel-scavenge \
+     dist/index.js
+```
+
+These optimizations provide:
+- **Memory Efficiency**: Tuned heap sizes for proxy workloads
+- **GC Performance**: Optimized garbage collection for low latency
+- **Startup Speed**: Faster application initialization
+- **Resource Management**: Automatic cleanup and leak prevention
 
 ## 🐳 Docker Deployment (Recommended)
 
@@ -40,14 +74,15 @@ services:
       start_period: 40s
 ```
 
-### Production Optimizations
+### Production Optimizations (Node.js 24)
 ```yaml
 # docker-compose.override.yml
 version: '3.8'
 services:
   claude-proxy:
     environment:
-      - NODE_OPTIONS=--max-old-space-size=2048
+      # Node.js 24 optimized settings
+      - NODE_OPTIONS=--max-old-space-size=1024 --max-new-space-size=128 --optimize-for-size --gc-interval=100 --incremental-marking --concurrent-marking --parallel-scavenge
       - NODE_ENV=production
     deploy:
       resources:
@@ -57,6 +92,28 @@ services:
         reservations:
           memory: 1G
           cpus: '0.5'
+```
+
+### Node.js 24 Memory Management
+```yaml
+# Advanced memory configuration for high-load environments
+version: '3.8'
+services:
+  claude-proxy:
+    environment:
+      # High-performance Node.js 24 settings
+      - NODE_OPTIONS=--max-old-space-size=2048 --max-new-space-size=256 --optimize-for-size --gc-interval=50 --incremental-marking --concurrent-marking --parallel-scavenge --expose-gc
+      - NODE_ENV=production
+      - ENABLE_MEMORY_MONITORING=true
+      - GC_OPTIMIZATION=true
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
 ```
 
 ### Security Hardening

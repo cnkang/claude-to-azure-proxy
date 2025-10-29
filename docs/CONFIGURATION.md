@@ -1,6 +1,6 @@
 # Configuration Guide
 
-Complete configuration reference for the Claude-to-Azure Proxy.
+Complete configuration reference for the Claude-to-Azure Proxy with Node.js 24 LTS optimizations.
 
 ## 🔧 Environment Variables
 
@@ -284,11 +284,11 @@ fi
 ```yaml
 # apprunner.yaml
 version: 1.0
-runtime: nodejs22
+runtime: nodejs24
 build:
   commands:
     build:
-      - corepack enable && corepack prepare pnpm@10.18.3 --activate
+      - corepack enable && corepack prepare pnpm@10.19.0 --activate
       - pnpm install --frozen-lockfile
       - pnpm run build
 run:
@@ -459,18 +459,37 @@ curl http://localhost:8080/health
 
 ## 🔧 Advanced Configuration
 
-### Node.js Options
+### Node.js 24 Options
 
 ```bash
-# Memory optimization
-export NODE_OPTIONS="--max-old-space-size=2048 --gc-interval=100"
+# Node.js 24 optimized memory settings
+export NODE_OPTIONS="--max-old-space-size=1024 --max-new-space-size=128 --optimize-for-size --gc-interval=100 --incremental-marking --concurrent-marking --parallel-scavenge"
 
-# Performance profiling
-export NODE_OPTIONS="--prof --prof-process"
+# High-performance settings for heavy loads
+export NODE_OPTIONS="--max-old-space-size=2048 --max-new-space-size=256 --optimize-for-size --gc-interval=50 --incremental-marking --concurrent-marking --parallel-scavenge --expose-gc"
 
-# Debug mode
-export NODE_OPTIONS="--inspect=0.0.0.0:9229"
+# Performance profiling with Node.js 24 features
+export NODE_OPTIONS="--prof --prof-process --heap-prof --cpu-prof"
+
+# Debug mode with enhanced Node.js 24 debugging
+export NODE_OPTIONS="--inspect=0.0.0.0:9229 --enable-source-maps"
+
+# Memory leak detection (Node.js 24)
+export NODE_OPTIONS="--expose-gc --heap-prof --heap-prof-interval=10000"
 ```
+
+### Node.js 24 Performance Settings
+
+| Setting | Description | Recommended Value |
+|---------|-------------|-------------------|
+| `--max-old-space-size` | Maximum old generation heap size (MB) | `1024` (standard), `2048` (high-load) |
+| `--max-new-space-size` | Maximum new generation heap size (MB) | `128` (standard), `256` (high-load) |
+| `--optimize-for-size` | Optimize for memory usage over speed | Always enabled |
+| `--gc-interval` | Garbage collection interval | `100` (standard), `50` (high-performance) |
+| `--incremental-marking` | Enable incremental GC marking | Always enabled |
+| `--concurrent-marking` | Enable concurrent GC marking | Always enabled |
+| `--parallel-scavenge` | Enable parallel scavenging | Always enabled |
+| `--expose-gc` | Expose global.gc() function | Production monitoring only |
 
 ### Logging Configuration
 

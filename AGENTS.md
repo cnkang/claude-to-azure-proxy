@@ -100,7 +100,7 @@ function createMyError(error: any) { /* duplicate error creation */ }
 ## Technology Stack & Architecture
 
 ### Core Technologies
-- **Runtime**: Node.js 22+ with ES Modules (ESM)
+- **Runtime**: Node.js 24+ with ES Modules (ESM)
 - **Language**: TypeScript 5.3+ with strict mode (no `any` types)
 - **Framework**: Express.js with typed Request/Response interfaces
 - **Package Manager**: pnpm (preferred)
@@ -344,7 +344,7 @@ pnpm docs:generate    # Generate TypeScript API documentation
 
 ### Docker Support
 - Multi-stage builds: deps → builder → runner
-- `node:22-alpine` base image
+- `node:24-alpine` base image
 - Non-root user with minimal privileges
 - Security scanning with hadolint
 

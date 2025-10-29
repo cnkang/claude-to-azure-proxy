@@ -3,7 +3,7 @@
 <div align="center">
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3+-blue.svg)](https://www.typescriptlang.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-22+-green.svg)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-24+-green.svg)](https://nodejs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://img.shields.io/badge/Tests-325%20passing-brightgreen.svg)](#testing)
 [![Security](https://img.shields.io/badge/Security-Hardened-red.svg)](#security-features)
@@ -43,6 +43,7 @@ This high-performance proxy server enables seamless integration between Claude C
 - **Language Optimization**: Enhanced support for Python/Django, Java/Spring, TypeScript, React, Vue, Android, and shell scripting
 - **Conversation Management**: Improved multi-turn conversation handling with context tracking
 - **Streaming Support**: Real-time response streaming with Server-Sent Events for both Claude and OpenAI formats
+- **Node.js 24 Optimizations**: Leverages explicit resource management, enhanced garbage collection, and V8 13.6 performance improvements
 
 ### Security & Authentication
 
@@ -67,7 +68,9 @@ This high-performance proxy server enables seamless integration between Claude C
 - **Retry Logic**: Exponential backoff with jitter for failed requests
 - **Graceful Degradation**: Service-level degradation during partial failures
 - **Timeout Management**: Configurable request and response timeouts
-- **Connection Pooling**: Optimized HTTP connection management
+- **Connection Pooling**: Optimized HTTP connection management with Node.js 24 enhancements
+- **Memory Management**: Advanced memory leak detection and automatic resource cleanup using Node.js 24 features
+- **Performance Monitoring**: Real-time garbage collection monitoring and optimization
 
 ### Developer Experience
 
@@ -81,9 +84,11 @@ This high-performance proxy server enables seamless integration between Claude C
 
 ### Prerequisites
 
-- **Node.js** 22.0.0 or higher
-- **pnpm** 10.18.3 or higher (recommended) or npm
+- **Node.js** 24.0.0 or higher (LTS recommended)
+- **pnpm** 10.19.0 or higher (recommended) or npm
 - **Azure OpenAI** resource with API access
+
+> **Node.js 24 Features**: This application leverages Node.js 24's enhanced V8 13.6 engine, improved garbage collection, explicit resource management, and enhanced performance optimizations for superior proxy performance.
 
 ### Installation
 
