@@ -106,15 +106,6 @@ describe('Build Pipeline Tests', () => {
   describe('Docker Build Process', () => {
     const testImageName = 'claude-to-azure-proxy:test';
 
-    afterAll(() => {
-      // Clean up test image
-      try {
-        execSync(`docker rmi ${testImageName}`, { stdio: 'pipe' });
-      } catch {
-        // Ignore if image doesn't exist
-      }
-    });
-
     it('should have valid Dockerfile', () => {
       expect(existsSync(dockerfilePath)).toBe(true);
       const dockerfile = readFileSync(dockerfilePath, 'utf-8');
@@ -169,6 +160,22 @@ describe('Build Pipeline Tests', () => {
   });
 
   describe('Docker Container Health Check', () => {
+    const testImageName = 'claude-to-azure-proxy:test';
+
+    afterAll(() => {
+      // Clean up all test images
+      try {
+        execSync(`docker rmi ${testImageName}`, { stdio: 'pipe' });
+      } catch {
+        // Ignore if image doesn't exist
+      }
+      try {
+        execSync('docker rmi claude-to-azure-proxy:test-validation', { stdio: 'pipe' });
+      } catch {
+        // Ignore if image doesn't exist
+      }
+    });
+
     it('should have proper health check configuration', () => {
       const dockerfile = readFileSync(dockerfilePath, 'utf-8');
       expect(dockerfile).toContain('HEALTHCHECK');
@@ -179,13 +186,34 @@ describe('Build Pipeline Tests', () => {
     });
 
     it('should validate Docker image exists after build', () => {
-      const output = execSync(
+      // Check if the test image built in the previous test exists
+      let output = execSync(
         'docker images claude-to-azure-proxy --format "{{.Repository}}:{{.Tag}}"',
         {
           encoding: 'utf-8',
           stdio: 'pipe',
         }
       );
+
+      // If no image exists, build one for validation
+      if (output.trim() === '') {
+        // Build the image to verify it can be built successfully
+        expect(() => {
+          execSync('docker build -t claude-to-azure-proxy:test-validation .', {
+            stdio: 'pipe',
+            timeout: 120000,
+          });
+        }).not.toThrow();
+
+        // Re-check for the newly built image
+        output = execSync(
+          'docker images claude-to-azure-proxy --format "{{.Repository}}:{{.Tag}}"',
+          {
+            encoding: 'utf-8',
+            stdio: 'pipe',
+          }
+        );
+      }
 
       expect(output).toContain('claude-to-azure-proxy:');
       expect(output.trim()).not.toBe('');
