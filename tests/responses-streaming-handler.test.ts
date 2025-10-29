@@ -37,7 +37,9 @@ describe('ResponsesStreamingHandler', () => {
         ],
       };
 
-      const result = claudeHandler.processStreamChunk(chunk) as ClaudeStreamChunk;
+      const result = claudeHandler.processStreamChunk(
+        chunk
+      ) as ClaudeStreamChunk;
 
       expect(result).toEqual({
         type: 'content_block_delta',
@@ -62,7 +64,9 @@ describe('ResponsesStreamingHandler', () => {
         ],
       };
 
-      const result = openAIHandler.processStreamChunk(chunk) as OpenAIStreamChunk;
+      const result = openAIHandler.processStreamChunk(
+        chunk
+      ) as OpenAIStreamChunk;
 
       expect(result).toEqual({
         id: 'chunk-123',
@@ -103,7 +107,9 @@ describe('ResponsesStreamingHandler', () => {
         },
       };
 
-      const result = claudeHandler.processStreamChunk(chunk) as ClaudeStreamChunk;
+      const result = claudeHandler.processStreamChunk(
+        chunk
+      ) as ClaudeStreamChunk;
 
       expect(result).toEqual({
         type: 'message_stop',
@@ -131,7 +137,9 @@ describe('ResponsesStreamingHandler', () => {
         ],
       };
 
-      const result = openAIHandler.processStreamChunk(chunk) as OpenAIStreamChunk;
+      const result = openAIHandler.processStreamChunk(
+        chunk
+      ) as OpenAIStreamChunk;
 
       expect(result).toEqual({
         id: 'chunk-123',
@@ -157,11 +165,16 @@ describe('ResponsesStreamingHandler', () => {
         message: 'Internal server error',
       };
 
-      const result = claudeHandler.handleStreamError(error) as readonly ClaudeStreamChunk[];
+      const result = claudeHandler.handleStreamError(
+        error
+      ) as readonly ClaudeStreamChunk[];
 
       expect(result).toHaveLength(2);
       expect(result[0].type).toBe('error');
-      expect(result[0]).toHaveProperty('error.message', 'Internal server error');
+      expect(result[0]).toHaveProperty(
+        'error.message',
+        'Internal server error'
+      );
       expect(result[1].type).toBe('message_stop');
     });
 
@@ -172,18 +185,24 @@ describe('ResponsesStreamingHandler', () => {
         message: 'Internal server error',
       };
 
-      const result = openAIHandler.handleStreamError(error) as readonly OpenAIStreamChunk[];
+      const result = openAIHandler.handleStreamError(
+        error
+      ) as readonly OpenAIStreamChunk[];
 
       expect(result).toHaveLength(2);
       expect(result[0].object).toBe('chat.completion.chunk');
-      expect(result[0].choices[0].delta?.content).toContain('Internal server error');
+      expect(result[0].choices[0].delta?.content).toContain(
+        'Internal server error'
+      );
       expect(result[1].choices[0].finish_reason).toBe('stop');
     });
 
     it('should handle generic Error for Claude format', () => {
       const error = new Error('Generic error');
 
-      const result = claudeHandler.handleStreamError(error) as readonly ClaudeStreamChunk[];
+      const result = claudeHandler.handleStreamError(
+        error
+      ) as readonly ClaudeStreamChunk[];
 
       expect(result).toHaveLength(2);
       expect(result[0].type).toBe('error');
@@ -194,7 +213,10 @@ describe('ResponsesStreamingHandler', () => {
 
   describe('createStreamStart', () => {
     it('should create Claude stream start event', () => {
-      const result = claudeHandler.createStreamStart('resp-123', 'gpt-4') as ClaudeStreamChunk;
+      const result = claudeHandler.createStreamStart(
+        'resp-123',
+        'gpt-4'
+      ) as ClaudeStreamChunk;
 
       expect(result).toEqual({
         type: 'message_start',
@@ -214,7 +236,10 @@ describe('ResponsesStreamingHandler', () => {
     });
 
     it('should create OpenAI stream start event', () => {
-      const result = openAIHandler.createStreamStart('resp-123', 'gpt-4') as OpenAIStreamChunk;
+      const result = openAIHandler.createStreamStart(
+        'resp-123',
+        'gpt-4'
+      ) as OpenAIStreamChunk;
 
       expect(result.id).toBe('resp-123');
       expect(result.object).toBe('chat.completion.chunk');
@@ -470,17 +495,21 @@ describe('ResponsesStreamProcessor', () => {
 
       // Should have: start event, 2 content chunks, completion chunk
       expect(results).toHaveLength(4);
-      
+
       // First should be start event
       expect((results[0] as ClaudeStreamChunk).type).toBe('message_start');
-      
+
       // Next two should be content deltas
-      expect((results[1] as ClaudeStreamChunk).type).toBe('content_block_delta');
+      expect((results[1] as ClaudeStreamChunk).type).toBe(
+        'content_block_delta'
+      );
       expect((results[1] as ClaudeStreamChunk).delta?.text).toBe('Hello');
-      
-      expect((results[2] as ClaudeStreamChunk).type).toBe('content_block_delta');
+
+      expect((results[2] as ClaudeStreamChunk).type).toBe(
+        'content_block_delta'
+      );
       expect((results[2] as ClaudeStreamChunk).delta?.text).toBe(' world');
-      
+
       // Last should be completion
       expect((results[3] as ClaudeStreamChunk).type).toBe('message_stop');
     });
@@ -537,7 +566,9 @@ describe('ResponsesStreamProcessor', () => {
 
       expect(results.length).toBeGreaterThanOrEqual(2);
       expect((results[0] as ClaudeStreamChunk).type).toBe('message_start');
-      expect((results[results.length - 1] as ClaudeStreamChunk).type).toBe('message_stop');
+      expect((results[results.length - 1] as ClaudeStreamChunk).type).toBe(
+        'message_stop'
+      );
     });
 
     it('should handle stream errors', async () => {
@@ -554,7 +585,7 @@ describe('ResponsesStreamProcessor', () => {
             },
           ],
         } as ResponsesStreamChunk;
-        
+
         throw new Error('Stream error');
       }
 
@@ -565,7 +596,7 @@ describe('ResponsesStreamProcessor', () => {
 
       // Should have: start event, content chunk, error event, stop event
       expect(results).toHaveLength(4);
-      
+
       expect((results[2] as ClaudeStreamChunk).type).toBe('error');
       expect((results[3] as ClaudeStreamChunk).type).toBe('message_stop');
     });

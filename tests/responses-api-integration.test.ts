@@ -1,14 +1,22 @@
 /**
  * @fileoverview Integration tests for Azure OpenAI Responses API migration
- * 
+ *
  * This test suite validates the complete request-response cycle with the Azure OpenAI
  * Responses API, including Claude format compatibility, OpenAI format compatibility,
  * conversation continuity, and multi-language development scenarios.
- * 
+ *
  * Requirements covered: 8.2, 8.4, 4.1, 4.2, 10.1, 10.2, 11.1-11.9
  */
 
-import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  beforeEach,
+  afterEach,
+  vi,
+} from 'vitest';
 import request from 'supertest';
 import express from 'express';
 import { json } from 'express';
@@ -51,12 +59,14 @@ vi.mock('../src/clients/azure-responses-client.js', () => ({
 class ResponsesResponseFactory {
   private static counter = 0;
 
-  static create(options: {
-    includeReasoning?: boolean;
-    includeToolCalls?: boolean;
-    content?: string;
-    reasoningContent?: string;
-  } = {}): ResponsesResponse {
+  static create(
+    options: {
+      includeReasoning?: boolean;
+      includeToolCalls?: boolean;
+      content?: string;
+      reasoningContent?: string;
+    } = {}
+  ): ResponsesResponse {
     const {
       includeReasoning = false,
       includeToolCalls = false,
@@ -110,11 +120,13 @@ class ResponsesResponseFactory {
     };
   }
 
-  static createStreamChunk(options: {
-    content?: string;
-    isComplete?: boolean;
-    includeReasoning?: boolean;
-  } = {}): ResponsesStreamChunk {
+  static createStreamChunk(
+    options: {
+      content?: string;
+      isComplete?: boolean;
+      includeReasoning?: boolean;
+    } = {}
+  ): ResponsesStreamChunk {
     const {
       content = 'Stream chunk',
       isComplete = false,
@@ -156,11 +168,13 @@ class ResponsesResponseFactory {
 class OpenAIRequestFactory {
   private static readonly counter = 0;
 
-  static create(options: {
-    includeOptional?: boolean;
-    language?: string;
-    complexity?: 'simple' | 'medium' | 'complex';
-  } = {}): OpenAIRequest {
+  static create(
+    options: {
+      includeOptional?: boolean;
+      language?: string;
+      complexity?: 'simple' | 'medium' | 'complex';
+    } = {}
+  ): OpenAIRequest {
     const {
       includeOptional = false,
       language = 'typescript',
@@ -208,9 +222,8 @@ class OpenAIRequestFactory {
     for (let i = 0; i < turnCount; i++) {
       messages.push({
         role: i % 2 === 0 ? 'user' : 'assistant',
-        content: i % 2 === 0 
-          ? `User message ${i + 1}` 
-          : `Assistant response ${i + 1}`,
+        content:
+          i % 2 === 0 ? `User message ${i + 1}` : `Assistant response ${i + 1}`,
       });
     }
 
@@ -252,7 +265,13 @@ describe('Responses API Integration Tests', () => {
           {
             provider: 'azure',
             backendModel: 'gpt-5-codex',
-            aliases: ['gpt-5-codex', 'gpt-4', 'gpt-4o', 'gpt-4-turbo', 'claude-3-5-sonnet-20241022'],
+            aliases: [
+              'gpt-5-codex',
+              'gpt-4',
+              'gpt-4o',
+              'gpt-4-turbo',
+              'claude-3-5-sonnet-20241022',
+            ],
           },
         ],
       },
@@ -281,12 +300,14 @@ describe('Responses API Integration Tests', () => {
           req.headers['thread-id'];
 
         const headerConversationId =
-          Array.isArray(headerConversationIdRaw) && headerConversationIdRaw.length > 0
+          Array.isArray(headerConversationIdRaw) &&
+          headerConversationIdRaw.length > 0
             ? headerConversationIdRaw[0]
             : headerConversationIdRaw;
 
         const conversationId =
-          typeof headerConversationId === 'string' && headerConversationId.trim().length > 0
+          typeof headerConversationId === 'string' &&
+          headerConversationId.trim().length > 0
             ? headerConversationId.trim()
             : conversationManager.extractConversationId(
                 req.headers as Record<string, string>,
@@ -301,16 +322,21 @@ describe('Responses API Integration Tests', () => {
         });
 
         // Add previous_response_id for conversation continuity
-        const previousResponseId = conversationManager.getPreviousResponseId(conversationId);
+        const previousResponseId =
+          conversationManager.getPreviousResponseId(conversationId);
         let responsesParams = result.responsesParams;
-        if (typeof previousResponseId === 'string' && previousResponseId.trim() !== '') {
+        if (
+          typeof previousResponseId === 'string' &&
+          previousResponseId.trim() !== ''
+        ) {
           responsesParams = {
             ...responsesParams,
             previous_response_id: previousResponseId,
           };
         }
 
-        const responsesResponse = await mockAzureClient.createResponse(responsesParams);
+        const responsesResponse =
+          await mockAzureClient.createResponse(responsesParams);
 
         // Track conversation for continuity
         conversationManager.trackConversation(
@@ -323,15 +349,15 @@ describe('Responses API Integration Tests', () => {
             errorCount: 0,
           }
         );
-        
+
         // Transform back to Claude format
         const claudeResponse = {
           id: responsesResponse.id,
           type: 'message',
           role: 'assistant',
           content: responsesResponse.output
-            .filter(output => output.type === 'text')
-            .map(output => ({
+            .filter((output) => output.type === 'text')
+            .map((output) => ({
               type: 'text',
               text: output.text,
             })),
@@ -346,7 +372,9 @@ describe('Responses API Integration Tests', () => {
         res.json(claudeResponse);
       } catch (error) {
         const message =
-          error instanceof Error ? sanitizeErrorMessage(error.message) : 'Unknown error';
+          error instanceof Error
+            ? sanitizeErrorMessage(error.message)
+            : 'Unknown error';
 
         if (error instanceof ValidationError) {
           res.status(400).json({
@@ -378,8 +406,10 @@ describe('Responses API Integration Tests', () => {
           userAgent: req.get('User-Agent'),
         });
 
-        const responsesResponse = await mockAzureClient.createResponse(result.responsesParams);
-        
+        const responsesResponse = await mockAzureClient.createResponse(
+          result.responsesParams
+        );
+
         // Transform back to OpenAI format
         const openaiResponse = {
           id: responsesResponse.id,
@@ -392,8 +422,8 @@ describe('Responses API Integration Tests', () => {
               message: {
                 role: 'assistant',
                 content: responsesResponse.output
-                  .filter(output => output.type === 'text')
-                  .map(output => output.text)
+                  .filter((output) => output.type === 'text')
+                  .map((output) => output.text)
                   .join(''),
               },
               finish_reason: 'stop',
@@ -409,7 +439,9 @@ describe('Responses API Integration Tests', () => {
         res.json(openaiResponse);
       } catch (error) {
         const message =
-          error instanceof Error ? sanitizeErrorMessage(error.message) : 'Unknown error';
+          error instanceof Error
+            ? sanitizeErrorMessage(error.message)
+            : 'Unknown error';
 
         if (error instanceof ValidationError) {
           res.status(400).json({
@@ -438,7 +470,7 @@ describe('Responses API Integration Tests', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     // Default successful response
     mockAzureClient.createResponse.mockResolvedValue(
       ResponsesResponseFactory.create()
@@ -476,7 +508,10 @@ describe('Responses API Integration Tests', () => {
       expect(Array.isArray(response.body.content)).toBe(true);
       expect(response.body.content[0]).toHaveProperty('type', 'text');
       expect(response.body.content[0]).toHaveProperty('text');
-      expect(response.body).toHaveProperty('model', 'claude-3-5-sonnet-20241022');
+      expect(response.body).toHaveProperty(
+        'model',
+        'claude-3-5-sonnet-20241022'
+      );
       expect(response.body).toHaveProperty('usage');
 
       // Verify Azure client was called with correct parameters
@@ -510,8 +545,12 @@ describe('Responses API Integration Tests', () => {
       // Verify system message was included in transformation
       const callArgs = mockAzureClient.createResponse.mock.calls[0][0];
       if (Array.isArray(callArgs.input)) {
-        const systemMessage = callArgs.input.find((msg: any) => msg.role === 'system');
-        expect(systemMessage?.content).toContain('You are a helpful coding assistant.');
+        const systemMessage = callArgs.input.find(
+          (msg: any) => msg.role === 'system'
+        );
+        expect(systemMessage?.content).toContain(
+          'You are a helpful coding assistant.'
+        );
       } else {
         expect(callArgs.input).toContain('You are a helpful coding assistant.');
       }
@@ -547,7 +586,9 @@ describe('Responses API Integration Tests', () => {
 
       // Verify content blocks were properly transformed
       const callArgs = mockAzureClient.createResponse.mock.calls[0][0];
-      expect(typeof callArgs.input === 'string' || Array.isArray(callArgs.input)).toBe(true);
+      expect(
+        typeof callArgs.input === 'string' || Array.isArray(callArgs.input)
+      ).toBe(true);
     });
   });
 
@@ -579,7 +620,10 @@ describe('Responses API Integration Tests', () => {
       expect(Array.isArray(response.body.choices)).toBe(true);
       expect(response.body.choices[0]).toHaveProperty('index', 0);
       expect(response.body.choices[0]).toHaveProperty('message');
-      expect(response.body.choices[0].message).toHaveProperty('role', 'assistant');
+      expect(response.body.choices[0].message).toHaveProperty(
+        'role',
+        'assistant'
+      );
       expect(response.body.choices[0].message).toHaveProperty('content');
       expect(response.body.choices[0]).toHaveProperty('finish_reason', 'stop');
       expect(response.body).toHaveProperty('usage');
@@ -640,7 +684,7 @@ describe('Responses API Integration Tests', () => {
       const callArgs = mockAzureClient.createResponse.mock.calls[0][0];
       expect(Array.isArray(callArgs.input)).toBe(true);
       if (Array.isArray(callArgs.input)) {
-        expect(callArgs.input.some(msg => msg.role === 'system')).toBe(true);
+        expect(callArgs.input.some((msg) => msg.role === 'system')).toBe(true);
       }
     });
   });
@@ -648,7 +692,7 @@ describe('Responses API Integration Tests', () => {
   describe('Conversation Continuity', () => {
     it('should maintain conversation context across multiple requests', async () => {
       const conversationId = TestDataUtils.createCorrelationId();
-      
+
       // First request
       const firstRequest = ClaudeRequestFactory.create({
         size: 'small',
@@ -689,7 +733,7 @@ describe('Responses API Integration Tests', () => {
 
       // Verify conversation continuity
       expect(mockAzureClient.createResponse).toHaveBeenCalledTimes(2);
-      
+
       // Second call should include previous_response_id
       const secondCallArgs = mockAzureClient.createResponse.mock.calls[1][0];
       expect(secondCallArgs).toHaveProperty('previous_response_id');
@@ -715,11 +759,11 @@ describe('Responses API Integration Tests', () => {
 
     it('should track conversation metrics', async () => {
       const conversationId = TestDataUtils.createCorrelationId();
-      
+
       // Make multiple requests in the same conversation
       for (let i = 0; i < 3; i++) {
         const requestData = ClaudeRequestFactory.create({ size: 'small' });
-        
+
         await request(app)
           .post('/v1/messages')
           .set('X-Conversation-ID', conversationId)
@@ -728,7 +772,8 @@ describe('Responses API Integration Tests', () => {
       }
 
       // Verify conversation was tracked
-      const metrics = conversationManager.getConversationMetrics(conversationId);
+      const metrics =
+        conversationManager.getConversationMetrics(conversationId);
       expect(metrics.messageCount).toBe(3);
       expect(metrics.totalTokensUsed).toBeGreaterThan(0);
     });
@@ -757,7 +802,8 @@ describe('Responses API Integration Tests', () => {
       {
         language: 'typescript',
         framework: 'react',
-        request: 'Create a React component with hooks and TypeScript interfaces',
+        request:
+          'Create a React component with hooks and TypeScript interfaces',
         expectedReasoning: 'medium',
       },
       {
@@ -774,41 +820,47 @@ describe('Responses API Integration Tests', () => {
       },
     ];
 
-    languageScenarios.forEach(({ language, framework, request: requestText, expectedReasoning }) => {
-      it(`should handle ${language}/${framework} development with appropriate reasoning`, async () => {
-        const claudeRequest: ClaudeRequest = {
-          model: 'claude-3-5-sonnet-20241022',
-          messages: [
-            {
-              role: 'user',
-              content: requestText,
-            },
-          ],
-          max_tokens: 1000,
-        };
+    languageScenarios.forEach(
+      ({ language, framework, request: requestText, expectedReasoning }) => {
+        it(`should handle ${language}/${framework} development with appropriate reasoning`, async () => {
+          const claudeRequest: ClaudeRequest = {
+            model: 'claude-3-5-sonnet-20241022',
+            messages: [
+              {
+                role: 'user',
+                content: requestText,
+              },
+            ],
+            max_tokens: 1000,
+          };
 
-        const response = await request(app)
-          .post('/v1/messages')
-          .send(claudeRequest)
-          .expect(200);
+          const response = await request(app)
+            .post('/v1/messages')
+            .send(claudeRequest)
+            .expect(200);
 
-        expect(response.body.type).toBe('message');
+          expect(response.body.type).toBe('message');
 
-        // Verify reasoning effort was applied appropriately
-        const callArgs = mockAzureClient.createResponse.mock.calls[0][0];
-        expect(callArgs).toHaveProperty('reasoning');
-        
-        if (callArgs.reasoning !== null && callArgs.reasoning !== undefined) {
-          const reasoningLevels = ['minimal', 'low', 'medium', 'high'];
-          expect(reasoningLevels).toContain(callArgs.reasoning.effort);
-          
-          // Verify expected reasoning level (allow more flexibility for implementation variance)
-          const expectedIndex = reasoningLevels.indexOf(expectedReasoning);
-          const actualIndex = reasoningLevels.indexOf(callArgs.reasoning.effort);
-          expect(Math.abs(actualIndex - expectedIndex)).toBeLessThanOrEqual(2);
-        }
-      });
-    });
+          // Verify reasoning effort was applied appropriately
+          const callArgs = mockAzureClient.createResponse.mock.calls[0][0];
+          expect(callArgs).toHaveProperty('reasoning');
+
+          if (callArgs.reasoning !== null && callArgs.reasoning !== undefined) {
+            const reasoningLevels = ['minimal', 'low', 'medium', 'high'];
+            expect(reasoningLevels).toContain(callArgs.reasoning.effort);
+
+            // Verify expected reasoning level (allow more flexibility for implementation variance)
+            const expectedIndex = reasoningLevels.indexOf(expectedReasoning);
+            const actualIndex = reasoningLevels.indexOf(
+              callArgs.reasoning.effort
+            );
+            expect(Math.abs(actualIndex - expectedIndex)).toBeLessThanOrEqual(
+              2
+            );
+          }
+        });
+      }
+    );
 
     it('should detect and optimize for Swift/iOS development', async () => {
       const swiftRequest: ClaudeRequest = {
@@ -816,7 +868,8 @@ describe('Responses API Integration Tests', () => {
         messages: [
           {
             role: 'user',
-            content: 'Create a SwiftUI view with navigation and Core Data integration for iOS app',
+            content:
+              'Create a SwiftUI view with navigation and Core Data integration for iOS app',
           },
         ],
         max_tokens: 1500,
@@ -832,10 +885,12 @@ describe('Responses API Integration Tests', () => {
       // Verify Swift optimization was applied
       const callArgs = mockAzureClient.createResponse.mock.calls[0][0];
       expect(callArgs).toHaveProperty('reasoning');
-      
+
       // Swift development should get some reasoning (allow for implementation variance)
       if (callArgs.reasoning !== null && callArgs.reasoning !== undefined) {
-        expect(['minimal', 'low', 'medium', 'high']).toContain(callArgs.reasoning.effort);
+        expect(['minimal', 'low', 'medium', 'high']).toContain(
+          callArgs.reasoning.effort
+        );
       }
     });
 
@@ -869,7 +924,7 @@ describe('Responses API Integration Tests', () => {
       // Multi-language projects should get high reasoning
       const callArgs = mockAzureClient.createResponse.mock.calls[0][0];
       expect(callArgs).toHaveProperty('reasoning');
-      
+
       if (callArgs.reasoning !== null && callArgs.reasoning !== undefined) {
         expect(['high']).toContain(callArgs.reasoning.effort);
       }
@@ -900,42 +955,46 @@ describe('Responses API Integration Tests', () => {
       },
     ];
 
-    frameworkScenarios.forEach(({ framework, request: requestText, keywords }) => {
-      it(`should optimize for ${framework} patterns`, async () => {
-        const claudeRequest: ClaudeRequest = {
-          model: 'claude-3-5-sonnet-20241022',
-          messages: [
-            {
-              role: 'user',
-              content: requestText,
-            },
-          ],
-          max_tokens: 1000,
-        };
+    frameworkScenarios.forEach(
+      ({ framework, request: requestText, keywords }) => {
+        it(`should optimize for ${framework} patterns`, async () => {
+          const claudeRequest: ClaudeRequest = {
+            model: 'claude-3-5-sonnet-20241022',
+            messages: [
+              {
+                role: 'user',
+                content: requestText,
+              },
+            ],
+            max_tokens: 1000,
+          };
 
-        const expectedResponse = ResponsesResponseFactory.create({
-          content: `${framework} implementation with ${keywords.join(', ')}`,
+          const expectedResponse = ResponsesResponseFactory.create({
+            content: `${framework} implementation with ${keywords.join(', ')}`,
+          });
+
+          mockAzureClient.createResponse.mockResolvedValue(expectedResponse);
+
+          const response = await request(app)
+            .post('/v1/messages')
+            .send(claudeRequest)
+            .expect(200);
+
+          expect(response.body.type).toBe('message');
+
+          // Verify framework-specific reasoning was applied
+          const callArgs = mockAzureClient.createResponse.mock.calls[0][0];
+          expect(callArgs).toHaveProperty('reasoning');
+
+          // Framework-specific requests should get some reasoning (allow for implementation variance)
+          if (callArgs.reasoning !== null && callArgs.reasoning !== undefined) {
+            expect(['minimal', 'low', 'medium', 'high']).toContain(
+              callArgs.reasoning.effort
+            );
+          }
         });
-
-        mockAzureClient.createResponse.mockResolvedValue(expectedResponse);
-
-        const response = await request(app)
-          .post('/v1/messages')
-          .send(claudeRequest)
-          .expect(200);
-
-        expect(response.body.type).toBe('message');
-
-        // Verify framework-specific reasoning was applied
-        const callArgs = mockAzureClient.createResponse.mock.calls[0][0];
-        expect(callArgs).toHaveProperty('reasoning');
-        
-        // Framework-specific requests should get some reasoning (allow for implementation variance)
-        if (callArgs.reasoning !== null && callArgs.reasoning !== undefined) {
-          expect(['minimal', 'low', 'medium', 'high']).toContain(callArgs.reasoning.effort);
-        }
-      });
-    });
+      }
+    );
   });
 
   describe('Error Scenarios and Graceful Degradation', () => {
@@ -975,9 +1034,10 @@ describe('Responses API Integration Tests', () => {
       const claudeRequest = ClaudeRequestFactory.create();
 
       mockAzureClient.createResponse.mockImplementation(
-        () => new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout')), 100)
-        )
+        () =>
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Request timeout')), 100)
+          )
       );
 
       const response = await request(app)
@@ -1062,8 +1122,12 @@ describe('Responses API Integration Tests', () => {
 
       // Should reject oversized requests
       expect([413, 500]).toContain(response.status);
-      
-      if (response.body !== null && response.body !== undefined && typeof response.body === 'object') {
+
+      if (
+        response.body !== null &&
+        response.body !== undefined &&
+        typeof response.body === 'object'
+      ) {
         expect(response.body).toHaveProperty('error');
       }
     });
@@ -1093,7 +1157,8 @@ describe('Responses API Integration Tests', () => {
       {
         language: 'Python',
         context: 'data science',
-        request: 'Create a pandas DataFrame analysis with matplotlib visualization',
+        request:
+          'Create a pandas DataFrame analysis with matplotlib visualization',
         expectedKeywords: ['pandas', 'matplotlib', 'data'],
       },
       {
@@ -1139,10 +1204,12 @@ describe('Responses API Integration Tests', () => {
         // Verify context-aware reasoning was applied
         const callArgs = mockAzureClient.createResponse.mock.calls[0][0];
         expect(callArgs).toHaveProperty('reasoning');
-        
+
         // Context-specific requests should get appropriate reasoning (allow for implementation variance)
         if (callArgs.reasoning !== null && callArgs.reasoning !== undefined) {
-          expect(['minimal', 'low', 'medium', 'high']).toContain(callArgs.reasoning.effort);
+          expect(['minimal', 'low', 'medium', 'high']).toContain(
+            callArgs.reasoning.effort
+          );
         }
       });
     });

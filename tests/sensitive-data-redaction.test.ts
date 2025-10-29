@@ -4,12 +4,12 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { 
+import {
   sanitizeErrorMessage,
   AuthenticationError,
   ValidationError,
   AzureOpenAIError,
-  ErrorFactory
+  ErrorFactory,
 } from '../src/errors/index.js';
 import { logger } from '../src/middleware/logging.js';
 import { StructuredLogger } from '../src/utils/structured-logger.js';
@@ -57,20 +57,20 @@ describe('Sensitive Data Redaction', () => {
       const testCases = [
         {
           input: 'Authentication failed with api_key=sk-1234567890abcdef',
-          expected: 'Authentication failed with api_key=[REDACTED]'
+          expected: 'Authentication failed with api_key=[REDACTED]',
         },
         {
           input: 'Invalid API key: sk-proj-abcdef1234567890',
-          expected: 'Invalid API key: [REDACTED]'
+          expected: 'Invalid API key: [REDACTED]',
         },
         {
           input: 'Bearer token sk-test-1234567890abcdef is invalid',
-          expected: 'Bearer token [REDACTED] is invalid'
+          expected: 'Bearer token [REDACTED] is invalid',
         },
         {
           input: 'Error with token: abc123def456ghi789',
-          expected: 'Error with token: [REDACTED]'
-        }
+          expected: 'Error with token: [REDACTED]',
+        },
       ];
 
       testCases.forEach(({ input, expected }) => {
@@ -84,17 +84,18 @@ describe('Sensitive Data Redaction', () => {
     it('should redact URLs and endpoints from error messages', () => {
       const testCases = [
         {
-          input: 'Failed to connect to https://mycompany.openai.azure.com/openai/deployments/gpt-4',
-          expected: 'Failed to connect to [REDACTED]'
+          input:
+            'Failed to connect to https://mycompany.openai.azure.com/openai/deployments/gpt-4',
+          expected: 'Failed to connect to [REDACTED]',
         },
         {
           input: 'Request to http://internal-api.company.com/v1/chat failed',
-          expected: 'Request to [REDACTED] failed'
+          expected: 'Request to [REDACTED] failed',
         },
         {
           input: 'Azure endpoint https://test.openai.azure.com is unreachable',
-          expected: 'Azure endpoint [REDACTED] is unreachable'
-        }
+          expected: 'Azure endpoint [REDACTED] is unreachable',
+        },
       ];
 
       testCases.forEach(({ input, expected }) => {
@@ -110,16 +111,17 @@ describe('Sensitive Data Redaction', () => {
       const testCases = [
         {
           input: 'Database connection failed: password=mySecretPassword123',
-          expected: 'Database connection failed: password=[REDACTED]'
+          expected: 'Database connection failed: password=[REDACTED]',
         },
         {
           input: 'Secret key validation failed: secret=abc123def456',
-          expected: 'Secret key validation failed: secret=[REDACTED]'
+          expected: 'Secret key validation failed: secret=[REDACTED]',
         },
         {
           input: 'Authentication error with credentials password: test123',
-          expected: 'Authentication error with credentials password: [REDACTED]'
-        }
+          expected:
+            'Authentication error with credentials password: [REDACTED]',
+        },
       ];
 
       testCases.forEach(({ input, expected }) => {
@@ -135,16 +137,16 @@ describe('Sensitive Data Redaction', () => {
       const testCases = [
         {
           input: 'User john.doe@company.com not found',
-          expected: 'User [EMAIL_REDACTED] not found'
+          expected: 'User [EMAIL_REDACTED] not found',
         },
         {
           input: 'Invalid email: admin@example.org',
-          expected: 'Invalid email: [EMAIL_REDACTED]'
+          expected: 'Invalid email: [EMAIL_REDACTED]',
         },
         {
           input: 'Contact support@mycompany.co.uk for help',
-          expected: 'Contact [EMAIL_REDACTED] for help'
-        }
+          expected: 'Contact [EMAIL_REDACTED] for help',
+        },
       ];
 
       testCases.forEach(({ input, expected }) => {
@@ -158,12 +160,12 @@ describe('Sensitive Data Redaction', () => {
       const testCases = [
         {
           input: 'Token validation failed: abcdef1234567890ghijklmnop',
-          expected: 'Token validation failed: [REDACTED]'
+          expected: 'Token validation failed: [REDACTED]',
         },
         {
           input: 'Session ID ABC123DEF456GHI789JKL012 expired',
-          expected: 'Session ID [REDACTED] expired'
-        }
+          expected: 'Session ID [REDACTED] expired',
+        },
       ];
 
       testCases.forEach(({ input, expected }) => {
@@ -180,7 +182,7 @@ describe('Sensitive Data Redaction', () => {
         'Invalid temperature value: 3.5',
         'Message count exceeds limit of 100',
         'Connection timeout after 30 seconds',
-        'Model "claude-3-5-sonnet" not found'
+        'Model "claude-3-5-sonnet" not found',
       ];
 
       testCases.forEach((input) => {
@@ -197,7 +199,7 @@ describe('Sensitive Data Redaction', () => {
         password: 'secretPassword123',
         token: 'bearer-token-abc123',
         normalField: 'normal value',
-        authorization: 'Bearer sk-test-123456'
+        authorization: 'Bearer sk-test-123456',
       };
 
       const error = new AuthenticationError(
@@ -221,7 +223,7 @@ describe('Sensitive Data Redaction', () => {
       const longValue = 'A'.repeat(1500);
       const metadata = {
         longField: longValue,
-        shortField: 'short value'
+        shortField: 'short value',
       };
 
       // Manually set metadata to test truncation
@@ -233,11 +235,16 @@ describe('Sensitive Data Redaction', () => {
       );
 
       const errorJson = errorWithMetadata.toJSON();
-      const resultMetadata = errorJson.context?.metadata as Record<string, unknown>;
+      const resultMetadata = errorJson.context?.metadata as Record<
+        string,
+        unknown
+      >;
 
       expect(typeof resultMetadata.longField).toBe('string');
-      expect((resultMetadata.longField as string).length).toBeLessThan(longValue.length);
-      expect((resultMetadata.longField as string)).toContain('[TRUNCATED]');
+      expect((resultMetadata.longField as string).length).toBeLessThan(
+        longValue.length
+      );
+      expect(resultMetadata.longField as string).toContain('[TRUNCATED]');
       expect(resultMetadata.shortField).toBe('short value');
     });
 
@@ -266,8 +273,8 @@ describe('Sensitive Data Redaction', () => {
         error: {
           message: 'Invalid API key: sk-proj-1234567890abcdef provided',
           type: 'authentication_error',
-          code: 'invalid_api_key'
-        }
+          code: 'invalid_api_key',
+        },
       };
 
       const error = ErrorFactory.fromAzureOpenAIError(
@@ -283,8 +290,10 @@ describe('Sensitive Data Redaction', () => {
     });
 
     it('should sanitize network error messages', () => {
-      const networkError = new Error('Connection failed to https://company.openai.azure.com with token sk-test-123');
-      
+      const networkError = new Error(
+        'Connection failed to https://company.openai.azure.com with token sk-test-123'
+      );
+
       const error = ErrorFactory.fromNetworkError(
         networkError,
         'test-correlation-id',
@@ -304,7 +313,7 @@ describe('Sensitive Data Redaction', () => {
         endpoint: 'https://company.openai.azure.com',
         userEmail: 'user@company.com',
         password: 'secretPassword',
-        normalData: 'normal log data'
+        normalData: 'normal log data',
       };
 
       logger.info('Test log message', 'test-correlation-id', sensitiveLogData);
@@ -320,12 +329,19 @@ describe('Sensitive Data Redaction', () => {
     });
 
     it('should sanitize error logs', () => {
-      const sensitiveError = new Error('Authentication failed with API key sk-test-1234567890');
-      
-      logger.error('Request failed', 'test-correlation-id', {
-        endpoint: 'https://api.openai.com/v1/chat/completions',
-        method: 'POST'
-      }, sensitiveError);
+      const sensitiveError = new Error(
+        'Authentication failed with API key sk-test-1234567890'
+      );
+
+      logger.error(
+        'Request failed',
+        'test-correlation-id',
+        {
+          endpoint: 'https://api.openai.com/v1/chat/completions',
+          method: 'POST',
+        },
+        sensitiveError
+      );
 
       expect(mockStderrWrite).toHaveBeenCalled();
       const logCall = mockStderrWrite.mock.calls[0][0];
@@ -338,7 +354,7 @@ describe('Sensitive Data Redaction', () => {
     it('should sanitize structured logger data', () => {
       const context = {
         correlationId: 'test-correlation-id',
-        operation: 'test-operation'
+        operation: 'test-operation',
       };
 
       const securityData = {
@@ -347,14 +363,14 @@ describe('Sensitive Data Redaction', () => {
         clientInfo: {
           hasUserAgent: true,
           hasIpAddress: true,
-          clientType: 'unknown' as const
+          clientType: 'unknown' as const,
         },
         outcome: 'failure' as const,
         details: {
           apiKey: 'sk-1234567890abcdef',
           endpoint: 'https://company.openai.azure.com',
-          reason: 'invalid_credentials'
-        }
+          reason: 'invalid_credentials',
+        },
       };
 
       StructuredLogger.logSecurityEvent(context, securityData);
@@ -365,7 +381,9 @@ describe('Sensitive Data Redaction', () => {
 
       // Check that sensitive data in details is redacted
       expect(JSON.stringify(logEntry)).not.toContain('sk-1234567890abcdef');
-      expect(JSON.stringify(logEntry)).not.toContain('https://company.openai.azure.com');
+      expect(JSON.stringify(logEntry)).not.toContain(
+        'https://company.openai.azure.com'
+      );
     });
   });
 
@@ -414,7 +432,7 @@ describe('Sensitive Data Redaction', () => {
       );
 
       const errorJson = error.toJSON();
-      
+
       // Message should be sanitized
       expect(errorJson.message).not.toContain('sk-1234567890abcdef');
       expect(errorJson.message).toContain('[REDACTED]');
@@ -426,16 +444,16 @@ describe('Sensitive Data Redaction', () => {
   describe('Request/Response Sanitization', () => {
     it('should sanitize request headers in logs', () => {
       const sensitiveHeaders = {
-        'authorization': 'Bearer sk-1234567890abcdef',
+        authorization: 'Bearer sk-1234567890abcdef',
         'x-api-key': 'sk-test-abcdef123456',
         'content-type': 'application/json',
-        'user-agent': 'TestClient/1.0'
+        'user-agent': 'TestClient/1.0',
       };
 
       logger.info('Request received', 'test-correlation-id', {
         headers: sensitiveHeaders,
         method: 'POST',
-        path: '/v1/chat/completions'
+        path: '/v1/chat/completions',
       });
 
       expect(mockStdoutWrite).toHaveBeenCalled();
@@ -444,7 +462,9 @@ describe('Sensitive Data Redaction', () => {
 
       expect(logEntry.metadata.headers.authorization).toBe('[REDACTED]');
       expect(logEntry.metadata.headers['x-api-key']).toBe('[REDACTED]');
-      expect(logEntry.metadata.headers['content-type']).toBe('application/json');
+      expect(logEntry.metadata.headers['content-type']).toBe(
+        'application/json'
+      );
       expect(logEntry.metadata.headers['user-agent']).toBe('TestClient/1.0');
     });
 
@@ -452,37 +472,43 @@ describe('Sensitive Data Redaction', () => {
       const nestedSensitiveData = {
         request: {
           headers: {
-            authorization: 'Bearer sk-1234567890abcdef'
+            authorization: 'Bearer sk-1234567890abcdef',
           },
           body: {
             model: 'claude-3-5-sonnet',
             messages: [
               {
                 role: 'user',
-                content: 'Hello world'
-              }
-            ]
-          }
+                content: 'Hello world',
+              },
+            ],
+          },
         },
         response: {
           status: 200,
           headers: {
-            'content-type': 'application/json'
-          }
+            'content-type': 'application/json',
+          },
         },
         config: {
           apiKey: 'sk-test-123456',
-          endpoint: 'https://api.openai.com'
-        }
+          endpoint: 'https://api.openai.com',
+        },
       };
 
-      logger.info('API call completed', 'test-correlation-id', nestedSensitiveData);
+      logger.info(
+        'API call completed',
+        'test-correlation-id',
+        nestedSensitiveData
+      );
 
       expect(mockStdoutWrite).toHaveBeenCalled();
       const logCall = mockStdoutWrite.mock.calls[0][0];
       const logEntry = JSON.parse(logCall);
 
-      expect(logEntry.metadata.request.headers.authorization).toBe('[REDACTED]');
+      expect(logEntry.metadata.request.headers.authorization).toBe(
+        '[REDACTED]'
+      );
       expect(logEntry.metadata.config.apiKey).toBe('[REDACTED]');
       expect(logEntry.metadata.request.body.model).toBe('claude-3-5-sonnet');
       expect(logEntry.metadata.response.status).toBe(200);
@@ -492,23 +518,23 @@ describe('Sensitive Data Redaction', () => {
   describe('Correlation ID Preservation', () => {
     it('should preserve correlation IDs in sanitized errors', () => {
       const correlationId = 'test-correlation-12345';
-      
+
       const error = new AuthenticationError(
         'API key sk-1234567890abcdef is invalid',
         correlationId
       );
 
       expect(error.context.correlationId).toBe(correlationId);
-      
+
       const clientError = error.toClientError();
       expect(clientError.correlationId).toBe(correlationId);
     });
 
     it('should preserve correlation IDs in logs', () => {
       const correlationId = 'test-correlation-67890';
-      
+
       logger.error('Sensitive error occurred', correlationId, {
-        apiKey: 'sk-1234567890abcdef'
+        apiKey: 'sk-1234567890abcdef',
       });
 
       expect(mockStderrWrite).toHaveBeenCalled();

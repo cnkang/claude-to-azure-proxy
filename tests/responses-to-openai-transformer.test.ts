@@ -441,7 +441,8 @@ describe('ResponsesToOpenAITransformer', () => {
       const error: ResponsesAPIError = {
         type: 'authentication',
         code: 'invalid_api_key',
-        message: 'Invalid API key: sk-1234567890abcdef and email user@example.com',
+        message:
+          'Invalid API key: sk-1234567890abcdef and email user@example.com',
       };
 
       const result = transformer.transformError(error);
@@ -477,7 +478,10 @@ describe('ResponsesToOpenAITransformer', () => {
         },
       };
 
-      const result = transformResponsesToOpenAI(responsesResponse, correlationId);
+      const result = transformResponsesToOpenAI(
+        responsesResponse,
+        correlationId
+      );
 
       expect(result.id).toBe('resp-123');
       expect(result.choices[0].message.content).toBe('Test response');
@@ -497,7 +501,10 @@ describe('ResponsesToOpenAITransformer', () => {
         ],
       };
 
-      const result = transformResponsesStreamToOpenAI(streamChunk, correlationId);
+      const result = transformResponsesStreamToOpenAI(
+        streamChunk,
+        correlationId
+      );
 
       expect(result.choices[0].delta.content).toBe('Stream text');
     });

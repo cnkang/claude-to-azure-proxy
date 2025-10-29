@@ -17,7 +17,9 @@ vi.mock('../src/middleware/logging.js', () => ({
 
 const reinitializeCredentials = (): void => {
   secureCredentialManager.clearCredentials();
-  (secureCredentialManager as unknown as { initializeCredentials: () => void }).initializeCredentials();
+  (
+    secureCredentialManager as unknown as { initializeCredentials: () => void }
+  ).initializeCredentials();
 };
 
 describe('Secure credential storage', () => {
@@ -26,8 +28,12 @@ describe('Secure credential storage', () => {
   });
 
   it('validates proxy API keys using timing-safe comparison', () => {
-    const isValid = secureCredentialManager.validateProxyApiKey(validApiKey, 'secure-storage-test');
-    const metadata = secureCredentialManager.getCredentialMetadata('proxy_api_key');
+    const isValid = secureCredentialManager.validateProxyApiKey(
+      validApiKey,
+      'secure-storage-test'
+    );
+    const metadata =
+      secureCredentialManager.getCredentialMetadata('proxy_api_key');
 
     expect(isValid).toBe(true);
     expect(metadata?.usageCount).toBe(1);
@@ -35,8 +41,12 @@ describe('Secure credential storage', () => {
   });
 
   it('rejects invalid credentials and still tracks attempts', () => {
-    const result = secureCredentialManager.validateProxyApiKey('invalid-key-value', 'secure-storage-test');
-    const metadata = secureCredentialManager.getCredentialMetadata('proxy_api_key');
+    const result = secureCredentialManager.validateProxyApiKey(
+      'invalid-key-value',
+      'secure-storage-test'
+    );
+    const metadata =
+      secureCredentialManager.getCredentialMetadata('proxy_api_key');
 
     expect(result).toBe(false);
     expect(metadata?.usageCount).toBe(1);
@@ -44,24 +54,39 @@ describe('Secure credential storage', () => {
 
   it('rotates credentials and validates the new secret', () => {
     const newCredential = 'N3wCredentialKeyValue___';
-    const rotationResult = secureCredentialManager.rotateCredential('proxy_api_key', newCredential);
+    const rotationResult = secureCredentialManager.rotateCredential(
+      'proxy_api_key',
+      newCredential
+    );
 
     expect(rotationResult).toBe(true);
-    const metadata = secureCredentialManager.getCredentialMetadata('proxy_api_key');
+    const metadata =
+      secureCredentialManager.getCredentialMetadata('proxy_api_key');
     expect(metadata?.usageCount).toBe(0);
 
-    const validationResult = secureCredentialManager.validateProxyApiKey(newCredential, 'rotation-test');
+    const validationResult = secureCredentialManager.validateProxyApiKey(
+      newCredential,
+      'rotation-test'
+    );
     expect(validationResult).toBe(true);
   });
 
   it('sanitizes credentials consistently', () => {
-    expect(SecureCredentialManager.sanitizeCredential('short')).toBe('[REDACTED]');
-    expect(SecureCredentialManager.sanitizeCredential('abcdefghijklmnop')).toBe('abcd...[REDACTED]...mnop');
+    expect(SecureCredentialManager.sanitizeCredential('short')).toBe(
+      '[REDACTED]'
+    );
+    expect(SecureCredentialManager.sanitizeCredential('abcdefghijklmnop')).toBe(
+      'abcd...[REDACTED]...mnop'
+    );
   });
 
   it('performs strict credential format validation', () => {
-    expect(SecureCredentialManager.isValidCredentialFormat('test-key-123')).toBe(false);
-    expect(SecureCredentialManager.isValidCredentialFormat('VALID_KEY_1234567890')).toBe(true);
+    expect(
+      SecureCredentialManager.isValidCredentialFormat('test-key-123')
+    ).toBe(false);
+    expect(
+      SecureCredentialManager.isValidCredentialFormat('VALID_KEY_1234567890')
+    ).toBe(true);
   });
 
   it('returns cloned credential metadata objects', () => {
@@ -71,7 +96,8 @@ describe('Secure credential storage', () => {
     // TypeScript knows proxyMetadata is defined after the assertion above
     proxyMetadata.usageCount = 999;
 
-    const original = secureCredentialManager.getCredentialMetadata('proxy_api_key');
+    const original =
+      secureCredentialManager.getCredentialMetadata('proxy_api_key');
     expect(original?.usageCount).not.toBe(999);
   });
 });
@@ -98,6 +124,8 @@ describe('Secure config manager', () => {
     const result = secureConfigManager.validateEnvironmentSecurity();
 
     expect(result.secure).toBe(false);
-    expect(result.issues.some((issue) => issue.includes('DEMO_SECRET'))).toBe(true);
+    expect(result.issues.some((issue) => issue.includes('DEMO_SECRET'))).toBe(
+      true
+    );
   });
 });

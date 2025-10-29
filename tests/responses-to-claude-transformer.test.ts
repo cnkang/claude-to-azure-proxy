@@ -420,7 +420,8 @@ describe('ResponsesToClaudeTransformer', () => {
       const error: ResponsesAPIError = {
         type: 'authentication',
         code: 'invalid_api_key',
-        message: 'Invalid API key: sk-1234567890abcdef and email user@example.com',
+        message:
+          'Invalid API key: sk-1234567890abcdef and email user@example.com',
       };
 
       const result = transformer.transformError(error);
@@ -456,7 +457,10 @@ describe('ResponsesToClaudeTransformer', () => {
         },
       };
 
-      const result = transformResponsesToClaude(responsesResponse, correlationId);
+      const result = transformResponsesToClaude(
+        responsesResponse,
+        correlationId
+      );
 
       expect(result.id).toBe('resp-123');
       expect(result.content[0]).toEqual({
@@ -479,7 +483,10 @@ describe('ResponsesToClaudeTransformer', () => {
         ],
       };
 
-      const result = transformResponsesStreamToClaude(streamChunk, correlationId);
+      const result = transformResponsesStreamToClaude(
+        streamChunk,
+        correlationId
+      );
 
       expect(result).toEqual({
         type: 'content_block_delta',

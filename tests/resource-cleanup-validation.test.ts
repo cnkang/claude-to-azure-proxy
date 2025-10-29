@@ -1,9 +1,9 @@
 /**
  * @fileoverview Resource cleanup validation tests
- * 
+ *
  * Tests to validate that event listeners, timers, and streams are properly cleaned up
  * to prevent memory leaks and resource exhaustion.
- * 
+ *
  * Requirements: 5.1, 5.2, 5.4
  */
 
@@ -27,7 +27,7 @@ describe('Resource Cleanup Validation', () => {
   let originalClearInterval: typeof clearInterval;
   let originalSetTimeout: typeof setTimeout;
   let originalClearTimeout: typeof clearTimeout;
-  
+
   // Track active timers and intervals
   const activeTimers = new Set<NodeJS.Timeout>();
   const activeIntervals = new Set<NodeJS.Timeout>();
@@ -97,13 +97,13 @@ describe('Resource Cleanup Validation', () => {
           maxRetries: 3,
         },
       };
-      
+
       const healthMonitor = new HealthMonitor(mockServerConfig);
-      
+
       // Start monitoring
       healthMonitor.startMonitoring(1000);
       expect(activeIntervals.size).toBe(1);
-      
+
       // Stop monitoring should clean up interval
       healthMonitor.stopMonitoring();
       expect(activeIntervals.size).toBe(0);
@@ -111,11 +111,11 @@ describe('Resource Cleanup Validation', () => {
 
     it('should properly clean up AzureResponsesMonitor intervals', () => {
       const monitor = new AzureResponsesMonitor();
-      
+
       // Start monitoring
       monitor.startMonitoring(1000);
       expect(activeIntervals.size).toBe(1);
-      
+
       // Stop monitoring should clean up interval
       monitor.stopMonitoring();
       expect(activeIntervals.size).toBe(0);
@@ -123,11 +123,11 @@ describe('Resource Cleanup Validation', () => {
 
     it('should properly clean up SystemResourceMonitor intervals', () => {
       const resourceMonitor = new SystemResourceMonitor();
-      
+
       // Start monitoring
       resourceMonitor.startMonitoring();
       expect(activeIntervals.size).toBe(1);
-      
+
       // Stop monitoring should clean up interval
       resourceMonitor.stopMonitoring();
       expect(activeIntervals.size).toBe(0);
@@ -164,11 +164,11 @@ describe('Resource Cleanup Validation', () => {
       };
 
       const handler = new MultiTurnConversationHandlerImpl(mockConfig);
-      
+
       // Start maintenance tasks
       handler.startMaintenanceTasks();
       expect(activeIntervals.size).toBe(1);
-      
+
       // Stop maintenance tasks should clean up timer
       handler.stopMaintenanceTasks();
       expect(activeIntervals.size).toBe(0);
@@ -182,11 +182,11 @@ describe('Resource Cleanup Validation', () => {
       };
 
       const conversationManager = new ConversationManagerImpl(mockConfig);
-      
+
       // Start cleanup timer
       conversationManager.startCleanupTimer();
       expect(activeIntervals.size).toBe(1);
-      
+
       // Stop cleanup timer should clean up interval
       conversationManager.stopCleanupTimer();
       expect(activeIntervals.size).toBe(0);
@@ -194,11 +194,11 @@ describe('Resource Cleanup Validation', () => {
 
     it('should properly clean up PerformanceProfiler memory monitoring', () => {
       const profiler = new PerformanceProfiler();
-      
+
       // Start profiling (which starts memory monitoring)
       profiler.startProfiling('test-operation', 'test-correlation-id');
       expect(activeIntervals.size).toBe(1);
-      
+
       // Stop profiling should clean up memory monitoring
       profiler.stopProfiling('test-operation');
       expect(activeIntervals.size).toBe(0);
@@ -215,14 +215,14 @@ describe('Resource Cleanup Validation', () => {
           maxRetries: 3,
         },
       };
-      
+
       const healthMonitor = new HealthMonitor(mockServerConfig);
-      
+
       // Multiple start/stop cycles
       for (let i = 0; i < 5; i++) {
         healthMonitor.startMonitoring(1000);
         expect(activeIntervals.size).toBe(1);
-        
+
         healthMonitor.stopMonitoring();
         expect(activeIntervals.size).toBe(0);
       }
@@ -230,14 +230,14 @@ describe('Resource Cleanup Validation', () => {
 
     it('should not create duplicate timers when starting already running monitors', () => {
       const monitor = new AzureResponsesMonitor();
-      
+
       // Start monitoring multiple times
       monitor.startMonitoring(1000);
       expect(activeIntervals.size).toBe(1);
-      
+
       monitor.startMonitoring(1000);
       expect(activeIntervals.size).toBe(1); // Should still be 1, not 2
-      
+
       monitor.stopMonitoring();
       expect(activeIntervals.size).toBe(0);
     });
@@ -248,7 +248,7 @@ describe('Resource Cleanup Validation', () => {
       // Test the sanitizeInput function uses WeakSet properly
       const testObj: any = { a: 1 };
       testObj.self = testObj; // Create circular reference
-      
+
       // This should not cause infinite recursion due to WeakSet usage
       expect(() => {
         sanitizeInput(testObj);
@@ -260,18 +260,18 @@ describe('Resource Cleanup Validation', () => {
       // This test validates the pattern exists by testing sanitizeInput with WeakSet
       let testObj: any = { data: 'test' };
       const weakRef = new WeakRef(testObj);
-      
+
       // Process object through sanitization (which uses WeakSet internally)
       sanitizeInput(testObj);
-      
+
       // Clear reference
       testObj = null;
-      
+
       // Force garbage collection (if available)
       if (global.gc) {
         global.gc();
       }
-      
+
       // WeakRef should allow object to be collected
       // Note: This test is not deterministic due to GC timing
       // but validates the pattern is in place
@@ -281,8 +281,11 @@ describe('Resource Cleanup Validation', () => {
 
   describe('Stream Resource Management', () => {
     it('should properly handle stream processor cleanup', async () => {
-      const processor = new ResponsesStreamProcessor('test-correlation-id', 'claude');
-      
+      const processor = new ResponsesStreamProcessor(
+        'test-correlation-id',
+        'claude'
+      );
+
       // Create a mock stream that can be controlled
       const mockChunks = [
         {
@@ -297,7 +300,12 @@ describe('Resource Cleanup Validation', () => {
           object: 'response.chunk' as const,
           created: Date.now(),
           model: 'gpt-4',
-          output: [{ type: 'reasoning' as const, reasoning: { status: 'completed' as const, content: 'Done' } }],
+          output: [
+            {
+              type: 'reasoning' as const,
+              reasoning: { status: 'completed' as const, content: 'Done' },
+            },
+          ],
         },
       ];
 
@@ -317,15 +325,18 @@ describe('Resource Cleanup Validation', () => {
 
       // Verify stream was processed and completed
       expect(results.length).toBeGreaterThan(0);
-      
+
       // No explicit cleanup needed for async generators,
       // but verify no hanging promises or resources
       expect(true).toBe(true); // Stream completed successfully
     });
 
     it('should handle stream errors without resource leaks', async () => {
-      const processor = new ResponsesStreamProcessor('test-correlation-id', 'claude');
-      
+      const processor = new ResponsesStreamProcessor(
+        'test-correlation-id',
+        'claude'
+      );
+
       // Create a mock stream that throws an error
       const mockStream = {
         async *[Symbol.asyncIterator]() {
@@ -336,7 +347,7 @@ describe('Resource Cleanup Validation', () => {
             model: 'gpt-4',
             output: [{ type: 'text' as const, text: 'Hello' }],
           };
-          
+
           throw new Error('Stream error');
         },
       };
@@ -349,10 +360,10 @@ describe('Resource Cleanup Validation', () => {
 
       // Should have received at least start chunk and error chunks
       expect(results.length).toBeGreaterThan(0);
-      
+
       // Verify error was handled gracefully
-      const errorChunk = results.find(chunk => 
-        'type' in chunk && chunk.type === 'error'
+      const errorChunk = results.find(
+        (chunk) => 'type' in chunk && chunk.type === 'error'
       );
       expect(errorChunk).toBeDefined();
     });
@@ -370,9 +381,9 @@ describe('Resource Cleanup Validation', () => {
           maxRetries: 3,
         },
       };
-      
+
       const initialMemory = process.memoryUsage();
-      
+
       // Create and destroy multiple monitoring instances
       const monitors = [];
       for (let i = 0; i < 10; i++) {
@@ -380,24 +391,24 @@ describe('Resource Cleanup Validation', () => {
         monitor.startMonitoring(100);
         monitors.push(monitor);
       }
-      
+
       // Clean up all monitors
       for (const monitor of monitors) {
         monitor.stopMonitoring();
       }
-      
+
       // Force garbage collection if available
       if (global.gc) {
         global.gc();
       }
-      
+
       const finalMemory = process.memoryUsage();
-      
+
       // Memory usage should not have grown significantly
       // Allow for some variance due to test overhead
       const memoryGrowth = finalMemory.heapUsed - initialMemory.heapUsed;
       const maxAllowedGrowth = 10 * 1024 * 1024; // 10MB threshold
-      
+
       expect(memoryGrowth).toBeLessThan(maxAllowedGrowth);
     });
 
@@ -409,26 +420,31 @@ describe('Resource Cleanup Validation', () => {
       };
 
       const managers = [];
-      
+
       // Create multiple conversation managers
       for (let i = 0; i < 5; i++) {
         const manager = new ConversationManagerImpl(mockConfig);
         manager.startCleanupTimer();
         managers.push(manager);
       }
-      
+
       // Add some conversations to each manager
       for (const manager of managers) {
         for (let j = 0; j < 10; j++) {
-          manager.trackConversation(`conv-${j}`, `msg-${j}`, 'user', 'test message');
+          manager.trackConversation(
+            `conv-${j}`,
+            `msg-${j}`,
+            'user',
+            'test message'
+          );
         }
       }
-      
+
       // Clean up all managers
       for (const manager of managers) {
         manager.stopCleanupTimer();
       }
-      
+
       // Verify all intervals were cleaned up
       expect(activeIntervals.size).toBe(0);
     });
@@ -446,23 +462,23 @@ describe('Resource Cleanup Validation', () => {
           maxRetries: 3,
         },
       };
-      
+
       const healthMonitor = new HealthMonitor(mockServerConfig);
       const resourceMonitor = new SystemResourceMonitor();
       const azureMonitor = new AzureResponsesMonitor();
-      
+
       // Start all monitoring
       healthMonitor.startMonitoring(1000);
       resourceMonitor.startMonitoring();
       azureMonitor.startMonitoring(1000);
-      
+
       expect(activeIntervals.size).toBe(3);
-      
+
       // Simulate graceful shutdown
       healthMonitor.stopMonitoring();
       resourceMonitor.stopMonitoring();
       azureMonitor.stopMonitoring();
-      
+
       // All intervals should be cleaned up
       expect(activeIntervals.size).toBe(0);
     });
@@ -478,26 +494,26 @@ describe('Resource Cleanup Validation', () => {
           maxRetries: 3,
         },
       };
-      
+
       // Create monitors in a scope that will be garbage collected
       (() => {
         const monitor = new HealthMonitor(mockServerConfig);
         monitor.startMonitoring(1000);
         expect(activeIntervals.size).toBe(1);
-        
+
         // Monitor goes out of scope here, but interval may still be active
         // This tests the importance of explicit cleanup
       })();
-      
+
       // Force garbage collection if available
       if (global.gc) {
         global.gc();
       }
-      
+
       // Without explicit cleanup, interval would still be active
       // This demonstrates why explicit cleanup is necessary
       expect(activeIntervals.size).toBe(1);
-      
+
       // Manual cleanup to prevent test interference
       for (const interval of activeIntervals) {
         clearInterval(interval);
