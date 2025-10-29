@@ -60,7 +60,11 @@ describe('BaseDisposableResource', () => {
 
   it('should dispose resource correctly', () => {
     const cleanupFn = vi.fn();
-    const resource = new BaseDisposableResource('custom', 'Test resource', cleanupFn);
+    const resource = new BaseDisposableResource(
+      'custom',
+      'Test resource',
+      cleanupFn
+    );
 
     resource[Symbol.dispose]();
 
@@ -70,7 +74,11 @@ describe('BaseDisposableResource', () => {
 
   it('should handle multiple dispose calls gracefully', () => {
     const cleanupFn = vi.fn();
-    const resource = new BaseDisposableResource('custom', 'Test resource', cleanupFn);
+    const resource = new BaseDisposableResource(
+      'custom',
+      'Test resource',
+      cleanupFn
+    );
 
     resource[Symbol.dispose]();
     resource[Symbol.dispose]();
@@ -83,7 +91,11 @@ describe('BaseDisposableResource', () => {
     const cleanupFn = vi.fn(() => {
       throw new Error('Cleanup failed');
     });
-    const resource = new BaseDisposableResource('custom', 'Test resource', cleanupFn);
+    const resource = new BaseDisposableResource(
+      'custom',
+      'Test resource',
+      cleanupFn
+    );
 
     expect(() => resource[Symbol.dispose]()).not.toThrow();
     expect(resource.disposed).toBe(true);
@@ -91,7 +103,11 @@ describe('BaseDisposableResource', () => {
 
   it('should handle async cleanup in sync dispose', () => {
     const cleanupFn = vi.fn(() => Promise.resolve());
-    const resource = new BaseDisposableResource('custom', 'Test resource', cleanupFn);
+    const resource = new BaseDisposableResource(
+      'custom',
+      'Test resource',
+      cleanupFn
+    );
 
     resource[Symbol.dispose]();
 
@@ -116,7 +132,11 @@ describe('BaseAsyncDisposableResource', () => {
 
   it('should dispose resource asynchronously', async () => {
     const cleanupFn = vi.fn(() => Promise.resolve());
-    const resource = new BaseAsyncDisposableResource('custom', 'Test resource', cleanupFn);
+    const resource = new BaseAsyncDisposableResource(
+      'custom',
+      'Test resource',
+      cleanupFn
+    );
 
     await resource[Symbol.asyncDispose]();
 
@@ -126,7 +146,11 @@ describe('BaseAsyncDisposableResource', () => {
 
   it('should handle sync cleanup in async dispose', async () => {
     const cleanupFn = vi.fn();
-    const resource = new BaseAsyncDisposableResource('custom', 'Test resource', cleanupFn);
+    const resource = new BaseAsyncDisposableResource(
+      'custom',
+      'Test resource',
+      cleanupFn
+    );
 
     await resource[Symbol.asyncDispose]();
 
@@ -135,8 +159,14 @@ describe('BaseAsyncDisposableResource', () => {
   });
 
   it('should handle async cleanup errors', async () => {
-    const cleanupFn = vi.fn(() => Promise.reject(new Error('Async cleanup failed')));
-    const resource = new BaseAsyncDisposableResource('custom', 'Test resource', cleanupFn);
+    const cleanupFn = vi.fn(() =>
+      Promise.reject(new Error('Async cleanup failed'))
+    );
+    const resource = new BaseAsyncDisposableResource(
+      'custom',
+      'Test resource',
+      cleanupFn
+    );
 
     await expect(resource[Symbol.asyncDispose]()).resolves.not.toThrow();
     expect(resource.disposed).toBe(true);
@@ -178,7 +208,9 @@ describe('HTTPConnectionResource', () => {
     );
 
     expect(resource.resourceInfo.type).toBe('http_connection');
-    expect(resource.resourceInfo.description).toBe('HTTP connection POST /test');
+    expect(resource.resourceInfo.description).toBe(
+      'HTTP connection POST /test'
+    );
     expect(resource.resourceInfo.metadata).toMatchObject({
       method: 'POST',
       url: '/test',
@@ -340,14 +372,22 @@ describe('TimerResource', () => {
   });
 
   it('should create timer resource for interval', () => {
-    const resource = new TimerResource(mockInterval, 'interval', 'Test interval');
+    const resource = new TimerResource(
+      mockInterval,
+      'interval',
+      'Test interval'
+    );
 
     expect(resource.resourceInfo.type).toBe('timer');
     expect(resource.resourceInfo.metadata.timerType).toBe('interval');
   });
 
   it('should create timer resource for immediate', () => {
-    const resource = new TimerResource(mockImmediate, 'immediate', 'Test immediate');
+    const resource = new TimerResource(
+      mockImmediate,
+      'immediate',
+      'Test immediate'
+    );
 
     expect(resource.resourceInfo.type).toBe('timer');
     expect(resource.resourceInfo.metadata.timerType).toBe('immediate');
@@ -401,7 +441,11 @@ describe('ResourceManager', () => {
   });
 
   it('should register and track resources', () => {
-    const resource = createDisposableResource('custom', 'Test resource', vi.fn());
+    const resource = createDisposableResource(
+      'custom',
+      'Test resource',
+      vi.fn()
+    );
     manager.registerResource(resource);
 
     const stats = manager.getResourceStats();
@@ -415,7 +459,11 @@ describe('ResourceManager', () => {
   });
 
   it('should unregister resources', () => {
-    const resource = createDisposableResource('custom', 'Test resource', vi.fn());
+    const resource = createDisposableResource(
+      'custom',
+      'Test resource',
+      vi.fn()
+    );
     manager.registerResource(resource);
 
     manager.unregisterResource(resource.resourceInfo.id);
@@ -428,7 +476,11 @@ describe('ResourceManager', () => {
     // Create more resources than the limit
     const resources: DisposableResource[] = [];
     for (let i = 0; i < 7; i++) {
-      const resource = createDisposableResource('custom', `Resource ${i}`, vi.fn());
+      const resource = createDisposableResource(
+        'custom',
+        `Resource ${i}`,
+        vi.fn()
+      );
       resources.push(resource);
       manager.registerResource(resource);
     }
@@ -463,8 +515,16 @@ describe('ResourceManager', () => {
     const cleanupFn1 = vi.fn();
     const cleanupFn2 = vi.fn();
 
-    const resource1 = createDisposableResource('custom', 'Resource 1', cleanupFn1);
-    const resource2 = createAsyncDisposableResource('custom', 'Resource 2', cleanupFn2);
+    const resource1 = createDisposableResource(
+      'custom',
+      'Resource 1',
+      cleanupFn1
+    );
+    const resource2 = createAsyncDisposableResource(
+      'custom',
+      'Resource 2',
+      cleanupFn2
+    );
 
     manager.registerResource(resource1);
     manager.registerResource(resource2);
@@ -483,7 +543,10 @@ describe('ResourceManager', () => {
   it('should provide resource statistics', () => {
     const httpResource = createHTTPConnectionResource();
     const streamResource = createStreamResource(new Readable());
-    const timerResource = createTimerResource(setTimeout(() => {}, 1000), 'timeout');
+    const timerResource = createTimerResource(
+      setTimeout(() => {}, 1000),
+      'timeout'
+    );
 
     manager.registerResource(httpResource);
     manager.registerResource(streamResource);
@@ -500,7 +563,11 @@ describe('ResourceManager', () => {
 
   it('should dispose manager and all resources', async () => {
     const cleanupFn = vi.fn();
-    const resource = createDisposableResource('custom', 'Test resource', cleanupFn);
+    const resource = createDisposableResource(
+      'custom',
+      'Test resource',
+      cleanupFn
+    );
     manager.registerResource(resource);
 
     await manager[Symbol.asyncDispose]();
@@ -563,8 +630,16 @@ describe('withResources utility', () => {
   it('should manage resources during function execution', async () => {
     const cleanupFn1 = vi.fn();
     const cleanupFn2 = vi.fn();
-    const resource1 = createDisposableResource('custom', 'Resource 1', cleanupFn1);
-    const resource2 = createAsyncDisposableResource('custom', 'Resource 2', cleanupFn2);
+    const resource1 = createDisposableResource(
+      'custom',
+      'Resource 1',
+      cleanupFn1
+    );
+    const resource2 = createAsyncDisposableResource(
+      'custom',
+      'Resource 2',
+      cleanupFn2
+    );
 
     const testFn = vi.fn(() => Promise.resolve('result'));
 
@@ -580,7 +655,11 @@ describe('withResources utility', () => {
 
   it('should dispose resources even if function throws', async () => {
     const cleanupFn = vi.fn();
-    const resource = createDisposableResource('custom', 'Test resource', cleanupFn);
+    const resource = createDisposableResource(
+      'custom',
+      'Test resource',
+      cleanupFn
+    );
 
     const testFn = vi.fn(() => Promise.reject(new Error('Test error')));
 
@@ -603,26 +682,38 @@ describe('Global Resource Management Functions', () => {
   });
 
   it('should get all resource info', () => {
-    const resource = createDisposableResource('custom', 'Test resource', vi.fn());
+    const resource = createDisposableResource(
+      'custom',
+      'Test resource',
+      vi.fn()
+    );
     const info = getAllResourceInfo();
     expect(info.length).toBeGreaterThanOrEqual(1);
-    expect(info.some(r => r.id === resource.resourceInfo.id)).toBe(true);
+    expect(info.some((r) => r.id === resource.resourceInfo.id)).toBe(true);
   });
 
   it('should cleanup disposed resources', () => {
-    const resource = createDisposableResource('custom', 'Test resource', vi.fn());
+    const resource = createDisposableResource(
+      'custom',
+      'Test resource',
+      vi.fn()
+    );
     resource[Symbol.dispose]();
-    
+
     const cleanedUp = cleanupDisposedResources();
     expect(cleanedUp).toBeGreaterThanOrEqual(1);
   });
 
   it('should dispose all resources', async () => {
     const cleanupFn = vi.fn();
-    const resource = createDisposableResource('custom', 'Test resource', cleanupFn);
-    
+    const resource = createDisposableResource(
+      'custom',
+      'Test resource',
+      cleanupFn
+    );
+
     await disposeAllResources();
-    
+
     expect(cleanupFn).toHaveBeenCalled();
     expect(resource.disposed).toBe(true);
   });

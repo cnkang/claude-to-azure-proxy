@@ -15,7 +15,9 @@ import type {
 } from '../../src/types/index.js';
 import type { UniversalProcessingResult } from '../../src/utils/universal-request-processor.js';
 
-type CreateResponseFn = (params: ResponsesCreateParams) => Promise<ResponsesResponse>;
+type CreateResponseFn = (
+  params: ResponsesCreateParams
+) => Promise<ResponsesResponse>;
 type CreateResponseStreamFn = (
   params: ResponsesCreateParams
 ) => AsyncIterable<ResponsesStreamChunk>;
@@ -54,7 +56,9 @@ type ExtractConversationIdFn = (
   headers: Record<string, string>,
   correlationId: string
 ) => string;
-type GetConversationContextFn = (conversationId: string) => ConversationContext | undefined;
+type GetConversationContextFn = (
+  conversationId: string
+) => ConversationContext | undefined;
 type GetPreviousResponseIdFn = (conversationId: string) => string | undefined;
 type TrackConversationFn = (
   conversationId: string,
@@ -168,9 +172,12 @@ interface GracefulDegradationArgs {
   readonly metadata?: Record<string, unknown>;
 }
 
-type ExecuteGracefulDegradationFn = (
-  args: GracefulDegradationArgs
-) => Promise<{ success: boolean; data?: unknown; fallbackUsed?: string; degraded?: boolean }>;
+type ExecuteGracefulDegradationFn = (args: GracefulDegradationArgs) => Promise<{
+  success: boolean;
+  data?: unknown;
+  fallbackUsed?: string;
+  degraded?: boolean;
+}>;
 
 export interface TypedGracefulDegradationManagerMock {
   readonly executeGracefulDegradation: MockedFunction<ExecuteGracefulDegradationFn>;
@@ -255,12 +262,22 @@ export function setupAllMocks(): {
   const retryStrategy = createMockRetryStrategy();
   const gracefulDegradation = createMockGracefulDegradationManager();
 
-  azureClient.createResponse.mockResolvedValue(mockResponses.azureResponsesSuccess());
-  bedrockClient.createResponse.mockResolvedValue(mockResponses.azureResponsesSuccess());
-  conversationManager.extractConversationId.mockReturnValue('test-conversation-id');
-  conversationManager.getConversationContext.mockReturnValue(mockResponses.conversationContext());
+  azureClient.createResponse.mockResolvedValue(
+    mockResponses.azureResponsesSuccess()
+  );
+  bedrockClient.createResponse.mockResolvedValue(
+    mockResponses.azureResponsesSuccess()
+  );
+  conversationManager.extractConversationId.mockReturnValue(
+    'test-conversation-id'
+  );
+  conversationManager.getConversationContext.mockReturnValue(
+    mockResponses.conversationContext()
+  );
   conversationManager.getPreviousResponseId.mockReturnValue(undefined);
-  universalProcessor.processRequest.mockResolvedValue(mockResponses.universalProcessingResult());
+  universalProcessor.processRequest.mockResolvedValue(
+    mockResponses.universalProcessingResult()
+  );
   reasoningAnalyzer.analyzeRequest.mockReturnValue('medium');
 
   circuitBreaker.execute.mockImplementation(async (fn) => {
@@ -273,7 +290,9 @@ export function setupAllMocks(): {
     return { success: true, data: result };
   });
 
-  gracefulDegradation.executeGracefulDegradation.mockResolvedValue({ success: false });
+  gracefulDegradation.executeGracefulDegradation.mockResolvedValue({
+    success: false,
+  });
 
   return {
     azureClient,

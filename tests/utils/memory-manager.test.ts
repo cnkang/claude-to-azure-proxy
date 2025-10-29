@@ -188,7 +188,9 @@ describe('MemoryManager', () => {
           growthAcceleration: 0,
           memoryEfficiency: 1,
         },
-        recommendations: ['Insufficient data - need at least 10 samples for analysis'],
+        recommendations: [
+          'Insufficient data - need at least 10 samples for analysis',
+        ],
       });
     });
 
@@ -211,7 +213,7 @@ describe('MemoryManager', () => {
         }));
 
         // Wait for sample collection
-        await new Promise(resolve => setTimeout(resolve, 110));
+        await new Promise((resolve) => setTimeout(resolve, 110));
       }
 
       const detection: MemoryLeakDetection = manager.detectMemoryLeaks();
@@ -240,7 +242,7 @@ describe('MemoryManager', () => {
 
       // Collect samples
       for (let i = 0; i < 12; i++) {
-        await new Promise(resolve => setTimeout(resolve, 110));
+        await new Promise((resolve) => setTimeout(resolve, 110));
       }
 
       const detection: MemoryLeakDetection = manager.detectMemoryLeaks();
@@ -263,7 +265,9 @@ describe('MemoryManager', () => {
     });
 
     it('should handle GC observer initialization failure gracefully', async () => {
-      const { PerformanceObserver } = vi.mocked(await import('node:perf_hooks'));
+      const { PerformanceObserver } = vi.mocked(
+        await import('node:perf_hooks')
+      );
       PerformanceObserver.mockImplementationOnce(() => {
         throw new Error('GC observer not available');
       });
@@ -326,7 +330,7 @@ describe('Global Memory Management Functions', () => {
     it('should start monitoring with default configuration', () => {
       const manager = startMemoryMonitoring();
       expect(manager).toBeInstanceOf(MemoryManager);
-      
+
       // Should be able to get metrics
       const metrics: MemoryMetrics = manager.getMemoryMetrics();
       expect(metrics).toBeDefined();
@@ -437,8 +441,12 @@ describe('Memory Leak Detection Edge Cases', () => {
 
     for (let i = 0; i < 15; i++) {
       heapUsed += direction * Math.random() * 10 * 1024 * 1024;
-      if (heapUsed > baseHeapUsed + 20 * 1024 * 1024) {direction = -1;}
-      if (heapUsed < baseHeapUsed) {direction = 1;}
+      if (heapUsed > baseHeapUsed + 20 * 1024 * 1024) {
+        direction = -1;
+      }
+      if (heapUsed < baseHeapUsed) {
+        direction = 1;
+      }
 
       process.memoryUsage = vi.fn(() => ({
         rss: 100 * 1024 * 1024,
@@ -448,7 +456,7 @@ describe('Memory Leak Detection Edge Cases', () => {
         arrayBuffers: 2 * 1024 * 1024,
       }));
 
-      await new Promise(resolve => setTimeout(resolve, 60));
+      await new Promise((resolve) => setTimeout(resolve, 60));
     }
 
     const detection: MemoryLeakDetection = manager.detectMemoryLeaks();
@@ -473,7 +481,7 @@ describe('Memory Leak Detection Edge Cases', () => {
         arrayBuffers: 2 * 1024 * 1024,
       }));
 
-      await new Promise(resolve => setTimeout(resolve, 60));
+      await new Promise((resolve) => setTimeout(resolve, 60));
     }
 
     const detection: MemoryLeakDetection = manager.detectMemoryLeaks();

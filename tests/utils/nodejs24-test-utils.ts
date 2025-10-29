@@ -49,7 +49,7 @@ export function takeMemorySnapshot(): MemorySnapshot {
     external: memUsage.external,
     arrayBuffers: memUsage.arrayBuffers,
     rss: memUsage.rss,
-    timestamp: performance.now()
+    timestamp: performance.now(),
   };
 }
 
@@ -69,12 +69,12 @@ export class GCMonitor {
           this.events.push({
             type: (entry as any).detail?.type || 'unknown',
             duration: entry.duration,
-            timestamp: entry.startTime
+            timestamp: entry.startTime,
           });
         }
       }
     });
-    
+
     this.observer.observe({ entryTypes: ['gc'] });
   }
 
@@ -94,36 +94,36 @@ export async function measurePerformance<T>(
   operation: () => Promise<T>
 ): Promise<{ result: T; metrics: PerformanceMetrics }> {
   const gcMonitor = new GCMonitor();
-  
+
   // Force garbage collection if available (for testing)
   if (global.gc) {
     global.gc();
   }
-  
+
   const memoryBefore = takeMemorySnapshot();
   gcMonitor.start();
-  
+
   const startTime = performance.now();
   const result = await operation();
   const endTime = performance.now();
-  
+
   const gcEvents = gcMonitor.stop();
-  
+
   // Force garbage collection again to measure cleanup
   if (global.gc) {
     global.gc();
   }
-  
+
   const memoryAfter = takeMemorySnapshot();
-  
+
   const metrics: PerformanceMetrics = {
     duration: endTime - startTime,
     memoryBefore,
     memoryAfter,
     memoryDelta: memoryAfter.heapUsed - memoryBefore.heapUsed,
-    gcEvents
+    gcEvents,
   };
-  
+
   return { result, metrics };
 }
 
@@ -131,7 +131,8 @@ export async function measurePerformance<T>(
  * Test helper for resource cleanup using Node.js 24's explicit resource management
  */
 export class TestResourceManager {
-  private readonly resources: Array<{ dispose: () => void | Promise<void> }> = [];
+  private readonly resources: Array<{ dispose: () => void | Promise<void> }> =
+    [];
 
   public addResource(resource: { dispose: () => void | Promise<void> }): void {
     this.resources.push(resource);
@@ -163,7 +164,7 @@ export function createTestAsyncResource<T extends (...args: any[]) => any>(
   fn: T
 ): T {
   const asyncResource = new AsyncResource(name);
-  
+
   return ((...args: Parameters<T>) => {
     return asyncResource.runInAsyncScope(fn, null, ...args);
   }) as T;
@@ -196,11 +197,11 @@ export function assertMemoryUsage(
   maxDeltaMB: number = 10
 ): void {
   const deltaMB = (after.heapUsed - before.heapUsed) / (1024 * 1024);
-  
+
   if (deltaMB > maxDeltaMB) {
     throw new Error(
       `Memory usage increased by ${deltaMB.toFixed(2)}MB, ` +
-      `which exceeds the limit of ${maxDeltaMB}MB`
+        `which exceeds the limit of ${maxDeltaMB}MB`
     );
   }
 }
@@ -213,7 +214,7 @@ export function createTestTimeout(ms: number): Promise<never> {
     const timeout = setTimeout(() => {
       reject(new Error(`Test timed out after ${ms}ms`));
     }, ms);
-    
+
     // Ensure timeout is cleaned up
     timeout.unref();
   });
@@ -226,8 +227,5 @@ export async function withTimeout<T>(
   promise: Promise<T>,
   timeoutMs: number
 ): Promise<T> {
-  return Promise.race([
-    promise,
-    createTestTimeout(timeoutMs)
-  ]);
+  return Promise.race([promise, createTestTimeout(timeoutMs)]);
 }

@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeHeaderValue, getHeaderValue } from '../../src/utils/http-headers.js';
+import {
+  normalizeHeaderValue,
+  getHeaderValue,
+} from '../../src/utils/http-headers.js';
 
 describe('HTTP header utilities', () => {
   it('normalizes string and array values consistently', () => {

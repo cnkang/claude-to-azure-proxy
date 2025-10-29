@@ -212,7 +212,7 @@ class TestRequest implements PromiseLike<TestResponse> {
         }
         if (typeof (server as Record<string, unknown>).close === 'function') {
           try {
-            (server).close();
+            server.close();
           } catch {
             // ignore
           }
@@ -355,7 +355,7 @@ class TestRequest implements PromiseLike<TestResponse> {
       });
 
       try {
-        (server).emit('request', req, res);
+        server.emit('request', req, res);
       } catch (error) {
         onError(error);
       }
