@@ -127,11 +127,7 @@ export interface BedrockConverseResponse {
   readonly output: {
     readonly message: BedrockMessage;
   };
-  readonly stopReason:
-    | 'end_turn'
-    | 'tool_use'
-    | 'max_tokens'
-    | 'stop_sequence';
+  readonly stopReason: 'end_turn' | 'tool_use' | 'max_tokens' | 'stop_sequence';
   readonly usage: BedrockUsage;
   readonly metrics?: BedrockMetrics;
 }
@@ -282,8 +278,8 @@ export type DeepReadonly<T> = {
   readonly [P in keyof T]: T[P] extends Record<string, unknown>
     ? DeepReadonly<T[P]>
     : T[P] extends Array<infer U>
-    ? ReadonlyArray<DeepReadonly<U>>
-    : T[P];
+      ? ReadonlyArray<DeepReadonly<U>>
+      : T[P];
 };
 
 export interface IncomingRequest {
@@ -768,17 +764,42 @@ export interface ReasoningConfig {
 }
 
 // Language and Framework Detection Types
-export type ProgrammingLanguage = 
-  | 'python' | 'java' | 'kotlin' | 'typescript' | 'javascript' 
-  | 'shell' | 'bash' | 'swift' | 'go' | 'rust' | 'unknown';
+export type ProgrammingLanguage =
+  | 'python'
+  | 'java'
+  | 'kotlin'
+  | 'typescript'
+  | 'javascript'
+  | 'shell'
+  | 'bash'
+  | 'swift'
+  | 'go'
+  | 'rust'
+  | 'unknown';
 
-export type Framework = 
-  | 'django' | 'fastapi' | 'flask' | 'spring-boot' | 'spring-cloud'
-  | 'react' | 'vue' | 'angular' | 'android-sdk' | 'express'
-  | 'nestjs' | 'next' | 'nuxt' | 'unknown';
+export type Framework =
+  | 'django'
+  | 'fastapi'
+  | 'flask'
+  | 'spring-boot'
+  | 'spring-cloud'
+  | 'react'
+  | 'vue'
+  | 'angular'
+  | 'android-sdk'
+  | 'express'
+  | 'nestjs'
+  | 'next'
+  | 'nuxt'
+  | 'unknown';
 
 export type TaskComplexity = 'simple' | 'medium' | 'complex' | 'architectural';
-export type DevelopmentType = 'completion' | 'debugging' | 'architecture' | 'testing' | 'devops';
+export type DevelopmentType =
+  | 'completion'
+  | 'debugging'
+  | 'architecture'
+  | 'testing'
+  | 'devops';
 
 export interface LanguageOptimizationConfig {
   readonly enabled: boolean;
@@ -911,10 +932,10 @@ export type ErrorHandler = (
 
 /**
  * Type guard to check if a value is a plain object (not null, not array)
- * 
+ *
  * @param value - The value to check
  * @returns True if value is a plain object
- * 
+ *
  * @example
  * ```typescript
  * isRecord({}) // true
@@ -928,7 +949,7 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 
 /**
  * Type guard to check if a value is a string
- * 
+ *
  * @param value - The value to check
  * @returns True if value is a string
  */
@@ -938,7 +959,7 @@ export function isString(value: unknown): value is string {
 
 /**
  * Type guard to check if a value is a valid number (not NaN)
- * 
+ *
  * @param value - The value to check
  * @returns True if value is a valid number
  */
@@ -948,7 +969,7 @@ export function isNumber(value: unknown): value is number {
 
 /**
  * Type guard to check if a value is a boolean
- * 
+ *
  * @param value - The value to check
  * @returns True if value is a boolean
  */
@@ -958,7 +979,7 @@ export function isBoolean(value: unknown): value is boolean {
 
 /**
  * Type guard to check if a value is an array
- * 
+ *
  * @param value - The value to check
  * @returns True if value is an array
  */
@@ -968,21 +989,26 @@ export function isArray(value: unknown): value is readonly unknown[] {
 
 /**
  * Type guard to check if a value is a valid reasoning effort level
- * 
+ *
  * @param value - The value to check
  * @returns True if value is a valid ReasoningEffort
  */
 export function isReasoningEffort(value: unknown): value is ReasoningEffort {
-  return isString(value) && ['minimal', 'low', 'medium', 'high'].includes(value);
+  return (
+    isString(value) && ['minimal', 'low', 'medium', 'high'].includes(value)
+  );
 }
 
 export function isClientType(value: unknown): value is ClientType {
-  return isString(value) && [
-    'claude-code-cli',
-    'xcode-coding-assistant', 
-    'openai-compatible',
-    'unknown'
-  ].includes(value);
+  return (
+    isString(value) &&
+    [
+      'claude-code-cli',
+      'xcode-coding-assistant',
+      'openai-compatible',
+      'unknown',
+    ].includes(value)
+  );
 }
 
 export function isRequestFormat(value: unknown): value is RequestFormat {
@@ -997,7 +1023,7 @@ export function isResponseMessage(value: unknown): value is ResponseMessage {
   if (!isRecord(value)) {
     return false;
   }
-  
+
   const { role, content } = value;
   return (
     isString(role) &&
@@ -1006,23 +1032,25 @@ export function isResponseMessage(value: unknown): value is ResponseMessage {
   );
 }
 
-export function isResponsesCreateParams(value: unknown): value is ResponsesCreateParams {
+export function isResponsesCreateParams(
+  value: unknown
+): value is ResponsesCreateParams {
   if (!isRecord(value)) {
     return false;
   }
-  
+
   const { model, input } = value;
   if (!isString(model)) {
     return false;
   }
-  
+
   if (isString(input)) {
     return true;
   }
   if (isArray(input)) {
     return input.every(isResponseMessage);
   }
-  
+
   return false;
 }
 
@@ -1030,7 +1058,7 @@ export function isOpenAIMessage(value: unknown): value is OpenAIMessage {
   if (!isRecord(value)) {
     return false;
   }
-  
+
   const { role, content } = value;
   return (
     isString(role) &&
@@ -1043,12 +1071,10 @@ export function isOpenAIRequest(value: unknown): value is OpenAIRequest {
   if (!isRecord(value)) {
     return false;
   }
-  
+
   const { model, messages } = value;
   return (
-    isString(model) &&
-    isArray(messages) &&
-    messages.every(isOpenAIMessage)
+    isString(model) && isArray(messages) && messages.every(isOpenAIMessage)
   );
 }
 
@@ -1056,7 +1082,7 @@ export function isClaudeMessage(value: unknown): value is ClaudeMessage {
   if (!isRecord(value)) {
     return false;
   }
-  
+
   const { role, content } = value;
   return (
     isString(role) &&
@@ -1069,12 +1095,10 @@ export function isClaudeRequest(value: unknown): value is ClaudeRequest {
   if (!isRecord(value)) {
     return false;
   }
-  
+
   const { model, messages } = value;
   return (
-    isString(model) &&
-    isArray(messages) &&
-    messages.every(isClaudeMessage)
+    isString(model) && isArray(messages) && messages.every(isClaudeMessage)
   );
 }
 
@@ -1082,7 +1106,7 @@ export function isOpenAIResponse(value: unknown): value is OpenAIResponse {
   if (!isRecord(value)) {
     return false;
   }
-  
+
   const { id, object, created, model, choices } = value;
   return (
     isString(id) &&
@@ -1098,7 +1122,7 @@ export function isClaudeResponse(value: unknown): value is ClaudeResponse {
   if (!isRecord(value)) {
     return false;
   }
-  
+
   const { id, type, role, content, model } = value;
   return (
     isString(id) &&
@@ -1109,11 +1133,13 @@ export function isClaudeResponse(value: unknown): value is ClaudeResponse {
   );
 }
 
-export function isResponsesResponse(value: unknown): value is ResponsesResponse {
+export function isResponsesResponse(
+  value: unknown
+): value is ResponsesResponse {
   if (!isRecord(value)) {
     return false;
   }
-  
+
   const { id, object, created, model, output, usage } = value;
   return (
     isString(id) &&
@@ -1125,7 +1151,9 @@ export function isResponsesResponse(value: unknown): value is ResponsesResponse 
   );
 }
 
-export function isResponsesStreamChunk(value: unknown): value is ResponsesStreamChunk {
+export function isResponsesStreamChunk(
+  value: unknown
+): value is ResponsesStreamChunk {
   if (!isRecord(value)) {
     return false;
   }
@@ -1141,11 +1169,13 @@ export function isResponsesStreamChunk(value: unknown): value is ResponsesStream
   );
 }
 
-export function isAzureOpenAIErrorResponse(value: unknown): value is AzureOpenAIErrorResponse {
+export function isAzureOpenAIErrorResponse(
+  value: unknown
+): value is AzureOpenAIErrorResponse {
   if (!isRecord(value)) {
     return false;
   }
-  
+
   const { error } = value;
   return error === undefined || isRecord(error);
 }
@@ -1154,7 +1184,7 @@ export function isOpenAIError(value: unknown): value is OpenAIError {
   if (!isRecord(value)) {
     return false;
   }
-  
+
   const { error } = value;
   return isRecord(error) && isString(error.message) && isString(error.type);
 }
@@ -1163,7 +1193,7 @@ export function isClaudeError(value: unknown): value is ClaudeError {
   if (!isRecord(value)) {
     return false;
   }
-  
+
   const { type, error } = value;
   return (
     type === 'error' &&
@@ -1173,11 +1203,13 @@ export function isClaudeError(value: unknown): value is ClaudeError {
   );
 }
 
-export function isHealthCheckResult(value: unknown): value is HealthCheckResult {
+export function isHealthCheckResult(
+  value: unknown
+): value is HealthCheckResult {
   if (!isRecord(value)) {
     return false;
   }
-  
+
   const { status, timestamp, uptime, memory } = value;
   return (
     isString(status) &&
@@ -1192,19 +1224,25 @@ export function isIncomingRequest(value: unknown): value is IncomingRequest {
   if (!isRecord(value)) {
     return false;
   }
-  
+
   const { headers, body, path } = value;
+  return isRecord(headers) && body !== undefined && isString(path);
+}
+
+export function isAuthenticationResult(
+  value: unknown
+): value is AuthenticationResult {
   return (
-    isRecord(headers) &&
-    body !== undefined &&
-    isString(path)
+    isString(value) &&
+    Object.values(AuthenticationResult).includes(value as AuthenticationResult)
   );
 }
 
-export function isAuthenticationResult(value: unknown): value is AuthenticationResult {
-  return isString(value) && Object.values(AuthenticationResult).includes(value as AuthenticationResult);
-}
-
-export function isAuthenticationMethod(value: unknown): value is AuthenticationMethod {
-  return isString(value) && Object.values(AuthenticationMethod).includes(value as AuthenticationMethod);
+export function isAuthenticationMethod(
+  value: unknown
+): value is AuthenticationMethod {
+  return (
+    isString(value) &&
+    Object.values(AuthenticationMethod).includes(value as AuthenticationMethod)
+  );
 }
