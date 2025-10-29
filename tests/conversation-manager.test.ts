@@ -25,7 +25,7 @@ describe('ConversationManager', () => {
   beforeEach(() => {
     mockConfig = {
       maxConversationAge: 60000, // 1 minute for testing
-      cleanupInterval: 10000,    // 10 seconds for testing
+      cleanupInterval: 10000, // 10 seconds for testing
       maxStoredConversations: 5, // Small limit for testing
     };
     conversationManager = new ConversationManagerImpl(mockConfig);
@@ -45,9 +45,14 @@ describe('ConversationManager', () => {
         averageResponseTime: 1500,
       };
 
-      conversationManager.trackConversation(conversationId, responseId, metrics);
+      conversationManager.trackConversation(
+        conversationId,
+        responseId,
+        metrics
+      );
 
-      const context = conversationManager.getConversationContext(conversationId);
+      const context =
+        conversationManager.getConversationContext(conversationId);
       expect(context).toBeDefined();
       expect(context?.conversationId).toBe(conversationId);
       expect(context?.messageCount).toBe(1);
@@ -73,7 +78,8 @@ describe('ConversationManager', () => {
         averageResponseTime: 2000,
       });
 
-      const context = conversationManager.getConversationContext(conversationId);
+      const context =
+        conversationManager.getConversationContext(conversationId);
       expect(context?.messageCount).toBe(2);
       expect(context?.previousResponseId).toBe(secondResponseId);
       expect(context?.totalTokensUsed).toBe(250); // 100 + 150
@@ -94,13 +100,17 @@ describe('ConversationManager', () => {
       const responseId = 'resp-456';
 
       // Should return undefined for non-existent conversation
-      expect(conversationManager.getPreviousResponseId(conversationId)).toBeUndefined();
+      expect(
+        conversationManager.getPreviousResponseId(conversationId)
+      ).toBeUndefined();
 
       // Track conversation
       conversationManager.trackConversation(conversationId, responseId);
 
       // Should return the response ID
-      expect(conversationManager.getPreviousResponseId(conversationId)).toBe(responseId);
+      expect(conversationManager.getPreviousResponseId(conversationId)).toBe(
+        responseId
+      );
     });
   });
 
@@ -123,7 +133,8 @@ describe('ConversationManager', () => {
         errorCount: 1,
       });
 
-      const metrics = conversationManager.getConversationMetrics(conversationId);
+      const metrics =
+        conversationManager.getConversationMetrics(conversationId);
       expect(metrics).toBeDefined();
       expect(metrics?.messageCount).toBe(2);
       expect(metrics?.totalTokensUsed).toBe(300);
@@ -146,7 +157,8 @@ describe('ConversationManager', () => {
         errorCount: 2,
       });
 
-      const metrics = conversationManager.getConversationMetrics(conversationId);
+      const metrics =
+        conversationManager.getConversationMetrics(conversationId);
       expect(metrics?.totalTokensUsed).toBe(250);
       expect(metrics?.errorCount).toBe(2);
     });
@@ -176,7 +188,10 @@ describe('ConversationManager', () => {
         max_tokens: 100,
       };
 
-      const complexity = conversationManager.analyzeConversationContext(conversationId, request);
+      const complexity = conversationManager.analyzeConversationContext(
+        conversationId,
+        request
+      );
       expect(complexity).toBe('simple');
     });
 
@@ -199,13 +214,17 @@ describe('ConversationManager', () => {
         messages: [
           {
             role: 'user',
-            content: 'Can you help me debug this complex algorithm? Here is the code: ```python\ndef complex_function():\n    pass\n```',
+            content:
+              'Can you help me debug this complex algorithm? Here is the code: ```python\ndef complex_function():\n    pass\n```',
           },
         ],
         max_tokens: 1000,
       };
 
-      const complexity = conversationManager.analyzeConversationContext(conversationId, request);
+      const complexity = conversationManager.analyzeConversationContext(
+        conversationId,
+        request
+      );
       expect(['simple', 'medium', 'complex']).toContain(complexity);
     });
 
@@ -227,13 +246,17 @@ describe('ConversationManager', () => {
         messages: [
           {
             role: 'user',
-            content: 'I need help with a complex architectural design pattern for a distributed system. Can you help me design a microservices architecture with event sourcing and CQRS? This involves multiple databases, message queues, and complex business logic.',
+            content:
+              'I need help with a complex architectural design pattern for a distributed system. Can you help me design a microservices architecture with event sourcing and CQRS? This involves multiple databases, message queues, and complex business logic.',
           },
         ],
         max_tokens: 2000,
       };
 
-      const complexity = conversationManager.analyzeConversationContext(conversationId, request);
+      const complexity = conversationManager.analyzeConversationContext(
+        conversationId,
+        request
+      );
       expect(complexity).toBe('complex');
     });
 
@@ -250,7 +273,10 @@ describe('ConversationManager', () => {
         max_tokens: 50,
       };
 
-      const complexity = conversationManager.analyzeConversationContext(conversationId, request);
+      const complexity = conversationManager.analyzeConversationContext(
+        conversationId,
+        request
+      );
       expect(complexity).toBe('simple');
     });
   });
@@ -263,7 +289,10 @@ describe('ConversationManager', () => {
       };
       const correlationId = 'corr-123';
 
-      const conversationId = conversationManager.extractConversationId(headers, correlationId);
+      const conversationId = conversationManager.extractConversationId(
+        headers,
+        correlationId
+      );
       expect(conversationId).toBe('conv-from-header');
     });
 
@@ -274,7 +303,10 @@ describe('ConversationManager', () => {
       };
       const correlationId = 'corr-123';
 
-      const conversationId = conversationManager.extractConversationId(headers, correlationId);
+      const conversationId = conversationManager.extractConversationId(
+        headers,
+        correlationId
+      );
       expect(conversationId).toBe('conv-from-header-2');
     });
 
@@ -285,7 +317,10 @@ describe('ConversationManager', () => {
       };
       const correlationId = 'corr-123';
 
-      const conversationId = conversationManager.extractConversationId(headers, correlationId);
+      const conversationId = conversationManager.extractConversationId(
+        headers,
+        correlationId
+      );
       expect(conversationId).toBe('session-123');
     });
 
@@ -295,7 +330,10 @@ describe('ConversationManager', () => {
       };
       const correlationId = 'corr-123';
 
-      const conversationId = conversationManager.extractConversationId(headers, correlationId);
+      const conversationId = conversationManager.extractConversationId(
+        headers,
+        correlationId
+      );
       expect(conversationId).toBe('conv-corr-123');
     });
 
@@ -306,7 +344,10 @@ describe('ConversationManager', () => {
       };
       const correlationId = 'corr-123';
 
-      const conversationId = conversationManager.extractConversationId(headers, correlationId);
+      const conversationId = conversationManager.extractConversationId(
+        headers,
+        correlationId
+      );
       expect(conversationId).toBe('conv-corr-123');
     });
   });
@@ -330,8 +371,12 @@ describe('ConversationManager', () => {
       const cleanedCount = conversationManager.cleanupOldConversations();
 
       expect(cleanedCount).toBe(1);
-      expect(conversationManager.getConversationContext(conversationId1)).toBeUndefined();
-      expect(conversationManager.getConversationContext(conversationId2)).toBeDefined();
+      expect(
+        conversationManager.getConversationContext(conversationId1)
+      ).toBeUndefined();
+      expect(
+        conversationManager.getConversationContext(conversationId2)
+      ).toBeDefined();
 
       // Restore Date.now
       Date.now = originalNow;
@@ -345,7 +390,9 @@ describe('ConversationManager', () => {
       const cleanedCount = conversationManager.cleanupOldConversations();
 
       expect(cleanedCount).toBe(0);
-      expect(conversationManager.getConversationContext(conversationId)).toBeDefined();
+      expect(
+        conversationManager.getConversationContext(conversationId)
+      ).toBeDefined();
     });
 
     it('should handle cleanup errors gracefully', () => {
@@ -364,7 +411,9 @@ describe('ConversationManager', () => {
       }
 
       const stats = conversationManager.getStorageStats();
-      expect(stats.conversationCount).toBeLessThanOrEqual(mockConfig.maxStoredConversations);
+      expect(stats.conversationCount).toBeLessThanOrEqual(
+        mockConfig.maxStoredConversations
+      );
     });
 
     it('should provide accurate storage statistics', () => {
@@ -433,7 +482,9 @@ describe('ConversationManager', () => {
       expect(processingTime).toBeLessThan(1000);
 
       const stats = conversationManager.getStorageStats();
-      expect(stats.conversationCount).toBeLessThanOrEqual(mockConfig.maxStoredConversations);
+      expect(stats.conversationCount).toBeLessThanOrEqual(
+        mockConfig.maxStoredConversations
+      );
     });
 
     it('should handle rapid conversation updates', () => {
@@ -456,7 +507,8 @@ describe('ConversationManager', () => {
       // Should handle rapid updates efficiently
       expect(processingTime).toBeLessThan(500);
 
-      const context = conversationManager.getConversationContext(conversationId);
+      const context =
+        conversationManager.getConversationContext(conversationId);
       expect(context?.messageCount).toBe(updateCount);
     });
 
@@ -523,7 +575,10 @@ describe('ConversationManager', () => {
 
       invalidResponseIds.forEach((responseId) => {
         expect(() => {
-          conversationManager.trackConversation(conversationId, responseId as any);
+          conversationManager.trackConversation(
+            conversationId,
+            responseId as any
+          );
         }).not.toThrow();
       });
     });
@@ -541,7 +596,11 @@ describe('ConversationManager', () => {
 
       malformedMetrics.forEach((metrics) => {
         expect(() => {
-          conversationManager.trackConversation(conversationId, responseId, metrics as any);
+          conversationManager.trackConversation(
+            conversationId,
+            responseId,
+            metrics as any
+          );
         }).not.toThrow();
       });
     });

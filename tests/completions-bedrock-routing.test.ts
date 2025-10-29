@@ -2,7 +2,11 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import express, { json } from 'express';
 import request from 'supertest';
 import { setupAllMocks, mockResponses } from './utils/typed-mocks.js';
-import { createMockConfig, testServerConfig, validApiKey } from './test-config.js';
+import {
+  createMockConfig,
+  testServerConfig,
+  validApiKey,
+} from './test-config.js';
 
 const createBedrockProcessingResult = (stream = false) => {
   const base = mockResponses.universalProcessingResult();
@@ -38,7 +42,8 @@ describe('Completions handler - Bedrock routing', () => {
         ...base,
         default: {
           ...base.default,
-          AWS_BEDROCK_API_KEY: 'test-bedrock-key-12345678901234567890123456789012',
+          AWS_BEDROCK_API_KEY:
+            'test-bedrock-key-12345678901234567890123456789012',
           AWS_BEDROCK_REGION: 'us-west-2',
           AWS_BEDROCK_TIMEOUT: 45000,
           AWS_BEDROCK_MAX_RETRIES: 2,
@@ -119,8 +124,17 @@ describe('Completions handler - Bedrock routing', () => {
         error: vi.fn(),
         debug: vi.fn(),
       },
-      requestLoggingMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
-      errorLoggingMiddleware: (_err: unknown, _req: unknown, _res: unknown, next: (error?: unknown) => void) => next(_err),
+      requestLoggingMiddleware: (
+        _req: unknown,
+        _res: unknown,
+        next: () => void
+      ) => next(),
+      errorLoggingMiddleware: (
+        _err: unknown,
+        _req: unknown,
+        _res: unknown,
+        next: (error?: unknown) => void
+      ) => next(_err),
     }));
 
     const securityModule = await import('../src/middleware/security.js');
@@ -144,7 +158,9 @@ describe('Completions handler - Bedrock routing', () => {
   it('routes supported aliases to AWS Bedrock when configuration is present', async () => {
     const bedrockResponse = mockResponses.azureResponsesSuccess();
     bedrockResponse.model = 'qwen.qwen3-coder-480b-a35b-v1:0';
-    mocks.universalProcessor.processRequest.mockResolvedValueOnce(createBedrockProcessingResult());
+    mocks.universalProcessor.processRequest.mockResolvedValueOnce(
+      createBedrockProcessingResult()
+    );
     mocks.bedrockClient.createResponse.mockResolvedValueOnce(bedrockResponse);
 
     const response = await request(app)

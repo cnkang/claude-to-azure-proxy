@@ -93,7 +93,6 @@ describe('Configuration Module', () => {
 
       // Attempting to modify should throw in strict mode (which TypeScript enables)
       expect(() => {
-         
         (config as any).PORT = 9999;
       }).toThrow();
 
@@ -223,7 +222,9 @@ describe('Configuration Module', () => {
       process.env.DEFAULT_REASONING_EFFORT = 'medium';
       process.env.ENABLE_CONTENT_SECURITY_VALIDATION = 'false';
 
-      const configModule = await import('../src/config/index.js?t=' + Date.now());
+      const configModule = await import(
+        '../src/config/index.js?t=' + Date.now()
+      );
       const config = configModule.default as Record<string, unknown>;
 
       expect(config.AZURE_OPENAI_TIMEOUT).toBe(60000);
@@ -341,14 +342,16 @@ describe('Configuration Module', () => {
 
       const configModule = (await import(
         '../src/config/index.js?t=' + Date.now()
-      )) as { 
+      )) as {
         default: Record<string, unknown>;
         createAWSBedrockConfig: (config: any) => any;
       };
       const config = configModule.default;
       const bedrockConfig = configModule.createAWSBedrockConfig(config);
 
-      expect(bedrockConfig.baseURL).toBe('https://bedrock-runtime.us-west-2.amazonaws.com');
+      expect(bedrockConfig.baseURL).toBe(
+        'https://bedrock-runtime.us-west-2.amazonaws.com'
+      );
       expect(bedrockConfig.apiKey).toBe('c'.repeat(32));
       expect(bedrockConfig.region).toBe('us-west-2');
       expect(bedrockConfig.timeout).toBe(120000);
@@ -364,7 +367,7 @@ describe('Configuration Module', () => {
 
       const configModule = (await import(
         '../src/config/index.js?t=' + Date.now()
-      )) as { 
+      )) as {
         default: Record<string, unknown>;
         isAWSBedrockConfigured: (config: any) => boolean;
       };
@@ -381,7 +384,7 @@ describe('Configuration Module', () => {
 
       const configModule = (await import(
         '../src/config/index.js?t=' + Date.now()
-      )) as { 
+      )) as {
         default: Record<string, unknown>;
         isAWSBedrockConfigured: (config: any) => boolean;
       };
@@ -398,7 +401,7 @@ describe('Configuration Module', () => {
 
       const configModule = (await import(
         '../src/config/index.js?t=' + Date.now()
-      )) as { 
+      )) as {
         default: Record<string, unknown>;
         createAWSBedrockConfig: (config: any) => any;
       };

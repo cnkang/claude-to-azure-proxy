@@ -1,15 +1,23 @@
 /**
  * @fileoverview Compatibility validation tests for Azure OpenAI Responses API migration
- * 
+ *
  * This test suite validates backward compatibility with existing Claude format integrations,
  * OpenAI format compatibility across different development environments, multi-language
  * development scenarios, framework-specific optimizations, error scenarios, security measures,
  * and language-specific context detection and reasoning adjustments.
- * 
+ *
  * Requirements covered: 4.1, 4.2, 8.4, 10.1, 10.2, 11.1-11.9
  */
 
-import { describe, it, expect, beforeAll, beforeEach, vi, afterAll } from 'vitest';
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  beforeEach,
+  vi,
+  afterAll,
+} from 'vitest';
 import request from 'supertest';
 import express from 'express';
 import { json } from 'express';
@@ -22,7 +30,10 @@ import type {
   ResponsesResponse,
   ReasoningEffort,
 } from '../src/types/index.js';
-import { ClaudeRequestFactory, MaliciousDataFactory } from './test-factories.js';
+import {
+  ClaudeRequestFactory,
+  MaliciousDataFactory,
+} from './test-factories.js';
 
 // Mock Azure Responses Client
 const mockAzureClient = {
@@ -264,7 +275,13 @@ class FrameworkOptimizationFactory {
         ],
         max_tokens: 2000,
       },
-      expectedKeywords: ['django', 'select_related', 'redis', 'middleware', 'signals'],
+      expectedKeywords: [
+        'django',
+        'select_related',
+        'redis',
+        'middleware',
+        'signals',
+      ],
       expectedReasoning: 'high',
     };
   }
@@ -292,7 +309,13 @@ class FrameworkOptimizationFactory {
         ],
         max_tokens: 2200,
       },
-      expectedKeywords: ['spring boot', '@query', '@cacheable', '@async', 'actuator'],
+      expectedKeywords: [
+        'spring boot',
+        '@query',
+        '@cacheable',
+        '@async',
+        'actuator',
+      ],
       expectedReasoning: 'high',
     };
   }
@@ -320,7 +343,13 @@ class FrameworkOptimizationFactory {
         ],
         max_tokens: 1800,
       },
-      expectedKeywords: ['usememo', 'usecallback', 'custom hooks', 'context', 'react.lazy'],
+      expectedKeywords: [
+        'usememo',
+        'usecallback',
+        'custom hooks',
+        'context',
+        'react.lazy',
+      ],
       expectedReasoning: 'medium',
     };
   }
@@ -348,7 +377,13 @@ class FrameworkOptimizationFactory {
         ],
         max_tokens: 1900,
       },
-      expectedKeywords: ['computed', 'watchers', 'provide/inject', 'teleport', 'suspense'],
+      expectedKeywords: [
+        'computed',
+        'watchers',
+        'provide/inject',
+        'teleport',
+        'suspense',
+      ],
       expectedReasoning: 'medium',
     };
   }
@@ -368,9 +403,10 @@ class CompatibilityResponseFactory {
       medium: 50,
       high: 100,
     } as const;
-    const reasoningTokens = reasoningLevel in reasoningTokensMap 
-      ? reasoningTokensMap[reasoningLevel as keyof typeof reasoningTokensMap] 
-      : 50;
+    const reasoningTokens =
+      reasoningLevel in reasoningTokensMap
+        ? reasoningTokensMap[reasoningLevel as keyof typeof reasoningTokensMap]
+        : 50;
 
     return {
       id: `compat_resp_${Date.now()}_${Math.random()}`,
@@ -443,7 +479,13 @@ describe('Compatibility Validation Tests', () => {
           {
             provider: 'azure',
             backendModel: 'gpt-5-codex',
-            aliases: ['gpt-5-codex', 'gpt-4', 'gpt-4o', 'gpt-4-turbo', 'claude-3-5-sonnet-20241022'],
+            aliases: [
+              'gpt-5-codex',
+              'gpt-4',
+              'gpt-4o',
+              'gpt-4-turbo',
+              'claude-3-5-sonnet-20241022',
+            ],
           },
         ],
       },
@@ -463,20 +505,25 @@ describe('Compatibility Validation Tests', () => {
           userAgent: req.get('User-Agent'),
         });
 
-        const responsesResponse = await mockAzureClient.createResponse(result.responsesParams);
-        
-        // Transform back to Claude format (legacy compatibility)
-        const claudeResponse = CompatibilityResponseFactory.createLegacyClaudeResponse(
-          responsesResponse.output
-            .filter(output => output.type === 'text')
-            .map(output => output.text)
-            .join('')
+        const responsesResponse = await mockAzureClient.createResponse(
+          result.responsesParams
         );
+
+        // Transform back to Claude format (legacy compatibility)
+        const claudeResponse =
+          CompatibilityResponseFactory.createLegacyClaudeResponse(
+            responsesResponse.output
+              .filter((output) => output.type === 'text')
+              .map((output) => output.text)
+              .join('')
+          );
 
         res.json(claudeResponse);
       } catch (error) {
         const message =
-          error instanceof Error ? sanitizeErrorMessage(error.message) : 'Unknown error';
+          error instanceof Error
+            ? sanitizeErrorMessage(error.message)
+            : 'Unknown error';
 
         if (error instanceof ValidationError) {
           res.status(400).json({
@@ -508,8 +555,10 @@ describe('Compatibility Validation Tests', () => {
           userAgent: req.get('User-Agent'),
         });
 
-        const responsesResponse = await mockAzureClient.createResponse(result.responsesParams);
-        
+        const responsesResponse = await mockAzureClient.createResponse(
+          result.responsesParams
+        );
+
         // Transform back to OpenAI format
         const openaiResponse = {
           id: responsesResponse.id,
@@ -522,8 +571,8 @@ describe('Compatibility Validation Tests', () => {
               message: {
                 role: 'assistant',
                 content: responsesResponse.output
-                  .filter(output => output.type === 'text')
-                  .map(output => output.text)
+                  .filter((output) => output.type === 'text')
+                  .map((output) => output.text)
                   .join(''),
               },
               finish_reason: 'stop',
@@ -539,7 +588,9 @@ describe('Compatibility Validation Tests', () => {
         res.json(openaiResponse);
       } catch (error) {
         const message =
-          error instanceof Error ? sanitizeErrorMessage(error.message) : 'Unknown error';
+          error instanceof Error
+            ? sanitizeErrorMessage(error.message)
+            : 'Unknown error';
 
         if (error instanceof ValidationError) {
           res.status(400).json({
@@ -568,7 +619,7 @@ describe('Compatibility Validation Tests', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     // Default successful response
     mockAzureClient.createResponse.mockResolvedValue(
       CompatibilityResponseFactory.createResponseWithReasoning(
@@ -611,7 +662,10 @@ describe('Compatibility Validation Tests', () => {
       expect(Array.isArray(response.body.content)).toBe(true);
       expect(response.body.content[0]).toHaveProperty('type', 'text');
       expect(response.body.content[0]).toHaveProperty('text');
-      expect(response.body).toHaveProperty('model', 'claude-3-5-sonnet-20241022');
+      expect(response.body).toHaveProperty(
+        'model',
+        'claude-3-5-sonnet-20241022'
+      );
       expect(response.body).toHaveProperty('stop_reason', 'end_turn');
       expect(response.body).toHaveProperty('usage');
 
@@ -645,8 +699,12 @@ describe('Compatibility Validation Tests', () => {
       // Verify system message was properly handled
       const callArgs = mockAzureClient.createResponse.mock.calls[0][0];
       if (Array.isArray(callArgs.input)) {
-        const systemMessage = callArgs.input.find((msg: any) => msg.role === 'system');
-        expect(systemMessage?.content).toContain('You are a helpful coding assistant');
+        const systemMessage = callArgs.input.find(
+          (msg: any) => msg.role === 'system'
+        );
+        expect(systemMessage?.content).toContain(
+          'You are a helpful coding assistant'
+        );
       } else {
         expect(callArgs.input).toContain('You are a helpful coding assistant');
       }
@@ -683,7 +741,9 @@ describe('Compatibility Validation Tests', () => {
 
       // Verify content blocks were properly processed
       const callArgs = mockAzureClient.createResponse.mock.calls[0][0];
-      expect(typeof callArgs.input === 'string' || Array.isArray(callArgs.input)).toBe(true);
+      expect(
+        typeof callArgs.input === 'string' || Array.isArray(callArgs.input)
+      ).toBe(true);
     });
 
     it('should preserve Claude streaming compatibility', async () => {
@@ -721,7 +781,8 @@ describe('Compatibility Validation Tests', () => {
         messages: [
           {
             role: 'system',
-            content: 'You are a TypeScript expert helping with VS Code development.',
+            content:
+              'You are a TypeScript expert helping with VS Code development.',
           },
           {
             role: 'user',
@@ -741,14 +802,17 @@ describe('Compatibility Validation Tests', () => {
       expect(response.body).toHaveProperty('object', 'chat.completion');
       expect(response.body).toHaveProperty('choices');
       expect(response.body.choices[0]).toHaveProperty('message');
-      expect(response.body.choices[0].message).toHaveProperty('role', 'assistant');
+      expect(response.body.choices[0].message).toHaveProperty(
+        'role',
+        'assistant'
+      );
       expect(response.body).toHaveProperty('usage');
 
       // Verify system message was handled correctly
       const callArgs = mockAzureClient.createResponse.mock.calls[0][0];
       expect(Array.isArray(callArgs.input)).toBe(true);
       if (Array.isArray(callArgs.input)) {
-        expect(callArgs.input.some(msg => msg.role === 'system')).toBe(true);
+        expect(callArgs.input.some((msg) => msg.role === 'system')).toBe(true);
       }
     });
 
@@ -867,7 +931,7 @@ describe('Compatibility Validation Tests', () => {
     languageScenarios.forEach(({ name, factory, expectedReasoning }) => {
       it(`should handle ${name} development scenario with appropriate reasoning`, async () => {
         const scenarioRequest = factory();
-        
+
         mockAzureClient.createResponse.mockResolvedValue(
           CompatibilityResponseFactory.createResponseWithReasoning(
             `${name} implementation with best practices`,
@@ -885,22 +949,25 @@ describe('Compatibility Validation Tests', () => {
         // Verify reasoning effort was applied appropriately
         const callArgs = mockAzureClient.createResponse.mock.calls[0][0];
         expect(callArgs).toHaveProperty('reasoning');
-        
+
         if (callArgs.reasoning !== null && callArgs.reasoning !== undefined) {
           // Allow more flexibility in reasoning levels - the actual implementation may vary
           const reasoningLevels = ['minimal', 'low', 'medium', 'high'];
           expect(reasoningLevels).toContain(callArgs.reasoning.effort);
-          
+
           // Verify it's within one level of the expected (allow for implementation variance)
           const expectedIndex = reasoningLevels.indexOf(expectedReasoning);
-          const actualIndex = reasoningLevels.indexOf(callArgs.reasoning.effort);
+          const actualIndex = reasoningLevels.indexOf(
+            callArgs.reasoning.effort
+          );
           expect(Math.abs(actualIndex - expectedIndex)).toBeLessThanOrEqual(1);
         }
       });
     });
 
     it('should detect and optimize for Android development context', async () => {
-      const androidRequest = DevelopmentEnvironmentFactory.createAndroidStudioRequest();
+      const androidRequest =
+        DevelopmentEnvironmentFactory.createAndroidStudioRequest();
 
       const response = await request(app)
         .post('/v1/messages')
@@ -912,10 +979,12 @@ describe('Compatibility Validation Tests', () => {
       // Verify Android-specific optimization
       const callArgs = mockAzureClient.createResponse.mock.calls[0][0];
       expect(callArgs).toHaveProperty('reasoning');
-      
+
       // Android development should get some reasoning (allow for implementation variance)
       if (callArgs.reasoning !== null && callArgs.reasoning !== undefined) {
-        expect(['minimal', 'low', 'medium', 'high']).toContain(callArgs.reasoning.effort);
+        expect(['minimal', 'low', 'medium', 'high']).toContain(
+          callArgs.reasoning.effort
+        );
       }
     });
 
@@ -932,10 +1001,12 @@ describe('Compatibility Validation Tests', () => {
       // Verify Swift optimization was applied
       const callArgs = mockAzureClient.createResponse.mock.calls[0][0];
       expect(callArgs).toHaveProperty('reasoning');
-      
+
       // Swift development should get some reasoning (allow for implementation variance)
       if (callArgs.reasoning !== null && callArgs.reasoning !== undefined) {
-        expect(['minimal', 'low', 'medium', 'high']).toContain(callArgs.reasoning.effort);
+        expect(['minimal', 'low', 'medium', 'high']).toContain(
+          callArgs.reasoning.effort
+        );
       }
     });
   });
@@ -949,7 +1020,12 @@ describe('Compatibility Validation Tests', () => {
     ];
 
     frameworkTests.forEach((test, index) => {
-      const frameworkNames = ['Django', 'Spring Boot', 'React Hooks', 'Vue Composition API'];
+      const frameworkNames = [
+        'Django',
+        'Spring Boot',
+        'React Hooks',
+        'Vue Composition API',
+      ];
       const frameworkName = frameworkNames.at(index) ?? 'Unknown Framework';
 
       it(`should optimize for ${frameworkName} patterns`, async () => {
@@ -970,7 +1046,7 @@ describe('Compatibility Validation Tests', () => {
         // Verify framework-specific reasoning was applied
         const callArgs = mockAzureClient.createResponse.mock.calls[0][0];
         expect(callArgs).toHaveProperty('reasoning');
-        
+
         if (callArgs.reasoning !== null && callArgs.reasoning !== undefined) {
           expect(callArgs.reasoning.effort).toBe(test.expectedReasoning);
         }
@@ -1006,7 +1082,7 @@ describe('Compatibility Validation Tests', () => {
       // Complex multi-framework scenarios should get high reasoning
       const callArgs = mockAzureClient.createResponse.mock.calls[0][0];
       expect(callArgs).toHaveProperty('reasoning');
-      
+
       if (callArgs.reasoning !== null && callArgs.reasoning !== undefined) {
         expect(callArgs.reasoning.effort).toBe('high');
       }
@@ -1029,7 +1105,7 @@ describe('Compatibility Validation Tests', () => {
       expect(response.body).toHaveProperty('type', 'error');
       expect(response.body.error).toHaveProperty('type', 'api_error');
       expect(response.body.error).toHaveProperty('message');
-      
+
       // Should sanitize error messages to not expose internal details
       const errorMessage = response.body.error.message;
       expect(typeof errorMessage).toBe('string');
@@ -1061,9 +1137,10 @@ describe('Compatibility Validation Tests', () => {
       const claudeRequest = ClaudeRequestFactory.create();
 
       mockAzureClient.createResponse.mockImplementation(
-        () => new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout')), 100)
-        )
+        () =>
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Request timeout')), 100)
+          )
       );
 
       const response = await request(app)
@@ -1110,7 +1187,7 @@ describe('Compatibility Validation Tests', () => {
 
       // The request should either be rejected or processed with legacy format handling
       expect([200, 400, 500]).toContain(response.status);
-      
+
       if (response.status !== 200) {
         expect(response.body).toHaveProperty('type', 'error');
       }
@@ -1120,8 +1197,9 @@ describe('Compatibility Validation Tests', () => {
   describe('Security Measures Under Various Attack Scenarios', () => {
     it('should sanitize XSS attempts in request content', async () => {
       const xssPayloads = MaliciousDataFactory.getXSSPayloads();
-      
-      for (const payload of xssPayloads.slice(0, 3)) { // Test first 3 payloads
+
+      for (const payload of xssPayloads.slice(0, 3)) {
+        // Test first 3 payloads
         const maliciousRequest: ClaudeRequest = {
           model: 'claude-3-5-sonnet-20241022',
           messages: [
@@ -1181,7 +1259,7 @@ describe('Compatibility Validation Tests', () => {
 
       // The request should either be rejected or sanitized
       expect([200, 400, 500]).toContain(response.status);
-      
+
       if (response.status !== 200) {
         expect(response.body).toHaveProperty('type', 'error');
       }
@@ -1206,15 +1284,21 @@ describe('Compatibility Validation Tests', () => {
 
       // Should reject oversized requests
       expect([413, 500]).toContain(response.status);
-      
-      if (response.body !== null && response.body !== undefined && typeof response.body === 'object') {
+
+      if (
+        response.body !== null &&
+        response.body !== undefined &&
+        typeof response.body === 'object'
+      ) {
         expect(response.body).toHaveProperty('error');
       }
     });
 
     it('should not expose sensitive information in error responses', async () => {
       mockAzureClient.createResponse.mockRejectedValue(
-        new Error('API key sk-1234567890abcdef is invalid for endpoint https://secret.openai.azure.com')
+        new Error(
+          'API key sk-1234567890abcdef is invalid for endpoint https://secret.openai.azure.com'
+        )
       );
 
       const claudeRequest = ClaudeRequestFactory.create();
@@ -1225,7 +1309,7 @@ describe('Compatibility Validation Tests', () => {
         .expect(500);
 
       expect(response.body).toHaveProperty('type', 'error');
-      
+
       // Verify sensitive information is redacted
       const responseText = JSON.stringify(response.body);
       expect(responseText).toContain('[REDACTED]'); // Should contain redacted placeholder
@@ -1235,7 +1319,7 @@ describe('Compatibility Validation Tests', () => {
 
     it('should handle control character injection', async () => {
       const controlCharPayloads = MaliciousDataFactory.getControlCharacters();
-      
+
       for (const payload of controlCharPayloads.slice(0, 2)) {
         const maliciousRequest: ClaudeRequest = {
           model: 'claude-3-5-sonnet-20241022',
@@ -1257,10 +1341,10 @@ describe('Compatibility Validation Tests', () => {
 
         // Verify control characters were sanitized
         const callArgs = mockAzureClient.createResponse.mock.calls[0][0];
-        const inputContent = Array.isArray(callArgs.input) 
-          ? callArgs.input.map(msg => msg.content).join(' ')
+        const inputContent = Array.isArray(callArgs.input)
+          ? callArgs.input.map((msg) => msg.content).join(' ')
           : callArgs.input;
-        
+
         expect(inputContent).not.toMatch(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/);
       }
     });
@@ -1271,81 +1355,98 @@ describe('Compatibility Validation Tests', () => {
       {
         language: 'Python',
         context: 'data science',
-        request: 'Create a machine learning pipeline with pandas, scikit-learn, and matplotlib for customer segmentation analysis',
+        request:
+          'Create a machine learning pipeline with pandas, scikit-learn, and matplotlib for customer segmentation analysis',
         expectedKeywords: ['pandas', 'scikit-learn', 'matplotlib'],
         expectedReasoning: 'high',
       },
       {
         language: 'Java',
         context: 'enterprise microservices',
-        request: 'Design a Spring Cloud microservices architecture with service discovery, circuit breakers, and distributed tracing',
-        expectedKeywords: ['spring cloud', 'circuit breaker', 'distributed tracing'],
+        request:
+          'Design a Spring Cloud microservices architecture with service discovery, circuit breakers, and distributed tracing',
+        expectedKeywords: [
+          'spring cloud',
+          'circuit breaker',
+          'distributed tracing',
+        ],
         expectedReasoning: 'high',
       },
       {
         language: 'TypeScript',
         context: 'full-stack development',
-        request: 'Build a full-stack TypeScript application with Next.js, Prisma ORM, and tRPC for type-safe API communication',
+        request:
+          'Build a full-stack TypeScript application with Next.js, Prisma ORM, and tRPC for type-safe API communication',
         expectedKeywords: ['next.js', 'prisma', 'trpc'],
         expectedReasoning: 'high',
       },
       {
         language: 'Kotlin',
         context: 'Android development',
-        request: 'Implement Android MVVM architecture with Jetpack Compose, Room database, and Hilt dependency injection',
+        request:
+          'Implement Android MVVM architecture with Jetpack Compose, Room database, and Hilt dependency injection',
         expectedKeywords: ['jetpack compose', 'room', 'hilt'],
         expectedReasoning: 'medium',
       },
       {
         language: 'Shell',
         context: 'DevOps automation',
-        request: 'Create deployment automation scripts with Docker, Kubernetes, Terraform, and CI/CD pipeline integration',
+        request:
+          'Create deployment automation scripts with Docker, Kubernetes, Terraform, and CI/CD pipeline integration',
         expectedKeywords: ['docker', 'kubernetes', 'terraform'],
         expectedReasoning: 'medium',
       },
     ];
 
-    contextDetectionScenarios.forEach(({ language, context, request: requestText, expectedKeywords, expectedReasoning }) => {
-      it(`should detect ${language} ${context} context and adjust reasoning appropriately`, async () => {
-        const contextRequest: ClaudeRequest = {
-          model: 'claude-3-5-sonnet-20241022',
-          messages: [
-            {
-              role: 'user',
-              content: requestText,
-            },
-          ],
-          max_tokens: 2000,
-        };
+    contextDetectionScenarios.forEach(
+      ({
+        language,
+        context,
+        request: requestText,
+        expectedKeywords,
+        expectedReasoning,
+      }) => {
+        it(`should detect ${language} ${context} context and adjust reasoning appropriately`, async () => {
+          const contextRequest: ClaudeRequest = {
+            model: 'claude-3-5-sonnet-20241022',
+            messages: [
+              {
+                role: 'user',
+                content: requestText,
+              },
+            ],
+            max_tokens: 2000,
+          };
 
-        mockAzureClient.createResponse.mockResolvedValue(
-          CompatibilityResponseFactory.createResponseWithReasoning(
-            `${language} ${context} implementation with ${expectedKeywords.join(', ')}`,
-            expectedReasoning
-          )
-        );
+          mockAzureClient.createResponse.mockResolvedValue(
+            CompatibilityResponseFactory.createResponseWithReasoning(
+              `${language} ${context} implementation with ${expectedKeywords.join(', ')}`,
+              expectedReasoning
+            )
+          );
 
-        const response = await request(app)
-          .post('/v1/messages')
-          .send(contextRequest)
-          .expect(200);
+          const response = await request(app)
+            .post('/v1/messages')
+            .send(contextRequest)
+            .expect(200);
 
-        expect(response.body.type).toBe('message');
+          expect(response.body.type).toBe('message');
 
-        // Verify context-aware reasoning was applied
-        const callArgs = mockAzureClient.createResponse.mock.calls[0][0];
-        expect(callArgs).toHaveProperty('reasoning');
-        
-        if (callArgs.reasoning !== null && callArgs.reasoning !== undefined) {
-          const reasoningLevels = ['minimal', 'low', 'medium', 'high'];
-          expect(reasoningLevels).toContain(callArgs.reasoning.effort);
-          
-          // Verify reasoning level is appropriate for context (allow significant flexibility for implementation variance)
-          expect(reasoningLevels).toContain(callArgs.reasoning.effort);
-          // Just verify that some reasoning is applied, don't enforce specific levels
-        }
-      });
-    });
+          // Verify context-aware reasoning was applied
+          const callArgs = mockAzureClient.createResponse.mock.calls[0][0];
+          expect(callArgs).toHaveProperty('reasoning');
+
+          if (callArgs.reasoning !== null && callArgs.reasoning !== undefined) {
+            const reasoningLevels = ['minimal', 'low', 'medium', 'high'];
+            expect(reasoningLevels).toContain(callArgs.reasoning.effort);
+
+            // Verify reasoning level is appropriate for context (allow significant flexibility for implementation variance)
+            expect(reasoningLevels).toContain(callArgs.reasoning.effort);
+            // Just verify that some reasoning is applied, don't enforce specific levels
+          }
+        });
+      }
+    );
 
     it('should adjust reasoning for simple vs complex tasks within same language', async () => {
       const simpleTask: ClaudeRequest = {
@@ -1364,7 +1465,8 @@ describe('Compatibility Validation Tests', () => {
         messages: [
           {
             role: 'user',
-            content: 'Design a Python distributed system for real-time data processing with Apache Kafka, Redis, and PostgreSQL',
+            content:
+              'Design a Python distributed system for real-time data processing with Apache Kafka, Redis, and PostgreSQL',
           },
         ],
         max_tokens: 3000,
@@ -1372,7 +1474,10 @@ describe('Compatibility Validation Tests', () => {
 
       // Test simple task
       mockAzureClient.createResponse.mockResolvedValueOnce(
-        CompatibilityResponseFactory.createResponseWithReasoning('Simple Python function', 'minimal')
+        CompatibilityResponseFactory.createResponseWithReasoning(
+          'Simple Python function',
+          'minimal'
+        )
       );
 
       const simpleResponse = await request(app)
@@ -1384,7 +1489,10 @@ describe('Compatibility Validation Tests', () => {
 
       // Test complex task
       mockAzureClient.createResponse.mockResolvedValueOnce(
-        CompatibilityResponseFactory.createResponseWithReasoning('Complex distributed system', 'high')
+        CompatibilityResponseFactory.createResponseWithReasoning(
+          'Complex distributed system',
+          'high'
+        )
       );
 
       const complexResponse = await request(app)
@@ -1398,12 +1506,20 @@ describe('Compatibility Validation Tests', () => {
       const simpleCalls = mockAzureClient.createResponse.mock.calls[0][0];
       const complexCalls = mockAzureClient.createResponse.mock.calls[1][0];
 
-      if (simpleCalls.reasoning !== null && simpleCalls.reasoning !== undefined && 
-          complexCalls.reasoning !== null && complexCalls.reasoning !== undefined) {
+      if (
+        simpleCalls.reasoning !== null &&
+        simpleCalls.reasoning !== undefined &&
+        complexCalls.reasoning !== null &&
+        complexCalls.reasoning !== undefined
+      ) {
         const reasoningLevels = ['minimal', 'low', 'medium', 'high'];
-        const simpleIndex = reasoningLevels.indexOf(simpleCalls.reasoning.effort);
-        const complexIndex = reasoningLevels.indexOf(complexCalls.reasoning.effort);
-        
+        const simpleIndex = reasoningLevels.indexOf(
+          simpleCalls.reasoning.effort
+        );
+        const complexIndex = reasoningLevels.indexOf(
+          complexCalls.reasoning.effort
+        );
+
         expect(complexIndex).toBeGreaterThan(simpleIndex);
       }
     });
@@ -1439,7 +1555,7 @@ describe('Compatibility Validation Tests', () => {
       // Multi-language projects should get high reasoning
       const callArgs = mockAzureClient.createResponse.mock.calls[0][0];
       expect(callArgs).toHaveProperty('reasoning');
-      
+
       if (callArgs.reasoning !== null && callArgs.reasoning !== undefined) {
         expect(callArgs.reasoning.effort).toBe('high');
       }

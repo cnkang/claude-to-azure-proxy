@@ -1,9 +1,9 @@
 /**
  * @fileoverview Concurrency safety validation tests
- * 
+ *
  * Tests to validate request isolation, connection pooling, rate limiting,
  * and circuit breaker patterns for safe concurrent operations.
- * 
+ *
  * Requirements: 6.1, 6.4, 6.5, 6.6
  */
 
@@ -15,7 +15,10 @@ import { RetryManager } from '../src/resilience/retry.js';
 import { AzureResponsesClient } from '../src/clients/azure-responses-client.js';
 import { ConversationManagerImpl } from '../src/utils/conversation-manager.js';
 import { MultiTurnConversationHandlerImpl } from '../src/utils/multi-turn-conversation.js';
-import { correlationIdMiddleware, globalRateLimit } from '../src/middleware/security.js';
+import {
+  correlationIdMiddleware,
+  globalRateLimit,
+} from '../src/middleware/security.js';
 import type { Config } from '../src/config/index.js';
 
 // Mock external dependencies
@@ -28,7 +31,7 @@ describe('Concurrency Safety Validation', () => {
   beforeEach(() => {
     app = express();
     app.use(express.json());
-    
+
     mockConfig = {
       AZURE_OPENAI_ENDPOINT: 'https://test.openai.azure.com',
       AZURE_OPENAI_API_KEY: 'test-key',
@@ -73,18 +76,20 @@ describe('Concurrency Safety Validation', () => {
       });
 
       // Make multiple concurrent requests
-      const requests = Array.from({ length: 5 }, () => 
+      const requests = Array.from({ length: 5 }, () =>
         request(app).get('/test')
       );
 
       const responses = await Promise.all(requests);
 
       // Each response should have a unique correlation ID
-      const correlationIds = responses.map(res => res.body.correlationId);
+      const correlationIds = responses.map((res) => res.body.correlationId);
       const uniqueIds = new Set(correlationIds);
-      
+
       expect(uniqueIds.size).toBe(5);
-      expect(correlationIds.every(id => typeof id === 'string' && id.length > 0)).toBe(true);
+      expect(
+        correlationIds.every((id) => typeof id === 'string' && id.length > 0)
+      ).toBe(true);
     });
 
     it('should maintain request context isolation in conversation managers', async () => {
@@ -95,17 +100,15 @@ describe('Concurrency Safety Validation', () => {
       });
 
       // Simulate concurrent conversation tracking
-      const conversationPromises = Array.from({ length: 10 }, (_, i) => 
+      const conversationPromises = Array.from({ length: 10 }, (_, i) =>
         Promise.resolve().then(() => {
           const conversationId = `conv-${i}`;
           const responseId = `resp-${i}`;
-          
-          conversationManager.trackConversation(
-            conversationId,
-            responseId,
-            { totalTokensUsed: 100 }
-          );
-          
+
+          conversationManager.trackConversation(conversationId, responseId, {
+            totalTokensUsed: 100,
+          });
+
           return conversationManager.getPreviousResponseId(conversationId);
         })
       );
@@ -122,10 +125,10 @@ describe('Concurrency Safety Validation', () => {
       const handler = new MultiTurnConversationHandlerImpl(mockConfig);
 
       // Create multiple concurrent conversations
-      const conversationPromises = Array.from({ length: 5 }, (_, i) => 
+      const conversationPromises = Array.from({ length: 5 }, (_, i) =>
         Promise.resolve().then(() => {
           const conversationId = `multi-turn-${i}`;
-          
+
           // Add messages to conversation history
           handler.addToConversationHistory(conversationId, {
             role: 'user',
@@ -133,14 +136,14 @@ describe('Concurrency Safety Validation', () => {
             timestamp: new Date(),
             tokenCount: 10,
           });
-          
+
           handler.addToConversationHistory(conversationId, {
             role: 'assistant',
             content: `Assistant response ${i}`,
             timestamp: new Date(),
             tokenCount: 20,
           });
-          
+
           return handler.getConversationHistory(conversationId);
         })
       );
@@ -168,14 +171,15 @@ describe('Concurrency Safety Validation', () => {
       });
 
       // Make requests up to the limit
-      const successfulRequests = Array.from({ length: mockConfig.RATE_LIMIT_MAX_REQUESTS }, () => 
-        request(app).get('/test')
+      const successfulRequests = Array.from(
+        { length: mockConfig.RATE_LIMIT_MAX_REQUESTS },
+        () => request(app).get('/test')
       );
 
       const successfulResponses = await Promise.all(successfulRequests);
-      
+
       // All requests within limit should succeed
-      successfulResponses.forEach(response => {
+      successfulResponses.forEach((response) => {
         expect(response.status).toBe(200);
       });
 
@@ -191,20 +195,20 @@ describe('Concurrency Safety Validation', () => {
       });
 
       // Make concurrent requests within the limit
-      const concurrentRequests = Array.from({ length: 5 }, () => 
+      const concurrentRequests = Array.from({ length: 5 }, () =>
         request(app).get('/test')
       );
 
       const responses = await Promise.all(concurrentRequests);
 
       // All concurrent requests should succeed
-      responses.forEach(response => {
+      responses.forEach((response) => {
         expect(response.status).toBe(200);
         expect(response.body.timestamp).toBeDefined();
       });
 
       // Timestamps should be close but not identical (proving concurrency)
-      const timestamps = responses.map(res => res.body.timestamp);
+      const timestamps = responses.map((res) => res.body.timestamp);
       const uniqueTimestamps = new Set(timestamps);
       expect(uniqueTimestamps.size).toBeGreaterThan(1);
     });
@@ -216,16 +220,12 @@ describe('Concurrency Safety Validation', () => {
       });
 
       // Simulate requests from different IPs
-      const ip1Requests = Array.from({ length: 2 }, () => 
-        request(app)
-          .get('/test')
-          .set('X-Forwarded-For', '192.168.1.1')
+      const ip1Requests = Array.from({ length: 2 }, () =>
+        request(app).get('/test').set('X-Forwarded-For', '192.168.1.1')
       );
 
-      const ip2Requests = Array.from({ length: 2 }, () => 
-        request(app)
-          .get('/test')
-          .set('X-Forwarded-For', '192.168.1.2')
+      const ip2Requests = Array.from({ length: 2 }, () =>
+        request(app).get('/test').set('X-Forwarded-For', '192.168.1.2')
       );
 
       const [ip1Responses, ip2Responses] = await Promise.all([
@@ -234,11 +234,11 @@ describe('Concurrency Safety Validation', () => {
       ]);
 
       // Both IPs should be able to make their allowed requests
-      ip1Responses.forEach(response => {
+      ip1Responses.forEach((response) => {
         expect(response.status).toBe(200);
       });
 
-      ip2Responses.forEach(response => {
+      ip2Responses.forEach((response) => {
         expect(response.status).toBe(200);
       });
     });
@@ -254,24 +254,29 @@ describe('Concurrency Safety Validation', () => {
       });
 
       // Mock operation that always fails with expected error
-      const failingOperation = vi.fn().mockRejectedValue(new Error('Service unavailable'));
+      const failingOperation = vi
+        .fn()
+        .mockRejectedValue(new Error('Service unavailable'));
 
       // Execute failing operations to trigger circuit breaker
       const results = [];
       for (let i = 0; i < 5; i++) {
-        const result = await circuitBreaker.execute(failingOperation, 'test-correlation-id');
+        const result = await circuitBreaker.execute(
+          failingOperation,
+          'test-correlation-id'
+        );
         results.push(result);
       }
 
       // Should have 3 actual operation calls, then circuit should open
       expect(failingOperation).toHaveBeenCalledTimes(3);
       expect(results).toHaveLength(5);
-      
+
       // All results should be failures
-      results.forEach(result => {
+      results.forEach((result) => {
         expect(result.success).toBe(false);
       });
-      
+
       // Last 2 results should be circuit breaker errors (not calling the operation)
       expect(results[3].error?.message).toContain('Circuit breaker is OPEN');
       expect(results[4].error?.message).toContain('Circuit breaker is OPEN');
@@ -286,21 +291,23 @@ describe('Concurrency Safety Validation', () => {
       });
 
       // Mock operation that always fails
-      const failingOperation = vi.fn().mockRejectedValue(new Error('Service unavailable'));
+      const failingOperation = vi
+        .fn()
+        .mockRejectedValue(new Error('Service unavailable'));
 
       // Trigger circuit breaker to open
       await circuitBreaker.execute(failingOperation, 'test-1');
       await circuitBreaker.execute(failingOperation, 'test-2');
 
       // Now make concurrent requests with open circuit
-      const concurrentRequests = Array.from({ length: 5 }, (_, i) => 
+      const concurrentRequests = Array.from({ length: 5 }, (_, i) =>
         circuitBreaker.execute(failingOperation, `concurrent-${i}`)
       );
 
       const results = await Promise.all(concurrentRequests);
 
       // All concurrent requests should fail with circuit breaker error
-      results.forEach(result => {
+      results.forEach((result) => {
         expect(result.success).toBe(false);
         expect(result.error?.message).toContain('Circuit breaker is OPEN');
       });
@@ -332,17 +339,17 @@ describe('Concurrency Safety Validation', () => {
       }
 
       // Wait for circuit to potentially reset
-      await new Promise(resolve => setTimeout(resolve, 150));
+      await new Promise((resolve) => setTimeout(resolve, 150));
 
       // Make concurrent requests during potential reset
-      const concurrentRequests = Array.from({ length: 3 }, (_, i) => 
+      const concurrentRequests = Array.from({ length: 3 }, (_, i) =>
         circuitBreaker.execute(mockOperation, `reset-${i}`)
       );
 
       const results = await Promise.all(concurrentRequests);
 
       // At least one request should succeed (circuit reset)
-      const successes = results.filter(result => result.success === true);
+      const successes = results.filter((result) => result.success === true);
       expect(successes.length).toBeGreaterThan(0);
     });
   });
@@ -378,7 +385,7 @@ describe('Concurrency Safety Validation', () => {
       };
 
       // Make concurrent requests
-      const concurrentRequests = Array.from({ length: 5 }, (_, i) => 
+      const concurrentRequests = Array.from({ length: 5 }, (_, i) =>
         client.createResponse({
           model: 'gpt-4',
           input: [{ role: 'user', content: `Test message ${i}` }],
@@ -390,7 +397,7 @@ describe('Concurrency Safety Validation', () => {
 
       // All requests should succeed
       expect(responses).toHaveLength(5);
-      responses.forEach(response => {
+      responses.forEach((response) => {
         expect(response.id).toBe('response-123');
         expect(response.object).toBe('response');
       });
@@ -421,18 +428,20 @@ describe('Concurrency Safety Validation', () => {
       };
 
       // Make concurrent requests that will fail
-      const concurrentRequests = Array.from({ length: 3 }, (_, i) => 
-        client.createResponse({
-          model: 'gpt-4',
-          input: [{ role: 'user', content: `Test message ${i}` }],
-          max_output_tokens: 100,
-        }).catch(error => error)
+      const concurrentRequests = Array.from({ length: 3 }, (_, i) =>
+        client
+          .createResponse({
+            model: 'gpt-4',
+            input: [{ role: 'user', content: `Test message ${i}` }],
+            max_output_tokens: 100,
+          })
+          .catch((error) => error)
       );
 
       const results = await Promise.all(concurrentRequests);
 
       // All requests should fail with network errors
-      results.forEach(result => {
+      results.forEach((result) => {
         expect(result).toBeInstanceOf(Error);
         expect(result.message).toContain('Network error');
       });
@@ -455,10 +464,10 @@ describe('Concurrency Safety Validation', () => {
       const initialMemory = process.memoryUsage().heapUsed;
 
       // Create many concurrent conversations
-      const conversationPromises = Array.from({ length: 100 }, (_, i) => 
+      const conversationPromises = Array.from({ length: 100 }, (_, i) =>
         Promise.resolve().then(() => {
           const conversationId = `stress-test-${i}`;
-          
+
           // Add multiple response IDs to each conversation
           for (let j = 0; j < 5; j++) {
             conversationManager.trackConversation(
@@ -467,7 +476,7 @@ describe('Concurrency Safety Validation', () => {
               { totalTokensUsed: 100 + j * 10 }
             );
           }
-          
+
           return conversationManager.getPreviousResponseId(conversationId);
         })
       );
@@ -478,7 +487,7 @@ describe('Concurrency Safety Validation', () => {
       conversationManager.stopCleanupTimer();
 
       // Allow some time for cleanup
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const finalMemory = process.memoryUsage().heapUsed;
       const memoryGrowth = finalMemory - initialMemory;
@@ -506,22 +515,24 @@ describe('Concurrency Safety Validation', () => {
       });
 
       // Run multiple concurrent retry operations
-      const retryPromises = Array.from({ length: 5 }, (_, i) => 
-        retryManager.executeWithRetry(
-          mockOperation,
-          `concurrent-retry-${i}`,
-          'test-operation'
-        ).catch(error => error)
+      const retryPromises = Array.from({ length: 5 }, (_, i) =>
+        retryManager
+          .executeWithRetry(
+            mockOperation,
+            `concurrent-retry-${i}`,
+            'test-operation'
+          )
+          .catch((error) => error)
       );
 
       const results = await Promise.all(retryPromises);
 
       // Some operations should eventually succeed, others may fail
-      const successes = results.filter(result => result === 'Success');
-      const failures = results.filter(result => result instanceof Error);
+      const successes = results.filter((result) => result === 'Success');
+      const failures = results.filter((result) => result instanceof Error);
 
       expect(successes.length + failures.length).toBe(5);
-      
+
       // Verify retry attempts were made
       expect(mockOperation).toHaveBeenCalled();
     });
@@ -537,10 +548,11 @@ describe('Concurrency Safety Validation', () => {
         incrementPromises.push(
           Promise.resolve().then(() => {
             // Simulate some async work
-            return new Promise(resolve => setTimeout(resolve, Math.random() * 10))
-              .then(() => {
-                sharedCounter.value++;
-              });
+            return new Promise((resolve) =>
+              setTimeout(resolve, Math.random() * 10)
+            ).then(() => {
+              sharedCounter.value++;
+            });
           })
         );
       }

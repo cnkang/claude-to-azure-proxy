@@ -3,7 +3,11 @@ import request from 'supertest';
 import express from 'express';
 import { json } from 'express';
 import type { ServerConfig } from '../src/types/index.js';
-import { testServerConfig, validApiKey, createMockConfig } from './test-config.js';
+import {
+  testServerConfig,
+  validApiKey,
+  createMockConfig,
+} from './test-config.js';
 import type { TestResponseBody } from './types/test-types.js';
 import { setupAllMocks, mockResponses } from './utils/typed-mocks.js';
 
@@ -33,7 +37,9 @@ vi.mock('../src/clients/aws-bedrock-client.js', () => ({
 
 // Mock other dependencies with typed implementations
 vi.mock('../src/utils/universal-request-processor.js', () => ({
-  createUniversalRequestProcessor: vi.fn().mockReturnValue(mocks.universalProcessor),
+  createUniversalRequestProcessor: vi
+    .fn()
+    .mockReturnValue(mocks.universalProcessor),
   defaultUniversalProcessorConfig: {},
 }));
 
@@ -43,7 +49,9 @@ vi.mock('../src/utils/reasoning-effort-analyzer.js', () => ({
       return mocks.reasoningAnalyzer;
     }
   },
-  createReasoningEffortAnalyzer: vi.fn().mockReturnValue(mocks.reasoningAnalyzer),
+  createReasoningEffortAnalyzer: vi
+    .fn()
+    .mockReturnValue(mocks.reasoningAnalyzer),
 }));
 
 vi.mock('../src/utils/conversation-manager.js', () => ({
@@ -62,7 +70,10 @@ vi.mock('../src/resilience/index.js', () => ({
 
 describe('Completions Endpoint', () => {
   let app: express.Application;
-  let mockAxiosInstance: { post: ReturnType<typeof vi.fn>; get: ReturnType<typeof vi.fn> };
+  let mockAxiosInstance: {
+    post: ReturnType<typeof vi.fn>;
+    get: ReturnType<typeof vi.fn>;
+  };
 
   // Import after mocking
   let correlationIdMiddleware: express.RequestHandler;
@@ -76,60 +87,112 @@ describe('Completions Endpoint', () => {
       get: vi.fn(),
     };
 
-    (globalThis as { __AZURE_OPENAI_AXIOS_MOCK__?: typeof mockAxiosInstance }).__AZURE_OPENAI_AXIOS_MOCK__ =
-      mockAxiosInstance;
+    (
+      globalThis as { __AZURE_OPENAI_AXIOS_MOCK__?: typeof mockAxiosInstance }
+    ).__AZURE_OPENAI_AXIOS_MOCK__ = mockAxiosInstance;
 
     // Import ValidationError for mocking
     const { ValidationError } = await import('../src/errors/index.js');
 
     // Setup default mock responses
-    mocks.azureClient.createResponse.mockResolvedValue(mockResponses.azureResponsesSuccess());
-    
+    mocks.azureClient.createResponse.mockResolvedValue(
+      mockResponses.azureResponsesSuccess()
+    );
+
     // Setup universal processor to validate inputs and throw errors for invalid requests
-    mocks.universalProcessor.processRequest.mockImplementation(async (request) => {
-      // Check for missing messages/prompt
-      if (request.body === null || request.body === undefined || typeof request.body !== 'object') {
-        throw new ValidationError('Request body is required', 'test-correlation-id');
+    mocks.universalProcessor.processRequest.mockImplementation(
+      async (request) => {
+        // Check for missing messages/prompt
+        if (
+          request.body === null ||
+          request.body === undefined ||
+          typeof request.body !== 'object'
+        ) {
+          throw new ValidationError(
+            'Request body is required',
+            'test-correlation-id'
+          );
+        }
+
+        const body = request.body as Record<string, unknown>;
+
+        // Check for missing messages
+        if (
+          (body.messages === null || body.messages === undefined) &&
+          (body.prompt === null || body.prompt === undefined)
+        ) {
+          throw new ValidationError(
+            'Either messages or prompt is required',
+            'test-correlation-id'
+          );
+        }
+
+        // Check for invalid max_tokens
+        if (
+          body.max_tokens !== undefined &&
+          (typeof body.max_tokens !== 'number' || body.max_tokens <= 0)
+        ) {
+          throw new ValidationError(
+            'max_tokens must be a positive number',
+            'test-correlation-id'
+          );
+        }
+
+        // Check for invalid temperature
+        if (
+          body.temperature !== undefined &&
+          (typeof body.temperature !== 'number' ||
+            body.temperature < 0 ||
+            body.temperature > 2)
+        ) {
+          throw new ValidationError(
+            'temperature must be between 0 and 2',
+            'test-correlation-id'
+          );
+        }
+
+        // Check for empty prompt
+        if (
+          body.prompt !== undefined &&
+          (body.prompt === null ||
+            (typeof body.prompt === 'string' && body.prompt.trim() === ''))
+        ) {
+          throw new ValidationError(
+            'prompt cannot be empty',
+            'test-correlation-id'
+          );
+        }
+
+        // Check for malicious content (simple check for script tags)
+        const promptContent =
+          typeof body.prompt === 'string' ? body.prompt : '';
+        const messageContent = Array.isArray(body.messages)
+          ? body.messages
+              .map((m: Record<string, unknown>) =>
+                typeof m.content === 'string' ? m.content : ''
+              )
+              .join(' ')
+          : '';
+        const content = promptContent || messageContent;
+        const jsProtocol = ['javascript', ':'].join('');
+        if (content.includes('<script>') || content.includes(jsProtocol)) {
+          throw new ValidationError(
+            'Request contains invalid or potentially harmful content',
+            'test-correlation-id'
+          );
+        }
+
+        // Return successful processing result for valid requests
+        return mockResponses.universalProcessingResult();
       }
-      
-      const body = request.body as Record<string, unknown>;
-      
-      // Check for missing messages
-      if ((body.messages === null || body.messages === undefined) && (body.prompt === null || body.prompt === undefined)) {
-        throw new ValidationError('Either messages or prompt is required', 'test-correlation-id');
-      }
-      
-      // Check for invalid max_tokens
-      if (body.max_tokens !== undefined && (typeof body.max_tokens !== 'number' || body.max_tokens <= 0)) {
-        throw new ValidationError('max_tokens must be a positive number', 'test-correlation-id');
-      }
-      
-      // Check for invalid temperature
-      if (body.temperature !== undefined && (typeof body.temperature !== 'number' || body.temperature < 0 || body.temperature > 2)) {
-        throw new ValidationError('temperature must be between 0 and 2', 'test-correlation-id');
-      }
-      
-      // Check for empty prompt
-      if (body.prompt !== undefined && (body.prompt === null || (typeof body.prompt === 'string' && body.prompt.trim() === ''))) {
-        throw new ValidationError('prompt cannot be empty', 'test-correlation-id');
-      }
-      
-      // Check for malicious content (simple check for script tags)
-      const promptContent = typeof body.prompt === 'string' ? body.prompt : '';
-      const messageContent = Array.isArray(body.messages) ? body.messages.map((m: Record<string, unknown>) => typeof m.content === 'string' ? m.content : '')
-.join(' ') : '';
-      const content = promptContent || messageContent;
-      const jsProtocol = ['javascript', ':'].join('');
-      if (content.includes('<script>') || content.includes(jsProtocol)) {
-        throw new ValidationError('Request contains invalid or potentially harmful content', 'test-correlation-id');
-      }
-      
-      // Return successful processing result for valid requests
-      return mockResponses.universalProcessingResult();
-    });
-    
-    mocks.conversationManager.extractConversationId.mockReturnValue('test-conversation-id');
-    mocks.conversationManager.getConversationContext.mockReturnValue(mockResponses.conversationContext());
+    );
+
+    mocks.conversationManager.extractConversationId.mockReturnValue(
+      'test-conversation-id'
+    );
+    mocks.conversationManager.getConversationContext.mockReturnValue(
+      mockResponses.conversationContext()
+    );
 
     // Import modules after mocking
     const securityModule = await import('../src/middleware/security.js');
@@ -153,56 +216,103 @@ describe('Completions Endpoint', () => {
 
   afterEach(() => {
     // Restore the original universal processor mock implementation after each test
-    mocks.universalProcessor.processRequest.mockImplementation(async (request) => {
-      // Check for missing messages/prompt
-      if (request.body === null || request.body === undefined || typeof request.body !== 'object') {
-        const { ValidationError } = await import('../src/errors/index.js');
-        throw new ValidationError('Request body is required', 'test-correlation-id');
+    mocks.universalProcessor.processRequest.mockImplementation(
+      async (request) => {
+        // Check for missing messages/prompt
+        if (
+          request.body === null ||
+          request.body === undefined ||
+          typeof request.body !== 'object'
+        ) {
+          const { ValidationError } = await import('../src/errors/index.js');
+          throw new ValidationError(
+            'Request body is required',
+            'test-correlation-id'
+          );
+        }
+
+        const body = request.body as Record<string, unknown>;
+
+        // Check for missing messages
+        if (
+          (body.messages === null || body.messages === undefined) &&
+          (body.prompt === null || body.prompt === undefined)
+        ) {
+          const { ValidationError } = await import('../src/errors/index.js');
+          throw new ValidationError(
+            'Either messages or prompt is required',
+            'test-correlation-id'
+          );
+        }
+
+        // Check for invalid max_tokens
+        if (
+          body.max_tokens !== undefined &&
+          (typeof body.max_tokens !== 'number' || body.max_tokens <= 0)
+        ) {
+          const { ValidationError } = await import('../src/errors/index.js');
+          throw new ValidationError(
+            'max_tokens must be a positive number',
+            'test-correlation-id'
+          );
+        }
+
+        // Check for invalid temperature
+        if (
+          body.temperature !== undefined &&
+          (typeof body.temperature !== 'number' ||
+            body.temperature < 0 ||
+            body.temperature > 2)
+        ) {
+          const { ValidationError } = await import('../src/errors/index.js');
+          throw new ValidationError(
+            'temperature must be between 0 and 2',
+            'test-correlation-id'
+          );
+        }
+
+        // Check for empty prompt
+        if (
+          body.prompt !== undefined &&
+          (body.prompt === null ||
+            (typeof body.prompt === 'string' && body.prompt.trim() === ''))
+        ) {
+          const { ValidationError } = await import('../src/errors/index.js');
+          throw new ValidationError(
+            'prompt cannot be empty',
+            'test-correlation-id'
+          );
+        }
+
+        // Check for malicious content (simple check for script tags)
+        const promptContent =
+          typeof body.prompt === 'string' ? body.prompt : '';
+        const messageContent = Array.isArray(body.messages)
+          ? body.messages
+              .map((m: Record<string, unknown>) =>
+                typeof m.content === 'string' ? m.content : ''
+              )
+              .join(' ')
+          : '';
+        const content = promptContent || messageContent;
+        const jsProtocol = ['javascript', ':'].join('');
+        if (content.includes('<script>') || content.includes(jsProtocol)) {
+          const { ValidationError } = await import('../src/errors/index.js');
+          throw new ValidationError(
+            'Request contains invalid or potentially harmful content',
+            'test-correlation-id'
+          );
+        }
+
+        // Return successful processing result for valid requests
+        return mockResponses.universalProcessingResult();
       }
-      
-      const body = request.body as Record<string, unknown>;
-      
-      // Check for missing messages
-      if ((body.messages === null || body.messages === undefined) && (body.prompt === null || body.prompt === undefined)) {
-        const { ValidationError } = await import('../src/errors/index.js');
-        throw new ValidationError('Either messages or prompt is required', 'test-correlation-id');
-      }
-      
-      // Check for invalid max_tokens
-      if (body.max_tokens !== undefined && (typeof body.max_tokens !== 'number' || body.max_tokens <= 0)) {
-        const { ValidationError } = await import('../src/errors/index.js');
-        throw new ValidationError('max_tokens must be a positive number', 'test-correlation-id');
-      }
-      
-      // Check for invalid temperature
-      if (body.temperature !== undefined && (typeof body.temperature !== 'number' || body.temperature < 0 || body.temperature > 2)) {
-        const { ValidationError } = await import('../src/errors/index.js');
-        throw new ValidationError('temperature must be between 0 and 2', 'test-correlation-id');
-      }
-      
-      // Check for empty prompt
-      if (body.prompt !== undefined && (body.prompt === null || (typeof body.prompt === 'string' && body.prompt.trim() === ''))) {
-        const { ValidationError } = await import('../src/errors/index.js');
-        throw new ValidationError('prompt cannot be empty', 'test-correlation-id');
-      }
-      
-      // Check for malicious content (simple check for script tags)
-      const promptContent = typeof body.prompt === 'string' ? body.prompt : '';
-      const messageContent = Array.isArray(body.messages) ? body.messages.map((m: Record<string, unknown>) => typeof m.content === 'string' ? m.content : '')
-.join(' ') : '';
-      const content = promptContent || messageContent;
-      const jsProtocol = ['javascript', ':'].join('');
-      if (content.includes('<script>') || content.includes(jsProtocol)) {
-        const { ValidationError } = await import('../src/errors/index.js');
-        throw new ValidationError('Request contains invalid or potentially harmful content', 'test-correlation-id');
-      }
-      
-      // Return successful processing result for valid requests
-      return mockResponses.universalProcessingResult();
-    });
-    
+    );
+
     // Reset Azure client mock to default success
-    mocks.azureClient.createResponse.mockResolvedValue(mockResponses.azureResponsesSuccess());
+    mocks.azureClient.createResponse.mockResolvedValue(
+      mockResponses.azureResponsesSuccess()
+    );
   });
 
   afterAll(() => {
@@ -393,7 +503,9 @@ describe('Completions Endpoint', () => {
           isSupported: true,
         },
       };
-      mocks.universalProcessor.processRequest.mockResolvedValueOnce(bedrockResult);
+      mocks.universalProcessor.processRequest.mockResolvedValueOnce(
+        bedrockResult
+      );
 
       const response = await request(app)
         .post('/v1/completions')
@@ -405,7 +517,9 @@ describe('Completions Endpoint', () => {
         });
 
       expect(response.status).toBe(400);
-      expect(response.body.error?.message).toContain('AWS Bedrock configuration is missing');
+      expect(response.body.error?.message).toContain(
+        'AWS Bedrock configuration is missing'
+      );
     });
   });
 
@@ -584,7 +698,7 @@ describe('Completions Endpoint', () => {
     it('should handle Azure OpenAI errors with correct format', async () => {
       // This test verifies that RateLimitError from Azure client is properly mapped
       // We'll test this by mocking the Azure client to throw the error after validation passes
-      
+
       // Import RateLimitError for mocking
       const { RateLimitError } = await import('../src/errors/index.js');
 

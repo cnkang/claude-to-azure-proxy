@@ -28,8 +28,8 @@ describe('ContentBasedOptimizerService', () => {
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { role: 'user', content: 'complete this function: def add(a, b):' }
-        ]
+          { role: 'user', content: 'complete this function: def add(a, b):' },
+        ],
       };
 
       expect(optimizer.shouldUseFastPath(request)).toBe(true);
@@ -38,9 +38,7 @@ describe('ContentBasedOptimizerService', () => {
     it('should use fast-path for very short content', () => {
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
-        messages: [
-          { role: 'user', content: 'hello' }
-        ]
+        messages: [{ role: 'user', content: 'hello' }],
       };
 
       expect(optimizer.shouldUseFastPath(request)).toBe(true);
@@ -50,8 +48,12 @@ describe('ContentBasedOptimizerService', () => {
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { role: 'user', content: 'explain how this function works: def factorial(n): return 1 if n <= 1 else n * factorial(n-1)' }
-        ]
+          {
+            role: 'user',
+            content:
+              'explain how this function works: def factorial(n): return 1 if n <= 1 else n * factorial(n-1)',
+          },
+        ],
       };
 
       expect(optimizer.shouldUseFastPath(request)).toBe(true);
@@ -61,11 +63,12 @@ describe('ContentBasedOptimizerService', () => {
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { 
-            role: 'user', 
-            content: 'Design a distributed microservices architecture with load balancing, database sharding, and event-driven communication patterns'
-          }
-        ]
+          {
+            role: 'user',
+            content:
+              'Design a distributed microservices architecture with load balancing, database sharding, and event-driven communication patterns',
+          },
+        ],
       };
 
       expect(optimizer.shouldUseFastPath(request)).toBe(false);
@@ -75,8 +78,12 @@ describe('ContentBasedOptimizerService', () => {
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { role: 'user', content: 'implement a binary search algorithm with optimal performance' }
-        ]
+          {
+            role: 'user',
+            content:
+              'implement a binary search algorithm with optimal performance',
+          },
+        ],
       };
 
       expect(optimizer.shouldUseFastPath(request)).toBe(false);
@@ -88,8 +95,12 @@ describe('ContentBasedOptimizerService', () => {
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { role: 'user', content: 'Create a Kubernetes deployment with Docker containers and CI/CD pipeline' }
-        ]
+          {
+            role: 'user',
+            content:
+              'Create a Kubernetes deployment with Docker containers and CI/CD pipeline',
+          },
+        ],
       };
 
       expect(optimizer.adjustForDevelopmentTask(request)).toBe('high');
@@ -99,8 +110,12 @@ describe('ContentBasedOptimizerService', () => {
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { role: 'user', content: 'Design a scalable system architecture with microservices and event sourcing' }
-        ]
+          {
+            role: 'user',
+            content:
+              'Design a scalable system architecture with microservices and event sourcing',
+          },
+        ],
       };
 
       expect(optimizer.adjustForDevelopmentTask(request)).toBe('high');
@@ -110,8 +125,12 @@ describe('ContentBasedOptimizerService', () => {
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { role: 'user', content: 'Create a full stack application with React frontend and Python backend' }
-        ]
+          {
+            role: 'user',
+            content:
+              'Create a full stack application with React frontend and Python backend',
+          },
+        ],
       };
 
       expect(optimizer.adjustForDevelopmentTask(request)).toBe('medium');
@@ -121,8 +140,8 @@ describe('ContentBasedOptimizerService', () => {
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { role: 'user', content: 'implement a user authentication system' }
-        ]
+          { role: 'user', content: 'implement a user authentication system' },
+        ],
       };
 
       expect(optimizer.adjustForDevelopmentTask(request)).toBe('low');
@@ -131,9 +150,7 @@ describe('ContentBasedOptimizerService', () => {
     it('should return undefined for non-specific tasks', () => {
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
-        messages: [
-          { role: 'user', content: 'write a simple function' }
-        ]
+        messages: [{ role: 'user', content: 'write a simple function' }],
       };
 
       expect(optimizer.adjustForDevelopmentTask(request)).toBe('low'); // "write a" is implementation
@@ -145,11 +162,12 @@ describe('ContentBasedOptimizerService', () => {
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { 
-            role: 'user', 
-            content: 'Create a Django REST API with models.py, views.py, and serializers.py for user management with authentication and permissions'
-          }
-        ]
+          {
+            role: 'user',
+            content:
+              'Create a Django REST API with models.py, views.py, and serializers.py for user management with authentication and permissions',
+          },
+        ],
       };
 
       const languageContext = {
@@ -159,7 +177,10 @@ describe('ContentBasedOptimizerService', () => {
         developmentType: 'completion' as const,
       };
 
-      const result = optimizer.applyLanguageOptimizations(request, languageContext);
+      const result = optimizer.applyLanguageOptimizations(
+        request,
+        languageContext
+      );
       expect(result).toBe('medium'); // Complex Django patterns with moderate content length
     });
 
@@ -167,8 +188,8 @@ describe('ContentBasedOptimizerService', () => {
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { 
-            role: 'user', 
+          {
+            role: 'user',
             content: `Create a Spring Boot application with @RestController, @Service, and @Repository layers.
             
 \`\`\`java
@@ -184,9 +205,9 @@ public class UserController {
 }
 \`\`\`
 
-Include proper error handling and validation.`
-          }
-        ]
+Include proper error handling and validation.`,
+          },
+        ],
       };
 
       const languageContext = {
@@ -196,7 +217,10 @@ Include proper error handling and validation.`
         developmentType: 'completion' as const,
       };
 
-      const result = optimizer.applyLanguageOptimizations(request, languageContext);
+      const result = optimizer.applyLanguageOptimizations(
+        request,
+        languageContext
+      );
       expect(result).toBe('medium'); // Complex Spring Boot patterns with medium content
     });
 
@@ -204,11 +228,12 @@ Include proper error handling and validation.`
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { 
-            role: 'user', 
-            content: 'Create an Android Activity with Fragment, ViewModel, and Repository pattern using Jetpack Compose'
-          }
-        ]
+          {
+            role: 'user',
+            content:
+              'Create an Android Activity with Fragment, ViewModel, and Repository pattern using Jetpack Compose',
+          },
+        ],
       };
 
       const languageContext = {
@@ -218,7 +243,10 @@ Include proper error handling and validation.`
         developmentType: 'completion' as const,
       };
 
-      const result = optimizer.applyLanguageOptimizations(request, languageContext);
+      const result = optimizer.applyLanguageOptimizations(
+        request,
+        languageContext
+      );
       expect(result).toBe('medium');
     });
 
@@ -226,11 +254,12 @@ Include proper error handling and validation.`
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { 
-            role: 'user', 
-            content: 'Build a React component with TypeScript, custom hooks, context API, and state management'
-          }
-        ]
+          {
+            role: 'user',
+            content:
+              'Build a React component with TypeScript, custom hooks, context API, and state management',
+          },
+        ],
       };
 
       const languageContext = {
@@ -240,7 +269,10 @@ Include proper error handling and validation.`
         developmentType: 'completion' as const,
       };
 
-      const result = optimizer.applyLanguageOptimizations(request, languageContext);
+      const result = optimizer.applyLanguageOptimizations(
+        request,
+        languageContext
+      );
       expect(result).toBe('medium');
     });
 
@@ -248,11 +280,12 @@ Include proper error handling and validation.`
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { 
-            role: 'user', 
-            content: 'Create a Vue 3 component using Composition API with TypeScript, reactive refs, and computed properties'
-          }
-        ]
+          {
+            role: 'user',
+            content:
+              'Create a Vue 3 component using Composition API with TypeScript, reactive refs, and computed properties',
+          },
+        ],
       };
 
       const languageContext = {
@@ -262,7 +295,10 @@ Include proper error handling and validation.`
         developmentType: 'completion' as const,
       };
 
-      const result = optimizer.applyLanguageOptimizations(request, languageContext);
+      const result = optimizer.applyLanguageOptimizations(
+        request,
+        languageContext
+      );
       expect(result).toBe('medium');
     });
 
@@ -270,11 +306,12 @@ Include proper error handling and validation.`
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { 
-            role: 'user', 
-            content: 'Write a bash script for Docker deployment with Kubernetes orchestration, health checks, and monitoring'
-          }
-        ]
+          {
+            role: 'user',
+            content:
+              'Write a bash script for Docker deployment with Kubernetes orchestration, health checks, and monitoring',
+          },
+        ],
       };
 
       const languageContext = {
@@ -284,16 +321,17 @@ Include proper error handling and validation.`
         developmentType: 'devops' as const,
       };
 
-      const result = optimizer.applyLanguageOptimizations(request, languageContext);
+      const result = optimizer.applyLanguageOptimizations(
+        request,
+        languageContext
+      );
       expect(result).toBe('medium'); // DevOps tasks with shell scripting
     });
 
     it('should return minimal reasoning for simple patterns', () => {
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
-        messages: [
-          { role: 'user', content: 'print("hello world")' }
-        ]
+        messages: [{ role: 'user', content: 'print("hello world")' }],
       };
 
       const languageContext = {
@@ -303,7 +341,10 @@ Include proper error handling and validation.`
         developmentType: 'completion' as const,
       };
 
-      const result = optimizer.applyLanguageOptimizations(request, languageContext);
+      const result = optimizer.applyLanguageOptimizations(
+        request,
+        languageContext
+      );
       expect(result).toBe('low');
     });
 
@@ -311,8 +352,8 @@ Include proper error handling and validation.`
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { role: 'user', content: 'create a simple JavaScript function' }
-        ]
+          { role: 'user', content: 'create a simple JavaScript function' },
+        ],
       };
 
       const languageContext = {
@@ -322,7 +363,10 @@ Include proper error handling and validation.`
         developmentType: 'completion' as const,
       };
 
-      const result = optimizer.applyLanguageOptimizations(request, languageContext);
+      const result = optimizer.applyLanguageOptimizations(
+        request,
+        languageContext
+      );
       expect(result).toBeUndefined(); // JavaScript optimization config has shouldTriggerReasoning: false
     });
   });
@@ -332,11 +376,12 @@ Include proper error handling and validation.`
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { 
-            role: 'user', 
-            content: 'Create Django models, views, and serializers for a complex e-commerce application with user management, product catalog, and order processing'
-          }
-        ]
+          {
+            role: 'user',
+            content:
+              'Create Django models, views, and serializers for a complex e-commerce application with user management, product catalog, and order processing',
+          },
+        ],
       };
 
       const result = optimizer.applyFrameworkOptimizations(request, ['django']);
@@ -347,14 +392,17 @@ Include proper error handling and validation.`
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { 
-            role: 'user', 
-            content: 'Design a Spring Boot microservice with controller, service, and repository layers, including configuration and security'
-          }
-        ]
+          {
+            role: 'user',
+            content:
+              'Design a Spring Boot microservice with controller, service, and repository layers, including configuration and security',
+          },
+        ],
       };
 
-      const result = optimizer.applyFrameworkOptimizations(request, ['spring-boot']);
+      const result = optimizer.applyFrameworkOptimizations(request, [
+        'spring-boot',
+      ]);
       expect(result).toBeUndefined(); // No architectural keywords detected
     });
 
@@ -362,14 +410,17 @@ Include proper error handling and validation.`
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { 
-            role: 'user', 
-            content: 'Implement Spring Cloud microservices with Eureka service discovery, Zuul gateway, and Hystrix circuit breaker patterns'
-          }
-        ]
+          {
+            role: 'user',
+            content:
+              'Implement Spring Cloud microservices with Eureka service discovery, Zuul gateway, and Hystrix circuit breaker patterns',
+          },
+        ],
       };
 
-      const result = optimizer.applyFrameworkOptimizations(request, ['spring-cloud']);
+      const result = optimizer.applyFrameworkOptimizations(request, [
+        'spring-cloud',
+      ]);
       expect(result).toBeUndefined(); // No architectural keywords detected
     });
 
@@ -377,11 +428,12 @@ Include proper error handling and validation.`
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { 
-            role: 'user', 
-            content: 'Build a React component architecture with hooks, context, and state management for a dashboard application'
-          }
-        ]
+          {
+            role: 'user',
+            content:
+              'Build a React component architecture with hooks, context, and state management for a dashboard application',
+          },
+        ],
       };
 
       const result = optimizer.applyFrameworkOptimizations(request, ['react']);
@@ -392,14 +444,17 @@ Include proper error handling and validation.`
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { 
-            role: 'user', 
-            content: 'Create an Android application with Activity lifecycle, Fragment management, Service components, and BroadcastReceiver integration'
-          }
-        ]
+          {
+            role: 'user',
+            content:
+              'Create an Android application with Activity lifecycle, Fragment management, Service components, and BroadcastReceiver integration',
+          },
+        ],
       };
 
-      const result = optimizer.applyFrameworkOptimizations(request, ['android-sdk']);
+      const result = optimizer.applyFrameworkOptimizations(request, [
+        'android-sdk',
+      ]);
       expect(result).toBeUndefined(); // No architectural keywords detected
     });
 
@@ -407,23 +462,25 @@ Include proper error handling and validation.`
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { 
-            role: 'user', 
-            content: 'Create a full-stack application with Django REST API backend, React frontend with component architecture, and Docker deployment with Kubernetes orchestration'
-          }
-        ]
+          {
+            role: 'user',
+            content:
+              'Create a full-stack application with Django REST API backend, React frontend with component architecture, and Docker deployment with Kubernetes orchestration',
+          },
+        ],
       };
 
-      const result = optimizer.applyFrameworkOptimizations(request, ['django', 'react']);
+      const result = optimizer.applyFrameworkOptimizations(request, [
+        'django',
+        'react',
+      ]);
       expect(result).toBeUndefined(); // No architectural keywords detected
     });
 
     it('should return undefined for frameworks without architectural keywords', () => {
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
-        messages: [
-          { role: 'user', content: 'simple React component' }
-        ]
+        messages: [{ role: 'user', content: 'simple React component' }],
       };
 
       const result = optimizer.applyFrameworkOptimizations(request, ['react']);
@@ -434,8 +491,8 @@ Include proper error handling and validation.`
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { role: 'user', content: 'Django model' } // Very short content
-        ]
+          { role: 'user', content: 'Django model' }, // Very short content
+        ],
       };
 
       const result = optimizer.applyFrameworkOptimizations(request, ['django']);
@@ -448,8 +505,11 @@ Include proper error handling and validation.`
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { role: 'user', content: 'Create a Dockerfile for a Node.js application' }
-        ]
+          {
+            role: 'user',
+            content: 'Create a Dockerfile for a Node.js application',
+          },
+        ],
       };
 
       expect(optimizer.isDevOpsTask(request)).toBe(true);
@@ -459,8 +519,12 @@ Include proper error handling and validation.`
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { role: 'user', content: 'Write Kubernetes deployment manifests with services and ingress' }
-        ]
+          {
+            role: 'user',
+            content:
+              'Write Kubernetes deployment manifests with services and ingress',
+          },
+        ],
       };
 
       expect(optimizer.isDevOpsTask(request)).toBe(true);
@@ -470,8 +534,11 @@ Include proper error handling and validation.`
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { role: 'user', content: 'Set up GitHub Actions workflow for automated deployment' }
-        ]
+          {
+            role: 'user',
+            content: 'Set up GitHub Actions workflow for automated deployment',
+          },
+        ],
       };
 
       expect(optimizer.isDevOpsTask(request)).toBe(true);
@@ -481,8 +548,11 @@ Include proper error handling and validation.`
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { role: 'user', content: 'Create Terraform configuration for AWS infrastructure' }
-        ]
+          {
+            role: 'user',
+            content: 'Create Terraform configuration for AWS infrastructure',
+          },
+        ],
       };
 
       expect(optimizer.isDevOpsTask(request)).toBe(true);
@@ -492,8 +562,8 @@ Include proper error handling and validation.`
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { role: 'user', content: 'Create a simple Python function' }
-        ]
+          { role: 'user', content: 'Create a simple Python function' },
+        ],
       };
 
       expect(optimizer.isDevOpsTask(request)).toBe(false);
@@ -504,9 +574,7 @@ Include proper error handling and validation.`
     it('should return undefined for fast-path requests', () => {
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
-        messages: [
-          { role: 'user', content: 'complete this: def add(a, b):' }
-        ]
+        messages: [{ role: 'user', content: 'complete this: def add(a, b):' }],
       };
 
       const result = optimizer.optimizeReasoningEffort(request);
@@ -517,8 +585,12 @@ Include proper error handling and validation.`
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { role: 'user', content: 'Design a microservices architecture with event sourcing and CQRS patterns' }
-        ]
+          {
+            role: 'user',
+            content:
+              'Design a microservices architecture with event sourcing and CQRS patterns',
+          },
+        ],
       };
 
       const result = optimizer.optimizeReasoningEffort(request);
@@ -529,11 +601,12 @@ Include proper error handling and validation.`
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { 
-            role: 'user', 
-            content: 'Create a comprehensive Django application with models, views, serializers, middleware, and custom management commands for a content management system'
-          }
-        ]
+          {
+            role: 'user',
+            content:
+              'Create a comprehensive Django application with models, views, serializers, middleware, and custom management commands for a content management system',
+          },
+        ],
       };
 
       const result = optimizer.optimizeReasoningEffort(request);
@@ -544,11 +617,12 @@ Include proper error handling and validation.`
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { 
-            role: 'user', 
-            content: 'Implement a full-stack microservices architecture with Spring Boot backend, React frontend, Docker containerization, and Kubernetes deployment with monitoring and logging'
-          }
-        ]
+          {
+            role: 'user',
+            content:
+              'Implement a full-stack microservices architecture with Spring Boot backend, React frontend, Docker containerization, and Kubernetes deployment with monitoring and logging',
+          },
+        ],
       };
 
       const result = optimizer.optimizeReasoningEffort(request, 'medium');
@@ -568,9 +642,7 @@ describe('EnhancedReasoningEffortAnalyzer', () => {
     it('should use fast-path for simple requests', () => {
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
-        messages: [
-          { role: 'user', content: 'hello' }
-        ]
+        messages: [{ role: 'user', content: 'hello' }],
       };
 
       const result = analyzer.analyzeRequest(request);
@@ -581,11 +653,12 @@ describe('EnhancedReasoningEffortAnalyzer', () => {
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { 
-            role: 'user', 
-            content: 'Design and implement a distributed e-commerce platform with microservices architecture, including user management, product catalog, order processing, payment integration, inventory management, and notification services. Use Spring Boot for backend services, React for frontend, Docker for containerization, and Kubernetes for orchestration. Include considerations for scalability, security, monitoring, and data consistency across services.'
-          }
-        ]
+          {
+            role: 'user',
+            content:
+              'Design and implement a distributed e-commerce platform with microservices architecture, including user management, product catalog, order processing, payment integration, inventory management, and notification services. Use Spring Boot for backend services, React for frontend, Docker for containerization, and Kubernetes for orchestration. Include considerations for scalability, security, monitoring, and data consistency across services.',
+          },
+        ],
       };
 
       const result = analyzer.analyzeRequest(request);
@@ -595,9 +668,7 @@ describe('EnhancedReasoningEffortAnalyzer', () => {
     it('should handle conversation context', () => {
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
-        messages: [
-          { role: 'user', content: 'Create a React component' }
-        ]
+        messages: [{ role: 'user', content: 'Create a React component' }],
       };
 
       const context: ConversationContext = {
@@ -617,9 +688,7 @@ describe('EnhancedReasoningEffortAnalyzer', () => {
     it('should return false for fast-path requests', () => {
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
-        messages: [
-          { role: 'user', content: 'explain how this works' }
-        ]
+        messages: [{ role: 'user', content: 'explain how this works' }],
       };
 
       expect(analyzer.shouldApplyReasoning(request)).toBe(false);
@@ -629,11 +698,12 @@ describe('EnhancedReasoningEffortAnalyzer', () => {
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { 
-            role: 'user', 
-            content: 'Implement a distributed caching system with Redis clustering, automatic failover, and performance monitoring'
-          }
-        ]
+          {
+            role: 'user',
+            content:
+              'Implement a distributed caching system with Redis clustering, automatic failover, and performance monitoring',
+          },
+        ],
       };
 
       expect(analyzer.shouldApplyReasoning(request)).toBe(true);
@@ -646,12 +716,12 @@ describe('Factory functions and utilities', () => {
     it('should create a working enhanced analyzer instance', () => {
       const analyzer = createEnhancedReasoningEffortAnalyzer();
       expect(analyzer).toBeInstanceOf(EnhancedReasoningEffortAnalyzer);
-      
+
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
-        messages: [{ role: 'user', content: 'test' }]
+        messages: [{ role: 'user', content: 'test' }],
       };
-      
+
       const result = analyzer.analyzeRequest(request);
       expect(result).toBeUndefined(); // Simple request should not need reasoning
     });
@@ -661,12 +731,12 @@ describe('Factory functions and utilities', () => {
     it('should create a working optimizer instance', () => {
       const optimizer = createContentBasedOptimizer();
       expect(optimizer).toBeInstanceOf(ContentBasedOptimizerService);
-      
+
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
-        messages: [{ role: 'user', content: 'complete this function' }]
+        messages: [{ role: 'user', content: 'complete this function' }],
       };
-      
+
       expect(optimizer.shouldUseFastPath(request)).toBe(true);
     });
   });
@@ -676,11 +746,12 @@ describe('Factory functions and utilities', () => {
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
         messages: [
-          { 
-            role: 'user', 
-            content: 'Build a comprehensive Spring Boot microservices platform with service discovery, API gateway, circuit breakers, distributed tracing, and centralized configuration management'
-          }
-        ]
+          {
+            role: 'user',
+            content:
+              'Build a comprehensive Spring Boot microservices platform with service discovery, API gateway, circuit breakers, distributed tracing, and centralized configuration management',
+          },
+        ],
       };
 
       const result = analyzeReasoningEffortWithOptimizations(request);
@@ -690,9 +761,7 @@ describe('Factory functions and utilities', () => {
     it('should return undefined for simple requests', () => {
       const request: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
-        messages: [
-          { role: 'user', content: 'hello world' }
-        ]
+        messages: [{ role: 'user', content: 'hello world' }],
       };
 
       const result = analyzeReasoningEffortWithOptimizations(request);
@@ -713,9 +782,13 @@ describe('Configuration constants', () => {
     });
 
     it('should have meaningful patterns for each category', () => {
-      expect(DEVELOPMENT_TASK_PATTERNS.simpleCompletion.length).toBeGreaterThan(5);
+      expect(DEVELOPMENT_TASK_PATTERNS.simpleCompletion.length).toBeGreaterThan(
+        5
+      );
       expect(DEVELOPMENT_TASK_PATTERNS.explanation.length).toBeGreaterThan(5);
-      expect(DEVELOPMENT_TASK_PATTERNS.implementation.length).toBeGreaterThan(5);
+      expect(DEVELOPMENT_TASK_PATTERNS.implementation.length).toBeGreaterThan(
+        5
+      );
       expect(DEVELOPMENT_TASK_PATTERNS.devops.length).toBeGreaterThan(10);
       expect(DEVELOPMENT_TASK_PATTERNS.multiLanguage.length).toBeGreaterThan(3);
       expect(DEVELOPMENT_TASK_PATTERNS.architecture.length).toBeGreaterThan(10);
@@ -737,7 +810,7 @@ describe('Configuration constants', () => {
       const entries = Object.entries(LANGUAGE_OPTIMIZATIONS) as ReadonlyArray<
         [
           keyof typeof LANGUAGE_OPTIMIZATIONS,
-          (typeof LANGUAGE_OPTIMIZATIONS)[keyof typeof LANGUAGE_OPTIMIZATIONS]
+          (typeof LANGUAGE_OPTIMIZATIONS)[keyof typeof LANGUAGE_OPTIMIZATIONS],
         ]
       >;
 
@@ -750,9 +823,7 @@ describe('Configuration constants', () => {
         expect(config).toHaveProperty('shouldTriggerReasoning');
       }
 
-      const actualLanguages = entries
-        .map(([language]) => language)
-        .sort();
+      const actualLanguages = entries.map(([language]) => language).sort();
       expect(actualLanguages).toEqual([...expectedLanguages].sort());
     });
 
@@ -779,7 +850,7 @@ describe('Configuration constants', () => {
       const entries = Object.entries(FRAMEWORK_OPTIMIZATIONS) as ReadonlyArray<
         [
           keyof typeof FRAMEWORK_OPTIMIZATIONS,
-          (typeof FRAMEWORK_OPTIMIZATIONS)[keyof typeof FRAMEWORK_OPTIMIZATIONS]
+          (typeof FRAMEWORK_OPTIMIZATIONS)[keyof typeof FRAMEWORK_OPTIMIZATIONS],
         ]
       >;
 
@@ -790,9 +861,7 @@ describe('Configuration constants', () => {
         expect(config).toHaveProperty('architecturalKeywords');
       }
 
-      const actualFrameworks = entries
-        .map(([framework]) => framework)
-        .sort();
+      const actualFrameworks = entries.map(([framework]) => framework).sort();
       expect(actualFrameworks).toEqual([...expectedFrameworks].sort());
     });
 

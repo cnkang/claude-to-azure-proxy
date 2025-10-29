@@ -95,7 +95,8 @@ describe('Enhanced Security Middleware', () => {
       expect(mockRes.json).toHaveBeenCalledWith({
         error: {
           type: 'authentication_error',
-          message: 'API key is required. Provide via Authorization header or x-api-key header.',
+          message:
+            'API key is required. Provide via Authorization header or x-api-key header.',
           correlationId: 'test-correlation-id',
         },
       });
@@ -162,11 +163,7 @@ describe('Enhanced Security Middleware', () => {
         origin: 'https://example.com',
       };
 
-      validateRequestOrigin(
-        mockReq as Request,
-        mockRes as Response,
-        mockNext
-      );
+      validateRequestOrigin(mockReq as Request, mockRes as Response, mockNext);
 
       expect(mockNext).toHaveBeenCalled();
     });
@@ -176,11 +173,7 @@ describe('Enhanced Security Middleware', () => {
         'user-agent': 'curl/7.68.0',
       };
 
-      validateRequestOrigin(
-        mockReq as Request,
-        mockRes as Response,
-        mockNext
-      );
+      validateRequestOrigin(mockReq as Request, mockRes as Response, mockNext);
 
       expect(mockNext).toHaveBeenCalled();
       // Should log warning but not block
@@ -189,11 +182,7 @@ describe('Enhanced Security Middleware', () => {
     it('should handle missing user agent', () => {
       mockReq.headers = {};
 
-      validateRequestOrigin(
-        mockReq as Request,
-        mockRes as Response,
-        mockNext
-      );
+      validateRequestOrigin(mockReq as Request, mockRes as Response, mockNext);
 
       expect(mockNext).toHaveBeenCalled();
     });
@@ -279,7 +268,8 @@ describe('Enhanced Security Middleware', () => {
       expect(mockRes.json).toHaveBeenCalledWith({
         error: {
           type: 'invalid_request_error',
-          message: 'Request body contains arrays exceeding maximum length of 1000',
+          message:
+            'Request body contains arrays exceeding maximum length of 1000',
           correlationId: 'test-correlation-id',
         },
       });
@@ -313,15 +303,19 @@ describe('Enhanced Security Middleware', () => {
         'X-Frame-Options': 'DENY',
         'X-XSS-Protection': '1; mode=block',
         'Referrer-Policy': 'strict-origin-when-cross-origin',
-        'Permissions-Policy': 'geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()',
-        'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
-        'Content-Security-Policy': "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; media-src 'none'; child-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+        'Permissions-Policy':
+          'geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()',
+        'Strict-Transport-Security':
+          'max-age=31536000; includeSubDomains; preload',
+        'Content-Security-Policy':
+          "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; media-src 'none'; child-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
         'Cross-Origin-Embedder-Policy': 'require-corp',
         'Cross-Origin-Opener-Policy': 'same-origin',
         'Cross-Origin-Resource-Policy': 'same-origin',
-        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
+        'Cache-Control':
+          'no-store, no-cache, must-revalidate, proxy-revalidate',
+        Pragma: 'no-cache',
+        Expires: '0',
       });
 
       expect(mockNext).toHaveBeenCalled();
