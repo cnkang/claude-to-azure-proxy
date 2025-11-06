@@ -1,0 +1,142 @@
+/**
+ * Main App Component
+ * 
+ * Root application component with all context providers and routing.
+ * Sets up the complete application structure with theme, i18n, state management,
+ * error handling, notifications, and performance monitoring.
+ * 
+ * Requirements: 1.1, 5.1, 5.2, 5.3, 10.1, 6.3, 7.3, 5.4
+ */
+
+import React, { useEffect, useState } from 'react';
+import { SessionProvider } from './contexts/SessionContext';
+import { AppProvider } from './contexts/AppContext';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { I18nProvider } from './contexts/I18nContext';
+import { AppRouter } from './router/AppRouter';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { NotificationProvider } from './components/common/NotificationSystem';
+import { PerformanceDashboard } from './components/common/PerformanceDashboard';
+import { usePerformanceMonitoring, usePerformanceRegistration } from './hooks/usePerformanceMonitoring';
+import { indexedDBOptimizer } from './services/indexeddb-optimization';
+import { reportAnalyticsException } from './utils/analytics';
+import { frontendLogger } from './utils/logger';
+import './App.css';
+
+/**
+ * Main App component with all providers, error handling, and performance monitoring
+ */
+function App(): React.JSX.Element {
+  const [showPerformanceDashboard, setShowPerformanceDashboard] = useState(false);
+
+  // Performance monitoring for the root App component
+  const performanceMetrics = usePerformanceMonitoring('App', {
+    enabled: true,
+    slowRenderThreshold: 16,
+    trackMemory: true,
+    logSlowRenders: true,
+  });
+
+  // Register performance metrics globally
+  usePerformanceRegistration('App', performanceMetrics);
+
+  // Initialize IndexedDB optimization on app start
+  useEffect(() => {
+    let cleanupInterval: ReturnType<typeof setInterval> | undefined;
+
+    const initializeOptimizations = async (): Promise<void> => {
+      try {
+        await indexedDBOptimizer.initialize();
+        
+        // Schedule periodic cleanup (every 24 hours)
+        cleanupInterval = setInterval(() => {
+          indexedDBOptimizer.cleanup(30).catch((cleanupError: unknown) => {
+            frontendLogger.error('IndexedDB cleanup failed', {
+              error: cleanupError instanceof Error ? cleanupError : new Error(String(cleanupError)),
+            });
+          });
+        }, 24 * 60 * 60 * 1000);
+      } catch (error) {
+        frontendLogger.error('Failed to initialize IndexedDB optimization', {
+          error: error instanceof Error ? error : new Error(String(error)),
+        });
+      }
+    };
+
+    initializeOptimizations().catch(() => undefined);
+
+    return (): void => {
+      if (cleanupInterval !== undefined) {
+        clearInterval(cleanupInterval);
+      }
+    };
+  }, []);
+
+  // Performance budget monitoring
+  useEffect(() => {
+    const memoryUsage = performanceMetrics.memoryUsage?.percentage;
+    if (typeof memoryUsage === 'number' && memoryUsage > 90) {
+      frontendLogger.warn('Critical memory usage detected', {
+        percentage: memoryUsage,
+      });
+      
+      if (process.env.NODE_ENV === 'development') {
+        const maybeGc = (window as typeof window & { gc?: () => void }).gc;
+        if (typeof maybeGc === 'function') {
+          maybeGc();
+        }
+      }
+    }
+  }, [performanceMetrics.memoryUsage]);
+
+  return (
+    <ErrorBoundary
+      resetOnPropsChange={true}
+      onError={(error, _errorInfo) => {
+        // Enhanced error reporting with performance context
+        frontendLogger.error('App error boundary captured exception', {
+          metadata: {
+            componentStack: _errorInfo.componentStack,
+            performanceMetrics,
+          },
+          error,
+        });
+        
+        // Report performance metrics with error for debugging
+        reportAnalyticsException({
+          description: error.message,
+          fatal: false,
+          custom_map: {
+            render_count: performanceMetrics.renderCount,
+            avg_render_time: performanceMetrics.averageRenderTime,
+            memory_usage: performanceMetrics.memoryUsage?.percentage ?? 0,
+          },
+        });
+      }}
+    >
+      <SessionProvider>
+        <AppProvider>
+          <ThemeProvider>
+            <I18nProvider>
+              <NotificationProvider
+                maxNotifications={5}
+                defaultDuration={5000}
+              >
+                <AppRouter />
+                
+                {/* Performance Dashboard (development only) */}
+                <PerformanceDashboard
+                  isVisible={showPerformanceDashboard}
+                  onToggle={() => setShowPerformanceDashboard(!showPerformanceDashboard)}
+                  position="bottom-right"
+                />
+              </NotificationProvider>
+            </I18nProvider>
+          </ThemeProvider>
+        </AppProvider>
+      </SessionProvider>
+    </ErrorBoundary>
+  );
+}
+
+export default App;

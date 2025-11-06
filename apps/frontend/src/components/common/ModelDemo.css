@@ -1,0 +1,415 @@
+/**
+ * Model Demo Component Styles
+ * 
+ * Provides styling for the model demo component used for
+ * testing and showcasing model selection functionality.
+ */
+
+.model-demo {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  font-family: var(--font-family);
+}
+
+/* Loading and Error States */
+.demo-loading,
+.demo-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 3rem;
+  background: var(--surface-color);
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-color);
+}
+
+.demo-error {
+  color: var(--error-color);
+  background: var(--error-background);
+  border-color: var(--error-color);
+}
+
+.loading-spinner {
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 2px solid var(--border-color);
+  border-top: 2px solid var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Header */
+.demo-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.demo-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.demo-description {
+  margin: 0;
+  font-size: 1.125rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* Content */
+.demo-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* Sections */
+.demo-section {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem;
+  background: var(--background-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.section-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.toggle-button {
+  padding: 0.5rem 1rem;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toggle-button:hover {
+  background: var(--primary-color-dark);
+}
+
+.toggle-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--primary-color-alpha);
+}
+
+.section-content {
+  padding: 1.5rem;
+}
+
+/* Model Information Card */
+.model-info-card {
+  background: var(--background-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+}
+
+.model-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.model-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.model-name {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.provider-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  background: var(--primary-background);
+  color: var(--primary-color);
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 0.25rem;
+}
+
+.performance-badge {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.performance-badge.performance-high {
+  background: var(--success-background);
+  color: var(--success-color);
+}
+
+.performance-badge.performance-medium {
+  background: var(--warning-background);
+  color: var(--warning-color);
+}
+
+.performance-badge.performance-low {
+  background: var(--error-background);
+  color: var(--error-color);
+}
+
+.model-description {
+  margin: 0 0 1.5rem 0;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.model-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.capabilities-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.capabilities-label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.capabilities-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.capability-tag {
+  padding: 0.25rem 0.5rem;
+  background: var(--secondary-background);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 0.25rem;
+  text-transform: capitalize;
+}
+
+/* Models Statistics */
+.models-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem;
+  background: var(--background-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  text-align: center;
+}
+
+.stat-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin-bottom: 0.25rem;
+}
+
+.stat-card .stat-label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* Categories Overview */
+.categories-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.category-card {
+  background: var(--background-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.category-title {
+  margin: 0 0 0.75rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.category-models {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.model-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.5rem;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+}
+
+.model-chip.more {
+  background: var(--primary-background);
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.chip-icon {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.chip-name {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .model-demo {
+    padding: 1rem;
+  }
+  
+  .demo-title {
+    font-size: 1.5rem;
+  }
+  
+  .demo-description {
+    font-size: 1rem;
+  }
+  
+  .section-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  
+  .section-content {
+    padding: 1rem;
+  }
+  
+  .model-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  
+  .model-stats {
+    grid-template-columns: 1fr;
+  }
+  
+  .models-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .categories-overview {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .model-info-card,
+  .stat-card,
+  .category-card {
+    border-width: 2px;
+  }
+  
+  .capability-tag,
+  .model-chip {
+    border-width: 1px;
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .toggle-button {
+    transition: none;
+  }
+  
+  .loading-spinner {
+    animation: none;
+  }
+}
+
+/* Dark Theme */
+@media (prefers-color-scheme: dark) {
+  .model-demo {
+    --surface-color: #2a2a2a;
+    --background-color: #1a1a1a;
+    --background-secondary: #222222;
+    --text-primary: #ffffff;
+    --text-secondary: #cccccc;
+    --border-color: #404040;
+    --primary-background: rgba(59, 130, 246, 0.1);
+    --secondary-background: rgba(156, 163, 175, 0.1);
+    --success-background: rgba(34, 197, 94, 0.1);
+    --warning-background: rgba(245, 158, 11, 0.1);
+    --error-background: rgba(239, 68, 68, 0.1);
+  }
+}

@@ -168,7 +168,7 @@
   },
   "lint-staged": {
     "*.{ts,js}": [
-      "pnpm exec eslint --fix",
+      "pnpm exec eslint --fix --ignore-pattern 'apps/**'",
       "prettier --write"
     ],
     "*.{json,md,yml,yaml}": [

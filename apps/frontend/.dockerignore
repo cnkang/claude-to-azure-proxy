@@ -1,0 +1,66 @@
+# Frontend-specific .dockerignore
+
+# Version control
+.git
+.gitignore
+.github
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Dependencies (will be installed in container)
+node_modules
+.pnpm-store
+
+# Build outputs (will be built in container)
+dist
+build
+
+# Test and coverage outputs
+coverage
+.nyc_output
+
+# Logs
+*.log
+logs
+pnpm-debug.log*
+npm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Documentation
+README.md
+*.md
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp
+temp
+.tmp
+.temp
+
+# Backend-specific files (not needed for frontend)
+apps/backend/src
+apps/backend/tests
+apps/backend/metrics-exports
+
+# Development files
+vite.config.ts
+vitest.config.ts
+eslint.config.ts

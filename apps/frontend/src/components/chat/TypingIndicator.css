@@ -1,0 +1,206 @@
+/**
+ * Typing Indicator Styles
+ * 
+ * Animated typing indicator for AI response generation.
+ */
+
+.typing-indicator {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 0;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.typing-indicator.small {
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.typing-indicator.large {
+  gap: 16px;
+  padding: 20px 0;
+}
+
+/* Typing Avatar */
+.typing-avatar {
+  flex-shrink: 0;
+}
+
+.typing-avatar .avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  background-color: var(--secondary-color);
+  color: var(--secondary-text-color);
+  animation: pulse 2s infinite;
+}
+
+.typing-indicator.small .typing-avatar .avatar {
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+}
+
+.typing-indicator.large .typing-avatar .avatar {
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+}
+
+/* Typing Content */
+.typing-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.typing-message {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  font-style: italic;
+}
+
+.typing-indicator.small .typing-message {
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.typing-indicator.large .typing-message {
+  font-size: 16px;
+  margin-bottom: 12px;
+}
+
+/* Typing Dots Animation */
+.typing-dots {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  animation: typingDots 1.4s infinite ease-in-out;
+}
+
+.typing-indicator.small .dot {
+  width: 6px;
+  height: 6px;
+}
+
+.typing-indicator.large .dot {
+  width: 10px;
+  height: 10px;
+}
+
+.dot-1 {
+  animation-delay: 0s;
+}
+
+.dot-2 {
+  animation-delay: 0.2s;
+}
+
+.dot-3 {
+  animation-delay: 0.4s;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+}
+
+@keyframes typingDots {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-10px);
+    opacity: 1;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .typing-indicator {
+    gap: 8px;
+    padding: 12px 0;
+  }
+  
+  .typing-avatar .avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+  }
+  
+  .typing-message {
+    font-size: 13px;
+  }
+  
+  .dot {
+    width: 6px;
+    height: 6px;
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .typing-avatar .avatar {
+    border: 2px solid var(--text-primary);
+  }
+  
+  .dot {
+    border: 1px solid var(--text-primary);
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .typing-indicator {
+    animation: none;
+  }
+  
+  .typing-avatar .avatar {
+    animation: none;
+  }
+  
+  .dot {
+    animation: none;
+    opacity: 0.6;
+  }
+  
+  .dot-2 {
+    opacity: 0.8;
+  }
+  
+  .dot-3 {
+    opacity: 1;
+  }
+}

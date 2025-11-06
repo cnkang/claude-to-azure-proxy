@@ -1,0 +1,153 @@
+/**
+ * Streaming Message Styles
+ * 
+ * Styles for real-time streaming message display with animations.
+ */
+
+.streaming-message {
+  position: relative;
+  animation: slideIn 0.3s ease-out;
+}
+
+.streaming-message.typing {
+  /* Additional styles for typing state */
+}
+
+.streaming-message.complete {
+  /* Styles when streaming is complete */
+}
+
+/* Streaming Status Indicator */
+.streaming-status {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background-color: var(--primary-color);
+  color: var(--primary-text-color);
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.9;
+  z-index: 5;
+}
+
+.streaming-pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+  animation: pulse 1.5s infinite;
+}
+
+.streaming-text {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Enhanced streaming cursor in message content */
+.streaming-message .streaming-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.2em;
+  background-color: var(--primary-color);
+  margin-left: 2px;
+  animation: blink 1s infinite;
+  vertical-align: text-bottom;
+}
+
+/* Streaming content animation */
+.streaming-message .message-content {
+  animation: fadeInContent 0.2s ease-out;
+}
+
+/* Animations */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.8);
+  }
+}
+
+@keyframes blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
+}
+
+@keyframes fadeInContent {
+  from {
+    opacity: 0.8;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .streaming-status {
+    top: 4px;
+    right: 4px;
+    padding: 3px 6px;
+    font-size: 10px;
+  }
+  
+  .streaming-pulse {
+    width: 5px;
+    height: 5px;
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .streaming-status {
+    border: 1px solid var(--text-primary);
+  }
+  
+  .streaming-cursor {
+    border: 1px solid var(--primary-color);
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .streaming-message {
+    animation: none;
+  }
+  
+  .streaming-pulse {
+    animation: none;
+    opacity: 0.8;
+  }
+  
+  .streaming-cursor {
+    animation: none;
+    opacity: 1;
+  }
+  
+  .streaming-message .message-content {
+    animation: none;
+  }
+}

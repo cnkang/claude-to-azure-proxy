@@ -1,0 +1,200 @@
+# Production Docker Compose configuration with CDN optimization
+# Usage: docker-compose -f docker-compose.prod-cdn.yml up -d
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+      target: runner
+    init: true
+    ports:
+      - "${PORT:-8080}:8080"
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - PROXY_API_KEY=${PROXY_API_KEY}
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
+      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY}
+      - AZURE_OPENAI_MODEL=${AZURE_OPENAI_MODEL}
+      # Optional production configuration
+      - AZURE_OPENAI_TIMEOUT=${AZURE_OPENAI_TIMEOUT:-120000}
+      - AZURE_OPENAI_MAX_RETRIES=${AZURE_OPENAI_MAX_RETRIES:-3}
+      - DEFAULT_REASONING_EFFORT=${DEFAULT_REASONING_EFFORT:-medium}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:8080/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: always
+    networks:
+      - app-network
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    # Production resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+        reservations:
+          memory: 512M
+          cpus: "0.5"
+    # Production logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      target: runner
+      args:
+        - BUILD_DATE=${BUILD_DATE:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}
+        - COMMIT_HASH=${COMMIT_HASH:-unknown}
+        - VERSION=${VERSION:-2.0.0}
+        - CDN_URL=${CDN_URL}
+        - BUILD_TARGET=production
+        - ENABLE_ANALYTICS=${ENABLE_ANALYTICS:-true}
+        - ENABLE_ERROR_REPORTING=${ENABLE_ERROR_REPORTING:-true}
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: always
+    networks:
+      - app-network
+    environment:
+      - NGINX_WORKER_PROCESSES=${NGINX_WORKER_PROCESSES:-auto}
+      - NGINX_WORKER_CONNECTIONS=${NGINX_WORKER_CONNECTIONS:-4096}
+      - CDN_URL=${CDN_URL}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost/health",
+          "&&",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost/build-info.json",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:noexec,nosuid,size=50m
+      - /var/run:noexec,nosuid,size=10m
+      - /tmp:noexec,nosuid,size=10m
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    # Production resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+        reservations:
+          memory: 128M
+          cpus: "0.25"
+    # Production logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # CDN Cache Layer (optional - for self-hosted CDN)
+  cdn-cache:
+    image: nginx:1.27-alpine
+    ports:
+      - "${CDN_PORT:-8081}:80"
+    volumes:
+      - ./infra/docker/nginx/cdn.conf:/etc/nginx/nginx.conf:ro
+      - cdn-cache:/var/cache/nginx
+    depends_on:
+      - frontend
+    restart: always
+    networks:
+      - app-network
+    environment:
+      - NGINX_WORKER_PROCESSES=${NGINX_WORKER_PROCESSES:-auto}
+      - NGINX_WORKER_CONNECTIONS=${NGINX_WORKER_CONNECTIONS:-4096}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /var/run:noexec,nosuid,size=10m
+      - /tmp:noexec,nosuid,size=10m
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    # CDN resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.25"
+        reservations:
+          memory: 64M
+          cpus: "0.1"
+    # CDN logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+networks:
+  app-network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: claude-proxy-cdn-net
+
+volumes:
+  cdn-cache:
+    driver: local
