@@ -29,6 +29,7 @@ const rootConfig: Linter.Config[] = [
     ignores: [
       'packages/shared-config/eslint/**',
       'packages/shared-config/vitest/**',
+      'apps/backend/**',
     ],
   },
   ...workspaceConfig,

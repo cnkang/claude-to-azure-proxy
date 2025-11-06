@@ -1,0 +1,72 @@
+{
+  "timestamp": "2025-11-06T11:30:31.104Z",
+  "nodeVersion": "v24.11.0",
+  "alertConfigs": [
+    [
+      "response_time_warning",
+      {
+        "metric": "response_time",
+        "threshold": 100,
+        "level": "warning",
+        "enabled": true,
+        "cooldownMs": 1000
+      }
+    ],
+    [
+      "response_time_critical",
+      {
+        "metric": "response_time",
+        "threshold": 500,
+        "level": "critical",
+        "enabled": true,
+        "cooldownMs": 500
+      }
+    ],
+    [
+      "memory_usage_warning",
+      {
+        "metric": "memory_usage",
+        "threshold": 0.8,
+        "level": "warning",
+        "enabled": true,
+        "cooldownMs": 1000
+      }
+    ],
+    [
+      "error_rate_warning",
+      {
+        "metric": "error_rate",
+        "threshold": 0.1,
+        "level": "warning",
+        "enabled": true,
+        "cooldownMs": 1000
+      }
+    ]
+  ],
+  "metricsHistory": [
+    {
+      "timestamp": "2025-11-06T11:30:30.104Z",
+      "responseTime": {
+        "average": 100,
+        "p95": 100,
+        "p99": 100
+      },
+      "memoryUsage": {
+        "heapUsed": 12666328,
+        "heapTotal": 13811712,
+        "external": 3191352,
+        "rss": 235192320
+      },
+      "gcMetrics": {
+        "totalDuration": 0,
+        "eventCount": 0,
+        "averageDuration": 0
+      },
+      "throughput": {
+        "requestsPerSecond": 0.03333333333333333,
+        "bytesPerSecond": 0
+      },
+      "errorRate": 0
+    }
+  ]
+}

@@ -1,19 +1,19 @@
 {
   "entryPoints": [
-    "src/index.ts",
-    "src/config/index.ts",
-    "src/middleware/authentication.ts",
-    "src/middleware/logging.ts",
-    "src/middleware/security.ts",
-    "src/middleware/error-handler.ts",
-    "src/monitoring/health-monitor.ts",
-    "src/monitoring/metrics.ts",
-    "src/resilience/circuit-breaker.ts",
-    "src/resilience/graceful-degradation.ts",
-    "src/resilience/retry.ts",
-    "src/utils/request-transformer.ts",
-    "src/utils/response-transformer.ts",
-    "src/types/index.ts"
+    "apps/backend/src/index.ts",
+    "apps/backend/src/config/index.ts",
+    "apps/backend/src/middleware/authentication.ts",
+    "apps/backend/src/middleware/logging.ts",
+    "apps/backend/src/middleware/security.ts",
+    "apps/backend/src/middleware/error-handler.ts",
+    "apps/backend/src/monitoring/health-monitor.ts",
+    "apps/backend/src/monitoring/metrics.ts",
+    "apps/backend/src/resilience/circuit-breaker.ts",
+    "apps/backend/src/resilience/graceful-degradation.ts",
+    "apps/backend/src/resilience/retry.ts",
+    "apps/backend/src/utils/request-transformer.ts",
+    "apps/backend/src/utils/response-transformer.ts",
+    "apps/backend/src/types/index.ts"
   ],
   "out": "docs/api",
   "theme": "default",
@@ -24,9 +24,7 @@
   "excludeExternals": true,
   "excludeNotDocumented": false,
   "readme": "README.md",
-  "plugin": [
-    "typedoc-plugin-markdown"
-  ],
+  "plugin": ["typedoc-plugin-markdown"],
   "gitRevision": "main",
   "gitRemote": "origin",
   "gaID": "",
@@ -50,9 +48,7 @@
     "Types",
     "*"
   ],
-  "sort": [
-    "source-order"
-  ],
+  "sort": ["source-order"],
   "kindSortOrder": [
     "Document",
     "Project",
@@ -114,23 +110,21 @@
     "declaration": true,
     "declarationMap": true
   },
-  "tsconfig": "./tsconfig.json",
+  "tsconfig": "./apps/backend/tsconfig.json",
   "exclude": [
     "node_modules/**/*",
-    "dist/**/*",
-    "tests/**/*",
+    "apps/backend/dist/**/*",
+    "apps/backend/tests/**/*",
     "**/*.test.ts",
     "**/*.spec.ts"
   ],
-  "externalPattern": [
-    "**/node_modules/**"
-  ],
+  "externalPattern": ["**/node_modules/**"],
   "excludeInternal": false,
   "excludeCategories": [],
   "defaultCategory": "Other",
   "categoryOrder": [
     "Server",
-    "Configuration", 
+    "Configuration",
     "Middleware",
     "Monitoring",
     "Resilience",

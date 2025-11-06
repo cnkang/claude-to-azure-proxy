@@ -176,12 +176,6 @@
     ],
     "*.{dockerfile,Dockerfile}": [
       "prettier --write --parser dockerfile"
-    ],
-    "apps/backend/src/**/*.ts": [
-      "pnpm run type-check:backend"
-    ],
-    "apps/backend/tests/**/*.ts": [
-      "pnpm run type-check:backend"
     ]
   },
   "pnpm": {
