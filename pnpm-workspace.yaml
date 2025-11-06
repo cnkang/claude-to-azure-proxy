@@ -1,0 +1,8 @@
+# pnpm workspace configuration for monorepo
+packages:
+  # Application packages
+  - "apps/*"
+  # Shared packages
+  - "packages/*"
+  # Tools and utilities
+  - "tools/*"

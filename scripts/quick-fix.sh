@@ -44,7 +44,7 @@ else
     echo "- Configuration validation failed: Run ./scripts/fix-config-validation.sh"
     echo "- Missing .env file: Copy from .env.example and edit"
     echo "- Invalid API keys: Check key lengths and formats"
-    echo "- Streaming errors: Check if AZURE_OPENAI_API_VERSION is set correctly"
+    echo "- Streaming errors: Verify Azure OpenAI endpoint and model deployment"
 fi
 
 echo ""

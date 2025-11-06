@@ -142,18 +142,33 @@ build_application() {
     
     cd "$PROJECT_ROOT"
     
-    # Clean previous build
-    rm -rf dist/
-    
     # Install dependencies
     pnpm install --frozen-lockfile --ignore-scripts
     
-    # Build application
-    pnpm run build
+    # Build shared packages first
+    log_info "Building shared packages..."
+    pnpm run build:shared
     
-    # Verify build output
-    if [[ ! -f "dist/index.js" ]]; then
-        log_error "Build failed - dist/index.js not found"
+    # Build backend
+    log_info "Building backend..."
+    pnpm run build:backend
+    
+    # Verify backend build output
+    if [[ ! -f "apps/backend/dist/index.js" ]]; then
+        log_error "Backend build failed - apps/backend/dist/index.js not found"
+        exit 1
+    fi
+    
+    # Build frontend with production optimizations
+    log_info "Building frontend..."
+    if ! "$SCRIPT_DIR/build-frontend-prod.sh" --skip-checks; then
+        log_error "Frontend build failed"
+        exit 1
+    fi
+    
+    # Verify frontend build output
+    if [[ ! -f "apps/frontend/dist/index.html" ]]; then
+        log_error "Frontend build failed - apps/frontend/dist/index.html not found"
         exit 1
     fi
     

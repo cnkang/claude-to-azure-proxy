@@ -26,14 +26,17 @@ fi
 
 # Check for security issues in dependencies
 echo "🔒 Checking for security vulnerabilities..."
-pnpm audit --audit-level moderate
-if [ $? -ne 0 ]; then
+if ! pnpm audit --audit-level moderate; then
   echo "⚠️  Security vulnerabilities found. Consider running 'pnpm audit fix' or review the issues."
-  echo "🤔 Do you want to continue? (y/N)"
-  read -r response
-  if [ "$response" != "y" ] && [ "$response" != "Y" ]; then
-    echo "❌ Commit aborted due to security concerns."
-    exit 1
+  if [ -n "$CI" ] || [ "$HUSKY_AUDIT_AUTO_APPROVE" = "1" ]; then
+    echo "🤖 Non-interactive mode detected. Continuing despite audit warnings."
+  else
+    echo "🤔 Do you want to continue? (y/N)"
+    read -r response
+    if [ "$response" != "y" ] && [ "$response" != "Y" ]; then
+      echo "❌ Commit aborted due to security concerns."
+      exit 1
+    fi
   fi
 fi
 

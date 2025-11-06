@@ -1,30 +1,38 @@
 services:
-  claude-proxy:
+  backend:
     build:
       context: .
-      dockerfile: Dockerfile
-    init: true  # Use Docker's built-in init system
+      dockerfile: apps/backend/Dockerfile
+      target: runner
+    init: true # Use Docker's built-in init system
     ports:
-      - "${PORT:-8080}:${PORT:-8080}"
+      - "${PORT:-8080}:8080"
     environment:
-      - NODE_ENV=production
-      - PORT=${PORT:-8080}
+      - NODE_ENV=development
+      - PORT=8080
       - PROXY_API_KEY=${PROXY_API_KEY}
       - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
       - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY}
       - AZURE_OPENAI_MODEL=${AZURE_OPENAI_MODEL}
-      # Responses API Configuration (optional)
-      - AZURE_OPENAI_API_VERSION=${AZURE_OPENAI_API_VERSION:-}
+      # Optional configuration
       - AZURE_OPENAI_TIMEOUT=${AZURE_OPENAI_TIMEOUT:-120000}
       - AZURE_OPENAI_MAX_RETRIES=${AZURE_OPENAI_MAX_RETRIES:-3}
       - DEFAULT_REASONING_EFFORT=${DEFAULT_REASONING_EFFORT:-medium}
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:' + (process.env.PORT || 8080) + '/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:8080/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
     restart: unless-stopped
+    networks:
+      - app-network
     security_opt:
       - no-new-privileges:true
     read_only: true
@@ -34,3 +42,45 @@ services:
       - ALL
     cap_add:
       - NET_BIND_SERVICE
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      target: runner
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:noexec,nosuid,size=50m
+      - /var/run:noexec,nosuid,size=10m
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+
+networks:
+  app-network:
+    driver: bridge

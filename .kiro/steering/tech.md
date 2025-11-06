@@ -10,7 +10,7 @@ inclusion: always
 - **Language**: TypeScript 5.3+ with strict mode - no `any` types, explicit return types required
 - **Framework**: Express.js - always use typed Request/Response interfaces
 - **Package Manager**: pnpm (preferred) - use `pnpm` commands in scripts and documentation
-- **Testing**: Vitest with >90% coverage requirement
+- **Testing**: Vitest with happy-dom environment and >90% coverage requirement
 
 ## Critical Dependencies & Usage Patterns
 

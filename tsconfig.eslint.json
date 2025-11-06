@@ -1,15 +1,15 @@
 {
-  "extends": "./tsconfig.json",
+  "extends": "./packages/shared-config/typescript/base.json",
   "compilerOptions": {
-    "types": ["node", "vitest/globals"],
-    "noEmit": true
+    "composite": false,
+    "tsBuildInfoFile": "./node_modules/.cache/tsconfig.eslint.tsbuildinfo"
   },
   "include": [
-    "src/**/*",
-    "tests/**/*"
+    "apps/backend/src/**/*",
+    "apps/backend/tests/**/*",
+    "apps/frontend/src/**/*",
+    "packages/**/*",
+    "scripts/**/*"
   ],
-  "exclude": [
-    "node_modules",
-    "dist"
-  ]
+  "files": ["eslint.config.ts"]
 }

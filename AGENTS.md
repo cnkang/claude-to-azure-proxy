@@ -2,10 +2,15 @@
 
 ## Project Overview
 
-This is a **production-ready TypeScript API proxy server** that seamlessly translates Claude API requests to Azure OpenAI format, enabling Claude Code CLI to work with Azure OpenAI services. The project follows enterprise-grade security, comprehensive monitoring, and production-ready resilience patterns.
+This is a **production-ready TypeScript API proxy server** that seamlessly translates Claude API
+requests to Azure OpenAI format, enabling Claude Code CLI to work with Azure OpenAI services. The
+project follows enterprise-grade security, comprehensive monitoring, and production-ready resilience
+patterns.
 
 ### Core Purpose
-- **API Translation**: Bidirectional request/response transformation between Claude and Azure OpenAI formats
+
+- **API Translation**: Bidirectional request/response transformation between Claude and Azure OpenAI
+  formats
 - **Security Gateway**: Enterprise-grade authentication, rate limiting, and input validation
 - **Production Ready**: Comprehensive monitoring, health checks, and resilience features
 - **Cloud Optimized**: Designed for AWS App Runner deployment with Docker support
@@ -14,11 +19,15 @@ This is a **production-ready TypeScript API proxy server** that seamlessly trans
 
 ### 🔄 Reuse Existing Code and Architecture
 
-**CRITICAL**: Always prioritize reusing existing code and architectural patterns over creating new implementations.
+**CRITICAL**: Always prioritize reusing existing code and architectural patterns over creating new
+implementations.
 
-**ZERO TOLERANCE FOR DUPLICATE CODE**: Before writing any new functionality, you MUST thoroughly search for existing implementations that can be reused or extended. Creating duplicate functionality is strictly prohibited.
+**ZERO TOLERANCE FOR DUPLICATE CODE**: Before writing any new functionality, you MUST thoroughly
+search for existing implementations that can be reused or extended. Creating duplicate functionality
+is strictly prohibited.
 
 #### Mandatory Pre-Implementation Checklist:
+
 1. **Search existing codebase** using file search and grep for similar functionality
 2. **Check `src/utils/`** for reusable utility functions and transformers
 3. **Review `src/errors/`** for existing error handling patterns and error classes
@@ -28,15 +37,19 @@ This is a **production-ready TypeScript API proxy server** that seamlessly trans
 7. **Check `src/clients/`** for existing API client patterns and implementations
 
 #### Strict Reuse Guidelines:
-- **Error Handling**: ALWAYS use existing error classes from `src/errors/index.ts` (ValidationError, AzureOpenAIError, ErrorFactory, etc.)
+
+- **Error Handling**: ALWAYS use existing error classes from `src/errors/index.ts` (ValidationError,
+  AzureOpenAIError, ErrorFactory, etc.)
 - **Request Validation**: MUST extend existing validation patterns from request processing modules
 - **Response Transformation**: MUST build upon existing transformers and type guards
 - **Configuration**: MUST extend existing config patterns in `src/config/index.ts`
 - **API Clients**: MUST follow existing client patterns from `src/clients/azure-responses-client.ts`
 - **Middleware**: MUST reuse existing middleware patterns for authentication, logging, etc.
-- **Type Definitions**: MUST extend existing types rather than creating new ones for similar concepts
+- **Type Definitions**: MUST extend existing types rather than creating new ones for similar
+  concepts
 
 #### Examples of Good Reuse:
+
 ```typescript
 // ✅ GOOD: Reuse existing error classes
 import { ValidationError, AzureOpenAIError, ErrorFactory } from '../errors/index.js';
@@ -51,7 +64,7 @@ export function createAzureOpenAIConfig(config: Config): AzureOpenAIConfig {
   return {
     baseURL: ensureV1Endpoint(config.AZURE_OPENAI_ENDPOINT),
     apiKey: config.AZURE_OPENAI_API_KEY,
-    ...(config.AZURE_OPENAI_API_VERSION && { apiVersion: config.AZURE_OPENAI_API_VERSION }),
+    // API version removed - using latest stable Azure OpenAI API (v1)
     deployment: config.AZURE_OPENAI_MODEL,
     timeout: config.AZURE_OPENAI_TIMEOUT,
     maxRetries: config.AZURE_OPENAI_MAX_RETRIES,
@@ -80,16 +93,23 @@ export class NewAPIClient {
 }
 
 // ❌ BAD: Creating duplicate error handling
-class MyCustomError extends Error { /* duplicate functionality */ }
+class MyCustomError extends Error {
+  /* duplicate functionality */
+}
 
 // ❌ BAD: Reimplementing existing validation
-function validateMyConfig(config: any) { /* duplicate validation logic */ }
+function validateMyConfig(config: any) {
+  /* duplicate validation logic */
+}
 
 // ❌ BAD: Creating new error factory when one exists
-function createMyError(error: any) { /* duplicate error creation */ }
+function createMyError(error: any) {
+  /* duplicate error creation */
+}
 ```
 
 #### Benefits of Strict Code Reuse:
+
 1. **Consistency** - Uniform error handling, validation, and patterns across the entire codebase
 2. **Maintainability** - Single source of truth for common functionality reduces maintenance burden
 3. **Testing** - Existing code is already tested and proven, reducing testing overhead
@@ -100,6 +120,7 @@ function createMyError(error: any) { /* duplicate error creation */ }
 ## Technology Stack & Architecture
 
 ### Core Technologies
+
 - **Runtime**: Node.js 24+ with ES Modules (ESM)
 - **Language**: TypeScript 5.3+ with strict mode (no `any` types)
 - **Framework**: Express.js with typed Request/Response interfaces
@@ -107,6 +128,7 @@ function createMyError(error: any) { /* duplicate error creation */ }
 - **Testing**: Vitest with >90% coverage requirement
 
 ### Key Dependencies
+
 - **axios**: Azure OpenAI API calls with timeout and retry logic
 - **helmet**: Security headers (never disable)
 - **express-rate-limit**: Required on all public endpoints
@@ -135,6 +157,7 @@ scripts/            # Security and quality assurance scripts
 ```
 
 ### Architecture Layers (Strict Dependencies)
+
 1. **Routes** → Middleware, Utils, Types (no direct external API calls)
 2. **Middleware** → Utils, Types, Config (cross-cutting concerns only)
 3. **Utils** → Types only (pure functions, no side effects)
@@ -143,6 +166,7 @@ scripts/            # Security and quality assurance scripts
 ## Development Guidelines
 
 ### TypeScript Requirements
+
 - **Strict Mode**: All TypeScript strict checks enabled
 - **Import Extensions**: Always use `.js` extensions in imports (ESM requirement)
 - **Return Types**: Explicit return types on all functions
@@ -150,6 +174,7 @@ scripts/            # Security and quality assurance scripts
 - **Immutability**: Prefer `readonly` types for immutable data
 
 ### Import Pattern (Always Follow)
+
 ```typescript
 // External dependencies first
 import express from 'express';
@@ -163,6 +188,7 @@ import { validateRequest } from '../utils/index.js';
 ```
 
 ### Error Handling Pattern (Mandatory)
+
 ```typescript
 try {
   const result = await externalApiCall();
@@ -174,6 +200,7 @@ try {
 ```
 
 ### Naming Conventions
+
 - **Files**: kebab-case (`error-handler.ts`)
 - **Classes**: PascalCase (`ProxyServer`)
 - **Functions/Variables**: camelCase (`validateRequest`)
@@ -183,26 +210,32 @@ try {
 ## API Specification
 
 ### Authentication
+
 All endpoints (except `/health`) require authentication:
+
 - `Authorization: Bearer <token>` header
 - `x-api-key: <key>` header
 
 ### Core Endpoints
+
 - `GET /health` - Health check (no auth required)
 - `GET /` - Service information
 - `GET /v1/models` - Claude API compatible models endpoint
 - `POST /v1/completions` - Claude API compatible completions endpoint
 
 ### Request/Response Format
+
 All responses include correlation IDs for tracing:
+
 ```json
 {
-  "correlationId": "uuid-v4-correlation-id",
+  "correlationId": "uuid-v4-correlation-id"
   // ... response data
 }
 ```
 
 Error responses follow consistent format:
+
 ```json
 {
   "error": {
@@ -217,6 +250,7 @@ Error responses follow consistent format:
 ## Environment Configuration
 
 ### Required Variables
+
 ```bash
 PROXY_API_KEY=your-secure-32-character-api-key-here
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
@@ -227,16 +261,19 @@ NODE_ENV=production
 ```
 
 ### Optional Variables (Azure OpenAI v1 API)
+
 ```bash
-# AZURE_OPENAI_API_VERSION=preview  # Optional: only needed for preview features
+# API version is automatically handled - no configuration needed
 AZURE_OPENAI_TIMEOUT=120000         # Optional: request timeout in milliseconds
 AZURE_OPENAI_MAX_RETRIES=3          # Optional: maximum retry attempts
 DEFAULT_REASONING_EFFORT=medium     # Optional: default reasoning effort level
 ```
 
-**Important**: Azure OpenAI v1 API no longer requires `api-version` parameter for GA (Generally Available) features. Only specify `AZURE_OPENAI_API_VERSION` when using preview features that require it.
+**Important**: Azure OpenAI v1 API automatically uses the latest stable version. No API version
+configuration is required.
 
 ### Validation Rules
+
 - `PROXY_API_KEY`: 32-256 characters
 - `AZURE_OPENAI_ENDPOINT`: Valid HTTPS URL
 - `AZURE_OPENAI_API_KEY`: 32-256 characters
@@ -247,6 +284,7 @@ DEFAULT_REASONING_EFFORT=medium     # Optional: default reasoning effort level
 ## Security Implementation
 
 ### Security Features
+
 - **Multi-method Authentication**: Bearer token and API key support
 - **Rate Limiting**: Global and per-IP limits
 - **Input Validation**: Comprehensive request sanitization
@@ -255,6 +293,7 @@ DEFAULT_REASONING_EFFORT=medium     # Optional: default reasoning effort level
 - **Log Sanitization**: Automatic PII removal from logs
 
 ### Security Patterns (Mandatory)
+
 - All routes require authentication middleware
 - Input validation on all request parameters
 - Rate limiting on all public endpoints
@@ -286,18 +325,21 @@ pnpm docs:generate    # Generate TypeScript API documentation
 ## Testing Requirements
 
 ### Test Structure
+
 - Mirror `src/` structure in `tests/`
 - Use test factories from `tests/test-factories.ts`
 - Include unit, integration, and security tests
 - Mock external dependencies consistently
 
 ### Coverage Targets
+
 - Minimum 90% code coverage
 - 100% coverage for critical security functions
 - Test all error paths and edge cases
 - Include performance and load testing for API endpoints
 
 ### Test Categories
+
 - **Unit**: Individual function/class testing
 - **Integration**: Full request/response flow
 - **Security**: Authentication and input validation
@@ -306,18 +348,21 @@ pnpm docs:generate    # Generate TypeScript API documentation
 ## Monitoring & Observability
 
 ### Health Monitoring
+
 - Comprehensive health checks with Azure OpenAI connectivity testing
 - Memory usage monitoring with thresholds
 - Performance metrics collection
 - Structured JSON logging with correlation IDs
 
 ### Metrics Collection
+
 - **Performance**: Request duration, success rates, error rates
 - **Resources**: Memory usage, CPU usage, event loop lag
 - **Business**: API usage patterns, model utilization
 - **Security**: Authentication attempts, rate limit hits
 
 ### Logging Format
+
 ```json
 {
   "timestamp": "2024-01-01T00:00:00.000Z",
@@ -325,7 +370,7 @@ pnpm docs:generate    # Generate TypeScript API documentation
   "correlationId": "uuid-v4",
   "message": "Request completed",
   "service": "claude-to-azure-proxy",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "environment": "production",
   "metadata": {
     "request": { "method": "POST", "url": "/v1/completions" },
@@ -337,18 +382,21 @@ pnpm docs:generate    # Generate TypeScript API documentation
 ## Deployment
 
 ### AWS App Runner (Recommended)
+
 - Optimized for AWS App Runner deployment
 - Uses PORT environment variable for dynamic port assignment
 - Health check endpoint at `/health`
 - Graceful shutdown handling
 
 ### Docker Support
+
 - Multi-stage builds: deps → builder → runner
 - `node:24-alpine` base image
 - Non-root user with minimal privileges
 - Security scanning with hadolint
 
 ### Configuration
+
 - Validate all environment variables at startup
 - Support both development and production patterns
 - Use secure defaults and fail-fast on misconfiguration
@@ -356,6 +404,7 @@ pnpm docs:generate    # Generate TypeScript API documentation
 ## Code Quality Standards
 
 ### Quality Assurance Tools
+
 - **TypeScript**: Strict mode with comprehensive type checking
 - **ESLint**: Security-focused linting with automated fixes
 - **Prettier**: Consistent code formatting
@@ -364,12 +413,14 @@ pnpm docs:generate    # Generate TypeScript API documentation
 - **Complexity Analysis**: Cyclomatic complexity ≤ 10
 
 ### Security Scanning
+
 - Automated dependency vulnerability scanning
 - Static Application Security Testing (SAST)
 - Container security scanning
 - Secret detection in code and configuration
 
 ### Documentation
+
 - TSDoc comments for all public APIs
 - OpenAPI 3.0.3 specification
 - Comprehensive deployment and operations guides
@@ -378,17 +429,20 @@ pnpm docs:generate    # Generate TypeScript API documentation
 ## Business Logic
 
 ### Model Mapping
+
 - Claude models map to appropriate Azure OpenAI models
 - Maintain model capability parity (context length, features)
 - Handle unsupported model requests gracefully
 
 ### Request/Response Transformation
+
 - Preserve all Claude API semantics in transformations
 - Handle streaming responses identically to Claude API behavior
 - Maintain request correlation and timing characteristics
 - Transform error responses to match Claude API error format
 
 ### Performance Requirements
+
 - Target sub-100ms proxy overhead for non-streaming requests
 - Support concurrent requests with proper resource management
 - Implement efficient memory usage for streaming responses
@@ -396,6 +450,7 @@ pnpm docs:generate    # Generate TypeScript API documentation
 ## Common Patterns
 
 ### Adding New Routes
+
 ```typescript
 // src/routes/new-feature.ts
 import { Router } from 'express';
@@ -406,11 +461,11 @@ import type { RequestWithCorrelationId } from '../types/index.js';
 export const newFeatureHandler = [
   // Input validation
   body('param').isString().isLength({ min: 1, max: 100 }),
-  
+
   // Handler
   async (req: Request, res: Response): Promise<void> => {
     const correlationId = (req as RequestWithCorrelationId).correlationId;
-    
+
     // Validation check
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -418,11 +473,11 @@ export const newFeatureHandler = [
         error: {
           type: 'validation_error',
           message: 'Invalid request parameters',
-          correlationId
-        }
+          correlationId,
+        },
       });
     }
-    
+
     try {
       // Business logic here
       const result = await processRequest(req.body);
@@ -433,15 +488,16 @@ export const newFeatureHandler = [
         error: {
           type: 'internal_error',
           message: 'Request processing failed',
-          correlationId
-        }
+          correlationId,
+        },
       });
     }
-  }
+  },
 ];
 ```
 
 ### Adding New Middleware
+
 ```typescript
 // src/middleware/new-middleware.ts
 import type { Request, Response, NextFunction } from 'express';
@@ -450,7 +506,7 @@ import { logger } from './logging.js';
 
 export const newMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   const correlationId = (req as RequestWithCorrelationId).correlationId;
-  
+
   try {
     // Middleware logic here
     logger.info('Middleware executed', correlationId);
@@ -463,6 +519,7 @@ export const newMiddleware = (req: Request, res: Response, next: NextFunction): 
 ```
 
 ### Adding New Utilities
+
 ```typescript
 // src/utils/new-utility.ts
 import type { SomeType } from '../types/index.js';
@@ -477,7 +534,7 @@ export const newUtility = (input: SomeType): string => {
   if (!input) {
     throw new Error('Input is required');
   }
-  
+
   // Pure function logic here
   return processInput(input);
 };
@@ -486,6 +543,7 @@ export const newUtility = (input: SomeType): string => {
 ## Key Files Reference
 
 ### Core Application Files
+
 - `src/index.ts` - Main server class and application entry point
 - `src/config/index.ts` - Environment validation and configuration
 - `src/middleware/security.ts` - Security middleware (auth, rate limiting, CORS)
@@ -493,6 +551,7 @@ export const newUtility = (input: SomeType): string => {
 - `src/routes/completions.ts` - Main API endpoint for Claude-to-Azure translation
 
 ### Configuration Files
+
 - `package.json` - Dependencies and scripts
 - `tsconfig.json` - TypeScript configuration with strict mode
 - `eslint.config.ts` - ESLint configuration with security rules
@@ -500,12 +559,14 @@ export const newUtility = (input: SomeType): string => {
 - `docker-compose.yml` - Docker deployment configuration
 
 ### Documentation Files
+
 - `README.md` - Project overview and quick start guide
 - `docs/api-specification.yaml` - OpenAPI 3.0.3 API specification
 - `docs/DEPLOYMENT.md` - Comprehensive deployment guide
 - `docs/QUALITY_ASSURANCE_SUMMARY.md` - Code quality implementation summary
 
 ### Quality Assurance Files
+
 - `vitest.config.ts` - Test configuration
 - `typedoc.json` - API documentation generation
 - `scripts/security-audit.sh` - Security scanning script
@@ -514,6 +575,7 @@ export const newUtility = (input: SomeType): string => {
 ## Best Practices for AI Agents
 
 ### When Working with This Codebase
+
 1. **Always follow the layered architecture** - Routes → Middleware → Utils → Types
 2. **Use correlation IDs** for all logging and error handling
 3. **Validate all inputs** using express-validator and Joi schemas
@@ -524,6 +586,7 @@ export const newUtility = (input: SomeType): string => {
 8. **Run quality checks** before committing code (`pnpm quality:all`)
 
 ### Security Considerations
+
 1. **Never expose sensitive data** in logs or error responses
 2. **Always use authentication middleware** on protected routes
 3. **Implement rate limiting** on all public endpoints
@@ -532,6 +595,7 @@ export const newUtility = (input: SomeType): string => {
 6. **Keep dependencies updated** and scan for vulnerabilities regularly
 
 ### Performance Considerations
+
 1. **Use connection pooling** for external API calls
 2. **Implement proper timeout handling** for all async operations
 3. **Monitor memory usage** and implement leak detection
@@ -539,4 +603,6 @@ export const newUtility = (input: SomeType): string => {
 5. **Implement caching** where appropriate (with proper invalidation)
 6. **Profile performance** regularly and optimize bottlenecks
 
-This reference guide provides comprehensive information for AI agents working with the Claude-to-Azure OpenAI Proxy codebase. Follow these patterns and guidelines to maintain code quality, security, and performance standards.
+This reference guide provides comprehensive information for AI agents working with the
+Claude-to-Azure OpenAI Proxy codebase. Follow these patterns and guidelines to maintain code
+quality, security, and performance standards.

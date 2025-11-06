@@ -75,9 +75,12 @@ jobs:
       - name: Check for dependency vulnerabilities
         run: |
           if [ -f "package.json" ]; then
-            echo "🔍 Checking for dependency vulnerabilities..."
-            pnpm install
-            pnpm audit --audit-level moderate || echo "⚠️ Found dependency vulnerabilities"
+            echo "🔍 Checking for dependency vulnerabilities in workspace..."
+            pnpm install --frozen-lockfile
+            echo "Checking root workspace..."
+            pnpm audit --audit-level moderate || echo "⚠️ Found vulnerabilities in root workspace"
+            echo "Checking all workspace packages..."
+            pnpm -r audit --audit-level moderate || echo "⚠️ Found vulnerabilities in workspace packages"
           fi
 
       - name: Security summary

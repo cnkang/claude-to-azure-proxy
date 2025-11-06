@@ -1,6 +1,7 @@
 # Troubleshooting Guide
 
-This guide helps you diagnose and resolve common issues with the Claude-to-Azure OpenAI Proxy using the v1 Responses API.
+This guide helps you diagnose and resolve common issues with the Claude-to-Azure OpenAI Proxy using
+the v1 Responses API.
 
 ## 🔍 Quick Diagnostics
 
@@ -13,6 +14,7 @@ curl http://localhost:8080/health
 ```
 
 Expected response:
+
 ```json
 {
   "status": "healthy",
@@ -54,6 +56,7 @@ if (missing.length) {
 ### High Memory Usage (90%+)
 
 **Symptoms:**
+
 - Health check shows `"status": "unhealthy"`
 - Memory percentage > 85%
 - Container restarts frequently
@@ -61,15 +64,17 @@ if (missing.length) {
 **Solutions:**
 
 1. **Create memory optimization override:**
+
    ```bash
    # Copy the example file
    cp docker-compose.override.yml.example docker-compose.override.yml
-   
+
    # Restart with optimizations
    docker compose down && docker compose up -d
    ```
 
 2. **Quick fix script:**
+
    ```bash
    ./scripts/quick-fix.sh
    ```
@@ -83,20 +88,24 @@ if (missing.length) {
 ### Inconsistent Azure OpenAI Status
 
 **Symptoms:**
+
 - Health check shows conflicting Azure OpenAI status
 - One check shows "connected", another shows "disconnected"
 
 **Solutions:**
+
 - This was a bug in duplicate health checks (now fixed)
 - Restart the container to apply the fix
 
 ### Docker Compose Command Issues
 
 **Symptoms:**
+
 - `docker-compose: command not found`
 - Scripts fail with compose errors
 
 **Solutions:**
+
 - Use `docker compose` (new integrated version) instead of `docker-compose`
 - Our scripts auto-detect the correct command
 - Run `./scripts/check-docker-compose.sh` to verify your setup
@@ -106,6 +115,7 @@ if (missing.length) {
 ### 1. Authentication Errors
 
 #### Symptoms
+
 - HTTP 401 responses
 - "Invalid credentials" errors
 - Authentication failures in logs
@@ -113,6 +123,7 @@ if (missing.length) {
 #### Solutions
 
 **Check Proxy API Key:**
+
 ```bash
 # Verify your proxy API key is set and valid
 echo "PROXY_API_KEY length: ${#PROXY_API_KEY}"
@@ -124,6 +135,7 @@ curl -H "Authorization: Bearer your-proxy-api-key" \
 ```
 
 **Check Azure OpenAI API Key:**
+
 ```bash
 # Test Azure OpenAI connectivity directly
 curl -H "Authorization: Bearer your-azure-api-key" \
@@ -131,6 +143,7 @@ curl -H "Authorization: Bearer your-azure-api-key" \
 ```
 
 **Common fixes:**
+
 - Ensure `PROXY_API_KEY` is 32+ characters
 - Verify `AZURE_OPENAI_API_KEY` is valid and not expired
 - Check API key permissions in Azure portal
@@ -139,6 +152,7 @@ curl -H "Authorization: Bearer your-azure-api-key" \
 ### 2. Responses API Connection Issues
 
 #### Symptoms
+
 - "Service unavailable" errors
 - Timeout errors
 - Connection refused errors
@@ -146,6 +160,7 @@ curl -H "Authorization: Bearer your-azure-api-key" \
 #### Solutions
 
 **Verify Endpoint Configuration:**
+
 ```bash
 # Check if endpoint is accessible
 curl -I "https://your-resource.openai.azure.com/openai/v1/"
@@ -155,15 +170,14 @@ echo $AZURE_OPENAI_ENDPOINT
 ```
 
 **Check API Version:**
-```bash
-# For GA v1 API, don't set AZURE_OPENAI_API_VERSION
-unset AZURE_OPENAI_API_VERSION
 
-# For preview features, set to "preview"
-export AZURE_OPENAI_API_VERSION=preview
+```bash
+# API version is automatically handled - no configuration needed
+# The latest stable Azure OpenAI API (v1) is used by default
 ```
 
 **Timeout Configuration:**
+
 ```bash
 # Increase timeout for complex reasoning tasks
 export AZURE_OPENAI_TIMEOUT=120000  # 2 minutes
@@ -175,6 +189,7 @@ export AZURE_OPENAI_MAX_RETRIES=5
 ### 3. Reasoning Effort Issues
 
 #### Symptoms
+
 - Responses are too slow
 - Responses lack depth for complex tasks
 - Inconsistent response quality
@@ -182,6 +197,7 @@ export AZURE_OPENAI_MAX_RETRIES=5
 #### Solutions
 
 **Adjust Default Reasoning Effort:**
+
 ```bash
 # For faster responses (simple tasks)
 export DEFAULT_REASONING_EFFORT=minimal
@@ -190,15 +206,16 @@ export DEFAULT_REASONING_EFFORT=minimal
 export DEFAULT_REASONING_EFFORT=high
 ```
 
-**Check Automatic Detection:**
-The proxy automatically detects task complexity. Check logs for reasoning decisions:
+**Check Automatic Detection:** The proxy automatically detects task complexity. Check logs for
+reasoning decisions:
+
 ```bash
 # Look for reasoning effort logs
 grep "reasoning_effort" logs/app.log
 ```
 
-**Manual Override:**
-You can override reasoning effort in requests:
+**Manual Override:** You can override reasoning effort in requests:
+
 ```json
 {
   "model": "claude-3-5-sonnet-20241022",
@@ -212,6 +229,7 @@ You can override reasoning effort in requests:
 ### 4. Format Detection Issues
 
 #### Symptoms
+
 - Wrong response format
 - "Unsupported request format" errors
 - Inconsistent behavior between clients
@@ -219,6 +237,7 @@ You can override reasoning effort in requests:
 #### Solutions
 
 **Check Request Format:**
+
 ```bash
 # Claude format example
 curl -X POST http://localhost:8080/v1/messages \
@@ -240,8 +259,8 @@ curl -X POST http://localhost:8080/v1/chat/completions \
   }'
 ```
 
-**Debug Format Detection:**
-Enable debug logging to see format detection:
+**Debug Format Detection:** Enable debug logging to see format detection:
+
 ```bash
 export LOG_LEVEL=debug
 pnpm start
@@ -250,6 +269,7 @@ pnpm start
 ### 5. Streaming Issues
 
 #### Symptoms
+
 - Streaming responses not working
 - Incomplete streaming data
 - Connection drops during streaming
@@ -257,6 +277,7 @@ pnpm start
 #### Solutions
 
 **Test Streaming:**
+
 ```bash
 # Claude format streaming
 curl -X POST http://localhost:8080/v1/messages \
@@ -283,6 +304,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 ```
 
 **Check Network Configuration:**
+
 - Ensure proxy/load balancer supports streaming
 - Verify timeout settings allow for long connections
 - Check if client properly handles Server-Sent Events
@@ -290,6 +312,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 ### 6. Memory and Performance Issues
 
 #### Symptoms
+
 - High memory usage
 - Slow response times
 - Service crashes under load
@@ -297,6 +320,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 #### Solutions
 
 **Monitor Memory:**
+
 ```bash
 # Check memory usage
 curl http://localhost:8080/health | jq '.checks.memory'
@@ -306,6 +330,7 @@ top -p $(pgrep -f "node.*index.js")
 ```
 
 **Optimize Configuration:**
+
 ```bash
 # Reduce timeout for faster failure
 export AZURE_OPENAI_TIMEOUT=30000
@@ -317,8 +342,8 @@ export MAX_CONCURRENT_REQUESTS=10
 export NODE_OPTIONS="--max-old-space-size=2048 --gc-interval=100"
 ```
 
-**Conversation Cleanup:**
-The proxy automatically cleans up old conversations. Check configuration:
+**Conversation Cleanup:** The proxy automatically cleans up old conversations. Check configuration:
+
 ```bash
 # Conversation cleanup settings (in config)
 export CONVERSATION_MAX_AGE=3600000  # 1 hour
@@ -328,6 +353,7 @@ export CONVERSATION_CLEANUP_INTERVAL=300000  # 5 minutes
 ### 7. Content Security Validation Issues
 
 #### Symptoms
+
 - Legitimate code/HTML content being rejected
 - "Content contains potentially harmful content" errors
 - Code review requests failing
@@ -336,6 +362,7 @@ export CONVERSATION_CLEANUP_INTERVAL=300000  # 5 minutes
 #### Solutions
 
 **For Development/Code Review (Disable Security Validation):**
+
 ```bash
 # Method 1: Environment variable
 export ENABLE_CONTENT_SECURITY_VALIDATION=false
@@ -357,6 +384,7 @@ docker compose down && docker compose up -d
 ```
 
 **Test Configuration:**
+
 ```bash
 # Test with HTML content (should pass when security is disabled)
 curl -X POST http://localhost:8080/v1/chat/completions \
@@ -365,13 +393,14 @@ curl -X POST http://localhost:8080/v1/chat/completions \
   -d '{
     "model": "gpt-4o",
     "messages": [{
-      "role": "user", 
+      "role": "user",
       "content": "<button onclick=\"test()\">Test Button</button>"
     }]
   }'
 ```
 
 **Verify Configuration:**
+
 ```bash
 # Check current setting
 echo "Content security validation: $ENABLE_CONTENT_SECURITY_VALIDATION"
@@ -381,10 +410,12 @@ docker compose logs | grep -i "security\|validation"
 ```
 
 **When to Use Each Setting:**
+
 - **`true` (Production)**: For user-facing applications, untrusted input
 - **`false` (Development)**: For code review, documentation processing, template development
 
 **Common Content That Gets Blocked:**
+
 - HTML with event handlers: `<div onclick="handler()">`
 - Template syntax: `{{user.name}}`, `{{constructor}}`
 - JavaScript protocols: `javascript:alert(1)`
@@ -393,6 +424,7 @@ docker compose logs | grep -i "security\|validation"
 ## 🔄 Docker Quick Commands
 
 ### Health and Status
+
 ```bash
 # Check health
 curl http://localhost:8080/health | jq '.'
@@ -408,6 +440,7 @@ docker stats --no-stream
 ```
 
 ### Container Management
+
 ```bash
 # Restart container
 docker compose restart
@@ -421,6 +454,7 @@ docker compose down && docker compose up -d
 ```
 
 ### Debug Scripts
+
 ```bash
 # Quick fix for common issues
 ./scripts/quick-fix.sh

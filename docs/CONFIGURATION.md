@@ -24,23 +24,24 @@ Complete configuration reference for the Claude-to-Azure Proxy with Node.js 24 L
 
 ### Azure OpenAI Settings
 
-| Variable                   | Default      | Description                                           |
-| -------------------------- | ------------ | ----------------------------------------------------- |
-| `AZURE_OPENAI_API_VERSION` | `2024-10-21` | API version (leave unset for GA)                      |
-| `AZURE_OPENAI_TIMEOUT`     | `120000`     | Request timeout (ms)                                  |
-| `AZURE_OPENAI_MAX_RETRIES` | `3`          | Max retry attempts                                    |
-| `DEFAULT_REASONING_EFFORT` | `medium`     | Default reasoning effort (minimal, low, medium, high) |
+| Variable                       | Default     | Description                                           |
+| ------------------------------ | ----------- | ----------------------------------------------------- |
+| ~~`AZURE_OPENAI_API_VERSION`~~ | ~~Removed~~ | ~~API version (deprecated - automatically handled)~~  |
+| `AZURE_OPENAI_TIMEOUT`         | `120000`    | Request timeout (ms)                                  |
+| `AZURE_OPENAI_MAX_RETRIES`     | `3`         | Max retry attempts                                    |
+| `DEFAULT_REASONING_EFFORT`     | `medium`    | Default reasoning effort (minimal, low, medium, high) |
 
 ### AWS Bedrock Settings (Optional)
 
-| Variable                | Default   | Description                                    |
-| ----------------------- | --------- | ---------------------------------------------- |
-| `AWS_BEDROCK_API_KEY`   | -         | AWS Bedrock API key (enables Qwen models)     |
-| `AWS_BEDROCK_REGION`    | `us-west-2` | AWS region for Bedrock service               |
-| `AWS_BEDROCK_TIMEOUT`   | `120000`  | Request timeout (ms)                           |
-| `AWS_BEDROCK_MAX_RETRIES` | `3`     | Max retry attempts                             |
+| Variable                  | Default     | Description                               |
+| ------------------------- | ----------- | ----------------------------------------- |
+| `AWS_BEDROCK_API_KEY`     | -           | AWS Bedrock API key (enables Qwen models) |
+| `AWS_BEDROCK_REGION`      | `us-west-2` | AWS region for Bedrock service            |
+| `AWS_BEDROCK_TIMEOUT`     | `120000`    | Request timeout (ms)                      |
+| `AWS_BEDROCK_MAX_RETRIES` | `3`         | Max retry attempts                        |
 
-**Note**: AWS Bedrock configuration is optional. When configured, it enables support for Qwen models (qwen-3-coder, qwen.qwen3-coder-480b-a35b-v1:0) alongside existing Azure OpenAI models.
+**Note**: AWS Bedrock configuration is optional. When configured, it enables support for Qwen models
+(qwen-3-coder, qwen.qwen3-coder-480b-a35b-v1:0) alongside existing Azure OpenAI models.
 
 ### Security Settings
 
@@ -61,24 +62,25 @@ Complete configuration reference for the Claude-to-Azure Proxy with Node.js 24 L
 
 ## 🎯 Model Routing Configuration
 
-The proxy automatically routes requests to the appropriate AI service based on the model parameter in the request:
+The proxy automatically routes requests to the appropriate AI service based on the model parameter
+in the request:
 
 ### Supported Models and Routing
 
-| Model Name                        | Service      | Description                           |
-| --------------------------------- | ------------ | ------------------------------------- |
-| `qwen-3-coder`                    | AWS Bedrock  | Qwen 3 Coder (user-friendly name)    |
-| `qwen.qwen3-coder-480b-a35b-v1:0` | AWS Bedrock  | Qwen 3 Coder (full AWS model ID)     |
-| `gpt-5-codex`                     | Azure OpenAI | GPT-5 Codex deployment                |
-| `gpt-4`                           | Azure OpenAI | GPT-4 models                          |
-| `claude-3-5-sonnet-20241022`      | Azure OpenAI | Claude models (via Azure)             |
-| Other models                      | Azure OpenAI | Default fallback                      |
+| Model Name                        | Service      | Description                       |
+| --------------------------------- | ------------ | --------------------------------- |
+| `qwen-3-coder`                    | AWS Bedrock  | Qwen 3 Coder (user-friendly name) |
+| `qwen.qwen3-coder-480b-a35b-v1:0` | AWS Bedrock  | Qwen 3 Coder (full AWS model ID)  |
+| `gpt-5-codex`                     | Azure OpenAI | GPT-5 Codex deployment            |
+| `gpt-4`                           | Azure OpenAI | GPT-4 models                      |
+| `claude-3-5-sonnet-20241022`      | Azure OpenAI | Claude models (via Azure)         |
+| Other models                      | Azure OpenAI | Default fallback                  |
 
 ### Model Routing Logic
 
 The proxy automatically determines the target service based on the `model` parameter in the request:
 
-1. **Qwen Models → AWS Bedrock**: 
+1. **Qwen Models → AWS Bedrock**:
    - `qwen-3-coder` (user-friendly name)
    - `qwen.qwen3-coder-480b-a35b-v1:0` (full AWS model ID)
    - Any model containing `qwen` in the name
@@ -378,6 +380,7 @@ pnpm start
 ```
 
 **Validation Checks**:
+
 - ✅ API key format and length validation
 - ✅ Region format validation (must be valid AWS region)
 - ✅ Timeout value validation (must be positive integer)
@@ -434,18 +437,21 @@ curl http://localhost:8080/health
 **Common Configuration Problems**:
 
 1. **Invalid API Key Format**:
+
    ```
    Error: AWS_BEDROCK_API_KEY must be a valid API key format
    Solution: Ensure API key is properly formatted and has correct permissions
    ```
 
 2. **Region Mismatch**:
+
    ```
    Error: Model qwen.qwen3-coder-480b-a35b-v1:0 not available in region us-east-1
    Solution: Set AWS_BEDROCK_REGION=us-west-2 (Qwen models are in us-west-2)
    ```
 
 3. **Network Connectivity**:
+
    ```
    Error: Unable to connect to AWS Bedrock endpoint
    Solution: Check network connectivity and firewall rules for HTTPS to *.amazonaws.com
@@ -480,16 +486,16 @@ export NODE_OPTIONS="--expose-gc --heap-prof --heap-prof-interval=10000"
 
 ### Node.js 24 Performance Settings
 
-| Setting | Description | Recommended Value |
-|---------|-------------|-------------------|
-| `--max-old-space-size` | Maximum old generation heap size (MB) | `1024` (standard), `2048` (high-load) |
-| `--max-new-space-size` | Maximum new generation heap size (MB) | `128` (standard), `256` (high-load) |
-| `--optimize-for-size` | Optimize for memory usage over speed | Always enabled |
-| `--gc-interval` | Garbage collection interval | `100` (standard), `50` (high-performance) |
-| `--incremental-marking` | Enable incremental GC marking | Always enabled |
-| `--concurrent-marking` | Enable concurrent GC marking | Always enabled |
-| `--parallel-scavenge` | Enable parallel scavenging | Always enabled |
-| `--expose-gc` | Expose global.gc() function | Production monitoring only |
+| Setting                 | Description                           | Recommended Value                         |
+| ----------------------- | ------------------------------------- | ----------------------------------------- |
+| `--max-old-space-size`  | Maximum old generation heap size (MB) | `1024` (standard), `2048` (high-load)     |
+| `--max-new-space-size`  | Maximum new generation heap size (MB) | `128` (standard), `256` (high-load)       |
+| `--optimize-for-size`   | Optimize for memory usage over speed  | Always enabled                            |
+| `--gc-interval`         | Garbage collection interval           | `100` (standard), `50` (high-performance) |
+| `--incremental-marking` | Enable incremental GC marking         | Always enabled                            |
+| `--concurrent-marking`  | Enable concurrent GC marking          | Always enabled                            |
+| `--parallel-scavenge`   | Enable parallel scavenging            | Always enabled                            |
+| `--expose-gc`           | Expose global.gc() function           | Production monitoring only                |
 
 ### Logging Configuration
 
@@ -524,11 +530,8 @@ AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
 **API version conflicts:**
 
 ```bash
-# For GA API, don't set version
-unset AZURE_OPENAI_API_VERSION
-
-# For preview features only
-export AZURE_OPENAI_API_VERSION=preview
+# API version is automatically handled - no configuration needed
+# The latest stable Azure OpenAI API (v1) is used by default
 ```
 
 **Memory issues:**

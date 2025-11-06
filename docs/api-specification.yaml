@@ -3,45 +3,45 @@ info:
   title: Claude-to-Azure OpenAI Proxy API
   description: |
     API proxy server that translates Claude API requests to Azure OpenAI v1 Responses API format.
-    
+
     This service acts as a gateway between Claude Code CLI and Azure OpenAI's v1 Responses API,
     providing seamless compatibility while leveraging GPT-5-Codex's enhanced reasoning capabilities,
     structured outputs, and improved conversation management.
-    
+
     ## Key Features
-    
+
     - **Responses API Integration**: Uses Azure OpenAI v1 Responses API for enhanced reasoning
     - **Intelligent Reasoning**: Automatic reasoning effort adjustment based on task complexity
     - **Multi-Format Support**: Supports both Claude and OpenAI request/response formats
     - **Language-Specific Optimizations**: Enhanced support for Python, Java, TypeScript, React, Vue, and more
     - **Conversation Management**: Improved multi-turn conversation handling with context tracking
     - **Streaming Support**: Real-time response streaming with proper format conversion
-    
+
     ## Authentication
-    
+
     All API endpoints (except /health) require authentication using one of:
     - `Authorization: Bearer <token>` header
     - `x-api-key: <key>` header
-    
+
     The authentication token/key must match the configured `PROXY_API_KEY`.
-    
+
     ## Reasoning Effort
-    
+
     The proxy automatically analyzes request complexity and adjusts reasoning effort:
     - **Simple completions**: Minimal reasoning for fast responses
     - **Complex tasks**: Enhanced reasoning for better quality
     - **Language-specific**: Automatic adjustments for different programming languages
     - **Framework-aware**: Special handling for Django, Spring Boot, React, Vue, etc.
-    
+
     ## Rate Limiting
-    
+
     - Global rate limit: 100 requests per 15 minutes per IP
     - Authentication rate limit: 50 attempts per 15 minutes per IP
-    
+
     ## Error Handling
-    
+
     All errors follow a consistent format with correlation IDs for tracing:
-    
+
     ```json
     {
       "error": {
@@ -52,7 +52,7 @@ info:
       }
     }
     ```
-    
+
   version: 2.0.0
   contact:
     name: Claude-to-Azure Proxy
@@ -75,19 +75,19 @@ paths:
       summary: Health Check
       description: |
         Returns the health status of the proxy server and its dependencies.
-        
+
         This endpoint is used by AWS App Runner for health monitoring and
         does not require authentication.
       operationId: getHealth
       tags:
         - Health
       responses:
-        '200':
+        "200":
           description: Service is healthy
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HealthResponse'
+                $ref: "#/components/schemas/HealthResponse"
               example:
                 status: "healthy"
                 timestamp: "2025-10-17T15:45:00.000Z"
@@ -97,12 +97,12 @@ paths:
                     status: "healthy"
                     responseTime: 1
                     message: "Memory usage: 45.2%"
-        '503':
+        "503":
           description: Service is unhealthy
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HealthResponse'
+                $ref: "#/components/schemas/HealthResponse"
               example:
                 status: "unhealthy"
                 timestamp: "2025-10-17T15:45:00.000Z"
@@ -121,19 +121,19 @@ paths:
       tags:
         - Service
       responses:
-        '200':
+        "200":
           description: Service information
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ServiceInfoResponse'
+                $ref: "#/components/schemas/ServiceInfoResponse"
 
   /v1/models:
     get:
       summary: List Available Models
       description: |
         Returns a list of available models compatible with Claude API format.
-        
+
         This endpoint returns a static, hardcoded response that mimics the
         Claude API models endpoint to ensure compatibility with Claude Code CLI.
       operationId: listModels
@@ -143,12 +143,12 @@ paths:
         - BearerAuth: []
         - ApiKeyAuth: []
       responses:
-        '200':
+        "200":
           description: List of available models
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ModelsResponse'
+                $ref: "#/components/schemas/ModelsResponse"
               example:
                 object: "list"
                 data:
@@ -156,19 +156,19 @@ paths:
                     object: "model"
                     created: 1640995200
                     owned_by: "anthropic"
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '429':
-          $ref: '#/components/responses/RateLimitError'
-        '503':
-          $ref: '#/components/responses/ServiceUnavailableError'
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
 
   /v1/completions:
     post:
       summary: Create Completion (Legacy)
       description: |
         Creates a completion by forwarding the request to Azure OpenAI v1 Responses API.
-        
+
         This endpoint accepts Claude API format requests, transforms them
         to Azure OpenAI v1 Responses API format, forwards to Azure OpenAI, and transforms
         the response back to Claude format. Supports intelligent reasoning effort adjustment.
@@ -183,40 +183,40 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CompletionRequest'
+              $ref: "#/components/schemas/CompletionRequest"
             example:
               model: "claude-3-5-sonnet-20241022"
               prompt: "Hello, world!"
               max_tokens: 100
               temperature: 0.7
       responses:
-        '200':
+        "200":
           description: Completion response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CompletionResponse'
+                $ref: "#/components/schemas/CompletionResponse"
               example:
                 id: "cmpl-123456789"
                 type: "completion"
                 completion: "Hello! How can I help you today?"
                 model: "claude-3-5-sonnet-20241022"
                 correlationId: "550e8400-e29b-41d4-a716-446655440000"
-        '400':
-          $ref: '#/components/responses/BadRequestError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '429':
-          $ref: '#/components/responses/RateLimitError'
-        '503':
-          $ref: '#/components/responses/ServiceUnavailableError'
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
 
   /v1/messages:
     post:
       summary: Create Message (Claude Format)
       description: |
         Creates a message completion using Claude API format with Azure OpenAI v1 Responses API backend.
-        
+
         This endpoint accepts Claude messages format, automatically detects task complexity,
         applies appropriate reasoning effort, and returns responses in Claude format.
         Supports multi-turn conversations with context tracking.
@@ -231,7 +231,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ClaudeMessageRequest'
+              $ref: "#/components/schemas/ClaudeMessageRequest"
             example:
               model: "claude-3-5-sonnet-20241022"
               max_tokens: 1000
@@ -239,30 +239,30 @@ paths:
                 - role: "user"
                   content: "Write a Python function to calculate fibonacci numbers"
       responses:
-        '200':
+        "200":
           description: Message response in Claude format
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ClaudeMessageResponse'
+                $ref: "#/components/schemas/ClaudeMessageResponse"
             text/event-stream:
               schema:
-                $ref: '#/components/schemas/ClaudeStreamResponse'
-        '400':
-          $ref: '#/components/responses/BadRequestError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '429':
-          $ref: '#/components/responses/RateLimitError'
-        '503':
-          $ref: '#/components/responses/ServiceUnavailableError'
+                $ref: "#/components/schemas/ClaudeStreamResponse"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
 
   /v1/chat/completions:
     post:
       summary: Create Chat Completion (OpenAI Format)
       description: |
         Creates a chat completion using OpenAI API format with Azure OpenAI v1 Responses API backend.
-        
+
         This endpoint accepts OpenAI chat completions format, automatically detects task complexity,
         applies appropriate reasoning effort, and returns responses in OpenAI format.
         Supports streaming and multi-turn conversations.
@@ -277,7 +277,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/OpenAIChatRequest'
+              $ref: "#/components/schemas/OpenAIChatRequest"
             example:
               model: "gpt-4"
               messages:
@@ -287,23 +287,23 @@ paths:
               temperature: 0.7
               stream: false
       responses:
-        '200':
+        "200":
           description: Chat completion response in OpenAI format
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/OpenAIChatResponse'
+                $ref: "#/components/schemas/OpenAIChatResponse"
             text/event-stream:
               schema:
-                $ref: '#/components/schemas/OpenAIStreamResponse'
-        '400':
-          $ref: '#/components/responses/BadRequestError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '429':
-          $ref: '#/components/responses/RateLimitError'
-        '503':
-          $ref: '#/components/responses/ServiceUnavailableError'
+                $ref: "#/components/schemas/OpenAIStreamResponse"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableError"
 
 components:
   securitySchemes:
@@ -312,16 +312,16 @@ components:
       scheme: bearer
       description: |
         Bearer token authentication using the configured PROXY_API_KEY.
-        
+
         Example: `Authorization: Bearer your-proxy-api-key`
-    
+
     ApiKeyAuth:
       type: apiKey
       in: header
       name: x-api-key
       description: |
         API key authentication using the configured PROXY_API_KEY.
-        
+
         Example: `x-api-key: your-proxy-api-key`
 
   schemas:
@@ -376,7 +376,7 @@ components:
           example: "Claude-to-Azure Proxy"
         version:
           type: string
-          example: "1.0.0"
+          example: "2.0.0"
         status:
           type: string
           example: "running"
@@ -398,7 +398,7 @@ components:
           type: array
           description: Array of available models
           items:
-            $ref: '#/components/schemas/Model'
+            $ref: "#/components/schemas/Model"
 
     Model:
       type: object
@@ -519,7 +519,7 @@ components:
           type: array
           description: Array of messages in the conversation
           items:
-            $ref: '#/components/schemas/ClaudeMessage'
+            $ref: "#/components/schemas/ClaudeMessage"
         temperature:
           type: number
           description: Sampling temperature (0.0 to 2.0)
@@ -556,7 +556,7 @@ components:
             - type: string
             - type: array
               items:
-                $ref: '#/components/schemas/ClaudeContentBlock'
+                $ref: "#/components/schemas/ClaudeContentBlock"
           description: The content of the message
 
     ClaudeContentBlock:
@@ -620,13 +620,13 @@ components:
           type: array
           description: Array of content blocks
           items:
-            $ref: '#/components/schemas/ClaudeContentBlock'
+            $ref: "#/components/schemas/ClaudeContentBlock"
         model:
           type: string
           description: Model used for completion
           example: "claude-3-5-sonnet-20241022"
         usage:
-          $ref: '#/components/schemas/ClaudeUsage'
+          $ref: "#/components/schemas/ClaudeUsage"
 
     ClaudeUsage:
       type: object
@@ -653,7 +653,15 @@ components:
       properties:
         event:
           type: string
-          enum: [message_start, content_block_start, content_block_delta, content_block_stop, message_delta, message_stop]
+          enum:
+            [
+              message_start,
+              content_block_start,
+              content_block_delta,
+              content_block_stop,
+              message_delta,
+              message_stop,
+            ]
         data:
           type: object
           description: Event-specific data
@@ -672,7 +680,7 @@ components:
           type: array
           description: Array of messages in the conversation
           items:
-            $ref: '#/components/schemas/OpenAIMessage'
+            $ref: "#/components/schemas/OpenAIMessage"
         max_tokens:
           type: integer
           description: Maximum number of tokens to generate
@@ -724,7 +732,7 @@ components:
           type: array
           description: Tool calls made by the assistant
           items:
-            $ref: '#/components/schemas/OpenAIToolCall'
+            $ref: "#/components/schemas/OpenAIToolCall"
         tool_call_id:
           type: string
           description: ID of the tool call (for tool messages)
@@ -785,9 +793,9 @@ components:
           type: array
           description: Array of completion choices
           items:
-            $ref: '#/components/schemas/OpenAIChoice'
+            $ref: "#/components/schemas/OpenAIChoice"
         usage:
-          $ref: '#/components/schemas/OpenAIUsage'
+          $ref: "#/components/schemas/OpenAIUsage"
 
     OpenAIChoice:
       type: object
@@ -801,7 +809,7 @@ components:
           description: Choice index
           example: 0
         message:
-          $ref: '#/components/schemas/OpenAIMessage'
+          $ref: "#/components/schemas/OpenAIMessage"
         finish_reason:
           type: string
           enum: [stop, length, content_filter, tool_calls]
@@ -853,7 +861,7 @@ components:
               index:
                 type: integer
               delta:
-                $ref: '#/components/schemas/OpenAIMessage'
+                $ref: "#/components/schemas/OpenAIMessage"
               finish_reason:
                 type: string
                 nullable: true
@@ -894,7 +902,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
           example:
             error:
               type: "validation_error"
@@ -907,7 +915,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
           example:
             error:
               type: "authentication_failed"
@@ -920,7 +928,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
           example:
             error:
               type: "rate_limit_exceeded"
@@ -933,7 +941,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
           example:
             error:
               type: "service_unavailable"

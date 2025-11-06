@@ -1,16 +1,23 @@
 # Claude-to-Azure Proxy
 
+A production-ready TypeScript API proxy that translates Claude API requests to Azure OpenAI format,
+with a modern React web frontend for direct browser interaction. This monorepo contains both the API
+proxy service and a web interface for programmers to interact with AI models.
+
 <div align="center">
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3+-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-24+-green.svg)](https://nodejs.org/)
+[![React](https://img.shields.io/badge/React-19.2+-61DAFB.svg)](https://reactjs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://img.shields.io/badge/Tests-325%20passing-brightgreen.svg)](#testing)
 [![Security](https://img.shields.io/badge/Security-Hardened-red.svg)](#security-features)
 
-**A production-ready TypeScript API proxy server that seamlessly translates Claude API requests to Azure OpenAI and AWS Bedrock formats with intelligent model routing**
+**A production-ready TypeScript API proxy server that seamlessly translates Claude API requests to
+Azure OpenAI and AWS Bedrock formats with intelligent model routing**
 
-[Features](#-features) • [Quick Start](#-quick-start) • [Documentation](#-documentation) • [Deployment](#-deployment) • [Contributing](#-contributing)
+[Features](#-features) • [Quick Start](#-quick-start) • [Documentation](#-documentation) •
+[Deployment](#-deployment) • [Contributing](#-contributing)
 
 </div>
 
@@ -18,32 +25,78 @@
 
 ## 🎯 Overview
 
-This high-performance proxy server enables seamless integration between Claude Code CLI and multiple AI services including Azure OpenAI's v1 Responses API and AWS Bedrock. It features intelligent model routing, leveraging GPT-5-Codex's enhanced reasoning capabilities and AWS Bedrock's Qwen models for superior coding assistance. Built with enterprise-grade security, intelligent reasoning optimization, and production-ready resilience features.
+This high-performance proxy server enables seamless integration between Claude Code CLI and multiple
+AI services including Azure OpenAI's v1 Responses API and AWS Bedrock. It features intelligent model
+routing, leveraging GPT-5-Codex's enhanced reasoning capabilities and AWS Bedrock's Qwen models for
+superior coding assistance. Built with enterprise-grade security, intelligent reasoning
+optimization, and production-ready resilience features.
 
 ### Why Use This Proxy?
 
 - **🧠 Enhanced Reasoning**: Leverages GPT-5-Codex's internal reasoning for complex coding tasks
-- **🤖 Multi-Model Support**: Intelligent routing between Azure OpenAI and AWS Bedrock based on model selection
+- **🤖 Multi-Model Support**: Intelligent routing between Azure OpenAI and AWS Bedrock based on
+  model selection
 - **🔄 Multi-Format Support**: Supports both Claude and OpenAI API formats automatically
-- **🎯 Language-Aware**: Intelligent optimizations for Python, Java, TypeScript, React, Vue, and more
+- **🎯 Language-Aware**: Intelligent optimizations for Python, Java, TypeScript, React, Vue, and
+  more
 - **🛡️ Enterprise Security**: Comprehensive authentication, rate limiting, and input validation
 - **📊 Production Monitoring**: Built-in metrics, health checks, and reasoning token tracking
 - **🚀 Cloud Ready**: Optimized for AWS App Runner with Docker support
 - **🔧 Developer Friendly**: Full TypeScript, comprehensive testing, and detailed documentation
+- **🌐 Web Interface**: Modern React frontend for direct browser interaction with AI models
+
+## 🏗️ Monorepo Structure
+
+This project uses a modern monorepo architecture with pnpm workspaces:
+
+```
+claude-to-azure-proxy/
+├── apps/
+│   ├── backend/           # Express.js API server
+│   └── frontend/          # React web application
+├── packages/
+│   ├── shared-types/      # TypeScript type definitions
+│   ├── shared-utils/      # Utility functions
+│   └── shared-config/     # ESLint, TypeScript, Vitest configs
+├── infra/                 # Docker, Kubernetes, monitoring
+├── docs/                  # Documentation
+└── scripts/               # Build and deployment scripts
+```
+
+### Applications
+
+- **Backend** (`apps/backend`): Express.js API proxy server with Azure OpenAI and AWS Bedrock
+  integration
+- **Frontend** (`apps/frontend`): React 19.2 web interface with TypeScript, i18n, and accessibility
+  support
+
+### Shared Packages
+
+- **shared-types**: Common TypeScript interfaces and types
+- **shared-utils**: Utility functions for correlation IDs, validation, and error handling
+- **shared-config**: Centralized ESLint, TypeScript, and Vitest configurations
 
 ## ✨ Features
 
 ### Core Functionality
 
-- **Multi-Service Integration**: Supports Azure OpenAI v1 Responses API and AWS Bedrock with intelligent model routing
-- **Intelligent Model Routing**: Automatically routes requests to Azure OpenAI or AWS Bedrock based on model parameter
-- **Enhanced Model Support**: GPT-5-Codex (Azure) and Qwen 3 Coder (AWS Bedrock) for diverse coding capabilities
-- **Intelligent Reasoning**: Automatic reasoning effort adjustment based on task complexity and programming language
-- **Multi-Format Support**: Automatic detection and support for both Claude and OpenAI request/response formats
-- **Language Optimization**: Enhanced support for Python/Django, Java/Spring, TypeScript, React, Vue, Android, and shell scripting
+- **Multi-Service Integration**: Supports Azure OpenAI v1 Responses API and AWS Bedrock with
+  intelligent model routing
+- **Intelligent Model Routing**: Automatically routes requests to Azure OpenAI or AWS Bedrock based
+  on model parameter
+- **Enhanced Model Support**: GPT-5-Codex (Azure) and Qwen 3 Coder (AWS Bedrock) for diverse coding
+  capabilities
+- **Intelligent Reasoning**: Automatic reasoning effort adjustment based on task complexity and
+  programming language
+- **Multi-Format Support**: Automatic detection and support for both Claude and OpenAI
+  request/response formats
+- **Language Optimization**: Enhanced support for Python/Django, Java/Spring, TypeScript, React,
+  Vue, Android, and shell scripting
 - **Conversation Management**: Improved multi-turn conversation handling with context tracking
-- **Streaming Support**: Real-time response streaming with Server-Sent Events for both Claude and OpenAI formats
-- **Node.js 24 Optimizations**: Leverages explicit resource management, enhanced garbage collection, and V8 13.6 performance improvements
+- **Streaming Support**: Real-time response streaming with Server-Sent Events for both Claude and
+  OpenAI formats
+- **Node.js 24 Optimizations**: Leverages explicit resource management, enhanced garbage collection,
+  and V8 13.6 performance improvements
 
 ### Security & Authentication
 
@@ -52,7 +105,8 @@ This high-performance proxy server enables seamless integration between Claude C
 - **Input Validation**: Comprehensive request sanitization and validation
 - **Security Headers**: Helmet.js integration with OWASP best practices
 - **CORS Protection**: Configurable cross-origin resource sharing
-- **Security Monitoring**: Active vulnerability tracking and mitigation (see [Security Advisories](docs/SECURITY_ADVISORIES.md))
+- **Security Monitoring**: Active vulnerability tracking and mitigation (see
+  [Security Advisories](docs/SECURITY_ADVISORIES.md))
 
 ### Monitoring & Observability
 
@@ -69,7 +123,8 @@ This high-performance proxy server enables seamless integration between Claude C
 - **Graceful Degradation**: Service-level degradation during partial failures
 - **Timeout Management**: Configurable request and response timeouts
 - **Connection Pooling**: Optimized HTTP connection management with Node.js 24 enhancements
-- **Memory Management**: Advanced memory leak detection and automatic resource cleanup using Node.js 24 features
+- **Memory Management**: Advanced memory leak detection and automatic resource cleanup using Node.js
+  24 features
 - **Performance Monitoring**: Real-time garbage collection monitoring and optimization
 
 ### Developer Experience
@@ -88,7 +143,9 @@ This high-performance proxy server enables seamless integration between Claude C
 - **pnpm** 10.19.0 or higher (recommended) or npm
 - **Azure OpenAI** resource with API access
 
-> **Node.js 24 Features**: This application leverages Node.js 24's enhanced V8 13.6 engine, improved garbage collection, explicit resource management, and enhanced performance optimizations for superior proxy performance.
+> **Node.js 24 Features**: This application leverages Node.js 24's enhanced V8 13.6 engine, improved
+> garbage collection, explicit resource management, and enhanced performance optimizations for
+> superior proxy performance.
 
 ### Installation
 
@@ -129,7 +186,7 @@ This high-performance proxy server enables seamless integration between Claude C
    # AWS_BEDROCK_MAX_RETRIES=3
 
    # Optional Responses API Configuration
-   # AZURE_OPENAI_API_VERSION=preview  # Only for preview features
+   # Note: API version is automatically handled by the latest stable API
    AZURE_OPENAI_TIMEOUT=120000
    AZURE_OPENAI_MAX_RETRIES=3
    DEFAULT_REASONING_EFFORT=medium
@@ -168,6 +225,7 @@ pnpm run prepare
 ```
 
 **Pre-commit hooks include:**
+
 - ✅ TypeScript compilation check
 - 🧹 ESLint with auto-fix
 - 🎨 Prettier code formatting
@@ -176,6 +234,7 @@ pnpm run prepare
 - 📝 Conventional commit message validation
 
 **Available development commands:**
+
 ```bash
 pnpm run type-check      # TypeScript compilation check
 pnpm run lint           # ESLint checking
@@ -294,13 +353,15 @@ The project maintains high code quality standards:
 
 ### API Documentation
 
-- **[OpenAPI Specification](docs/api-specification.yaml)** - Complete API documentation with Responses API integration
+- **[OpenAPI Specification](docs/api-specification.yaml)** - Complete API documentation with
+  Responses API integration
 - **[Interactive API Docs](http://localhost:8080/docs)** - Swagger UI (when running locally)
 
 ### Configuration & Setup
 
 - **[Environment Configuration](docs/ENVIRONMENT.md)** - Environment variables and security setup
-- **[Responses API Configuration](docs/RESPONSES_API_CONFIGURATION.md)** - Detailed Responses API setup and optimization
+- **[Responses API Configuration](docs/RESPONSES_API_CONFIGURATION.md)** - Detailed Responses API
+  setup and optimization
 - **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Common issues and solutions
 
 ### Deployment & Operations
@@ -322,23 +383,23 @@ pnpm docs:serve
 
 ### Environment Variables
 
-| Variable                     | Required | Default      | Description                                    |
-| ---------------------------- | -------- | ------------ | ---------------------------------------------- |
-| `PROXY_API_KEY`              | ✅       | -            | Client authentication key (32-256 chars)       |
-| `AZURE_OPENAI_ENDPOINT`      | ✅       | -            | Azure OpenAI v1 endpoint URL (HTTPS only)      |
-| `AZURE_OPENAI_API_KEY`       | ✅       | -            | Azure OpenAI API key                           |
-| `AZURE_OPENAI_MODEL`         | ✅       | -            | GPT-5-Codex deployment name                    |
-| `AWS_BEDROCK_API_KEY`        | ❌       | -            | AWS Bedrock API key (enables Qwen models)     |
-| `AWS_BEDROCK_REGION`         | ❌       | `us-west-2`  | AWS region for Bedrock service                 |
-| `AWS_BEDROCK_TIMEOUT`        | ❌       | `120000`     | Bedrock request timeout in milliseconds       |
-| `AWS_BEDROCK_MAX_RETRIES`    | ❌       | `3`          | Bedrock maximum retry attempts                 |
-| `AZURE_OPENAI_API_VERSION`   | ❌       | -            | API version (only for preview features)        |
-| `AZURE_OPENAI_TIMEOUT`       | ❌       | `120000`     | Request timeout in milliseconds                |
-| `AZURE_OPENAI_MAX_RETRIES`   | ❌       | `3`          | Maximum retry attempts                         |
-| `DEFAULT_REASONING_EFFORT`   | ❌       | `medium`     | Default reasoning level (minimal/low/medium/high) |
-| `ENABLE_CONTENT_SECURITY_VALIDATION` | ❌ | `true`   | Enable content security validation (true/false)   |
-| `PORT`                       | ❌       | `8080`       | Server port (1024-65535)                       |
-| `NODE_ENV`                   | ❌       | `production` | Environment (development/production/test)      |
+| Variable                  | Required | Default     | Description                               |
+| ------------------------- | -------- | ----------- | ----------------------------------------- |
+| `PROXY_API_KEY`           | ✅       | -           | Client authentication key (32-256 chars)  |
+| `AZURE_OPENAI_ENDPOINT`   | ✅       | -           | Azure OpenAI v1 endpoint URL (HTTPS only) |
+| `AZURE_OPENAI_API_KEY`    | ✅       | -           | Azure OpenAI API key                      |
+| `AZURE_OPENAI_MODEL`      | ✅       | -           | GPT-5-Codex deployment name               |
+| `AWS_BEDROCK_API_KEY`     | ❌       | -           | AWS Bedrock API key (enables Qwen models) |
+| `AWS_BEDROCK_REGION`      | ❌       | `us-west-2` | AWS region for Bedrock service            |
+| `AWS_BEDROCK_TIMEOUT`     | ❌       | `120000`    | Bedrock request timeout in milliseconds   |
+| `AWS_BEDROCK_MAX_RETRIES` | ❌       | `3`         | Bedrock maximum retry attempts            |
+
+| `AZURE_OPENAI_TIMEOUT` | ❌ | `120000` | Request timeout in milliseconds | |
+`AZURE_OPENAI_MAX_RETRIES` | ❌ | `3` | Maximum retry attempts | | `DEFAULT_REASONING_EFFORT` | ❌ |
+`medium` | Default reasoning level (minimal/low/medium/high) | |
+`ENABLE_CONTENT_SECURITY_VALIDATION` | ❌ | `true` | Enable content security validation (true/false)
+| | `PORT` | ❌ | `8080` | Server port (1024-65535) | | `NODE_ENV` | ❌ | `production` | Environment
+(development/production/test) |
 
 ### Model Routing and Multi-Service Support
 
@@ -346,13 +407,13 @@ The proxy intelligently routes requests to the appropriate AI service based on t
 
 #### Supported Models
 
-| Model Name                        | Service      | Description                           |
-| --------------------------------- | ------------ | ------------------------------------- |
-| `qwen-3-coder`                    | AWS Bedrock  | Qwen 3 Coder (user-friendly name)    |
-| `qwen.qwen3-coder-480b-a35b-v1:0` | AWS Bedrock  | Qwen 3 Coder (full AWS model ID)     |
-| `gpt-5-codex`                     | Azure OpenAI | GPT-5 Codex deployment                |
-| `gpt-4`                           | Azure OpenAI | GPT-4 models                          |
-| `claude-3-5-sonnet-20241022`      | Azure OpenAI | Claude models (via Azure)             |
+| Model Name                        | Service      | Description                       |
+| --------------------------------- | ------------ | --------------------------------- |
+| `qwen-3-coder`                    | AWS Bedrock  | Qwen 3 Coder (user-friendly name) |
+| `qwen.qwen3-coder-480b-a35b-v1:0` | AWS Bedrock  | Qwen 3 Coder (full AWS model ID)  |
+| `gpt-5-codex`                     | Azure OpenAI | GPT-5 Codex deployment            |
+| `gpt-4`                           | Azure OpenAI | GPT-4 models                      |
+| `claude-3-5-sonnet-20241022`      | Azure OpenAI | Claude models (via Azure)         |
 
 #### Routing Logic
 
@@ -366,8 +427,10 @@ The proxy intelligently routes requests to the appropriate AI service based on t
 The proxy leverages Azure OpenAI's v1 Responses API for enhanced capabilities:
 
 - **Intelligent Reasoning**: Automatic reasoning effort adjustment based on task complexity
-- **Language Detection**: Optimizations for Python, Java, TypeScript, React, Vue, Android, and shell scripting
-- **Framework Awareness**: Special handling for Django, Spring Boot, React hooks, Vue Composition API
+- **Language Detection**: Optimizations for Python, Java, TypeScript, React, Vue, Android, and shell
+  scripting
+- **Framework Awareness**: Special handling for Django, Spring Boot, React hooks, Vue Composition
+  API
 - **Conversation Tracking**: Improved multi-turn conversation management with context preservation
 - **Structured Outputs**: Support for JSON schemas and structured response formats
 - **Token Optimization**: Efficient reasoning token usage with cost tracking
@@ -384,7 +447,8 @@ The proxy includes comprehensive security features:
 - **CORS**: Configurable cross-origin resource sharing
 - **Request Sanitization**: Automatic removal of sensitive data from logs
 
-> **Content Security**: Set `ENABLE_CONTENT_SECURITY_VALIDATION=false` for development/code review scenarios. See [Environment Guide](docs/ENVIRONMENT.md#content-security-validation) for details.
+> **Content Security**: Set `ENABLE_CONTENT_SECURITY_VALIDATION=false` for development/code review
+> scenarios. See [Environment Guide](docs/ENVIRONMENT.md#content-security-validation) for details.
 
 ## 🚀 Deployment
 
@@ -428,11 +492,13 @@ curl http://localhost:8080/health
 ```
 
 For memory optimization and production settings, copy the override example:
+
 ```bash
 cp docker-compose.override.yml.example docker-compose.override.yml
 ```
 
 This provides:
+
 - Increased memory limits (512MB)
 - Node.js heap optimization (384MB max heap, 64MB semi-space)
 - Extended health check timeouts
@@ -519,15 +585,17 @@ pnpm test:coverage
 The project includes optimized GitHub Actions workflows for different deployment scenarios:
 
 #### AWS ECR Pipeline (Recommended for Production)
+
 - **File**: `.github/workflows/build-push-ecr.yml`
 - **Purpose**: Secure deployment to AWS Elastic Container Registry
-- **Features**: 
+- **Features**:
   - AWS STS authentication (no long-term credentials)
   - Multi-architecture builds (AMD64/ARM64)
   - Comprehensive security scanning
   - Automated ECR image scanning
 
 #### GitHub Container Registry Pipeline
+
 - **File**: `.github/workflows/ci-cd.yml`
 - **Purpose**: Open-source friendly deployment to GHCR
 - **Features**:
@@ -538,6 +606,7 @@ The project includes optimized GitHub Actions workflows for different deployment
 ### Quick Setup for AWS ECR
 
 1. **Run the automated setup script**:
+
    ```bash
    ./scripts/setup-aws-github-actions.sh
    ```
@@ -560,7 +629,8 @@ The project includes optimized GitHub Actions workflows for different deployment
 - **Docker Compose**: Local and development deployment
 - **Kubernetes**: Any Kubernetes cluster
 
-For detailed deployment instructions, see the [GitHub Actions Guide](docs/GITHUB_ACTIONS.md) and [Deployment Guide](docs/DEPLOYMENT_GUIDE.md).
+For detailed deployment instructions, see the [GitHub Actions Guide](docs/GITHUB_ACTIONS.md) and
+[Deployment Guide](docs/DEPLOYMENT_GUIDE.md).
 
 ## 🤝 Contributing
 
@@ -596,7 +666,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 - **Documentation**: Check the [docs](docs/) directory for detailed guides
-- **Issues**: Report bugs and request features via [GitHub Issues](https://github.com/your-username/claude-to-azure-proxy/issues)
+- **Issues**: Report bugs and request features via
+  [GitHub Issues](https://github.com/your-username/claude-to-azure-proxy/issues)
 - **Security**: Report security vulnerabilities privately via email
 
 ---

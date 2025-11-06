@@ -1,0 +1,29 @@
+{
+  "name": "@repo/shared-types",
+  "version": "2.0.0",
+  "description": "Shared TypeScript type definitions for the monorepo",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "build:clean": "tsc --build --clean && pnpm run build",
+    "type-check": "tsc --noEmit",
+    "lint": "echo 'No linting needed for type-only package'",
+    "lint:fix": "echo 'No linting needed for type-only package'",
+    "test": "echo 'No tests for type-only package'"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  },
+  "files": [
+    "dist"
+  ]
+}

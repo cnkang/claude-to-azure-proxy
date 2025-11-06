@@ -96,7 +96,7 @@ print_section "Code Complexity Analysis"
 
 echo "Analyzing code complexity..."
 if command -v ts-complex >/dev/null 2>&1; then
-    npx ts-complex --threshold 10 src/ > "$REPORT_DIR/complexity-$TIMESTAMP.txt" 2>&1 || true
+    npx ts-complex --threshold 10 apps/backend/src/ > "$REPORT_DIR/complexity-$TIMESTAMP.txt" 2>&1 || true
     
     # Check if any files exceed complexity threshold
     if grep -q "exceeds complexity threshold" "$REPORT_DIR/complexity-$TIMESTAMP.txt" 2>/dev/null; then
@@ -112,7 +112,7 @@ fi
 print_section "ESLint Security Analysis"
 
 echo "Running ESLint security analysis..."
-npx eslint --config eslint.config.ts src/ tests/ --format json > "$REPORT_DIR/eslint-$TIMESTAMP.json" 2>/dev/null || true
+npx eslint --config apps/backend/eslint.config.ts apps/backend/src/ apps/backend/tests/ --format json > "$REPORT_DIR/eslint-$TIMESTAMP.json" 2>/dev/null || true
 
 # Count security-related issues
 SECURITY_ISSUES=$(jq '[.[] | .messages[] | select(.ruleId | test("security"))] | length' "$REPORT_DIR/eslint-$TIMESTAMP.json" 2>/dev/null || echo "0")
@@ -165,7 +165,7 @@ SECRET_PATTERNS=(
 
 SECRETS_FOUND=0
 for pattern in "${SECRET_PATTERNS[@]}"; do
-    if grep -r -i -E "$pattern" src/ tests/ --include="*.ts" --include="*.js" >/dev/null 2>&1; then
+    if grep -r -i -E "$pattern" apps/backend/src/ apps/backend/tests/ --include="*.ts" --include="*.js" >/dev/null 2>&1; then
         SECRETS_FOUND=$((SECRETS_FOUND + 1))
         echo "  Found potential secret pattern: $pattern"
     fi
@@ -217,21 +217,21 @@ print_section "Network Security Configuration Check"
 echo "Analyzing network security configuration..."
 
 # Check for HTTPS enforcement
-if grep -r "https" src/ --include="*.ts" >/dev/null 2>&1; then
+if grep -r "https" apps/backend/src/ --include="*.ts" >/dev/null 2>&1; then
     print_success "HTTPS usage found in code"
 else
     print_warning "No explicit HTTPS usage found"
 fi
 
 # Check for security headers
-if grep -r "helmet" src/ --include="*.ts" >/dev/null 2>&1; then
+if grep -r "helmet" apps/backend/src/ --include="*.ts" >/dev/null 2>&1; then
     print_success "Security headers (helmet) configured"
 else
     print_warning "Security headers may not be configured"
 fi
 
 # Check for CORS configuration
-if grep -r "cors" src/ --include="*.ts" >/dev/null 2>&1; then
+if grep -r "cors" apps/backend/src/ --include="*.ts" >/dev/null 2>&1; then
     print_success "CORS configuration found"
 else
     print_warning "CORS configuration may be missing"

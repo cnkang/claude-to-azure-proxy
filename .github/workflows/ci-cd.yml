@@ -34,16 +34,22 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: "pnpm"
 
-      - name: Install dependencies
-        run: pnpm install
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
 
-      - name: Run linting
+      - name: Validate monorepo structure
+        run: ./scripts/validate-monorepo.sh
+
+      - name: Build shared packages
+        run: pnpm build:shared
+
+      - name: Run linting on all packages
         run: pnpm run lint
 
-      - name: Run type checking
+      - name: Run type checking on all packages
         run: pnpm run type-check
 
-      - name: Run tests
+      - name: Run tests with coverage
         run: pnpm run test:coverage
 
       - name: Upload coverage reports
@@ -52,6 +58,9 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
+          directory: ./coverage
+          flags: unittests
+          name: codecov-umbrella
 
   # Security checks
   security-checks:
@@ -105,10 +114,25 @@ jobs:
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
 
+      - name: Install pnpm for Docker build
+        uses: pnpm/action-setup@v4
+
+      - name: Use Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspace packages
+        run: pnpm build
+
       - name: Load amd64 image for testing
         run: |
           echo "📥 Building amd64 image for testing..."
-          # Build only amd64 image for testing
+          # Build only amd64 image for testing with workspace context
           docker buildx build \
             --platform linux/amd64 \
             --load \
@@ -256,7 +280,7 @@ jobs:
         run: |
           echo "🏷️ Verifying latest tag for main branch..."
           echo "📋 All GHCR tags: ${{ steps.ghcr-meta.outputs.tags }}"
-          
+
           # Check if latest tag is included
           if echo "${{ steps.ghcr-meta.outputs.tags }}" | grep -q ":latest"; then
             echo "✅ Latest tag confirmed for main branch"
@@ -390,7 +414,7 @@ jobs:
         continue-on-error: true
         run: |
           echo "🔄 Copying multi-platform image from GHCR to ECR..."
-          
+
           # Determine source image based on branch/tag
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
             SOURCE_IMAGE="ghcr.io/${{ github.repository }}:latest"
@@ -403,10 +427,10 @@ jobs:
             # Fallback to main-SHA format
             SOURCE_IMAGE="ghcr.io/${{ github.repository }}:main-${{ github.sha }}"
           fi
-          
+
           echo "📦 Source image: $SOURCE_IMAGE"
           echo "🏷️ ECR tags to create: ${{ steps.meta.outputs.tags }}"
-          
+
           # Copy to all ECR tags
           IFS=',' read -ra TAGS <<< "${{ steps.meta.outputs.tags }}"
           for tag in "${TAGS[@]}"; do
@@ -416,7 +440,7 @@ jobs:
               --tag "$tag" \
               "$SOURCE_IMAGE"
           done
-          
+
           # Ensure latest tag is explicitly created for main branch
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
             LATEST_TAG="${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY_NAME }}:latest"
@@ -425,7 +449,7 @@ jobs:
               --tag "$LATEST_TAG" \
               "$SOURCE_IMAGE"
           fi
-          
+
           echo "🚀 Successfully copied multi-platform image to ECR!"
           echo "📦 Copied platforms: linux/amd64, linux/arm64"
           echo "📋 ECR tags created: ${{ steps.meta.outputs.tags }}"
