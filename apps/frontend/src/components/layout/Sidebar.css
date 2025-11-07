@@ -344,7 +344,9 @@
 
 .session-id {
   font-size: 11px;
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-family:
+    'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New',
+    monospace;
   color: var(--color-foreground-tertiary);
   background-color: var(--color-background-secondary);
   padding: 4px 6px;
@@ -412,15 +414,15 @@
   .sidebar-header {
     padding: var(--spacing-sm);
   }
-  
+
   .conversations-title {
     padding: var(--spacing-sm) var(--spacing-sm) var(--spacing-xs);
   }
-  
+
   .conversation-button {
     padding: var(--spacing-sm);
   }
-  
+
   .sidebar-footer {
     padding: var(--spacing-sm);
   }
@@ -431,11 +433,11 @@
   .conversation-button {
     border: 1px solid transparent;
   }
-  
+
   .conversation-button:focus {
     border-color: var(--color-accent);
   }
-  
+
   .conversation-button.active {
     border-color: currentColor;
   }
@@ -446,7 +448,7 @@
   .sidebar {
     transition: none;
   }
-  
+
   .conversation-button,
   .conversation-actions,
   .sidebar-action {

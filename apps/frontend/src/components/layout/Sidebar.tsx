@@ -1,9 +1,9 @@
 /**
  * Sidebar Component
- * 
+ *
  * Navigation sidebar with conversation list, new conversation button,
  * and responsive behavior for mobile devices.
- * 
+ *
  * Requirements: 5.1, 5.2, 5.3, 10.1
  */
 
@@ -28,12 +28,13 @@ export interface SidebarProps {
 /**
  * Sidebar component
  */
-export function Sidebar({ isOpen, isMobile, onClose }: SidebarProps): React.JSX.Element {
-  const {
-    activeConversation,
-    conversationsList,
-    setActiveConversation,
-  } = useConversations();
+export function Sidebar({
+  isOpen,
+  isMobile,
+  onClose,
+}: SidebarProps): React.JSX.Element {
+  const { activeConversation, conversationsList, setActiveConversation } =
+    useConversations();
   const { t, formatRelativeTime } = useI18n();
   const { session } = useSessionContext();
   const sidebarRef = useRef<HTMLElement>(null);
@@ -60,7 +61,7 @@ export function Sidebar({ isOpen, isMobile, onClose }: SidebarProps): React.JSX.
     };
 
     document.addEventListener('keydown', handleKeyDown);
-    
+
     return (): void => {
       document.removeEventListener('keydown', handleKeyDown);
     };
@@ -68,7 +69,7 @@ export function Sidebar({ isOpen, isMobile, onClose }: SidebarProps): React.JSX.
 
   const handleConversationSelect = (conversationId: string): void => {
     setActiveConversation(conversationId);
-    
+
     // Close sidebar on mobile after selection
     if (isMobile === true) {
       onClose();
@@ -82,7 +83,7 @@ export function Sidebar({ isOpen, isMobile, onClose }: SidebarProps): React.JSX.
         location: 'Sidebar',
       },
     });
-    
+
     // Close sidebar on mobile
     if (isMobile === true) {
       onClose();
@@ -93,7 +94,9 @@ export function Sidebar({ isOpen, isMobile, onClose }: SidebarProps): React.JSX.
     'sidebar',
     isOpen ? 'open' : 'closed',
     isMobile ? 'mobile' : 'desktop',
-  ].filter((value): value is string => value.length > 0).join(' ');
+  ]
+    .filter((value): value is string => value.length > 0)
+    .join(' ');
 
   return (
     <aside
@@ -134,16 +137,12 @@ export function Sidebar({ isOpen, isMobile, onClose }: SidebarProps): React.JSX.
 
         {/* Conversations list */}
         <div className="conversations-section">
-          <h2 className="conversations-title">
-            {t('sidebar.conversations')}
-          </h2>
+          <h2 className="conversations-title">{t('sidebar.conversations')}</h2>
 
           {conversationsList.length === 0 ? (
             <div className="empty-conversations">
               <div className="empty-icon">💬</div>
-              <p className="empty-text">
-                {t('sidebar.noConversations')}
-              </p>
+              <p className="empty-text">{t('sidebar.noConversations')}</p>
               <p className="empty-hint">
                 {t('sidebar.startFirstConversation')}
               </p>
@@ -157,9 +156,16 @@ export function Sidebar({ isOpen, isMobile, onClose }: SidebarProps): React.JSX.
                   <li key={conversation.id} className="conversation-item">
                     <button
                       type="button"
-                      className={['conversation-button', isActive ? 'active' : ''].filter((value): value is string => value.length > 0).join(' ')}
+                      className={[
+                        'conversation-button',
+                        isActive ? 'active' : '',
+                      ]
+                        .filter((value): value is string => value.length > 0)
+                        .join(' ')}
                       onClick={() => handleConversationSelect(conversation.id)}
-                      aria-label={t('sidebar.selectConversation', { title: conversation.title })}
+                      aria-label={t('sidebar.selectConversation', {
+                        title: conversation.title,
+                      })}
                       aria-current={isActive ? 'page' : undefined}
                     >
                       <div className="conversation-content">
@@ -176,12 +182,18 @@ export function Sidebar({ isOpen, isMobile, onClose }: SidebarProps): React.JSX.
                         </div>
                         {conversation.messages.length > 0 && (
                           <div className="conversation-preview">
-                            {conversation.messages[conversation.messages.length - 1].content.substring(0, 60)}
-                            {conversation.messages[conversation.messages.length - 1].content.length > 60 ? '...' : ''}
+                            {conversation.messages[
+                              conversation.messages.length - 1
+                            ].content.substring(0, 60)}
+                            {conversation.messages[
+                              conversation.messages.length - 1
+                            ].content.length > 60
+                              ? '...'
+                              : ''}
                           </div>
                         )}
                       </div>
-                      
+
                       {/* Conversation actions */}
                       <div className="conversation-actions">
                         <button
@@ -189,11 +201,14 @@ export function Sidebar({ isOpen, isMobile, onClose }: SidebarProps): React.JSX.
                           className="conversation-action"
                           onClick={(event) => {
                             event.stopPropagation();
-                            frontendLogger.info('Sidebar conversation options opened', {
-                              metadata: {
-                                conversationId: conversation.id,
-                              },
-                            });
+                            frontendLogger.info(
+                              'Sidebar conversation options opened',
+                              {
+                                metadata: {
+                                  conversationId: conversation.id,
+                                },
+                              }
+                            );
                           }}
                           aria-label={t('sidebar.conversationOptions')}
                         >
@@ -211,11 +226,14 @@ export function Sidebar({ isOpen, isMobile, onClose }: SidebarProps): React.JSX.
         {/* Sidebar footer */}
         <div className="sidebar-footer">
           <div className="session-info">
-            <div className="session-label">
-              {t('sidebar.session')}
-            </div>
-            <div className="session-id" title={isNonEmptyString(sessionId) ? sessionId : ''}>
-              {isNonEmptyString(sessionId) ? `${sessionId.substring(0, 8)}...` : 'N/A'}
+            <div className="session-label">{t('sidebar.session')}</div>
+            <div
+              className="session-id"
+              title={isNonEmptyString(sessionId) ? sessionId : ''}
+            >
+              {isNonEmptyString(sessionId)
+                ? `${sessionId.substring(0, 8)}...`
+                : 'N/A'}
             </div>
           </div>
 
@@ -228,7 +246,7 @@ export function Sidebar({ isOpen, isMobile, onClose }: SidebarProps): React.JSX.
             >
               <span className="action-icon">⚙️</span>
             </button>
-            
+
             <button
               type="button"
               className="sidebar-action"

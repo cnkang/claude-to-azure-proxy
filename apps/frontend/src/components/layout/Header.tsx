@@ -1,9 +1,9 @@
 /**
  * Header Component
- * 
+ *
  * Application header with navigation, theme toggle, language selector,
  * and mobile menu button.
- * 
+ *
  * Requirements: 5.1, 5.2, 5.3, 10.1
  */
 
@@ -44,7 +44,11 @@ export function Header({ isMobile, isTablet }: HeaderProps): React.JSX.Element {
               type="button"
               className="menu-toggle"
               onClick={handleMenuToggle}
-              aria-label={isSidebarOpen ? t('header.closeSidebar') : t('header.openSidebar')}
+              aria-label={
+                isSidebarOpen
+                  ? t('header.closeSidebar')
+                  : t('header.openSidebar')
+              }
               aria-expanded={isSidebarOpen}
               aria-controls="sidebar"
             >
@@ -55,15 +59,11 @@ export function Header({ isMobile, isTablet }: HeaderProps): React.JSX.Element {
               </span>
             </button>
           )}
-          
+
           <div className="header-title">
-            <h1 className="app-title">
-              {t('app.title')}
-            </h1>
+            <h1 className="app-title">{t('app.title')}</h1>
             {!isMobile !== null && isMobile !== undefined && (
-              <span className="app-subtitle">
-                {t('app.subtitle')}
-              </span>
+              <span className="app-subtitle">{t('app.subtitle')}</span>
             )}
           </div>
         </div>
@@ -73,7 +73,7 @@ export function Header({ isMobile, isTablet }: HeaderProps): React.JSX.Element {
           {/* Language selector */}
           {!isMobile !== null && isMobile !== undefined && (
             <div className="header-control">
-              <LanguageSelector 
+              <LanguageSelector
                 className="language-selector"
                 showFlag={true}
                 showNativeName={false}
@@ -83,10 +83,7 @@ export function Header({ isMobile, isTablet }: HeaderProps): React.JSX.Element {
 
           {/* Theme toggle */}
           <div className="header-control">
-            <ThemeToggle 
-              className="theme-toggle"
-              showLabel={!isMobile}
-            />
+            <ThemeToggle className="theme-toggle" showLabel={!isMobile} />
           </div>
 
           {/* Settings button */}
@@ -99,9 +96,7 @@ export function Header({ isMobile, isTablet }: HeaderProps): React.JSX.Element {
             >
               <span className="settings-icon">⚙️</span>
               {!isMobile !== null && isMobile !== undefined && (
-                <span className="settings-label">
-                  {t('header.settings')}
-                </span>
+                <span className="settings-label">{t('header.settings')}</span>
               )}
             </button>
           </div>
@@ -111,7 +106,7 @@ export function Header({ isMobile, isTablet }: HeaderProps): React.JSX.Element {
       {/* Mobile language selector */}
       {isMobile !== null && isMobile !== undefined && (
         <div className="header-mobile-controls">
-          <LanguageSelector 
+          <LanguageSelector
             className="mobile-language-selector"
             showFlag={true}
             showNativeName={true}
@@ -158,9 +153,7 @@ export function Breadcrumb({ items }: BreadcrumbProps): React.JSX.Element {
                   {item.label}
                 </a>
               ) : (
-                <span className="breadcrumb-text">
-                  {item.label}
-                </span>
+                <span className="breadcrumb-text">{item.label}</span>
               )}
               {index < items.length - 1 !== null && undefined !== 1 && (
                 <span className="breadcrumb-separator" aria-hidden="true">
@@ -187,13 +180,13 @@ export interface HeaderActionProps {
   className?: string;
 }
 
-export function HeaderAction({ 
-  icon, 
-  label, 
-  onClick, 
-  active = false, 
+export function HeaderAction({
+  icon,
+  label,
+  onClick,
+  active = false,
   disabled = false,
-  className = ''
+  className = '',
 }: HeaderActionProps): React.JSX.Element {
   const actionClasses = ['header-action'];
   if (active === true) {
@@ -209,7 +202,7 @@ export function HeaderAction({
   return (
     <button
       type="button"
-    className={actionClasses.join(' ')}
+      className={actionClasses.join(' ')}
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
@@ -218,9 +211,7 @@ export function HeaderAction({
       <span className="action-icon" role="img" aria-hidden="true">
         {icon}
       </span>
-      <span className="action-label">
-        {label}
-      </span>
+      <span className="action-label">{label}</span>
     </button>
   );
 }

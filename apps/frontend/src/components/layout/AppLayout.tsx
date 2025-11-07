@@ -1,9 +1,9 @@
 /**
  * App Layout Component
- * 
+ *
  * Main application layout with responsive design, sidebar, and mobile-first approach.
  * Provides the overall structure for the chat interface.
- * 
+ *
  * Requirements: 5.1, 5.2, 5.3, 10.1
  */
 
@@ -48,7 +48,7 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
 
     // Listen for resize events
     window.addEventListener('resize', checkScreenSize);
-    
+
     return (): void => {
       window.removeEventListener('resize', checkScreenSize);
     };
@@ -77,7 +77,7 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
     };
 
     document.addEventListener('keydown', handleKeyDown);
-    
+
     return (): void => {
       document.removeEventListener('keydown', handleKeyDown);
     };
@@ -90,7 +90,9 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
     isMobile ? 'mobile' : '',
     isTablet ? 'tablet' : '',
     state.ui.sidebarOpen ? 'sidebar-open' : 'sidebar-closed',
-  ].filter((value): value is string => value.length > 0).join(' ');
+  ]
+    .filter((value): value is string => value.length > 0)
+    .join(' ');
 
   const hasUiError = isNonEmptyString(state.ui.error);
   const currentErrorMessage = hasUiError ? state.ui.error : undefined;
@@ -179,24 +181,22 @@ export interface LayoutContainerProps {
   padding?: 'none' | 'sm' | 'md' | 'lg';
 }
 
-export function LayoutContainer({ 
-  children, 
-  className = '', 
+export function LayoutContainer({
+  children,
+  className = '',
   maxWidth = 'full',
-  padding = 'md'
+  padding = 'md',
 }: LayoutContainerProps): React.JSX.Element {
   const containerClasses = [
     'layout-container',
     `max-width-${maxWidth}`,
     `padding-${padding}`,
     className,
-  ].filter(Boolean).join(' ');
+  ]
+    .filter(Boolean)
+    .join(' ');
 
-  return (
-    <div className={containerClasses}>
-      {children}
-    </div>
-  );
+  return <div className={containerClasses}>{children}</div>;
 }
 
 /**
@@ -213,17 +213,15 @@ export interface ResponsiveGridProps {
   gap?: 'sm' | 'md' | 'lg';
 }
 
-export function ResponsiveGrid({ 
-  children, 
+export function ResponsiveGrid({
+  children,
   className = '',
   columns = { mobile: 1, tablet: 2, desktop: 3 },
-  gap = 'md'
+  gap = 'md',
 }: ResponsiveGridProps): React.JSX.Element {
-  const gridClasses = [
-    'responsive-grid',
-    `gap-${gap}`,
-    className,
-  ].filter(Boolean).join(' ');
+  const gridClasses = ['responsive-grid', `gap-${gap}`, className]
+    .filter(Boolean)
+    .join(' ');
 
   const gridStyle = {
     '--grid-columns-mobile': columns.mobile ?? 1,
