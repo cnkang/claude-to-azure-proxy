@@ -1,10 +1,10 @@
 /**
  * Main App Component
- * 
+ *
  * Root application component with all context providers and routing.
  * Sets up the complete application structure with theme, i18n, state management,
  * error handling, notifications, and performance monitoring.
- * 
+ *
  * Requirements: 1.1, 5.1, 5.2, 5.3, 10.1, 6.3, 7.3, 5.4
  */
 
@@ -17,7 +17,10 @@ import { AppRouter } from './router/AppRouter';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { NotificationProvider } from './components/common/NotificationSystem';
 import { PerformanceDashboard } from './components/common/PerformanceDashboard';
-import { usePerformanceMonitoring, usePerformanceRegistration } from './hooks/usePerformanceMonitoring';
+import {
+  usePerformanceMonitoring,
+  usePerformanceRegistration,
+} from './hooks/usePerformanceMonitoring';
 import { indexedDBOptimizer } from './services/indexeddb-optimization';
 import { reportAnalyticsException } from './utils/analytics';
 import { frontendLogger } from './utils/logger';
@@ -27,7 +30,8 @@ import './App.css';
  * Main App component with all providers, error handling, and performance monitoring
  */
 function App(): React.JSX.Element {
-  const [showPerformanceDashboard, setShowPerformanceDashboard] = useState(false);
+  const [showPerformanceDashboard, setShowPerformanceDashboard] =
+    useState(false);
 
   // Performance monitoring for the root App component
   const performanceMetrics = usePerformanceMonitoring('App', {
@@ -47,15 +51,21 @@ function App(): React.JSX.Element {
     const initializeOptimizations = async (): Promise<void> => {
       try {
         await indexedDBOptimizer.initialize();
-        
+
         // Schedule periodic cleanup (every 24 hours)
-        cleanupInterval = setInterval(() => {
-          indexedDBOptimizer.cleanup(30).catch((cleanupError: unknown) => {
-            frontendLogger.error('IndexedDB cleanup failed', {
-              error: cleanupError instanceof Error ? cleanupError : new Error(String(cleanupError)),
+        cleanupInterval = setInterval(
+          () => {
+            indexedDBOptimizer.cleanup(30).catch((cleanupError: unknown) => {
+              frontendLogger.error('IndexedDB cleanup failed', {
+                error:
+                  cleanupError instanceof Error
+                    ? cleanupError
+                    : new Error(String(cleanupError)),
+              });
             });
-          });
-        }, 24 * 60 * 60 * 1000);
+          },
+          24 * 60 * 60 * 1000
+        );
       } catch (error) {
         frontendLogger.error('Failed to initialize IndexedDB optimization', {
           error: error instanceof Error ? error : new Error(String(error)),
@@ -79,7 +89,7 @@ function App(): React.JSX.Element {
       frontendLogger.warn('Critical memory usage detected', {
         percentage: memoryUsage,
       });
-      
+
       if (process.env.NODE_ENV === 'development') {
         const maybeGc = (window as typeof window & { gc?: () => void }).gc;
         if (typeof maybeGc === 'function') {
@@ -101,7 +111,7 @@ function App(): React.JSX.Element {
           },
           error,
         });
-        
+
         // Report performance metrics with error for debugging
         reportAnalyticsException({
           description: error.message,
@@ -118,16 +128,15 @@ function App(): React.JSX.Element {
         <AppProvider>
           <ThemeProvider>
             <I18nProvider>
-              <NotificationProvider
-                maxNotifications={5}
-                defaultDuration={5000}
-              >
+              <NotificationProvider maxNotifications={5} defaultDuration={5000}>
                 <AppRouter />
-                
+
                 {/* Performance Dashboard (development only) */}
                 <PerformanceDashboard
                   isVisible={showPerformanceDashboard}
-                  onToggle={() => setShowPerformanceDashboard(!showPerformanceDashboard)}
+                  onToggle={() =>
+                    setShowPerformanceDashboard(!showPerformanceDashboard)
+                  }
                   position="bottom-right"
                 />
               </NotificationProvider>

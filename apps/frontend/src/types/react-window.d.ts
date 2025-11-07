@@ -9,7 +9,10 @@ declare module 'react-window' {
     itemSize: number | ((index: number) => number);
     itemData?: any;
     width?: number | string;
-    onScroll?: (props: { scrollOffset: number; scrollUpdateWasRequested: boolean }) => void;
+    onScroll?: (props: {
+      scrollOffset: number;
+      scrollUpdateWasRequested: boolean;
+    }) => void;
   }
 
   export interface ListChildComponentProps {
@@ -19,7 +22,10 @@ declare module 'react-window' {
   }
 
   export class List extends Component<ListProps> {
-    scrollToItem(index: number, align?: 'auto' | 'smart' | 'center' | 'end' | 'start'): void;
+    scrollToItem(
+      index: number,
+      align?: 'auto' | 'smart' | 'center' | 'end' | 'start'
+    ): void;
   }
 
   export interface GridProps {
