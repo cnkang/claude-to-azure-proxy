@@ -38,12 +38,16 @@
   gap: var(--spacing-md);
   flex: 1;
   min-width: 0; /* Allow text truncation */
+  /* Prevent layout shift during language changes */
+  contain: layout style;
 }
 
 .header-right {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
+  /* Prevent layout shift during language changes */
+  contain: layout style;
 }
 
 /* Menu toggle button */
@@ -85,15 +89,15 @@
 }
 
 /* Menu icon animation when sidebar is open */
-.menu-toggle[aria-expanded="true"] .menu-line:nth-child(1) {
+.menu-toggle[aria-expanded='true'] .menu-line:nth-child(1) {
   transform: rotate(45deg) translate(5px, 5px);
 }
 
-.menu-toggle[aria-expanded="true"] .menu-line:nth-child(2) {
+.menu-toggle[aria-expanded='true'] .menu-line:nth-child(2) {
   opacity: 0;
 }
 
-.menu-toggle[aria-expanded="true"] .menu-line:nth-child(3) {
+.menu-toggle[aria-expanded='true'] .menu-line:nth-child(3) {
   transform: rotate(-45deg) translate(7px, -6px);
 }
 
@@ -144,6 +148,13 @@
   color: var(--color-foreground);
   cursor: pointer;
   transition: all var(--transition-fast);
+  /* Prevent layout shift when changing languages */
+  min-width: 80px;
+  text-align: center;
+  /* Prevent text reflow */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .language-selector:hover {
@@ -222,6 +233,8 @@
   padding: var(--spacing-sm);
   border-top: 1px solid var(--color-border);
   background-color: var(--color-background-secondary);
+  /* Prevent height changes during language switch */
+  min-height: 48px;
 }
 
 .mobile-language-selector {
@@ -233,6 +246,9 @@
   color: var(--color-foreground);
   cursor: pointer;
   min-width: 120px;
+  /* Prevent layout shift */
+  text-align: center;
+  white-space: nowrap;
 }
 
 /* Breadcrumb */
@@ -329,19 +345,19 @@
   .header-content {
     padding: 0 var(--spacing-xs);
   }
-  
+
   .header-left {
     gap: var(--spacing-sm);
   }
-  
+
   .header-right {
     gap: var(--spacing-xs);
   }
-  
+
   .app-title {
     font-size: 14px;
   }
-  
+
   .theme-toggle,
   .settings-button {
     padding: var(--spacing-xs);
