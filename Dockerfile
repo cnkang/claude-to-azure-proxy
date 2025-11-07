@@ -66,23 +66,9 @@ RUN if [ -f pnpm-workspace.yaml ]; then \
 
 # Production dependencies stage
 FROM base AS prod-deps
-COPY package.json pnpm-lock.yaml ./
-COPY pnpm-workspace.yaml* ./
-COPY apps/backend/package.json ./apps/backend/
-# Copy all package.json files and built dist for workspace dependencies
-COPY packages/shared-types/package.json ./packages/shared-types/
-COPY packages/shared-utils/package.json ./packages/shared-utils/
-COPY packages/shared-config/package.json ./packages/shared-config/
-# Copy built packages from builder stage
-COPY --from=builder /app/packages/shared-types/dist ./packages/shared-types/dist
-COPY --from=builder /app/packages/shared-utils/dist ./packages/shared-utils/dist
-RUN if [ -f pnpm-workspace.yaml ]; then \
-      echo "Installing production dependencies for monorepo..." && \
-      pnpm install --prod --frozen-lockfile && \
-      echo "Production dependencies installed successfully"; \
-    else \
-      pnpm install --prod --frozen-lockfile; \
-    fi
+COPY --from=builder /app/build/package.json ./package.json
+COPY --from=builder /app/pnpm-lock.yaml ./pnpm-lock.yaml
+RUN pnpm install --prod --frozen-lockfile
 
 # Production stage
 FROM node:24-alpine AS runner
