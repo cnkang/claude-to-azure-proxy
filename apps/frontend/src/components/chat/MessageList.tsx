@@ -9,7 +9,7 @@ import React, {
   useState,
 } from 'react';
 import type { JSX } from 'react';
-import { FixedSizeList as List } from 'react-window';
+import { List } from 'react-window';
 import { MessageItem } from './MessageItem.js';
 import { TypingIndicator } from './TypingIndicator.js';
 import { StreamingMessage } from './StreamingMessage.js';
