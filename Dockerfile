@@ -58,13 +58,11 @@ RUN if [ -f pnpm-workspace.yaml ]; then \
 FROM node:24-alpine AS runner
 WORKDIR /app
 
-# Install security updates and dumb-init
-RUN apk update && apk upgrade && apk add --no-cache dumb-init
-RUN rm -rf /var/cache/apk/*
-
-# Create non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 appuser
+# Install security updates and create non-root user
+RUN apk update && apk upgrade && \
+    rm -rf /var/cache/apk/* && \
+    addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 appuser
 
 # Copy built application and production dependencies
 COPY --from=builder --chown=appuser:nodejs /app/build/dist ./dist
@@ -79,6 +77,6 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
   CMD node -e "require('http').get('http://localhost:8080/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
-# Use dumb-init for proper signal handling
-ENTRYPOINT ["dumb-init", "--"]
+# Use Node.js directly - Docker's --init flag handles signal forwarding
+# Run with: docker run --init -p 8080:8080 <image>
 CMD ["node", "--enable-source-maps", "--max-old-space-size=512", "dist/index.js"]
