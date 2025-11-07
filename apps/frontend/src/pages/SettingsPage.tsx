@@ -1,8 +1,8 @@
 /**
  * Settings Page Component
- * 
+ *
  * Application settings page with theme, language, and data management options.
- * 
+ *
  * Requirements: 1.1, 5.1, 5.2, 5.3, 10.1
  */
 
@@ -23,9 +23,12 @@ export function SettingsPage(): React.JSX.Element {
   const { themeMode, setThemeMode, systemPrefersDark } = useTheme();
   const { language, setLanguage, supportedLanguages, t } = useI18n();
   const { session, storageUsage, resetSession } = useSessionContext();
-  const { conversations, deleteMultipleConversations, exportConversations } = useConversations();
+  const { conversations, deleteMultipleConversations, exportConversations } =
+    useConversations();
   const { clearAllData, state: _storageState } = useStorage();
-  const [showConfirmDialog, setShowConfirmDialog] = useState<string | null>(null);
+  const [showConfirmDialog, setShowConfirmDialog] = useState<string | null>(
+    null
+  );
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [processingMessage, setProcessingMessage] = useState<string>('');
 
@@ -43,7 +46,10 @@ export function SettingsPage(): React.JSX.Element {
     }
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
-    const sizeIndex = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
+    const sizeIndex = Math.min(
+      Math.floor(Math.log(bytes) / Math.log(k)),
+      sizes.length - 1
+    );
     return `${parseFloat((bytes / Math.pow(k, sizeIndex)).toFixed(2))} ${sizes[sizeIndex]}`;
   };
 
@@ -64,7 +70,7 @@ export function SettingsPage(): React.JSX.Element {
 
       // Export all conversations
       const exportData = await exportConversations();
-      
+
       // Create and download file
       const blob = new Blob([exportData], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -97,8 +103,8 @@ export function SettingsPage(): React.JSX.Element {
       setProcessingMessage(t('settings.data.clearingConversations'));
 
       // Get all conversation IDs
-      const conversationIds = conversations.map(conv => conv.id);
-      
+      const conversationIds = conversations.map((conv) => conv.id);
+
       // Delete all conversations
       await deleteMultipleConversations(conversationIds);
 
@@ -147,7 +153,7 @@ export function SettingsPage(): React.JSX.Element {
 
       // Clear all storage data
       await clearAllData();
-      
+
       // Reset session as well
       await resetSession();
 
@@ -168,8 +174,8 @@ export function SettingsPage(): React.JSX.Element {
    */
   const handleConfirmAction = useCallback(async (): Promise<void> => {
     if (!showConfirmDialog) {
-    return;
-  }
+      return;
+    }
 
     switch (showConfirmDialog) {
       case 'clearConversations':
@@ -184,31 +190,34 @@ export function SettingsPage(): React.JSX.Element {
       default:
         setShowConfirmDialog(null);
     }
-  }, [showConfirmDialog, handleClearConversations, handleResetSession, handleClearAllData]);
+  }, [
+    showConfirmDialog,
+    handleClearConversations,
+    handleResetSession,
+    handleClearAllData,
+  ]);
 
   const hasConfirmDialog = showConfirmDialog !== null;
-  const sessionIdDisplay = isNonEmptyString(session?.sessionId) ? session.sessionId : null;
+  const sessionIdDisplay = isNonEmptyString(session?.sessionId)
+    ? session.sessionId
+    : null;
   const sessionCreatedAtDisplay =
-    session?.createdAt instanceof Date ? session.createdAt.toLocaleString() : 'N/A';
+    session?.createdAt instanceof Date
+      ? session.createdAt.toLocaleString()
+      : 'N/A';
 
   return (
     <LayoutContainer className="settings-page" maxWidth="lg" padding="lg">
       <div className="settings-content">
         <header className="settings-header">
-          <h1 className="settings-title">
-            {t('settings.title')}
-          </h1>
-          <p className="settings-description">
-            {t('settings.description')}
-          </p>
+          <h1 className="settings-title">{t('settings.title')}</h1>
+          <p className="settings-description">{t('settings.description')}</p>
         </header>
 
         <div className="settings-sections">
           {/* Appearance Section */}
           <section className="settings-section">
-            <h2 className="section-title">
-              {t('settings.appearance.title')}
-            </h2>
+            <h2 className="section-title">{t('settings.appearance.title')}</h2>
             <p className="section-description">
               {t('settings.appearance.description')}
             </p>
@@ -218,7 +227,11 @@ export function SettingsPage(): React.JSX.Element {
                 {t('settings.appearance.theme')}
               </label>
               <div className="theme-options">
-                <label className="theme-option" htmlFor="theme-light" aria-label={t('settings.appearance.light')}>
+                <label
+                  className="theme-option"
+                  htmlFor="theme-light"
+                  aria-label={t('settings.appearance.light')}
+                >
                   <input
                     id="theme-light"
                     type="radio"
@@ -236,7 +249,11 @@ export function SettingsPage(): React.JSX.Element {
                   </span>
                 </label>
 
-                <label className="theme-option" htmlFor="theme-dark" aria-label={t('settings.appearance.dark')}>
+                <label
+                  className="theme-option"
+                  htmlFor="theme-dark"
+                  aria-label={t('settings.appearance.dark')}
+                >
                   <input
                     id="theme-dark"
                     type="radio"
@@ -254,7 +271,11 @@ export function SettingsPage(): React.JSX.Element {
                   </span>
                 </label>
 
-                <label className="theme-option" htmlFor="theme-auto" aria-label={t('settings.appearance.auto')}>
+                <label
+                  className="theme-option"
+                  htmlFor="theme-auto"
+                  aria-label={t('settings.appearance.auto')}
+                >
                   <input
                     id="theme-auto"
                     type="radio"
@@ -275,7 +296,9 @@ export function SettingsPage(): React.JSX.Element {
               {themeMode === 'auto' && (
                 <p className="setting-hint">
                   {t('settings.appearance.autoHint', {
-                    current: systemPrefersDark ? t('settings.appearance.dark') : t('settings.appearance.light')
+                    current: systemPrefersDark
+                      ? t('settings.appearance.dark')
+                      : t('settings.appearance.light'),
                   })}
                 </p>
               )}
@@ -284,9 +307,7 @@ export function SettingsPage(): React.JSX.Element {
 
           {/* Language Section */}
           <section className="settings-section">
-            <h2 className="section-title">
-              {t('settings.language.title')}
-            </h2>
+            <h2 className="section-title">{t('settings.language.title')}</h2>
             <p className="section-description">
               {t('settings.language.description')}
             </p>
@@ -298,7 +319,9 @@ export function SettingsPage(): React.JSX.Element {
               <select
                 id="language-select"
                 value={language}
-                onChange={(e) => handleLanguageChange(e.target.value as SupportedLanguage)}
+                onChange={(e) =>
+                  handleLanguageChange(e.target.value as SupportedLanguage)
+                }
                 className="language-select"
               >
                 {supportedLanguages.map((lang) => (
@@ -312,9 +335,7 @@ export function SettingsPage(): React.JSX.Element {
 
           {/* Storage Section */}
           <section className="settings-section">
-            <h2 className="section-title">
-              {t('settings.storage.title')}
-            </h2>
+            <h2 className="section-title">{t('settings.storage.title')}</h2>
             <p className="section-description">
               {t('settings.storage.description')}
             </p>
@@ -323,14 +344,17 @@ export function SettingsPage(): React.JSX.Element {
               <div className="storage-info">
                 <div className="storage-usage">
                   <div className="usage-bar">
-                    <div 
+                    <div
                       className="usage-fill"
-                      style={{ width: `${Math.min(getStoragePercentage(), 100)}%` }}
+                      style={{
+                        width: `${Math.min(getStoragePercentage(), 100)}%`,
+                      }}
                     />
                   </div>
                   <div className="usage-text">
-                    {formatStorageSize(storageUsage.used)} / {formatStorageSize(storageUsage.quota)}
-                    {' '}({Math.round(getStoragePercentage())}%)
+                    {formatStorageSize(storageUsage.used)} /{' '}
+                    {formatStorageSize(storageUsage.quota)} (
+                    {Math.round(getStoragePercentage())}%)
                   </div>
                 </div>
               </div>
@@ -339,9 +363,7 @@ export function SettingsPage(): React.JSX.Element {
 
           {/* Session Section */}
           <section className="settings-section">
-            <h2 className="section-title">
-              {t('settings.session.title')}
-            </h2>
+            <h2 className="section-title">{t('settings.session.title')}</h2>
             <p className="section-description">
               {t('settings.session.description')}
             </p>
@@ -360,9 +382,7 @@ export function SettingsPage(): React.JSX.Element {
                   <span className="info-label">
                     {t('settings.session.created')}:
                   </span>
-                  <span className="info-value">
-                    {sessionCreatedAtDisplay}
-                  </span>
+                  <span className="info-value">{sessionCreatedAtDisplay}</span>
                 </div>
               </div>
             </div>
@@ -370,9 +390,7 @@ export function SettingsPage(): React.JSX.Element {
 
           {/* Data Management Section */}
           <section className="settings-section danger-section">
-            <h2 className="section-title">
-              {t('settings.data.title')}
-            </h2>
+            <h2 className="section-title">{t('settings.data.title')}</h2>
             <p className="section-description">
               {t('settings.data.description')}
             </p>
@@ -383,16 +401,17 @@ export function SettingsPage(): React.JSX.Element {
                   <span className="stats-label">
                     {t('settings.storage.conversations')}:
                   </span>
-                  <span className="stats-value">
-                    {conversations.length}
-                  </span>
+                  <span className="stats-value">{conversations.length}</span>
                 </div>
                 <div className="stats-item">
                   <span className="stats-label">
                     {t('settings.storage.messages')}:
                   </span>
                   <span className="stats-value">
-                    {conversations.reduce((total, conv) => total + conv.messages.length, 0)}
+                    {conversations.reduce(
+                      (total, conv) => total + conv.messages.length,
+                      0
+                    )}
                   </span>
                 </div>
               </div>
@@ -404,7 +423,9 @@ export function SettingsPage(): React.JSX.Element {
                   onClick={handleExportData}
                   disabled={isProcessing || conversations.length === 0}
                 >
-                  {isProcessing && showConfirmDialog === null ? t('settings.data.exporting') : t('settings.data.export')}
+                  {isProcessing && showConfirmDialog === null
+                    ? t('settings.data.exporting')
+                    : t('settings.data.export')}
                 </button>
 
                 <button
@@ -440,50 +461,56 @@ export function SettingsPage(): React.JSX.Element {
       </div>
 
       {/* Confirmation Dialog */}
-      {hasConfirmDialog && showConfirmDialog !== null !== null && undefined !== null && (
-        <div 
-          className="dialog-overlay" 
-          onClick={() => !isProcessing && setShowConfirmDialog(null)}
-          role="presentation"
-          onKeyDown={(e) => {
-            if (e.key === 'Escape' && !isProcessing) {
-              setShowConfirmDialog(null);
-            }
-          }}
-        >
-          <div className="dialog" role="dialog" aria-modal="true">
-            <h3 className="dialog-title">
-              {isProcessing ? t('settings.processing.title') : t(`settings.confirm.${showConfirmDialog}.title`)}
-            </h3>
-            <p className="dialog-message">
-              {isProcessing ? processingMessage : t(`settings.confirm.${showConfirmDialog}.message`)}
-            </p>
-            {isProcessing !== null && isProcessing !== undefined && (
-              <div className="processing-indicator">
-                <div className="spinner" />
+      {hasConfirmDialog &&
+        (showConfirmDialog !== null) !== null &&
+        undefined !== null && (
+          <div
+            className="dialog-overlay"
+            onClick={() => !isProcessing && setShowConfirmDialog(null)}
+            role="presentation"
+            onKeyDown={(e) => {
+              if (e.key === 'Escape' && !isProcessing) {
+                setShowConfirmDialog(null);
+              }
+            }}
+          >
+            <div className="dialog" role="dialog" aria-modal="true">
+              <h3 className="dialog-title">
+                {isProcessing
+                  ? t('settings.processing.title')
+                  : t(`settings.confirm.${showConfirmDialog}.title`)}
+              </h3>
+              <p className="dialog-message">
+                {isProcessing
+                  ? processingMessage
+                  : t(`settings.confirm.${showConfirmDialog}.message`)}
+              </p>
+              {isProcessing !== null && isProcessing !== undefined && (
+                <div className="processing-indicator">
+                  <div className="spinner" />
+                </div>
+              )}
+              <div className="dialog-actions">
+                <button
+                  type="button"
+                  className="dialog-button secondary"
+                  onClick={() => setShowConfirmDialog(null)}
+                  disabled={isProcessing}
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  type="button"
+                  className="dialog-button danger"
+                  onClick={handleConfirmAction}
+                  disabled={isProcessing}
+                >
+                  {isProcessing ? t('common.processing') : t('common.confirm')}
+                </button>
               </div>
-            )}
-            <div className="dialog-actions">
-              <button
-                type="button"
-                className="dialog-button secondary"
-                onClick={() => setShowConfirmDialog(null)}
-                disabled={isProcessing}
-              >
-                {t('common.cancel')}
-              </button>
-              <button
-                type="button"
-                className="dialog-button danger"
-                onClick={handleConfirmAction}
-                disabled={isProcessing}
-              >
-                {isProcessing ? t('common.processing') : t('common.confirm')}
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
     </LayoutContainer>
   );
 }

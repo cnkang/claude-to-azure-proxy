@@ -1,9 +1,9 @@
 /**
  * Chat Page Component
- * 
+ *
  * Main chat interface page with conversation display and message input.
  * This is the primary page of the application.
- * 
+ *
  * Requirements: 1.1, 5.1, 5.2, 5.3, 10.1
  */
 
@@ -19,7 +19,8 @@ import type { ClientConfig } from '../types/index';
  * Chat page component
  */
 export function ChatPage(): React.JSX.Element {
-  const { activeConversation, conversations, createConversation } = useConversations();
+  const { activeConversation, conversations, createConversation } =
+    useConversations();
   const { t } = useI18n();
   const [config, setConfig] = useState<ClientConfig | null>(null);
   const hasActiveConversation = activeConversation !== null;
@@ -86,20 +87,13 @@ export function ChatPage(): React.JSX.Element {
   return (
     <LayoutContainer className="chat-page" maxWidth="full" padding="none">
       {hasActiveConversation && activeConversation !== null ? (
-        <ChatInterface
-          conversation={activeConversation}
-          config={config}
-        />
+        <ChatInterface conversation={activeConversation} config={config} />
       ) : hasNoConversations ? (
         <div className="welcome-screen">
           <div className="welcome-content">
             <div className="welcome-icon">🤖</div>
-            <h1 className="welcome-title">
-              {t('welcome.title')}
-            </h1>
-            <p className="welcome-description">
-              {t('welcome.description')}
-            </p>
+            <h1 className="welcome-title">{t('welcome.title')}</h1>
+            <p className="welcome-description">{t('welcome.description')}</p>
             <button
               type="button"
               className="welcome-button"

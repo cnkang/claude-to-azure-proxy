@@ -1,9 +1,9 @@
 /**
  * App Router Component
- * 
+ *
  * Main application router with route definitions and navigation structure.
  * Handles routing between chat interface and settings pages.
- * 
+ *
  * Requirements: 1.1, 5.1, 5.2, 5.3, 10.1
  */
 
@@ -11,12 +11,12 @@ import React, { Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppLayout } from '../components/layout/AppLayout.js';
 import { useI18n } from '../contexts/I18nContext.js';
-import { 
-  LazyChatPage, 
+import {
+  LazyChatPage,
   LazySettingsPage,
   preloadCriticalComponents,
   routePreloadStrategy,
-  preloadOnUserAction
+  preloadOnUserAction,
 } from './LazyRoutes.js';
 import { PreloadOnHover } from '../components/common/LazyComponent.js';
 
@@ -25,16 +25,14 @@ import { PreloadOnHover } from '../components/common/LazyComponent.js';
  */
 function RouteLoading(): React.JSX.Element {
   const { t } = useI18n();
-  
+
   return (
     <div className="route-loading">
       <div className="loading-content">
         <div className="loading-spinner">
           <div className="spinner" />
         </div>
-        <p className="loading-text">
-          {t('common.loading')}
-        </p>
+        <p className="loading-text">{t('common.loading')}</p>
       </div>
     </div>
   );
@@ -45,17 +43,13 @@ function RouteLoading(): React.JSX.Element {
  */
 function NotFoundPage(): React.JSX.Element {
   const { t } = useI18n();
-  
+
   return (
     <div className="not-found-page">
       <div className="not-found-content">
         <div className="not-found-icon">🔍</div>
-        <h1 className="not-found-title">
-          {t('notFound.title')}
-        </h1>
-        <p className="not-found-description">
-          {t('notFound.description')}
-        </p>
+        <h1 className="not-found-title">{t('notFound.title')}</h1>
+        <p className="not-found-description">{t('notFound.description')}</p>
         <a href="/" className="not-found-link">
           {t('notFound.goHome')}
         </a>
@@ -72,7 +66,10 @@ interface RouteGuardProps {
   requireSession?: boolean;
 }
 
-function RouteGuard({ children, requireSession: _requireSession = true }: RouteGuardProps): React.JSX.Element {
+function RouteGuard({
+  children,
+  requireSession: _requireSession = true,
+}: RouteGuardProps): React.JSX.Element {
   // For now, we'll just render children
   // In the future, this could check for session validity
   return <>{children}</>;
@@ -86,7 +83,10 @@ interface RoutePreloaderProps {
   onLoad?: () => void;
 }
 
-function RoutePreloader({ children, onLoad }: RoutePreloaderProps): React.JSX.Element {
+function RoutePreloader({
+  children,
+  onLoad,
+}: RoutePreloaderProps): React.JSX.Element {
   React.useEffect(() => {
     onLoad?.();
   }, [onLoad]);
@@ -100,7 +100,9 @@ function RoutePreloader({ children, onLoad }: RoutePreloaderProps): React.JSX.El
 export function AppRouter(): React.JSX.Element {
   // Preload critical components on app initialization
   useEffect(() => {
-    preloadCriticalComponents().catch(() => {/* Ignore preload errors */});
+    preloadCriticalComponents().catch(() => {
+      /* Ignore preload errors */
+    });
   }, []);
 
   return (
@@ -109,54 +111,54 @@ export function AppRouter(): React.JSX.Element {
         <Suspense fallback={<RouteLoading />}>
           <Routes>
             {/* Default route - redirect to chat */}
-            <Route 
-              path="/" 
-              element={<Navigate to="/chat" replace />} 
-            />
-            
+            <Route path="/" element={<Navigate to="/chat" replace />} />
+
             {/* Chat interface with preloading */}
-            <Route 
-              path="/chat" 
+            <Route
+              path="/chat"
               element={
                 <RouteGuard>
-                  <RoutePreloader onLoad={() => routePreloadStrategy.onChatPageLoad()}>
+                  <RoutePreloader
+                    onLoad={() => routePreloadStrategy.onChatPageLoad()}
+                  >
                     <LazyChatPage />
                   </RoutePreloader>
                 </RouteGuard>
-              } 
+              }
             />
-            
+
             {/* Conversation-specific route */}
-            <Route 
-              path="/chat/:conversationId" 
+            <Route
+              path="/chat/:conversationId"
               element={
                 <RouteGuard>
-                  <RoutePreloader onLoad={() => routePreloadStrategy.onChatPageLoad()}>
+                  <RoutePreloader
+                    onLoad={() => routePreloadStrategy.onChatPageLoad()}
+                  >
                     <LazyChatPage />
                   </RoutePreloader>
                 </RouteGuard>
-              } 
+              }
             />
-            
+
             {/* Settings page with preloading */}
-            <Route 
-              path="/settings" 
+            <Route
+              path="/settings"
               element={
                 <RouteGuard>
                   <PreloadOnHover preload={preloadOnUserAction.onSettingsHover}>
-                    <RoutePreloader onLoad={() => routePreloadStrategy.onSettingsPageLoad()}>
+                    <RoutePreloader
+                      onLoad={() => routePreloadStrategy.onSettingsPageLoad()}
+                    >
                       <LazySettingsPage />
                     </RoutePreloader>
                   </PreloadOnHover>
                 </RouteGuard>
-              } 
+              }
             />
-            
+
             {/* 404 Not Found */}
-            <Route 
-              path="*" 
-              element={<NotFoundPage />} 
-            />
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </Suspense>
       </AppLayout>
@@ -230,7 +232,8 @@ export function useCurrentRoute(): CurrentRoute {
   const isChat = path.startsWith('/chat');
   const isSettings = path === '/settings';
   const conversationMatch = path.match(/^\/chat\/(.+)$/);
-  const conversationId = conversationMatch !== null ? conversationMatch[1] : null;
+  const conversationId =
+    conversationMatch !== null ? conversationMatch[1] : null;
 
   return {
     path,
