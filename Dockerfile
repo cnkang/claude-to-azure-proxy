@@ -15,12 +15,14 @@ COPY package.json pnpm-lock.yaml ./
 COPY pnpm-workspace.yaml* ./
 # Copy package.json files for workspace dependencies
 COPY apps/backend/package.json ./apps/backend/ 
-# Copy all packages directory content
+# Copy all packages directory content for workspace resolution
 COPY packages/ ./packages/
 RUN if [ -f pnpm-workspace.yaml ]; then \
-      pnpm install; \
+      echo "Installing dependencies for monorepo..." && \
+      pnpm install --frozen-lockfile && \
+      echo "Dependencies installed successfully"; \
     else \
-      pnpm install; \
+      pnpm install --frozen-lockfile; \
     fi
 
 # Build stage - handle both monorepo and legacy structure
@@ -29,10 +31,15 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN if [ -f pnpm-workspace.yaml ]; then \
       # Monorepo build process
-      pnpm build:shared && pnpm build:backend; \
-      mkdir -p /app/build; \
-      cp -R apps/backend/dist /app/build/dist; \
-      cp apps/backend/package.json /app/build/package.json; \
+      echo "Building shared packages..." && \
+      pnpm build:shared && \
+      echo "Building backend application..." && \
+      pnpm build:backend && \
+      echo "Preparing build output..." && \
+      mkdir -p /app/build && \
+      cp -R apps/backend/dist /app/build/dist && \
+      cp apps/backend/package.json /app/build/package.json && \
+      echo "Build completed successfully"; \
     else \
       # Legacy build process
       pnpm run build; \
@@ -46,12 +53,14 @@ FROM base AS prod-deps
 COPY package.json pnpm-lock.yaml ./
 COPY pnpm-workspace.yaml* ./
 COPY apps/backend/package.json ./apps/backend/
-# Copy all packages directory content
+# Copy all packages directory content for workspace resolution
 COPY packages/ ./packages/
 RUN if [ -f pnpm-workspace.yaml ]; then \
-      pnpm install --prod; \
+      echo "Installing production dependencies for monorepo..." && \
+      pnpm install --prod --frozen-lockfile && \
+      echo "Production dependencies installed successfully"; \
     else \
-      pnpm install --prod; \
+      pnpm install --prod --frozen-lockfile; \
     fi
 
 # Production stage
@@ -68,6 +77,10 @@ RUN apk update && apk upgrade && \
 COPY --from=builder --chown=appuser:nodejs /app/build/dist ./dist
 COPY --from=builder --chown=appuser:nodejs /app/build/package.json ./package.json
 COPY --from=prod-deps --chown=appuser:nodejs /app/node_modules ./node_modules
+
+# Copy workspace configuration and built shared packages for monorepo support
+COPY --from=builder --chown=appuser:nodejs /app/pnpm-workspace.yaml* ./
+COPY --from=builder --chown=appuser:nodejs /app/packages ./packages
 
 # Switch to non-root user
 USER appuser
