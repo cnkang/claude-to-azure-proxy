@@ -89,8 +89,8 @@ RUN if [ -f pnpm-workspace.yaml ]; then \
       echo "Frontend build completed successfully"; \
     fi
 
-# Production stage
-FROM node:24-alpine AS runner
+# Production stage with workspace support
+FROM base AS runner
 WORKDIR /app
 
 # Install security updates and create non-root user
@@ -99,9 +99,25 @@ RUN apk update && apk upgrade && \
     addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 appuser
 
-# Copy bundled application and dependencies
+# Copy workspace configuration
+COPY --from=builder --chown=appuser:nodejs /app/package.json ./package.json
+COPY --from=builder --chown=appuser:nodejs /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
+
+# Copy bundled application
 COPY --from=builder --chown=appuser:nodejs /app/build/dist ./dist
+
+# Copy shared packages with their built output
+COPY --from=builder --chown=appuser:nodejs /app/packages/shared-types ./packages/shared-types
+COPY --from=builder --chown=appuser:nodejs /app/packages/shared-utils ./packages/shared-utils
+
+# Copy production dependencies
 COPY --from=prod-deps --chown=appuser:nodejs /app/node_modules ./node_modules
+
+# Create symlinks for workspace packages in node_modules
+RUN mkdir -p node_modules/@repo && \
+    ln -s /app/packages/shared-types node_modules/@repo/shared-types && \
+    ln -s /app/packages/shared-utils node_modules/@repo/shared-utils && \
+    chown -R appuser:nodejs node_modules/@repo
 
 # Copy frontend build if it exists
 COPY --from=frontend-builder --chown=appuser:nodejs /app/apps/frontend/dist ./apps/frontend/dist

@@ -131,6 +131,34 @@ try {
     JSON.stringify(prodPackageJson, null, 2)
   );
 
+  // Post-process: Add .js extensions to relative imports
+  // eslint-disable-next-line no-console
+  console.log('🔧 Adding .js extensions to relative imports...');
+  
+  const jsFiles = await glob('**/*.js', { cwd: distDir, absolute: false });
+  for (const file of jsFiles) {
+    const filePath = join(distDir, file);
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
+    let content = readFileSync(filePath, 'utf-8');
+    
+    // Replace relative imports without .js extension
+    // Match: from './path' or from "../path" but not from './path.js'
+    content = content.replace(
+      /from\s+['"](\.[^'"]+?)(?<!\.js)['"]/g,
+      "from '$1.js'"
+    );
+    content = content.replace(
+      /import\s+['"](\.[^'"]+?)(?<!\.js)['"]/g,
+      "import '$1.js'"
+    );
+    
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
+    writeFileSync(filePath, content);
+  }
+  
+  // eslint-disable-next-line no-console
+  console.log(`✅ Added .js extensions to ${jsFiles.length} files`);
+
   // eslint-disable-next-line no-console
   console.log('✅ Backend bundle built successfully!');
   // eslint-disable-next-line no-console
