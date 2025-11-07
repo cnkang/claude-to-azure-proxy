@@ -4,6 +4,7 @@ import { json, urlencoded } from 'express';
 import { performance } from 'node:perf_hooks';
 import { getHeapStatistics } from 'node:v8';
 import path from 'path';
+import fs from 'fs';
 import { parseEnvInt } from '@repo/shared-utils';
 import type { Request, Response } from 'express';
 import type { ServerConfig, RequestWithCorrelationId } from './types/index';
@@ -608,8 +609,12 @@ export class ProxyServer {
    * @private
    */
   private setupFrontendServing(): void {
-    // Resolve frontend build path relative to the workspace root
-    const frontendBuildPath = path.resolve(process.cwd(), '../frontend/dist');
+    // Resolve frontend build path - works in both development and Docker
+    // In Docker: /app/apps/frontend/dist
+    // In development: ../frontend/dist (from apps/backend)
+    const frontendBuildPath = fs.existsSync(path.resolve(process.cwd(), 'apps/frontend/dist'))
+      ? path.resolve(process.cwd(), 'apps/frontend/dist')
+      : path.resolve(process.cwd(), '../frontend/dist');
 
     // Log frontend build status
     logFrontendBuildStatus(frontendBuildPath).catch((error: unknown) => {

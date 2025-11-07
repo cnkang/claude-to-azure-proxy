@@ -53,7 +53,7 @@ COPY --from=deps /app/packages/shared-config/node_modules ./packages/shared-conf
 RUN if [ -f pnpm-workspace.yaml ]; then \
       # Monorepo build process with esbuild
       echo "Building backend application with esbuild..." && \
-      pnpm build:backend && \
+      DOCKER_BUILD=true pnpm build:backend && \
       echo "Preparing build output..." && \
       mkdir -p /app/build && \
       cp -R apps/backend/dist /app/build/dist && \

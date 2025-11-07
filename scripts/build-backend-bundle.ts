@@ -40,6 +40,9 @@ console.log('🔨 Building backend with esbuild...');
 console.log('📦 External packages:', external.join(', '));
 console.log('📦 Bundling workspace packages: @repo/*');
 
+// Check if building for production (Docker build or NODE_ENV=production)
+const isProduction = process.env.NODE_ENV === 'production' || process.env.DOCKER_BUILD === 'true';
+
 try {
   await build({
     entryPoints: [join(backendDir, 'src/index.ts')],
@@ -48,9 +51,9 @@ try {
     target: 'node24',
     format: 'esm',
     outfile: join(backendDir, 'dist/index.js'),
-    sourcemap: true,
+    sourcemap: !isProduction, // Disable source maps in production
     external,
-    minify: false,
+    minify: isProduction, // Enable minification in production
     keepNames: true,
     treeShaking: true,
     logLevel: 'info',
@@ -71,6 +74,11 @@ try {
 
   console.log('✅ Backend bundle built successfully!');
   console.log('📝 Generated production package.json with external dependencies only');
+  if (isProduction) {
+    console.log('🔒 Production build: source maps disabled, minification enabled');
+  } else {
+    console.log('🔧 Development build: source maps enabled, minification disabled');
+  }
 } catch (error) {
   console.error('❌ Build failed:', error);
   process.exit(1);
