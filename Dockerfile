@@ -15,6 +15,7 @@ COPY package.json pnpm-lock.yaml ./
 COPY pnpm-workspace.yaml* ./
 # Copy all package.json files for workspace dependencies
 COPY apps/backend/package.json ./apps/backend/
+COPY apps/frontend/package.json ./apps/frontend/
 COPY packages/shared-types/package.json ./packages/shared-types/
 COPY packages/shared-utils/package.json ./packages/shared-utils/
 COPY packages/shared-config/package.json ./packages/shared-config/
@@ -24,10 +25,14 @@ COPY packages/shared-types/tsconfig.json ./packages/shared-types/
 COPY packages/shared-utils/src ./packages/shared-utils/src
 COPY packages/shared-utils/tsconfig.json ./packages/shared-utils/
 COPY packages/shared-utils/tsconfig.build.json ./packages/shared-utils/
+# Copy shared config for TypeScript
+COPY packages/shared-config/typescript ./packages/shared-config/typescript
 RUN if [ -f pnpm-workspace.yaml ]; then \
       echo "Installing dependencies for monorepo..." && \
       pnpm install --frozen-lockfile && \
-      echo "Dependencies installed successfully"; \
+      echo "Building shared packages..." && \
+      pnpm build:shared && \
+      echo "Dependencies and shared packages built successfully"; \
     else \
       pnpm install --frozen-lockfile; \
     fi
@@ -39,22 +44,19 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml* ./
 COPY apps/backend ./apps/backend
 COPY packages ./packages
 COPY scripts ./scripts
-# Copy node_modules from deps stage
+# Copy node_modules and built shared packages from deps stage
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/backend/node_modules ./apps/backend/node_modules
-COPY --from=deps /app/packages/shared-types/node_modules ./packages/shared-types/node_modules
-COPY --from=deps /app/packages/shared-utils/node_modules ./packages/shared-utils/node_modules
+COPY --from=deps /app/packages/shared-types ./packages/shared-types
+COPY --from=deps /app/packages/shared-utils ./packages/shared-utils
 COPY --from=deps /app/packages/shared-config/node_modules ./packages/shared-config/node_modules
 RUN if [ -f pnpm-workspace.yaml ]; then \
       # Monorepo build process with esbuild
-      echo "Building shared packages..." && \
-      pnpm build:shared && \
       echo "Building backend application with esbuild..." && \
       pnpm build:backend && \
       echo "Preparing build output..." && \
       mkdir -p /app/build && \
       cp -R apps/backend/dist /app/build/dist && \
-      cp apps/backend/package.json /app/build/package.json && \
       echo "Build completed successfully"; \
     else \
       # Legacy build process
@@ -64,13 +66,27 @@ RUN if [ -f pnpm-workspace.yaml ]; then \
       cp package.json /app/build/package.json; \
     fi
 
-# Production dependencies stage
+# Production dependencies stage - only install external dependencies
 FROM base AS prod-deps
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/pnpm-lock.yaml ./pnpm-lock.yaml
-COPY --from=builder /app/pnpm-workspace.yaml* ./
-COPY --from=builder /app/build/package.json ./apps/backend/package.json
-RUN pnpm install --prod --frozen-lockfile --filter @repo/backend
+COPY --from=builder /app/build/dist/package.json ./package.json
+RUN pnpm install --prod
+
+# Frontend build stage
+FROM base AS frontend-builder
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml* ./
+COPY apps/frontend ./apps/frontend
+COPY packages ./packages
+# Copy node_modules and built shared packages from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/frontend/node_modules ./apps/frontend/node_modules
+COPY --from=deps /app/packages/shared-types ./packages/shared-types
+COPY --from=deps /app/packages/shared-utils ./packages/shared-utils
+COPY --from=deps /app/packages/shared-config/node_modules ./packages/shared-config/node_modules
+RUN if [ -f pnpm-workspace.yaml ]; then \
+      echo "Building frontend application..." && \
+      pnpm --filter @repo/frontend build && \
+      echo "Frontend build completed successfully"; \
+    fi
 
 # Production stage
 FROM node:24-alpine AS runner
@@ -82,12 +98,12 @@ RUN apk update && apk upgrade && \
     addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 appuser
 
-# Copy backend package.json and bundled dist
-COPY --from=builder --chown=appuser:nodejs /app/build/package.json ./apps/backend/package.json
-COPY --from=builder --chown=appuser:nodejs /app/build/dist ./apps/backend/dist
+# Copy bundled application and dependencies
+COPY --from=builder --chown=appuser:nodejs /app/build/dist ./dist
+COPY --from=prod-deps --chown=appuser:nodejs /app/node_modules ./node_modules
 
-# Copy production dependencies from prod-deps stage
-COPY --from=prod-deps --chown=appuser:nodejs /app/node_modules ./apps/backend/node_modules
+# Copy frontend build if it exists
+COPY --from=frontend-builder --chown=appuser:nodejs /app/apps/frontend/dist ./apps/frontend/dist
 
 # Switch to non-root user
 USER appuser
@@ -99,6 +115,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
 
 # Use Node.js directly - Docker's --init flag handles signal forwarding
 # Run with: docker run --init -p 8080:8080 <image>
-# Run from apps/backend directory to ensure proper module resolution
-WORKDIR /app/apps/backend
 CMD ["node", "--enable-source-maps", "--max-old-space-size=512", "dist/index.js"]
