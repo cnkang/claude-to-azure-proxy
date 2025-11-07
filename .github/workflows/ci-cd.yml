@@ -35,7 +35,7 @@ jobs:
           cache: "pnpm"
 
       - name: Install workspace dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile # Uses pnpm-workspace.yaml for monorepo
 
       - name: Validate monorepo structure
         run: ./scripts/validate-monorepo.sh
