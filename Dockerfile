@@ -109,9 +109,9 @@ COPY --from=builder --chown=appuser:nodejs /app/packages/shared-utils/package.js
 COPY --from=builder --chown=appuser:nodejs /app/packages/shared-utils/dist ./packages/shared-utils/dist
 COPY --from=builder --chown=appuser:nodejs /app/packages/shared-config/package.json ./packages/shared-config/
 
-# Copy backend package.json and built dist
+# Copy backend package.json and built dist to correct location
 COPY --from=builder --chown=appuser:nodejs /app/build/package.json ./apps/backend/package.json
-COPY --from=builder --chown=appuser:nodejs /app/build/dist ./dist
+COPY --from=builder --chown=appuser:nodejs /app/build/dist ./apps/backend/dist
 
 # Install production dependencies with workspace support
 RUN pnpm install --prod --frozen-lockfile && \
@@ -129,4 +129,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
 # Run with: docker run --init -p 8080:8080 <image>
 # Run from apps/backend directory to ensure proper module resolution
 WORKDIR /app/apps/backend
-CMD ["node", "--enable-source-maps", "--max-old-space-size=512", "../../dist/index.js"]
+CMD ["node", "--enable-source-maps", "--max-old-space-size=512", "dist/index.js"]
