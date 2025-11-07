@@ -5,7 +5,8 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build": "pnpm run build:types && pnpm run build:bundle",
+    "build": "pnpm run build:bundle",
+    "build:with-types": "pnpm run build:types && pnpm run build:bundle",
     "build:types": "tsc --build --verbose",
     "build:bundle": "tsx ../../scripts/build-backend-bundle.ts",
     "build:tsc": "tsc --build --verbose",
