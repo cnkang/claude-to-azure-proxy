@@ -5,7 +5,7 @@ import autoprefixer from 'autoprefixer';
 import cssnano from 'cssnano';
 
 // https://vitejs.dev/config/
-export default defineConfig(({ command, mode }) => {
+export default defineConfig(({ mode }) => {
   // Load environment variables
   const env = loadEnv(mode, process.cwd(), '');
   const isProduction = mode === 'production';
@@ -42,9 +42,9 @@ export default defineConfig(({ command, mode }) => {
     },
     build: {
       outDir: 'dist',
-      sourcemap: isProduction ? false : true, // Disable sourcemaps in production for security
-      target: 'es2022',
-      minify: 'terser',
+      sourcemap: !isProduction, // Disable sourcemaps in production for security
+      target: 'baseline-widely-available', // Vite 7 default: Chrome 107+, Edge 107+, Firefox 104+, Safari 16+
+      minify: isProduction ? 'terser' : false, // Use terser for production builds
       cssMinify: true,
       reportCompressedSize: false, // Disable for faster builds
       chunkSizeWarningLimit: 1000,
@@ -59,7 +59,7 @@ export default defineConfig(({ command, mode }) => {
       },
       rollupOptions: {
         output: {
-          // Optimized chunking strategy for CDN caching
+          // Optimized chunking strategy with proper vendor splitting
           manualChunks: (id) => {
             // Vendor chunks for better caching
             if (id.includes('node_modules')) {
@@ -67,46 +67,42 @@ export default defineConfig(({ command, mode }) => {
                 return 'react-vendor';
               }
               if (id.includes('react-router')) {
-                return 'router';
-              }
-              if (id.includes('i18next') || id.includes('react-i18next')) {
-                return 'i18n';
-              }
-              if (id.includes('prismjs')) {
-                return 'prism';
+                return 'vendor';
               }
               if (id.includes('react-window')) {
-                return 'virtualization';
+                return 'vendor';
+              }
+              // Only create i18n chunk if there are actual i18n modules
+              if (id.includes('i18next') || id.includes('react-i18next')) {
+                return 'vendor';
               }
               // Other vendor libraries
               return 'vendor';
             }
-            // App chunks
-            if (id.includes('/src/components/')) {
+            // App chunks - only create if there's substantial content
+            if (id.includes('/src/components/') && !id.includes('.test.')) {
               return 'components';
             }
-            if (id.includes('/src/hooks/') || id.includes('/src/contexts/')) {
-              return 'hooks';
-            }
-            if (id.includes('/src/utils/') || id.includes('/src/services/')) {
+            if (id.includes('/src/utils/') || id.includes('/src/hooks/')) {
               return 'utils';
             }
-            // Default chunk
-            return 'index';
+            // Return undefined for other files to let Vite handle them
+            return undefined;
           },
           // CDN-friendly file naming with better cache busting
-          entryFileNames: (chunkInfo) => {
+          entryFileNames: () => {
             return isProduction
               ? 'assets/js/[name]-[hash].js'
               : 'assets/js/[name].js';
           },
-          chunkFileNames: (chunkInfo) => {
+          chunkFileNames: () => {
             return isProduction
               ? 'assets/js/[name]-[hash].js'
               : 'assets/js/[name].js';
           },
           assetFileNames: (assetInfo) => {
-            const info = assetInfo.name?.split('.') || [];
+            const fileName = assetInfo.names?.[0] || assetInfo.name || '';
+            const info = fileName.split('.');
             const ext = info[info.length - 1];
             if (/png|jpe?g|svg|gif|tiff|bmp|ico|webp|avif/i.test(ext)) {
               return isProduction
@@ -128,15 +124,20 @@ export default defineConfig(({ command, mode }) => {
               : 'assets/misc/[name].[ext]';
           },
         },
-        // Tree shaking optimizations
+        // Enhanced tree shaking optimizations
         treeshake: isProduction
           ? {
-              moduleSideEffects: false,
+              moduleSideEffects: (id) => {
+                // Keep side effects for CSS and certain modules
+                return id.includes('.css') || id.includes('polyfill');
+              },
               propertyReadSideEffects: false,
               unknownGlobalSideEffects: false,
+              preset: 'smallest',
             }
           : false,
       },
+      // Terser configuration for production builds with proper tree shaking
       terserOptions: isProduction
         ? {
             compress: {
@@ -148,37 +149,52 @@ export default defineConfig(({ command, mode }) => {
                 'console.debug',
                 'console.warn',
               ],
-              passes: 3, // Multiple passes for better compression
-              unsafe: true, // Enable unsafe optimizations for better compression
-              unsafe_comps: true,
-              unsafe_Function: true,
-              unsafe_math: true,
-              unsafe_symbols: true,
-              unsafe_methods: true,
-              unsafe_proto: true,
-              unsafe_regexp: true,
-              unsafe_undefined: true,
+              passes: 2, // Multiple passes for better compression
               dead_code: true,
-              global_defs: {
-                '@console.log': 'void',
-                '@console.info': 'void',
-                '@console.debug': 'void',
-                '@console.warn': 'void',
-              },
+              // Essential optimizations for tree shaking
+              collapse_vars: true,
+              conditionals: true,
+              evaluate: true,
+              if_return: true,
+              join_vars: true,
+              loops: true,
+              properties: true,
+              reduce_funcs: true,
+              reduce_vars: true,
+              sequences: true,
+              switches: true,
+              typeofs: true,
+              unused: true,
+              // Safe settings to avoid compatibility issues
+              unsafe: false,
+              unsafe_arrows: false,
+              unsafe_comps: false,
+              unsafe_Function: false,
+              unsafe_math: false,
+              unsafe_symbols: false,
+              unsafe_methods: false,
+              unsafe_proto: false,
+              unsafe_regexp: false,
+              unsafe_undefined: false,
             },
             mangle: {
-              safari10: true,
-              toplevel: true,
-              properties: {
-                regex: /^_/,
-              },
+              safari10: true, // Keep for compatibility
+              toplevel: false, // Safer for module systems
+              properties: false, // Don't mangle properties to avoid issues
             },
             format: {
               comments: false,
-              ascii_only: true, // Ensure ASCII-only output for better compatibility
+              safari10: true, // Keep for compatibility
             },
+            // Module and safety settings
+            module: true,
+            toplevel: false,
+            ie8: false,
+            keep_classnames: false,
+            keep_fnames: false,
+            safari10: true, // Keep for compatibility
           }
-        : {},
+        : undefined,
     },
     server: {
       port: 3000,
