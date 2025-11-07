@@ -103,7 +103,7 @@ interface RequestMetrics {
 const formatDurationForLog = (
   value?: number
 ): number | undefined =>
-  value !== undefined ? Math.floor(value) : undefined;
+  value !== undefined ? Math.round(value) : undefined;
 
 // Initialize universal request processor with configuration from environment
 const CLAUDE_MODEL_ALIASES = ALLOWED_MODELS.filter(
@@ -523,7 +523,7 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
       const { correlationId } = req;
       const metrics: RequestMetrics = {
         startTime: performance.now(),
-        requestSize: JSON.stringify(req.body).length,
+        requestSize: Buffer.byteLength(JSON.stringify(req.body), 'utf8'),
       };
 
       try {
@@ -1046,8 +1046,9 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
           responseTransformationTime: formatDurationForLog(
             metrics.responseTransformationTime
           ),
-          responseSize: JSON.stringify(responseTransformationResult.body)
-            .length,
+          responseSize: Buffer.byteLength(
+            JSON.stringify(responseTransformationResult.body)
+          ),
           responseFormat,
           conversationId,
           reasoningEffort: finalReasoningEffort,
