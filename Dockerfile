@@ -90,20 +90,32 @@ RUN if [ -f pnpm-workspace.yaml ]; then \
 FROM node:24-alpine AS runner
 WORKDIR /app
 
-# Install security updates and create non-root user
+# Install security updates, pnpm, and create non-root user
 RUN apk update && apk upgrade && \
     rm -rf /var/cache/apk/* && \
     addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 appuser
+    adduser --system --uid 1001 appuser && \
+    corepack enable pnpm
 
-# Copy built application and production dependencies
-COPY --from=builder --chown=appuser:nodejs /app/build/dist ./dist
-COPY --from=builder --chown=appuser:nodejs /app/build/package.json ./package.json
-COPY --from=prod-deps --chown=appuser:nodejs /app/node_modules ./node_modules
-
-# Copy workspace configuration and built shared packages for monorepo support
+# Copy workspace configuration first
 COPY --from=builder --chown=appuser:nodejs /app/pnpm-workspace.yaml* ./
-COPY --from=builder --chown=appuser:nodejs /app/packages ./packages
+COPY --from=builder --chown=appuser:nodejs /app/package.json ./
+COPY --from=builder --chown=appuser:nodejs /app/pnpm-lock.yaml ./
+
+# Copy built shared packages with their package.json
+COPY --from=builder --chown=appuser:nodejs /app/packages/shared-types/package.json ./packages/shared-types/
+COPY --from=builder --chown=appuser:nodejs /app/packages/shared-types/dist ./packages/shared-types/dist
+COPY --from=builder --chown=appuser:nodejs /app/packages/shared-utils/package.json ./packages/shared-utils/
+COPY --from=builder --chown=appuser:nodejs /app/packages/shared-utils/dist ./packages/shared-utils/dist
+COPY --from=builder --chown=appuser:nodejs /app/packages/shared-config/package.json ./packages/shared-config/
+
+# Copy backend package.json and built dist
+COPY --from=builder --chown=appuser:nodejs /app/build/package.json ./apps/backend/package.json
+COPY --from=builder --chown=appuser:nodejs /app/build/dist ./dist
+
+# Install production dependencies with workspace support
+RUN pnpm install --prod --frozen-lockfile && \
+    chown -R appuser:nodejs /app
 
 # Switch to non-root user
 USER appuser
