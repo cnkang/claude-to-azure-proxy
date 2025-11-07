@@ -1,5 +1,6 @@
-# Dockerfile for backward compatibility - builds backend service
-# For production, use apps/backend/Dockerfile or apps/frontend/Dockerfile directly
+# Production Dockerfile - builds both frontend and backend services
+# This is the recommended Dockerfile for production deployment
+# Uses esbuild for backend bundling and Vite for frontend building
 
 FROM node:24-alpine AS base
 WORKDIR /app

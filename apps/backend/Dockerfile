@@ -1,4 +1,7 @@
-# Optimized multi-stage Docker build for backend service
+# Backend-only Dockerfile
+# For production deployment with both frontend and backend, use the root Dockerfile instead
+# This file is kept for backward compatibility and individual backend deployment
+
 FROM node:24-alpine AS base
 WORKDIR /app
 RUN corepack enable pnpm
@@ -6,49 +9,55 @@ ENV NODE_ENV=production
 ENV NODE_OPTIONS="--enable-source-maps --max-old-space-size=512"
 ENV UV_THREADPOOL_SIZE=4
 
-# Dependencies and build stage - install all dependencies and build
-FROM base AS builder
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY apps/backend/package.json ./apps/backend/
-# Copy all packages directory content
-COPY packages/ ./packages/
-# Install all dependencies (including dev dependencies for building)
-RUN pnpm install
-
-# Copy source code and build
-COPY . .
-# Build shared packages in correct order, then backend
-RUN pnpm --filter @repo/shared-types build
-RUN pnpm --filter @repo/shared-utils build
-RUN pnpm --filter @repo/shared-config build
-RUN pnpm --filter @repo/backend build
-
-# Production dependencies stage - install only production dependencies
+# Dependencies stage
 FROM base AS deps
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml ./
+COPY pnpm-workspace.yaml* ./
 COPY apps/backend/package.json ./apps/backend/
-# Copy all packages directory content
-COPY packages/ ./packages/
+COPY packages/shared-types/package.json ./packages/shared-types/
+COPY packages/shared-utils/package.json ./packages/shared-utils/
+COPY packages/shared-config/package.json ./packages/shared-config/
+COPY packages/shared-types/src ./packages/shared-types/src
+COPY packages/shared-types/tsconfig.json ./packages/shared-types/
+COPY packages/shared-utils/src ./packages/shared-utils/src
+COPY packages/shared-utils/tsconfig.json ./packages/shared-utils/
+COPY packages/shared-utils/tsconfig.build.json ./packages/shared-utils/
+COPY packages/shared-config/typescript ./packages/shared-config/typescript
+RUN pnpm install --frozen-lockfile && \
+    pnpm build:shared
+
+# Build stage
+FROM base AS builder
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml* ./
+COPY apps/backend ./apps/backend
+COPY packages ./packages
+COPY scripts ./scripts
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/backend/node_modules ./apps/backend/node_modules
+COPY --from=deps /app/packages/shared-types ./packages/shared-types
+COPY --from=deps /app/packages/shared-utils ./packages/shared-utils
+COPY --from=deps /app/packages/shared-config/node_modules ./packages/shared-config/node_modules
+RUN DOCKER_BUILD=true pnpm build:backend && \
+    mkdir -p /app/build && \
+    cp -R apps/backend/dist /app/build/dist
+
+# Production dependencies
+FROM base AS prod-deps
+COPY --from=builder /app/build/dist/package.json ./package.json
 RUN pnpm install --prod
 
 # Production stage
 FROM node:24-alpine AS runner
 WORKDIR /app
 
-# Install security updates and dumb-init
-RUN apk update && apk upgrade && apk add --no-cache dumb-init
-RUN rm -rf /var/cache/apk/*
+RUN apk update && apk upgrade && \
+    rm -rf /var/cache/apk/* && \
+    addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 appuser
 
-# Create non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 appuser
+COPY --from=builder --chown=appuser:nodejs /app/build/dist ./dist
+COPY --from=prod-deps --chown=appuser:nodejs /app/node_modules ./node_modules
 
-# Copy built application and production dependencies
-COPY --from=builder --chown=appuser:nodejs /app/apps/backend/dist ./dist
-COPY --from=builder --chown=appuser:nodejs /app/apps/backend/package.json ./package.json
-COPY --from=deps --chown=appuser:nodejs /app/node_modules ./node_modules
-
-# Security hardening
 USER appuser
 
 EXPOSE 8080
@@ -56,6 +65,4 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
   CMD node -e "require('http').get('http://localhost:8080/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
-# Use dumb-init for proper signal handling
-ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "--init", "--enable-source-maps", "--max-old-space-size=512", "dist/index.js"]
+CMD ["node", "--enable-source-maps", "--max-old-space-size=512", "dist/index.js"]
