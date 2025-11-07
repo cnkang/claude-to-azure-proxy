@@ -1,9 +1,9 @@
 /**
  * Internationalization Context Provider
- * 
+ *
  * Provides i18n functionality with automatic browser language detection
  * and manual language switching with persistence.
- * 
+ *
  * Requirements: 9.1, 9.2, 9.3, 9.4
  */
 
@@ -42,14 +42,14 @@ export const SUPPORTED_LANGUAGES: Record<SupportedLanguage, LanguageInfo> = {
     code: 'en',
     name: 'English',
     nativeName: 'English',
-    flag: '🇺🇸',
+    flag: 'EN',
     rtl: false,
   },
   zh: {
     code: 'zh',
     name: 'Chinese',
     nativeName: '中文',
-    flag: '🇨🇳',
+    flag: '中',
     rtl: false,
   },
 };
@@ -61,16 +61,16 @@ export interface I18nContextType {
   // Current language
   language: SupportedLanguage;
   languageInfo: LanguageInfo;
-  
+
   // Translation function
   t: TFunction;
-  
+
   // Language actions
   setLanguage: (language: SupportedLanguage) => void;
-  
+
   // Available languages
   supportedLanguages: LanguageInfo[];
-  
+
   // Utilities
   isRTL: boolean;
   formatDate: (date: Date) => string;
@@ -96,50 +96,72 @@ export interface I18nProviderProps {
 /**
  * I18n provider component
  */
-export function I18nProvider({ children }: I18nProviderProps): React.JSX.Element {
+export function I18nProvider({
+  children,
+}: I18nProviderProps): React.JSX.Element {
   const { state, setLanguage: setAppLanguage } = useAppContext();
   const { t, i18n } = useTranslation();
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
+  const [isChanging, setIsChanging] = useState<boolean>(false);
 
   // Initialize i18n with app language
   useEffect(() => {
     const initializeLanguage = async (): Promise<void> => {
       try {
         const targetLanguage = state.ui.language;
-        
+
         if (i18n.language !== targetLanguage) {
           await i18n.changeLanguage(targetLanguage);
         }
-        
+
         setIsInitialized(true);
       } catch (_error) {
-         
         // console.error('Failed to initialize language:', error);
         setIsInitialized(true);
       }
     };
 
-     
     initializeLanguage();
   }, [state.ui.language, i18n]);
 
   // Set language
   const setLanguage = (language: SupportedLanguage): void => {
-     
+    // Prevent multiple simultaneous language changes
+    if (isChanging) {
+      return;
+    }
+
+    // Prevent layout shift by batching updates
     void (async (): Promise<void> => {
       try {
+        setIsChanging(true);
+
+        // Update document attributes first to prevent flash
+        document.documentElement.lang = language;
+
+        // Change language
         await i18n.changeLanguage(language);
+
+        // Update app state
         setAppLanguage(language);
+
+        // Force a single reflow after all updates
+        requestAnimationFrame(() => {
+          // Trigger reflow by reading layout property
+          void document.body.offsetHeight;
+          setIsChanging(false);
+        });
       } catch (_error) {
-         
         // console.error('Failed to change language:', error);
+        setIsChanging(false);
       }
     })();
   };
 
   // Get current language info
-  const currentLanguage: SupportedLanguage = i18n.language === 'zh' ? 'zh' : 'en';
-   
+  const currentLanguage: SupportedLanguage =
+    i18n.language === 'zh' ? 'zh' : 'en';
+
   const languageInfo = SUPPORTED_LANGUAGES[currentLanguage];
 
   // Format utilities
@@ -173,17 +195,19 @@ export function I18nProvider({ children }: I18nProviderProps): React.JSX.Element
   };
 
   const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) {return '0 B';}
-    
+    if (bytes === 0) {
+      return '0 B';
+    }
+
     const k = 1024;
-    const sizes = currentLanguage === 'zh' 
-      ? ['字节', 'KB', 'MB', 'GB', 'TB']
-      : ['B', 'KB', 'MB', 'GB', 'TB'];
-    
+    const sizes =
+      currentLanguage === 'zh'
+        ? ['字节', 'KB', 'MB', 'GB', 'TB']
+        : ['B', 'KB', 'MB', 'GB', 'TB'];
+
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     const size = parseFloat((bytes / Math.pow(k, i)).toFixed(2));
-    
-     
+
     const unit = sizes[i];
     if (!unit) {
       return `${formatNumber(size)} B`;
@@ -197,13 +221,17 @@ export function I18nProvider({ children }: I18nProviderProps): React.JSX.Element
     const diffMinutes = Math.floor(diffMs / (1000 * 60));
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    
+
     if (diffMinutes < 1) {
       return currentLanguage === 'zh' ? '刚刚' : 'Just now';
     } else if (diffMinutes < 60) {
-      return currentLanguage === 'zh' ? `${diffMinutes}分钟前` : `${diffMinutes}m ago`;
+      return currentLanguage === 'zh'
+        ? `${diffMinutes}分钟前`
+        : `${diffMinutes}m ago`;
     } else if (diffHours < 24) {
-      return currentLanguage === 'zh' ? `${diffHours}小时前` : `${diffHours}h ago`;
+      return currentLanguage === 'zh'
+        ? `${diffHours}小时前`
+        : `${diffHours}h ago`;
     } else if (diffDays < 7) {
       return currentLanguage === 'zh' ? `${diffDays}天前` : `${diffDays}d ago`;
     } else {
@@ -232,9 +260,7 @@ export function I18nProvider({ children }: I18nProviderProps): React.JSX.Element
   }
 
   return (
-    <I18nContext.Provider value={contextValue}>
-      {children}
-    </I18nContext.Provider>
+    <I18nContext.Provider value={contextValue}>{children}</I18nContext.Provider>
   );
 }
 
@@ -243,11 +269,11 @@ export function I18nProvider({ children }: I18nProviderProps): React.JSX.Element
  */
 export function useI18n(): I18nContextType {
   const context = useContext(I18nContext);
-  
+
   if (!context) {
     throw new Error('useI18n must be used within an I18nProvider');
   }
-  
+
   return context;
 }
 
@@ -263,8 +289,15 @@ export function useLocalization(): {
   formatFileSize: (bytes: number) => string;
   formatRelativeTime: (date: Date) => string;
 } {
-  const { formatDate, formatTime, formatDateTime, formatNumber, formatFileSize, language } = useI18n();
-  
+  const {
+    formatDate,
+    formatTime,
+    formatDateTime,
+    formatNumber,
+    formatFileSize,
+    language,
+  } = useI18n();
+
   return {
     language,
     formatDate,
@@ -272,7 +305,7 @@ export function useLocalization(): {
     formatDateTime,
     formatNumber,
     formatFileSize,
-    
+
     // Relative time formatting
     formatRelativeTime: (date: Date): string => {
       const now = new Date();
@@ -280,11 +313,13 @@ export function useLocalization(): {
       const diffMinutes = Math.floor(diffMs / (1000 * 60));
       const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
       const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-      
+
       if (diffMinutes < 1) {
         return language === 'zh' ? '刚刚' : 'Just now';
       } else if (diffMinutes < 60) {
-        return language === 'zh' ? `${diffMinutes}分钟前` : `${diffMinutes}m ago`;
+        return language === 'zh'
+          ? `${diffMinutes}分钟前`
+          : `${diffMinutes}m ago`;
       } else if (diffHours < 24) {
         return language === 'zh' ? `${diffHours}小时前` : `${diffHours}h ago`;
       } else if (diffDays < 7) {
@@ -305,13 +340,13 @@ export interface LanguageSelectorProps {
   showNativeName?: boolean;
 }
 
-export function LanguageSelector({ 
-  className, 
-  showFlag = true, 
-  showNativeName = false 
+export function LanguageSelector({
+  className,
+  showFlag = true,
+  showNativeName = false,
 }: LanguageSelectorProps): React.JSX.Element {
   const { language, supportedLanguages, setLanguage, t } = useI18n();
-  
+
   return (
     <select
       value={language}
@@ -337,11 +372,14 @@ export interface TextDirectionProps {
   className?: string;
 }
 
-export function TextDirection({ children, className }: TextDirectionProps): React.JSX.Element {
+export function TextDirection({
+  children,
+  className,
+}: TextDirectionProps): React.JSX.Element {
   const { isRTL } = useI18n();
-  
+
   return (
-    <div 
+    <div
       className={className}
       dir={isRTL ? 'rtl' : 'ltr'}
       style={{ textAlign: isRTL ? 'right' : 'left' }}
@@ -355,15 +393,17 @@ export function TextDirection({ children, className }: TextDirectionProps): Reac
  * HOC for i18n-aware components
  */
 export function withI18n<P extends object>(
-  Component: React.ComponentType<P & { t: TFunction; language: SupportedLanguage }>
+  Component: React.ComponentType<
+    P & { t: TFunction; language: SupportedLanguage }
+  >
 ): React.ComponentType<P> {
   const WrappedComponent = (props: P): React.JSX.Element => {
     const { t, language } = useI18n();
-    
+
     return <Component {...props} t={t} language={language} />;
   };
-  
+
   WrappedComponent.displayName = `withI18n(${Component.displayName ?? Component.name})`;
-  
+
   return WrappedComponent;
 }
