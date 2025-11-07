@@ -80,8 +80,8 @@ temp
 .tmp
 .temp
 
-# Scripts (not needed in container)
-scripts
+# Scripts (build scripts are needed in container)
+# scripts
 
 # Tools and utilities
 tools
