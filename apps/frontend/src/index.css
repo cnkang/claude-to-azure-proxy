@@ -11,6 +11,9 @@
 /* Import accessibility styles */
 @import './styles/accessibility.css';
 
+/* Import modern UI enhancements */
+@import './styles/modern-ui.css';
+
 /* CSS Reset and Base Styles */
 *,
 *::before,
