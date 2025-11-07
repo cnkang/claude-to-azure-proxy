@@ -127,4 +127,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
 
 # Use Node.js directly - Docker's --init flag handles signal forwarding
 # Run with: docker run --init -p 8080:8080 <image>
-CMD ["node", "--enable-source-maps", "--max-old-space-size=512", "dist/index.js"]
+# Run from apps/backend directory to ensure proper module resolution
+WORKDIR /app/apps/backend
+CMD ["node", "--enable-source-maps", "--max-old-space-size=512", "../../dist/index.js"]
