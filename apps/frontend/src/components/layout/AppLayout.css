@@ -12,12 +12,12 @@
   --sidebar-width-collapsed: 60px;
   --header-height: 64px;
   --header-height-mobile: 56px;
-  
+
   /* Responsive breakpoints */
   --breakpoint-mobile: 768px;
   --breakpoint-tablet: 1024px;
   --breakpoint-desktop: 1200px;
-  
+
   /* Spacing */
   --spacing-xs: 0.25rem;
   --spacing-sm: 0.5rem;
@@ -25,14 +25,14 @@
   --spacing-lg: 1.5rem;
   --spacing-xl: 2rem;
   --spacing-2xl: 3rem;
-  
+
   /* Z-index layers */
   --z-sidebar: 100;
   --z-header: 200;
   --z-overlay: 300;
   --z-modal: 400;
   --z-toast: 500;
-  
+
   /* Animation */
   --transition-fast: 0.15s ease;
   --transition-normal: 0.25s ease;
@@ -44,16 +44,37 @@
 /* Base layout */
 .app-layout {
   display: grid;
-  grid-template-areas: 
-    "header header"
-    "sidebar main";
+  grid-template-areas:
+    'header header'
+    'sidebar main';
   grid-template-columns: var(--sidebar-width) 1fr;
   grid-template-rows: var(--header-height) 1fr;
   height: 100vh;
   background-color: var(--color-background);
   color: var(--color-foreground);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   transition: grid-template-columns var(--transition-normal);
+  /* Prevent layout shift during language changes */
+  contain: layout style;
+}
+
+/* Language-specific font optimizations */
+.app-layout[lang='zh'],
+.app-layout[lang='zh-CN'],
+.app-layout[lang='zh-TW'] {
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei',
+    'Segoe UI', Roboto, sans-serif;
+  /* Adjust letter spacing for better Chinese character rendering */
+  letter-spacing: 0.02em;
+}
+
+.app-layout[lang='en'] {
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
+  letter-spacing: normal;
 }
 
 /* Sidebar collapsed state */
@@ -63,9 +84,9 @@
 
 /* Mobile layout */
 .app-layout.mobile {
-  grid-template-areas: 
-    "header"
-    "main";
+  grid-template-areas:
+    'header'
+    'main';
   grid-template-columns: 1fr;
   grid-template-rows: var(--header-height-mobile) 1fr;
 }
@@ -85,9 +106,9 @@
 }
 
 .app-layout.rtl {
-  grid-template-areas: 
-    "header header"
-    "main sidebar";
+  grid-template-areas:
+    'header header'
+    'main sidebar';
 }
 
 /* Skip link for accessibility */
@@ -172,8 +193,12 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .loading-text {
@@ -315,7 +340,7 @@
     --color-border: #000000;
     --color-border-secondary: #000000;
   }
-  
+
   .theme-dark {
     --color-border: #ffffff;
     --color-border-secondary: #ffffff;
@@ -334,10 +359,10 @@
 /* Print styles */
 @media print {
   .app-layout {
-    grid-template-areas: "main";
+    grid-template-areas: 'main';
     grid-template-columns: 1fr;
   }
-  
+
   .sidebar,
   .loading-overlay,
   .error-notification {
