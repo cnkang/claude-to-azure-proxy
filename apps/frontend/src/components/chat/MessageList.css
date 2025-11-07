@@ -23,12 +23,12 @@
 
 /* React Window List Overrides */
 .message-list .ReactVirtualized__List,
-.message-list [data-testid="FixedSizeList"] {
+.message-list [data-testid='FixedSizeList'] {
   outline: none;
 }
 
 .message-list .ReactVirtualized__List:focus,
-.message-list [data-testid="FixedSizeList"]:focus {
+.message-list [data-testid='FixedSizeList']:focus {
   outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
 }
@@ -185,35 +185,35 @@
   .message-list-container {
     /* Adjust for mobile */
   }
-  
+
   .empty-state {
     padding: 20px;
   }
-  
+
   .empty-icon {
     font-size: 40px;
     margin-bottom: 12px;
   }
-  
+
   .empty-title {
     font-size: 18px;
   }
-  
+
   .empty-description {
     font-size: 14px;
   }
-  
+
   .streaming-message-container {
     padding: 12px;
   }
-  
+
   .scroll-to-bottom {
     bottom: 16px;
     right: 16px;
     padding: 10px 14px;
     font-size: 13px;
   }
-  
+
   .scroll-icon {
     font-size: 14px;
   }
@@ -224,11 +224,11 @@
   .scroll-to-bottom {
     border: 2px solid var(--text-primary);
   }
-  
+
   .streaming-message-container {
     border-top-width: 2px;
   }
-  
+
   .loading-container {
     border-top-width: 2px;
   }
@@ -240,11 +240,11 @@
   .scroll-to-bottom {
     animation: none;
   }
-  
+
   .scroll-to-bottom {
     transition: none;
   }
-  
+
   .scroll-to-bottom:hover {
     transform: none;
   }

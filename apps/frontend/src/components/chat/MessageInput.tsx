@@ -1,9 +1,9 @@
 /**
  * Message Input Component
- * 
+ *
  * Chat input with file upload support, auto-resize, keyboard shortcuts,
  * and accessibility features.
- * 
+ *
  * Requirements: 3.1, 4.1, 4.2, 4.3
  */
 
@@ -16,7 +16,10 @@ import { frontendLogger } from '../../utils/logger.js';
 import './MessageInput.css';
 
 interface MessageInputProps {
-  readonly onSendMessage: (message: string, files?: File[]) => void | Promise<void>;
+  readonly onSendMessage: (
+    message: string,
+    files?: File[]
+  ) => void | Promise<void>;
   readonly disabled?: boolean;
   readonly placeholder?: string;
   readonly maxLength?: number;
@@ -61,24 +64,27 @@ const MessageInputComponent = ({
   /**
    * Handle message input change
    */
-  const handleMessageChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>): void => {
-    const value = e.target.value;
-    
-    // Enforce max length
-    if (value.length <= maxLength) {
-      setMessage(value);
-      setError(null);
-    } else {
-      setError(t('chat.messageTooLong', { max: maxLength }));
-    }
-  }, [maxLength, t]);
+  const handleMessageChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>): void => {
+      const value = e.target.value;
+
+      // Enforce max length
+      if (value.length <= maxLength) {
+        setMessage(value);
+        setError(null);
+      } else {
+        setError(t('chat.messageTooLong', { max: maxLength }));
+      }
+    },
+    [maxLength, t]
+  );
 
   /**
    * Handle send message
    */
   const handleSendMessage = useCallback((): void => {
     const trimmedMessage = message.trim();
-    
+
     // Validate message
     if (!trimmedMessage && attachedFiles.length === 0) {
       setError(t('chat.emptyMessage'));
@@ -90,19 +96,26 @@ const MessageInputComponent = ({
     }
 
     // Send message
-    Promise.resolve(onSendMessage(trimmedMessage, attachedFiles.length > 0 ? attachedFiles : undefined))
-      .catch((err: unknown) => {
-        const normalizedError = err instanceof Error ? err : new Error(String(err));
-        frontendLogger.error('Failed to send message', { error: normalizedError });
-        setError(normalizedError.message);
+    Promise.resolve(
+      onSendMessage(
+        trimmedMessage,
+        attachedFiles.length > 0 ? attachedFiles : undefined
+      )
+    ).catch((err: unknown) => {
+      const normalizedError =
+        err instanceof Error ? err : new Error(String(err));
+      frontendLogger.error('Failed to send message', {
+        error: normalizedError,
       });
-    
+      setError(normalizedError.message);
+    });
+
     // Clear input
     setMessage('');
     setAttachedFiles([]);
     setShowFileUpload(false);
     setError(null);
-    
+
     // Reset textarea height
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -112,24 +125,27 @@ const MessageInputComponent = ({
   /**
    * Handle keyboard shortcuts
    */
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
-    // Send on Enter (without Shift)
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-    
-    // Clear error on typing
-    if (error !== null) {
-      setError(null);
-    }
-  }, [handleSendMessage, error]);
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
+      // Send on Enter (without Shift)
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSendMessage();
+      }
+
+      // Clear error on typing
+      if (error !== null) {
+        setError(null);
+      }
+    },
+    [handleSendMessage, error]
+  );
 
   /**
    * Handle file selection
    */
   const handleFilesSelected = useCallback((files: File[]): void => {
-    setAttachedFiles(prev => [...prev, ...files]);
+    setAttachedFiles((prev) => [...prev, ...files]);
     setShowFileUpload(false);
     setError(null);
   }, []);
@@ -145,14 +161,14 @@ const MessageInputComponent = ({
    * Remove attached file
    */
   const removeAttachedFile = useCallback((fileName: string): void => {
-    setAttachedFiles(prev => prev.filter(file => file.name !== fileName));
+    setAttachedFiles((prev) => prev.filter((file) => file.name !== fileName));
   }, []);
 
   /**
    * Toggle file upload
    */
   const toggleFileUpload = useCallback((): void => {
-    setShowFileUpload(prev => !prev);
+    setShowFileUpload((prev) => !prev);
     setError(null);
   }, []);
 
@@ -192,7 +208,8 @@ const MessageInputComponent = ({
     }
   }, [disabled]);
 
-  const canSend = (message.trim().length > 0 || attachedFiles.length > 0) && !disabled;
+  const canSend =
+    (message.trim().length > 0 || attachedFiles.length > 0) && !disabled;
   const characterCount = message.length;
   const isNearLimit = characterCount > maxLength * 0.8;
 
@@ -206,7 +223,7 @@ const MessageInputComponent = ({
               {t('chat.attachedFiles', { count: attachedFiles.length })}
             </span>
           </div>
-          
+
           <div className="attached-files-list">
             {attachedFiles.map((file, index) => (
               <div key={`${file.name}-${index}`} className="attached-file">
@@ -217,7 +234,7 @@ const MessageInputComponent = ({
                     ({formatFileSize(file.size)})
                   </span>
                 </div>
-                
+
                 <button
                   type="button"
                   className="remove-file-button"
@@ -299,7 +316,11 @@ const MessageInputComponent = ({
         {/* Character Count */}
         {isNearLimit && (
           <div className="character-count">
-            <span className={characterCount >= maxLength ? 'over-limit' : 'near-limit'}>
+            <span
+              className={
+                characterCount >= maxLength ? 'over-limit' : 'near-limit'
+              }
+            >
               {characterCount}/{maxLength}
             </span>
           </div>
@@ -307,9 +328,7 @@ const MessageInputComponent = ({
 
         {/* Keyboard Hint */}
         <div className="keyboard-hint">
-          <span className="hint-text">
-            {t('chat.keyboardHint')}
-          </span>
+          <span className="hint-text">{t('chat.keyboardHint')}</span>
         </div>
       </div>
     </div>

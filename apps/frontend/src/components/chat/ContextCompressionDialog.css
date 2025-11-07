@@ -198,7 +198,13 @@
   font-size: 18px;
   font-weight: 600;
   color: var(--text-primary, #333);
-  font-family: var(--font-mono, 'SF Mono', 'Monaco', 'Cascadia Code', monospace);
+  font-family: var(
+    --font-mono,
+    'SF Mono',
+    'Monaco',
+    'Cascadia Code',
+    monospace
+  );
 }
 
 .compression-stat__value--highlight {
@@ -291,7 +297,7 @@
   cursor: pointer;
 }
 
-.compression-option__checkbox input[type="checkbox"] {
+.compression-option__checkbox input[type='checkbox'] {
   width: 16px;
   height: 16px;
   cursor: pointer;
@@ -390,7 +396,13 @@
   padding: 16px;
   background: var(--code-bg, #f8f9fa);
   border-radius: 8px;
-  font-family: var(--font-mono, 'SF Mono', 'Monaco', 'Cascadia Code', monospace);
+  font-family: var(
+    --font-mono,
+    'SF Mono',
+    'Monaco',
+    'Cascadia Code',
+    monospace
+  );
   font-size: 13px;
   line-height: 1.5;
   color: var(--text-primary, #333);
@@ -471,32 +483,32 @@
   .compression-dialog-overlay {
     padding: 10px;
   }
-  
+
   .compression-dialog {
     max-height: 95vh;
   }
-  
+
   .compression-dialog__header,
   .compression-dialog__body,
   .compression-dialog__footer {
     padding-left: 16px;
     padding-right: 16px;
   }
-  
+
   .compression-stats {
     grid-template-columns: 1fr;
     gap: 12px;
   }
-  
+
   .compression-preview__stats {
     grid-template-columns: 1fr;
     gap: 12px;
   }
-  
+
   .compression-dialog__footer {
     flex-direction: column;
   }
-  
+
   .compression-dialog__button {
     width: 100%;
   }
@@ -507,12 +519,12 @@
   .compression-dialog {
     border: 2px solid var(--text-primary, #333);
   }
-  
+
   .compression-option__select,
   .compression-option__number {
     border-width: 2px;
   }
-  
+
   .compression-dialog__button {
     border-width: 2px;
   }
@@ -523,7 +535,7 @@
   .compression-dialog {
     animation: none;
   }
-  
+
   .compression-dialog__button,
   .compression-option__select,
   .compression-option__number,

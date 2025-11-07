@@ -1,8 +1,8 @@
 /**
  * Typing Indicator Component
- * 
+ *
  * Displays animated typing indicator when AI is generating a response.
- * 
+ *
  * Requirements: 3.4
  */
 
@@ -19,12 +19,19 @@ interface TypingIndicatorProps {
 /**
  * Typing indicator component with animated dots
  */
-const TypingIndicatorComponent = ({ message, size = 'medium' }: TypingIndicatorProps): JSX.Element => {
+const TypingIndicatorComponent = ({
+  message,
+  size = 'medium',
+}: TypingIndicatorProps): JSX.Element => {
   const { t } = useI18n();
   const displayMessage = message ?? t('chat.aiTyping');
 
   return (
-    <div className={`typing-indicator ${size}`} role="status" aria-live="polite">
+    <div
+      className={`typing-indicator ${size}`}
+      role="status"
+      aria-live="polite"
+    >
       <div className="typing-avatar">
         <div className="avatar assistant">🤖</div>
       </div>

@@ -133,7 +133,9 @@ function findMatchingCodeBlock(
   }
 
   const normalizedCode = code.trim();
-  const index = blocks.findIndex((block) => block.code.trim() === normalizedCode);
+  const index = blocks.findIndex(
+    (block) => block.code.trim() === normalizedCode
+  );
 
   if (index === -1) {
     return { languageHint };
@@ -141,7 +143,8 @@ function findMatchingCodeBlock(
 
   const [matched] = blocks.splice(index, 1);
   const languageFromBlock = matched.language.trim();
-  const resolvedLanguageHint = languageFromBlock.length > 0 ? languageFromBlock : languageHint;
+  const resolvedLanguageHint =
+    languageFromBlock.length > 0 ? languageFromBlock : languageHint;
 
   return {
     languageHint: resolvedLanguageHint,
@@ -150,7 +153,10 @@ function findMatchingCodeBlock(
   };
 }
 
-function parseMessageContent(content: string, codeBlocks?: CodeBlock[]): MessageSegment[] {
+function parseMessageContent(
+  content: string,
+  codeBlocks?: CodeBlock[]
+): MessageSegment[] {
   const lines = content.split('\n');
   const segments: MessageSegment[] = [];
   const remainingBlocks = codeBlocks ? [...codeBlocks] : [];
@@ -179,7 +185,11 @@ function parseMessageContent(content: string, codeBlocks?: CodeBlock[]): Message
     }
 
     const code = codeBuffer.join('\n');
-    const match = findMatchingCodeBlock(code, codeLanguageHint, remainingBlocks);
+    const match = findMatchingCodeBlock(
+      code,
+      codeLanguageHint,
+      remainingBlocks
+    );
 
     segments.push({
       type: 'code',
@@ -275,7 +285,16 @@ function renderTextContent(text: string): React.ReactNode {
 }
 
 const CodeBlockView = memo<CodeBlockViewProps>(
-  ({ blockId, code, languageHint, filename, startLine, theme, onCopy, isCopied }) => {
+  ({
+    blockId,
+    code,
+    languageHint,
+    filename,
+    startLine,
+    theme,
+    onCopy,
+    isCopied,
+  }) => {
     const { t } = useI18n();
     const codeRef = useRef<HTMLElement>(null);
     const resolvedLanguage = useMemo(
@@ -309,7 +328,10 @@ const CodeBlockView = memo<CodeBlockViewProps>(
           ) : null}
           {typeof startLine === 'number' ? (
             <span className="code-line-info">
-              {t('chat.codeLines', { start: startLine, end: startLine + totalLines - 1 })}
+              {t('chat.codeLines', {
+                start: startLine,
+                end: startLine + totalLines - 1,
+              })}
             </span>
           ) : null}
           <button
@@ -366,7 +388,8 @@ const MessageItemComponent = ({
           setCopiedCodeId((current) => (current === codeId ? null : current));
         }, 2000);
       } catch (error) {
-        const normalizedError = error instanceof Error ? error : new Error(String(error));
+        const normalizedError =
+          error instanceof Error ? error : new Error(String(error));
         frontendLogger.error('Failed to copy code block', {
           metadata: {
             messageId: message.id,
@@ -393,14 +416,26 @@ const MessageItemComponent = ({
   }, [message.id, onRetryMessage]);
 
   const showRetryButton =
-    !isStreaming && message.role === 'user' && message.retryable === true && typeof onRetryMessage === 'function';
+    !isStreaming &&
+    message.role === 'user' &&
+    message.retryable === true &&
+    typeof onRetryMessage === 'function';
 
-  const hasAttachments = Array.isArray(message.files) && message.files.length > 0;
+  const hasAttachments =
+    Array.isArray(message.files) && message.files.length > 0;
   const hasContextTokens =
-    typeof message.contextTokens === 'number' && Number.isFinite(message.contextTokens) && message.contextTokens > 0;
+    typeof message.contextTokens === 'number' &&
+    Number.isFinite(message.contextTokens) &&
+    message.contextTokens > 0;
 
-  const timestampLabel = useMemo(() => formatRelativeTime(message.timestamp), [formatRelativeTime, message.timestamp]);
-  const timestampTitle = useMemo(() => formatDateTime(message.timestamp), [formatDateTime, message.timestamp]);
+  const timestampLabel = useMemo(
+    () => formatRelativeTime(message.timestamp),
+    [formatRelativeTime, message.timestamp]
+  );
+  const timestampTitle = useMemo(
+    () => formatDateTime(message.timestamp),
+    [formatDateTime, message.timestamp]
+  );
 
   return (
     <div
@@ -418,10 +453,15 @@ const MessageItemComponent = ({
           <span className="message-role">
             {message.role === 'user' ? t('chat.you') : t('chat.assistant')}
           </span>
-          {typeof message.model === 'string' && message.model.trim().length > 0 ? (
+          {typeof message.model === 'string' &&
+          message.model.trim().length > 0 ? (
             <span className="message-model">{message.model}</span>
           ) : null}
-          <time className="message-timestamp" dateTime={message.timestamp.toISOString()} title={timestampTitle}>
+          <time
+            className="message-timestamp"
+            dateTime={message.timestamp.toISOString()}
+            title={timestampTitle}
+          >
             {timestampLabel}
           </time>
         </div>
@@ -435,7 +475,9 @@ const MessageItemComponent = ({
                     📎
                   </span>
                   <span className="file-name">{file.name}</span>
-                  <span className="file-size">({formatFileSize(file.size)})</span>
+                  <span className="file-size">
+                    ({formatFileSize(file.size)})
+                  </span>
                 </div>
               ))}
             </div>

@@ -1,15 +1,18 @@
 /**
  * Context Manager Component
- * 
+ *
  * Integrates context management features into the chat interface,
  * including context warnings, extension, and compression functionality.
- * 
+ *
  * Requirements: 16.1, 16.2, 16.3, 16.4, 16.5
  */
 
 import React, { useCallback } from 'react';
 import type { Conversation } from '../../types/index';
-import { useContextManagement, useContextCompression } from '../../hooks/useContextManagement';
+import {
+  useContextManagement,
+  useContextCompression,
+} from '../../hooks/useContextManagement';
 import { ContextWarning, ContextUsageIndicator } from './ContextWarning';
 import { ContextCompressionDialog } from './ContextCompressionDialog';
 import { frontendLogger } from '../../utils/logger';
@@ -146,20 +149,21 @@ export const ContextStatus: React.FC<ContextStatusProps> = ({
   showLabel = false,
   className = '',
 }) => {
-  const { contextUsage, getContextUsagePercentage, formatTokenCount } = useContextManagement(conversation);
-  
+  const { contextUsage, getContextUsagePercentage, formatTokenCount } =
+    useContextManagement(conversation);
+
   const usagePercentage = getContextUsagePercentage(contextUsage);
   const isNearLimit = usagePercentage >= 80;
-  
+
   return (
-    <div className={`context-status ${className} ${isNearLimit ? 'context-status--warning' : ''}`}>
-      <ContextUsageIndicator
-        contextUsage={contextUsage}
-        onClick={onClick}
-      />
+    <div
+      className={`context-status ${className} ${isNearLimit ? 'context-status--warning' : ''}`}
+    >
+      <ContextUsageIndicator contextUsage={contextUsage} onClick={onClick} />
       {showLabel && (
         <span className="context-status__label">
-          {formatTokenCount(contextUsage.currentTokens)} / {formatTokenCount(contextUsage.maxTokens)}
+          {formatTokenCount(contextUsage.currentTokens)} /{' '}
+          {formatTokenCount(contextUsage.maxTokens)}
         </span>
       )}
     </div>

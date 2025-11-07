@@ -1,8 +1,8 @@
 /**
  * File Preview Component
- * 
+ *
  * Displays file previews for images and code files with syntax highlighting.
- * 
+ *
  * Requirements: 4.1, 4.3
  */
 
@@ -19,8 +19,25 @@ interface FilePreviewProps {
 /**
  * File preview modal component
  */
-const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg']);
-const CODE_EXTENSIONS = new Set(['.js', '.ts', '.py', '.java', '.cpp', '.c', '.h', '.css', '.html']);
+const IMAGE_EXTENSIONS = new Set([
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.webp',
+  '.svg',
+]);
+const CODE_EXTENSIONS = new Set([
+  '.js',
+  '.ts',
+  '.py',
+  '.java',
+  '.cpp',
+  '.c',
+  '.h',
+  '.css',
+  '.html',
+]);
 const TEXT_EXTENSIONS = new Set(['.txt', '.md', '.json', '.xml', '.csv']);
 
 const readFileAsDataURL = (targetFile: File): Promise<string> => {
@@ -67,7 +84,8 @@ export const FilePreview = memo<FilePreviewProps>(({ file, onClose }) => {
     } catch (readError) {
       setError(t('fileUpload.preview.loadError'));
       frontendLogger.error('Failed to load file preview content', {
-        error: readError instanceof Error ? readError : new Error(String(readError)),
+        error:
+          readError instanceof Error ? readError : new Error(String(readError)),
         metadata: { fileName: file.name },
       });
     } finally {
@@ -78,11 +96,14 @@ export const FilePreview = memo<FilePreviewProps>(({ file, onClose }) => {
   /**
    * Handle escape key to close preview
    */
-  const handleKeyDown = useCallback((e: KeyboardEvent): void => {
-    if (e.key === 'Escape') {
-      onClose();
-    }
-  }, [onClose]);
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    },
+    [onClose]
+  );
 
   /**
    * Get file type for display
@@ -141,13 +162,16 @@ export const FilePreview = memo<FilePreviewProps>(({ file, onClose }) => {
    * Format file size
    */
   const formatFileSize = useCallback((bytes: number): string => {
-    if (bytes === 0) {return '0 Bytes';}
-    
+    if (bytes === 0) {
+      return '0 Bytes';
+    }
+
     const k = 1024;
     const rawIndex = Math.floor(Math.log(bytes) / Math.log(k));
     const index = Math.min(Math.max(rawIndex, 0), 3);
     const formattedValue = parseFloat((bytes / Math.pow(k, index)).toFixed(2));
-    const unit = index === 0 ? 'Bytes' : index === 1 ? 'KB' : index === 2 ? 'MB' : 'GB';
+    const unit =
+      index === 0 ? 'Bytes' : index === 1 ? 'KB' : index === 2 ? 'MB' : 'GB';
     return `${formattedValue} ${unit}`;
   }, []);
 
@@ -157,7 +181,8 @@ export const FilePreview = memo<FilePreviewProps>(({ file, onClose }) => {
   const copyToClipboard = useCallback((): void => {
     navigator.clipboard.writeText(content).catch((copyError) => {
       frontendLogger.error('Failed to copy preview content to clipboard', {
-        error: copyError instanceof Error ? copyError : new Error(String(copyError)),
+        error:
+          copyError instanceof Error ? copyError : new Error(String(copyError)),
       });
     });
   }, [content]);
@@ -181,22 +206,32 @@ export const FilePreview = memo<FilePreviewProps>(({ file, onClose }) => {
 
   const fileType = getFileType();
 
-  const handleOverlayClick = useCallback((event: React.MouseEvent<HTMLDivElement>): void => {
-    if (event.target === event.currentTarget) {
-      onClose();
-    }
-  }, [onClose]);
+  const handleOverlayClick = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>): void => {
+      if (event.target === event.currentTarget) {
+        onClose();
+      }
+    },
+    [onClose]
+  );
 
-  const handleOverlayKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>): void => {
-    if (event.target !== event.currentTarget) {
-      return;
-    }
+  const handleOverlayKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>): void => {
+      if (event.target !== event.currentTarget) {
+        return;
+      }
 
-    if (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      onClose();
-    }
-  }, [onClose]);
+      if (
+        event.key === 'Escape' ||
+        event.key === 'Enter' ||
+        event.key === ' '
+      ) {
+        event.preventDefault();
+        onClose();
+      }
+    },
+    [onClose]
+  );
 
   return (
     <div
@@ -214,10 +249,12 @@ export const FilePreview = memo<FilePreviewProps>(({ file, onClose }) => {
             <h3 className="file-name">{file.name}</h3>
             <div className="file-meta">
               <span className="file-size">{formatFileSize(file.size)}</span>
-              <span className="file-type">{file.type || t('fileUpload.preview.unknownType')}</span>
+              <span className="file-type">
+                {file.type || t('fileUpload.preview.unknownType')}
+              </span>
             </div>
           </div>
-          
+
           <div className="preview-actions">
             {fileType === 'code' || fileType === 'text' ? (
               <button
@@ -229,7 +266,7 @@ export const FilePreview = memo<FilePreviewProps>(({ file, onClose }) => {
                 📋
               </button>
             ) : null}
-            
+
             <button
               type="button"
               className="action-button close-button"
@@ -293,7 +330,7 @@ export const FilePreview = memo<FilePreviewProps>(({ file, onClose }) => {
                     {t('fileUpload.preview.fileInfo', {
                       name: file.name,
                       size: formatFileSize(file.size),
-                      type: file.type || t('fileUpload.preview.unknownType')
+                      type: file.type || t('fileUpload.preview.unknownType'),
                     })}
                   </p>
                 </div>

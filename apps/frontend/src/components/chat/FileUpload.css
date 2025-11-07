@@ -283,7 +283,8 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -293,7 +294,8 @@
 
 /* Animations */
 @keyframes progressPulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -306,29 +308,29 @@
   .file-drop-zone {
     padding: 16px;
   }
-  
+
   .drop-zone-icon {
     font-size: 28px;
   }
-  
+
   .drop-zone-primary {
     font-size: 14px;
   }
-  
+
   .drop-zone-secondary {
     font-size: 12px;
   }
-  
+
   .upload-progress {
     padding: 12px;
   }
-  
+
   .upload-info {
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
   }
-  
+
   .file-size {
     align-self: flex-end;
   }
@@ -339,16 +341,16 @@
   .file-drop-zone {
     border-width: 3px;
   }
-  
+
   .file-drop-zone:hover:not(.disabled),
   .file-drop-zone.drag-over {
     border-width: 3px;
   }
-  
+
   .progress-bar {
     border: 1px solid var(--text-primary);
   }
-  
+
   .status-icon {
     border: 2px solid currentColor;
   }
@@ -359,20 +361,20 @@
   .file-drop-zone {
     transition: none;
   }
-  
+
   .file-drop-zone.drag-over {
     transform: none;
   }
-  
+
   .drop-zone-icon {
     transition: none;
   }
-  
+
   .file-drop-zone:hover:not(.disabled) .drop-zone-icon,
   .file-drop-zone.drag-over .drop-zone-icon {
     transform: none;
   }
-  
+
   .progress-fill {
     transition: none;
     animation: none;

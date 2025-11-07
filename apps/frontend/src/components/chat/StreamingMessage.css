@@ -77,7 +77,8 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }
@@ -88,10 +89,12 @@
 }
 
 @keyframes blink {
-  0%, 50% {
+  0%,
+  50% {
     opacity: 1;
   }
-  51%, 100% {
+  51%,
+  100% {
     opacity: 0;
   }
 }
@@ -113,7 +116,7 @@
     padding: 3px 6px;
     font-size: 10px;
   }
-  
+
   .streaming-pulse {
     width: 5px;
     height: 5px;
@@ -125,7 +128,7 @@
   .streaming-status {
     border: 1px solid var(--text-primary);
   }
-  
+
   .streaming-cursor {
     border: 1px solid var(--primary-color);
   }
@@ -136,17 +139,17 @@
   .streaming-message {
     animation: none;
   }
-  
+
   .streaming-pulse {
     animation: none;
     opacity: 0.8;
   }
-  
+
   .streaming-cursor {
     animation: none;
     opacity: 1;
   }
-  
+
   .streaming-message .message-content {
     animation: none;
   }

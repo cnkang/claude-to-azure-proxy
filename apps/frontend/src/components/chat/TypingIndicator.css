@@ -126,7 +126,8 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     opacity: 1;
   }
@@ -137,7 +138,9 @@
 }
 
 @keyframes typingDots {
-  0%, 60%, 100% {
+  0%,
+  60%,
+  100% {
     transform: translateY(0);
     opacity: 0.4;
   }
@@ -153,17 +156,17 @@
     gap: 8px;
     padding: 12px 0;
   }
-  
+
   .typing-avatar .avatar {
     width: 28px;
     height: 28px;
     font-size: 14px;
   }
-  
+
   .typing-message {
     font-size: 13px;
   }
-  
+
   .dot {
     width: 6px;
     height: 6px;
@@ -175,7 +178,7 @@
   .typing-avatar .avatar {
     border: 2px solid var(--text-primary);
   }
-  
+
   .dot {
     border: 1px solid var(--text-primary);
   }
@@ -186,20 +189,20 @@
   .typing-indicator {
     animation: none;
   }
-  
+
   .typing-avatar .avatar {
     animation: none;
   }
-  
+
   .dot {
     animation: none;
     opacity: 0.6;
   }
-  
+
   .dot-2 {
     opacity: 0.8;
   }
-  
+
   .dot-3 {
     opacity: 1;
   }

@@ -1,9 +1,9 @@
 /**
  * Context Compression Dialog Component
- * 
+ *
  * Provides a dialog interface for configuring and confirming
  * AI-powered conversation compression with preview and options.
- * 
+ *
  * Requirements: 16.4, 16.5
  */
 
@@ -41,7 +41,9 @@ export interface ContextCompressionDialogProps {
 /**
  * Context compression dialog with options and preview
  */
-export const ContextCompressionDialog: React.FC<ContextCompressionDialogProps> = ({
+export const ContextCompressionDialog: React.FC<
+  ContextCompressionDialogProps
+> = ({
   isOpen,
   onClose,
   onConfirm,
@@ -52,15 +54,17 @@ export const ContextCompressionDialog: React.FC<ContextCompressionDialogProps> =
   conversationTitle,
 }) => {
   const { t } = useTranslation();
-  
+
   const [options, setOptions] = useState<CompressionOptions>({
     method: 'ai-summary',
     targetReduction: 0.5,
     preserveCodeBlocks: true,
     preserveRecentMessages: 3,
   });
-  
-  const [step, setStep] = useState<'configure' | 'preview' | 'creating'>('configure');
+
+  const [step, setStep] = useState<'configure' | 'preview' | 'creating'>(
+    'configure'
+  );
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Reset state when dialog opens/closes
@@ -88,14 +92,16 @@ export const ContextCompressionDialog: React.FC<ContextCompressionDialogProps> =
     return tokens.toLocaleString();
   };
 
-  const estimatedTokensAfterCompression = Math.round(originalTokens * (1 - options.targetReduction));
+  const estimatedTokensAfterCompression = Math.round(
+    originalTokens * (1 - options.targetReduction)
+  );
 
   const handleCompress = useCallback(async (): Promise<void> => {
     try {
       await onConfirm(options);
     } catch (error) {
       frontendLogger.error('Compression failed', {
-        error: error instanceof Error ? error : new Error(String(error))
+        error: error instanceof Error ? error : new Error(String(error)),
       });
     }
   }, [onConfirm, options]);
@@ -107,7 +113,7 @@ export const ContextCompressionDialog: React.FC<ContextCompressionDialogProps> =
       onClose();
     } catch (error) {
       frontendLogger.error('Failed to create compressed conversation', {
-        error: error instanceof Error ? error : new Error(String(error))
+        error: error instanceof Error ? error : new Error(String(error)),
       });
       setStep('preview');
     }
@@ -144,18 +150,28 @@ export const ContextCompressionDialog: React.FC<ContextCompressionDialogProps> =
           <p className="compression-info__description">
             {t('context.compression.description')}
           </p>
-          
+
           <div className="compression-stats">
             <div className="compression-stat">
-              <span className="compression-stat__label">{t('context.compression.current')}:</span>
-              <span className="compression-stat__value">{formatTokenCount(originalTokens)}</span>
+              <span className="compression-stat__label">
+                {t('context.compression.current')}:
+              </span>
+              <span className="compression-stat__value">
+                {formatTokenCount(originalTokens)}
+              </span>
             </div>
             <div className="compression-stat">
-              <span className="compression-stat__label">{t('context.compression.estimated')}:</span>
-              <span className="compression-stat__value">{formatTokenCount(estimatedTokensAfterCompression)}</span>
+              <span className="compression-stat__label">
+                {t('context.compression.estimated')}:
+              </span>
+              <span className="compression-stat__value">
+                {formatTokenCount(estimatedTokensAfterCompression)}
+              </span>
             </div>
             <div className="compression-stat">
-              <span className="compression-stat__label">{t('context.compression.reduction')}:</span>
+              <span className="compression-stat__label">
+                {t('context.compression.reduction')}:
+              </span>
               <span className="compression-stat__value compression-stat__value--highlight">
                 {Math.round(options.targetReduction * 100)}%
               </span>
@@ -165,21 +181,32 @@ export const ContextCompressionDialog: React.FC<ContextCompressionDialogProps> =
 
         <div className="compression-options">
           <div className="compression-option">
-            <label htmlFor="compression-method" className="compression-option__label">
+            <label
+              htmlFor="compression-method"
+              className="compression-option__label"
+            >
               {t('context.compression.method.label')}
             </label>
             <select
               id="compression-method"
               value={options.method}
-              onChange={(e) => setOptions(prev => ({ 
-                ...prev, 
-                method: e.target.value as CompressionOptions['method']
-              }))}
+              onChange={(e) =>
+                setOptions((prev) => ({
+                  ...prev,
+                  method: e.target.value as CompressionOptions['method'],
+                }))
+              }
               className="compression-option__select"
             >
-              <option value="ai-summary">{t('context.compression.method.aiSummary')}</option>
-              <option value="selective-removal">{t('context.compression.method.selectiveRemoval')}</option>
-              <option value="hierarchical">{t('context.compression.method.hierarchical')}</option>
+              <option value="ai-summary">
+                {t('context.compression.method.aiSummary')}
+              </option>
+              <option value="selective-removal">
+                {t('context.compression.method.selectiveRemoval')}
+              </option>
+              <option value="hierarchical">
+                {t('context.compression.method.hierarchical')}
+              </option>
             </select>
             <p className="compression-option__description">
               {t(`context.compression.method.${options.method}.description`)}
@@ -187,8 +214,12 @@ export const ContextCompressionDialog: React.FC<ContextCompressionDialogProps> =
           </div>
 
           <div className="compression-option">
-            <label htmlFor="target-reduction" className="compression-option__label">
-              {t('context.compression.targetReduction.label')} ({Math.round(options.targetReduction * 100)}%)
+            <label
+              htmlFor="target-reduction"
+              className="compression-option__label"
+            >
+              {t('context.compression.targetReduction.label')} (
+              {Math.round(options.targetReduction * 100)}%)
             </label>
             <input
               id="target-reduction"
@@ -197,10 +228,12 @@ export const ContextCompressionDialog: React.FC<ContextCompressionDialogProps> =
               max="0.8"
               step="0.1"
               value={options.targetReduction}
-              onChange={(e) => setOptions(prev => ({ 
-                ...prev, 
-                targetReduction: parseFloat(e.target.value)
-              }))}
+              onChange={(e) =>
+                setOptions((prev) => ({
+                  ...prev,
+                  targetReduction: parseFloat(e.target.value),
+                }))
+              }
               className="compression-option__range"
             />
             <div className="compression-option__range-labels">
@@ -216,7 +249,9 @@ export const ContextCompressionDialog: React.FC<ContextCompressionDialogProps> =
             type="button"
           >
             {t('context.compression.advancedOptions')}
-            <span className={`compression-advanced-toggle__icon ${showAdvanced ? 'expanded' : ''}`}>
+            <span
+              className={`compression-advanced-toggle__icon ${showAdvanced ? 'expanded' : ''}`}
+            >
               ▼
             </span>
           </button>
@@ -228,10 +263,12 @@ export const ContextCompressionDialog: React.FC<ContextCompressionDialogProps> =
                   <input
                     type="checkbox"
                     checked={options.preserveCodeBlocks}
-                    onChange={(e) => setOptions(prev => ({ 
-                      ...prev, 
-                      preserveCodeBlocks: e.target.checked
-                    }))}
+                    onChange={(e) =>
+                      setOptions((prev) => ({
+                        ...prev,
+                        preserveCodeBlocks: e.target.checked,
+                      }))
+                    }
                   />
                   <span className="compression-option__checkbox-label">
                     {t('context.compression.preserveCodeBlocks')}
@@ -243,7 +280,10 @@ export const ContextCompressionDialog: React.FC<ContextCompressionDialogProps> =
               </div>
 
               <div className="compression-option">
-                <label htmlFor="preserve-recent" className="compression-option__label">
+                <label
+                  htmlFor="preserve-recent"
+                  className="compression-option__label"
+                >
                   {t('context.compression.preserveRecent.label')}
                 </label>
                 <input
@@ -252,10 +292,12 @@ export const ContextCompressionDialog: React.FC<ContextCompressionDialogProps> =
                   min="1"
                   max="10"
                   value={options.preserveRecentMessages}
-                  onChange={(e) => setOptions(prev => ({ 
-                    ...prev, 
-                    preserveRecentMessages: parseInt(e.target.value, 10)
-                  }))}
+                  onChange={(e) =>
+                    setOptions((prev) => ({
+                      ...prev,
+                      preserveRecentMessages: parseInt(e.target.value, 10),
+                    }))
+                  }
                   className="compression-option__number"
                 />
                 <p className="compression-option__description">
@@ -327,19 +369,29 @@ export const ContextCompressionDialog: React.FC<ContextCompressionDialogProps> =
           <div className="compression-preview">
             <div className="compression-preview__stats">
               <div className="compression-stat">
-                <span className="compression-stat__label">{t('context.compression.original')}:</span>
+                <span className="compression-stat__label">
+                  {t('context.compression.original')}:
+                </span>
                 <span className="compression-stat__value">
-                  {formatTokenCount(compressionResult.compressionEvent.originalTokens)}
+                  {formatTokenCount(
+                    compressionResult.compressionEvent.originalTokens
+                  )}
                 </span>
               </div>
               <div className="compression-stat">
-                <span className="compression-stat__label">{t('context.compression.compressed')}:</span>
+                <span className="compression-stat__label">
+                  {t('context.compression.compressed')}:
+                </span>
                 <span className="compression-stat__value">
-                  {formatTokenCount(compressionResult.compressionEvent.compressedTokens)}
+                  {formatTokenCount(
+                    compressionResult.compressionEvent.compressedTokens
+                  )}
                 </span>
               </div>
               <div className="compression-stat">
-                <span className="compression-stat__label">{t('context.compression.reduction')}:</span>
+                <span className="compression-stat__label">
+                  {t('context.compression.reduction')}:
+                </span>
                 <span className="compression-stat__value compression-stat__value--success">
                   {Math.round(compressionResult.compressionRatio * 100)}%
                 </span>
@@ -403,13 +455,17 @@ export const ContextCompressionDialog: React.FC<ContextCompressionDialogProps> =
     </div>
   );
 
-  const handleOverlayClick = (event: React.MouseEvent<HTMLDivElement>): void => {
+  const handleOverlayClick = (
+    event: React.MouseEvent<HTMLDivElement>
+  ): void => {
     if (event.target === event.currentTarget) {
       onClose();
     }
   };
 
-  const handleOverlayKeyDown = (event: React.KeyboardEvent<HTMLDivElement>): void => {
+  const handleOverlayKeyDown = (
+    event: React.KeyboardEvent<HTMLDivElement>
+  ): void => {
     if (event.target !== event.currentTarget) {
       return;
     }
@@ -429,8 +485,8 @@ export const ContextCompressionDialog: React.FC<ContextCompressionDialogProps> =
       onClick={handleOverlayClick}
       onKeyDown={handleOverlayKeyDown}
     >
-      <div 
-        className="compression-dialog" 
+      <div
+        className="compression-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="compression-dialog-title"

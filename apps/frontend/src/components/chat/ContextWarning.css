@@ -23,8 +23,13 @@
 }
 
 @keyframes pulse-warning {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.9; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.9;
+  }
 }
 
 /* Header */
@@ -116,7 +121,9 @@
 .context-usage-bar__fill {
   height: 100%;
   border-radius: 4px;
-  transition: width 0.3s ease, background-color 0.3s ease;
+  transition:
+    width 0.3s ease,
+    background-color 0.3s ease;
   position: relative;
 }
 
@@ -130,8 +137,13 @@
 }
 
 @keyframes pulse-fill {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.8; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
 }
 
 .context-usage-bar__text {
@@ -148,7 +160,13 @@
 }
 
 .context-usage-bar__tokens {
-  font-family: var(--font-mono, 'SF Mono', 'Monaco', 'Cascadia Code', monospace);
+  font-family: var(
+    --font-mono,
+    'SF Mono',
+    'Monaco',
+    'Cascadia Code',
+    monospace
+  );
 }
 
 /* Actions */
@@ -272,8 +290,13 @@
 }
 
 @keyframes pulse-indicator {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); }
-  50% { box-shadow: 0 0 0 4px rgba(220, 53, 69, 0.1); }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(220, 53, 69, 0.1);
+  }
 }
 
 .context-usage-indicator__bar {
@@ -305,7 +328,13 @@
 .context-usage-indicator__text {
   font-weight: 500;
   color: var(--text-primary, #333);
-  font-family: var(--font-mono, 'SF Mono', 'Monaco', 'Cascadia Code', monospace);
+  font-family: var(
+    --font-mono,
+    'SF Mono',
+    'Monaco',
+    'Cascadia Code',
+    monospace
+  );
 }
 
 .context-usage-indicator__badge {
@@ -333,8 +362,12 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Dark Theme Support */
@@ -365,16 +398,16 @@
     padding: 12px;
     margin: 8px 0;
   }
-  
+
   .context-warning__actions {
     flex-direction: column;
   }
-  
+
   .context-warning__action {
     width: 100%;
     justify-content: center;
   }
-  
+
   .context-usage-bar__text {
     flex-direction: column;
     align-items: flex-start;
@@ -387,11 +420,11 @@
   .context-warning {
     border-width: 2px;
   }
-  
+
   .context-warning__action {
     border-width: 2px;
   }
-  
+
   .context-usage-bar__fill--warning,
   .context-usage-bar__fill--critical {
     background: currentColor;
@@ -406,7 +439,7 @@
   .context-usage-indicator {
     transition: none;
   }
-  
+
   .context-warning.critical,
   .context-usage-bar__fill--critical,
   .context-usage-indicator--critical {

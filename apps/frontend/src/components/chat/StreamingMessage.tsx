@@ -1,9 +1,9 @@
 /**
  * Streaming Message Component
- * 
+ *
  * Displays a message that is being streamed in real-time with
  * animated cursor and progressive content display.
- * 
+ *
  * Requirements: 3.2, 3.4
  */
 
@@ -25,8 +25,12 @@ const StreamingMessageComponent = ({
   message,
   onCopyCode,
 }: StreamingMessageProps): JSX.Element => {
-  const [displayContent, setDisplayContent] = useState<string>(message.content ?? '');
-  const [isTyping, setIsTyping] = useState<boolean>(message.isComplete !== true);
+  const [displayContent, setDisplayContent] = useState<string>(
+    message.content ?? ''
+  );
+  const [isTyping, setIsTyping] = useState<boolean>(
+    message.isComplete !== true
+  );
   const contentRef = useRef<string>(message.content ?? '');
   const animationRef = useRef<number | null>(null);
 
@@ -121,7 +125,7 @@ const StreamingMessageComponent = ({
         isStreaming={isTyping}
         onCopyCode={onCopyCode}
       />
-      
+
       {/* Streaming status indicator */}
       {isTyping ? (
         <div className="streaming-status">

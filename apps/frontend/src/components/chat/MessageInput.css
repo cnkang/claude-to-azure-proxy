@@ -302,40 +302,40 @@
   .message-input-container {
     padding: 12px;
   }
-  
+
   .input-wrapper {
     padding: 10px;
     gap: 6px;
   }
-  
+
   .file-upload-button,
   .send-button {
     width: 32px;
     height: 32px;
     font-size: 16px;
   }
-  
+
   .message-textarea {
     font-size: 16px; /* Prevent zoom on iOS */
     min-height: 32px;
   }
-  
+
   .attached-files {
     padding: 10px;
   }
-  
+
   .attached-file {
     padding: 6px 10px;
   }
-  
+
   .file-info {
     gap: 6px;
   }
-  
+
   .file-name {
     font-size: 13px;
   }
-  
+
   .file-size {
     font-size: 11px;
   }
@@ -346,17 +346,17 @@
   .input-wrapper {
     border-width: 3px;
   }
-  
+
   .file-upload-button,
   .send-button {
     border: 2px solid transparent;
   }
-  
+
   .file-upload-button:hover,
   .send-button.enabled {
     border-color: currentColor;
   }
-  
+
   .attached-files,
   .file-upload-panel,
   .input-error {
@@ -369,22 +369,22 @@
   .file-upload-panel {
     animation: none;
   }
-  
+
   .file-upload-button,
   .send-button,
   .remove-file-button,
   .input-wrapper {
     transition: none;
   }
-  
+
   .send-button.enabled:hover {
     transform: none;
   }
-  
+
   .send-button.enabled:active {
     transform: none;
   }
-  
+
   .send-button.enabled:hover .send-icon {
     transform: none;
   }

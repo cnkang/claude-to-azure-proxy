@@ -1,9 +1,9 @@
 /**
  * Context Warning Component
- * 
+ *
  * Displays context usage warnings and provides options for context extension
  * and conversation compression when approaching model limits.
- * 
+ *
  * Requirements: 16.1, 16.2, 16.3
  */
 
@@ -37,10 +37,12 @@ export const ContextWarning: React.FC<ContextWarningProps> = ({
   canExtend = false,
 }) => {
   const { t } = useTranslation();
-  
-  const usagePercentage = Math.round((contextUsage.currentTokens / contextUsage.maxTokens) * 100);
+
+  const usagePercentage = Math.round(
+    (contextUsage.currentTokens / contextUsage.maxTokens) * 100
+  );
   const isCritical = warningLevel === 'critical';
-  
+
   const formatTokenCount = (tokens: number): string => {
     if (tokens >= 1_000_000) {
       return `${(tokens / 1_000_000).toFixed(1)}M`;
@@ -52,11 +54,13 @@ export const ContextWarning: React.FC<ContextWarningProps> = ({
   };
 
   return (
-    <div className={`context-warning ${warningLevel}`} role="alert" aria-live="polite">
+    <div
+      className={`context-warning ${warningLevel}`}
+      role="alert"
+      aria-live="polite"
+    >
       <div className="context-warning__header">
-        <div className="context-warning__icon">
-          {isCritical ? '🚨' : '⚠️'}
-        </div>
+        <div className="context-warning__icon">{isCritical ? '🚨' : '⚠️'}</div>
         <div className="context-warning__title">
           <h4>{t(`context.warning.${warningLevel}.title`)}</h4>
           <button
@@ -69,11 +73,11 @@ export const ContextWarning: React.FC<ContextWarningProps> = ({
           </button>
         </div>
       </div>
-      
+
       <div className="context-warning__content">
         <div className="context-usage-bar">
           <div className="context-usage-bar__track">
-            <div 
+            <div
               className={`context-usage-bar__fill context-usage-bar__fill--${warningLevel}`}
               style={{ width: `${Math.min(usagePercentage, 100)}%` }}
               role="progressbar"
@@ -88,13 +92,14 @@ export const ContextWarning: React.FC<ContextWarningProps> = ({
               {usagePercentage}%
             </span>
             <span className="context-usage-bar__tokens">
-              {formatTokenCount(contextUsage.currentTokens)} / {formatTokenCount(contextUsage.maxTokens)} {t('context.tokens')}
+              {formatTokenCount(contextUsage.currentTokens)} /{' '}
+              {formatTokenCount(contextUsage.maxTokens)} {t('context.tokens')}
             </span>
           </div>
         </div>
 
         <p className="context-warning__message">
-          {t(`context.warning.${warningLevel}.message`, { 
+          {t(`context.warning.${warningLevel}.message`, {
             percentage: usagePercentage,
             current: formatTokenCount(contextUsage.currentTokens),
             max: formatTokenCount(contextUsage.maxTokens),
@@ -119,14 +124,15 @@ export const ContextWarning: React.FC<ContextWarningProps> = ({
                   {t('context.actions.extend')}
                   {typeof contextUsage.extendedMaxTokens === 'number' && (
                     <span className="context-warning__action-detail">
-                      ({formatTokenCount(contextUsage.extendedMaxTokens)} {t('context.tokens')})
+                      ({formatTokenCount(contextUsage.extendedMaxTokens)}{' '}
+                      {t('context.tokens')})
                     </span>
                   )}
                 </>
               )}
             </button>
           )}
-          
+
           <button
             onClick={onCompressContext}
             disabled={isExtending || isCompressing}
@@ -175,9 +181,11 @@ export const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
   className = '',
 }) => {
   const { t } = useTranslation();
-  
-  const usagePercentage = Math.round((contextUsage.currentTokens / contextUsage.maxTokens) * 100);
-  
+
+  const usagePercentage = Math.round(
+    (contextUsage.currentTokens / contextUsage.maxTokens) * 100
+  );
+
   const getIndicatorLevel = (): 'normal' | 'warning' | 'critical' => {
     if (usagePercentage >= 95) {
       return 'critical';
@@ -187,9 +195,9 @@ export const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
     }
     return 'normal';
   };
-  
+
   const level = getIndicatorLevel();
-  
+
   const formatTokenCount = (tokens: number): string => {
     if (tokens >= 1_000_000) {
       return `${(tokens / 1_000_000).toFixed(1)}M`;
@@ -213,16 +221,17 @@ export const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
       aria-label={t('context.usage.label')}
     >
       <div className="context-usage-indicator__bar">
-        <div 
+        <div
           className={`context-usage-indicator__fill context-usage-indicator__fill--${level}`}
           style={{ width: `${Math.min(usagePercentage, 100)}%` }}
         />
       </div>
-      <span className="context-usage-indicator__text">
-        {usagePercentage}%
-      </span>
+      <span className="context-usage-indicator__text">{usagePercentage}%</span>
       {contextUsage.isExtended && (
-        <span className="context-usage-indicator__badge" title={t('context.extended.tooltip')}>
+        <span
+          className="context-usage-indicator__badge"
+          title={t('context.extended.tooltip')}
+        >
           ↗️
         </span>
       )}

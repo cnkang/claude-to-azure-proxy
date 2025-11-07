@@ -93,104 +93,111 @@ const MessageListComponent = forwardRef<MessageListHandle, MessageListProps>(
     const listRef = useRef<List>(null);
     const [autoScroll, setAutoScroll] = useState(true);
 
-  const shouldUseVirtualScrolling =
-    enableVirtualScrolling && messages.length > VIRTUAL_SCROLL_THRESHOLD;
+    const shouldUseVirtualScrolling =
+      enableVirtualScrolling && messages.length > VIRTUAL_SCROLL_THRESHOLD;
 
-  const handleScroll = useCallback((): void => {
-    const container = containerRef.current;
-    if (!container) {
-      return;
-    }
-
-    const { scrollTop, scrollHeight, clientHeight } = container;
-    const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
-    const isNearBottom = distanceFromBottom < 80;
-
-    setAutoScroll(isNearBottom);
-  }, []);
-
-  const handleVirtualScroll = useCallback(
-    ({ scrollOffset, scrollUpdateWasRequested }: { scrollOffset: number; scrollUpdateWasRequested: boolean }): void => {
-      const listInstance = listRef.current;
-      if (listInstance === null || scrollUpdateWasRequested === true) {
+    const handleScroll = useCallback((): void => {
+      const container = containerRef.current;
+      if (!container) {
         return;
       }
 
-      const totalHeight = messages.length * itemHeight;
-      const heightProp = listInstance.props.height;
-      let viewportHeight = 0;
-      if (typeof heightProp === 'number') {
-        viewportHeight = heightProp;
-      } else if (typeof heightProp === 'string') {
-        const parsed = Number(heightProp);
-        viewportHeight = Number.isFinite(parsed) ? parsed : 0;
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
+      const isNearBottom = distanceFromBottom < 80;
+
+      setAutoScroll(isNearBottom);
+    }, []);
+
+    const handleVirtualScroll = useCallback(
+      ({
+        scrollOffset,
+        scrollUpdateWasRequested,
+      }: {
+        scrollOffset: number;
+        scrollUpdateWasRequested: boolean;
+      }): void => {
+        const listInstance = listRef.current;
+        if (listInstance === null || scrollUpdateWasRequested === true) {
+          return;
+        }
+
+        const totalHeight = messages.length * itemHeight;
+        const heightProp = listInstance.props.height;
+        let viewportHeight = 0;
+        if (typeof heightProp === 'number') {
+          viewportHeight = heightProp;
+        } else if (typeof heightProp === 'string') {
+          const parsed = Number(heightProp);
+          viewportHeight = Number.isFinite(parsed) ? parsed : 0;
+        }
+        const distanceFromBottom =
+          totalHeight - (scrollOffset + viewportHeight);
+
+        setAutoScroll(distanceFromBottom < itemHeight * 2);
+      },
+      [itemHeight, messages.length]
+    );
+
+    const scrollToBottomVirtual = useCallback((): void => {
+      if (!listRef.current || messages.length === 0) {
+        return;
       }
-      const distanceFromBottom = totalHeight - (scrollOffset + viewportHeight);
 
-      setAutoScroll(distanceFromBottom < itemHeight * 2);
-    },
-    [itemHeight, messages.length]
-  );
+      listRef.current.scrollToItem(messages.length - 1, 'end');
+    }, [messages.length]);
 
-  const scrollToBottomVirtual = useCallback((): void => {
-    if (!listRef.current || messages.length === 0) {
-      return;
-    }
+    const scrollToBottomRegular = useCallback((): void => {
+      const container = containerRef.current;
+      if (!container) {
+        return;
+      }
 
-    listRef.current.scrollToItem(messages.length - 1, 'end');
-  }, [messages.length]);
+      container.scrollTop = container.scrollHeight;
+    }, []);
 
-  const scrollToBottomRegular = useCallback((): void => {
-    const container = containerRef.current;
-    if (!container) {
-      return;
-    }
+    useEffect(() => {
+      if (!autoScrollEnabled || !autoScroll) {
+        return;
+      }
 
-    container.scrollTop = container.scrollHeight;
-  }, []);
+      if (shouldUseVirtualScrolling) {
+        scrollToBottomVirtual();
+      } else {
+        scrollToBottomRegular();
+      }
+    }, [
+      autoScroll,
+      autoScrollEnabled,
+      messages.length,
+      streamingMessage?.content,
+      shouldUseVirtualScrolling,
+      scrollToBottomRegular,
+      scrollToBottomVirtual,
+    ]);
 
-  useEffect(() => {
-    if (!autoScrollEnabled || !autoScroll) {
-      return;
-    }
+    const virtualizedData = useMemo(
+      () => ({
+        messages,
+        onCopyCode,
+        onRetryMessage,
+      }),
+      [messages, onCopyCode, onRetryMessage]
+    );
 
-    if (shouldUseVirtualScrolling) {
-      scrollToBottomVirtual();
-    } else {
-      scrollToBottomRegular();
-    }
-  }, [
-    autoScroll,
-    autoScrollEnabled,
-    messages.length,
-    streamingMessage?.content,
-    shouldUseVirtualScrolling,
-    scrollToBottomRegular,
-    scrollToBottomVirtual,
-  ]);
+    useEffect(() => {
+      if (containerRefCallback) {
+        containerRefCallback(containerRef.current);
+        return (): void => {
+          containerRefCallback(null);
+        };
+      }
 
-  const virtualizedData = useMemo(
-    () => ({
-      messages,
-      onCopyCode,
-      onRetryMessage,
-    }),
-    [messages, onCopyCode, onRetryMessage]
-  );
+      return undefined;
+    }, [containerRefCallback]);
 
-  useEffect(() => {
-    if (containerRefCallback) {
-      containerRefCallback(containerRef.current);
-      return (): void => {
-        containerRefCallback(null);
-      };
-    }
-
-    return undefined;
-  }, [containerRefCallback]);
-
-  useImperativeHandle(
-    ref,
+    useImperativeHandle(
+      ref,
       () => ({
         scrollToBottom: (): void => {
           if (shouldUseVirtualScrolling) {
@@ -198,49 +205,55 @@ const MessageListComponent = forwardRef<MessageListHandle, MessageListProps>(
           } else {
             scrollToBottomRegular();
           }
-      },
-    }),
-    [scrollToBottomRegular, scrollToBottomVirtual, shouldUseVirtualScrolling]
-  );
+        },
+      }),
+      [scrollToBottomRegular, scrollToBottomVirtual, shouldUseVirtualScrolling]
+    );
 
-  return (
-    <div
-      className="message-list-container"
-      ref={containerRef}
-      onScroll={shouldUseVirtualScrolling ? undefined : handleScroll}
-    >
-      {shouldUseVirtualScrolling ? (
-        <List
-          ref={listRef}
-          height={containerRef.current?.clientHeight ?? itemHeight * Math.min(messages.length, 10)}
-          itemCount={messages.length}
-          itemSize={itemHeight}
-          width="100%"
-          itemData={virtualizedData}
-          onScroll={handleVirtualScroll}
-        >
-          {VirtualizedRow}
-        </List>
-      ) : (
-        <div className="message-list">
-          {messages.map((message) => (
-            <MessageItem
-              key={message.id}
-              message={message}
-              onCopyCode={onCopyCode}
-              onRetryMessage={onRetryMessage}
-            />
-          ))}
-        </div>
-      )}
+    return (
+      <div
+        className="message-list-container"
+        ref={containerRef}
+        onScroll={shouldUseVirtualScrolling ? undefined : handleScroll}
+      >
+        {shouldUseVirtualScrolling ? (
+          <List
+            ref={listRef}
+            height={
+              containerRef.current?.clientHeight ??
+              itemHeight * Math.min(messages.length, 10)
+            }
+            itemCount={messages.length}
+            itemSize={itemHeight}
+            width="100%"
+            itemData={virtualizedData}
+            onScroll={handleVirtualScroll}
+          >
+            {VirtualizedRow}
+          </List>
+        ) : (
+          <div className="message-list">
+            {messages.map((message) => (
+              <MessageItem
+                key={message.id}
+                message={message}
+                onCopyCode={onCopyCode}
+                onRetryMessage={onRetryMessage}
+              />
+            ))}
+          </div>
+        )}
 
-      {streamingMessage ? (
-        <StreamingMessage message={streamingMessage} onCopyCode={onCopyCode} />
-      ) : null}
+        {streamingMessage ? (
+          <StreamingMessage
+            message={streamingMessage}
+            onCopyCode={onCopyCode}
+          />
+        ) : null}
 
-      {isLoading ? <TypingIndicator /> : null}
-    </div>
-  );
+        {isLoading ? <TypingIndicator /> : null}
+      </div>
+    );
   }
 );
 

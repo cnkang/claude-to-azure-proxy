@@ -1,6 +1,14 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach, afterEach, beforeAll } from 'vitest';
+import {
+  describe,
+  expect,
+  it,
+  vi,
+  beforeEach,
+  afterEach,
+  beforeAll,
+} from 'vitest';
 import { FilePreview } from './FilePreview.js';
 
 vi.mock('../../contexts/I18nContext', () => ({
@@ -25,7 +33,9 @@ describe('FilePreview component', () => {
         },
       });
     }
-    originalClipboardWrite = navigator.clipboard.writeText.bind(navigator.clipboard);
+    originalClipboardWrite = navigator.clipboard.writeText.bind(
+      navigator.clipboard
+    );
     originalFileReader = FileReader;
   });
 
@@ -51,7 +61,9 @@ describe('FilePreview component', () => {
       expect(screen.getByText('example.ts')).toBeInstanceOf(HTMLElement);
     });
     fireEvent.click(screen.getByTitle('fileUpload.preview.copyContent'));
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith('console.log("hello");');
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      'console.log("hello");'
+    );
 
     const overlay = screen.getByRole('button', { name: 'common.close' });
     fireEvent.keyDown(overlay, { key: 'Enter' });
@@ -67,7 +79,9 @@ describe('FilePreview component', () => {
     render(<FilePreview file={file} onClose={vi.fn()} />);
 
     await waitFor(() => {
-      expect(screen.getByText('fileUpload.preview.loadError')).toBeInstanceOf(HTMLElement);
+      expect(screen.getByText('fileUpload.preview.loadError')).toBeInstanceOf(
+        HTMLElement
+      );
     });
     expect(errorSpy).toHaveBeenCalledWith(
       'Failed to load file preview content',
@@ -79,7 +93,9 @@ describe('FilePreview component', () => {
   });
 
   it('displays formatted metadata for text files', async () => {
-    const file = new File(['plain text content'], 'note.txt', { type: 'text/plain' });
+    const file = new File(['plain text content'], 'note.txt', {
+      type: 'text/plain',
+    });
     const onClose = vi.fn();
 
     render(<FilePreview file={file} onClose={onClose} />);
@@ -112,7 +128,9 @@ describe('FilePreview component', () => {
     const { container } = render(<FilePreview file={file} onClose={onClose} />);
 
     await waitFor(() => {
-      expect(screen.getByRole('img', { name: 'photo.png' })).toBeInstanceOf(HTMLImageElement);
+      expect(screen.getByRole('img', { name: 'photo.png' })).toBeInstanceOf(
+        HTMLImageElement
+      );
     });
 
     const modal = container.querySelector('.file-preview-modal');
@@ -127,13 +145,17 @@ describe('FilePreview component', () => {
   });
 
   it('shows unsupported message for unknown files and handles keyboard shortcuts', async () => {
-    const file = new File(['???'], 'archive.bin', { type: 'application/octet-stream' });
+    const file = new File(['???'], 'archive.bin', {
+      type: 'application/octet-stream',
+    });
     const onClose = vi.fn();
 
     render(<FilePreview file={file} onClose={onClose} />);
 
     await waitFor(() => {
-      expect(screen.getByText('fileUpload.preview.unsupportedType')).toBeInstanceOf(HTMLElement);
+      expect(
+        screen.getByText('fileUpload.preview.unsupportedType')
+      ).toBeInstanceOf(HTMLElement);
     });
 
     const overlay = screen.getByRole('button', { name: 'common.close' });
@@ -149,7 +171,9 @@ describe('FilePreview component', () => {
     const logger = await import('../../utils/logger.js');
     const errorSpy = vi.spyOn(logger.frontendLogger, 'error');
 
-    vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('denied'));
+    vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(
+      new Error('denied')
+    );
 
     render(<FilePreview file={file} onClose={onClose} />);
 
