@@ -1,9 +1,9 @@
 /**
  * Conversation Management Demo Component
- * 
+ *
  * A demonstration component that shows the conversation management system
  * functionality including creation, search, filtering, and organization.
- * 
+ *
  * This component serves as a proof of concept for the implemented features.
  */
 
@@ -30,7 +30,8 @@ const createDemoConversations = (): Conversation[] => [
       {
         id: 'msg_2',
         role: 'assistant',
-        content: 'To create a React component, you can use function components...',
+        content:
+          'To create a React component, you can use function components...',
         timestamp: new Date('2024-01-01T10:01:00Z'),
         correlationId: 'corr_2',
         conversationId: 'conv_demo_1',
@@ -103,12 +104,18 @@ const createDemoConversations = (): Conversation[] => [
  * Conversation demo component
  */
 export function ConversationDemo(): React.JSX.Element {
-  const [conversations, setConversations] = useState<Conversation[]>(createDemoConversations());
+  const [conversations, setConversations] = useState<Conversation[]>(
+    createDemoConversations()
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedModel, setSelectedModel] = useState<string>('');
-  const [sortBy, setSortBy] = useState<'title' | 'updatedAt' | 'createdAt'>('updatedAt');
+  const [sortBy, setSortBy] = useState<'title' | 'updatedAt' | 'createdAt'>(
+    'updatedAt'
+  );
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [activeConversationId, setActiveConversationId] = useState<
+    string | null
+  >(null);
 
   // Filter and sort conversations
   const filteredConversations = React.useMemo(() => {
@@ -117,7 +124,7 @@ export function ConversationDemo(): React.JSX.Element {
     // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(conversation => {
+      filtered = filtered.filter((conversation) => {
         // Search in title
         if (conversation.title.toLowerCase().includes(query)) {
           return true;
@@ -131,7 +138,9 @@ export function ConversationDemo(): React.JSX.Element {
 
     // Apply model filter
     if (selectedModel) {
-      filtered = filtered.filter(conversation => conversation.selectedModel === selectedModel);
+      filtered = filtered.filter(
+        (conversation) => conversation.selectedModel === selectedModel
+      );
     }
 
     // Apply sorting
@@ -171,7 +180,7 @@ export function ConversationDemo(): React.JSX.Element {
 
   // Get unique models
   const availableModels = React.useMemo(() => {
-    const models = new Set(conversations.map(conv => conv.selectedModel));
+    const models = new Set(conversations.map((conv) => conv.selectedModel));
     return Array.from(models).sort();
   }, [conversations]);
 
@@ -197,16 +206,18 @@ export function ConversationDemo(): React.JSX.Element {
       },
     };
 
-    setConversations(prev => [newConversation, ...prev]);
+    setConversations((prev) => [newConversation, ...prev]);
     setActiveConversationId(newConversation.id);
   };
 
   // Rename conversation
   const handleRenameConversation = (id: string, newTitle: string) => {
-    if (!newTitle.trim()) {return;}
+    if (!newTitle.trim()) {
+      return;
+    }
 
-    setConversations(prev =>
-      prev.map(conv =>
+    setConversations((prev) =>
+      prev.map((conv) =>
         conv.id === id
           ? { ...conv, title: newTitle.trim(), updatedAt: new Date() }
           : conv
@@ -216,7 +227,7 @@ export function ConversationDemo(): React.JSX.Element {
 
   // Delete conversation
   const handleDeleteConversation = (id: string) => {
-    setConversations(prev => prev.filter(conv => conv.id !== id));
+    setConversations((prev) => prev.filter((conv) => conv.id !== id));
     if (activeConversationId === id) {
       setActiveConversationId(null);
     }
@@ -244,7 +255,7 @@ export function ConversationDemo(): React.JSX.Element {
   return (
     <div style={{ padding: '20px', fontFamily: 'system-ui, sans-serif' }}>
       <h1>Conversation Management System Demo</h1>
-      
+
       <div style={{ marginBottom: '20px' }}>
         <h2>Features Demonstrated:</h2>
         <ul>
@@ -257,14 +268,16 @@ export function ConversationDemo(): React.JSX.Element {
       </div>
 
       {/* Controls */}
-      <div style={{ 
-        display: 'flex', 
-        gap: '10px', 
-        marginBottom: '20px', 
-        flexWrap: 'wrap',
-        alignItems: 'center'
-      }}>
-        <button 
+      <div
+        style={{
+          display: 'flex',
+          gap: '10px',
+          marginBottom: '20px',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+        }}
+      >
+        <button
           onClick={handleCreateConversation}
           style={{
             padding: '8px 16px',
@@ -272,7 +285,7 @@ export function ConversationDemo(): React.JSX.Element {
             color: 'white',
             border: 'none',
             borderRadius: '4px',
-            cursor: 'pointer'
+            cursor: 'pointer',
           }}
         >
           ➕ New Conversation
@@ -287,7 +300,7 @@ export function ConversationDemo(): React.JSX.Element {
             padding: '8px 12px',
             border: '1px solid #ccc',
             borderRadius: '4px',
-            minWidth: '200px'
+            minWidth: '200px',
           }}
         />
 
@@ -297,26 +310,31 @@ export function ConversationDemo(): React.JSX.Element {
           style={{
             padding: '8px 12px',
             border: '1px solid #ccc',
-            borderRadius: '4px'
+            borderRadius: '4px',
           }}
         >
           <option value="">All Models</option>
-          {availableModels.map(model => (
-            <option key={model} value={model}>{model}</option>
+          {availableModels.map((model) => (
+            <option key={model} value={model}>
+              {model}
+            </option>
           ))}
         </select>
 
         <select
           value={`${sortBy}-${sortOrder}`}
           onChange={(e) => {
-            const [newSortBy, newSortOrder] = e.target.value.split('-') as [typeof sortBy, typeof sortOrder];
+            const [newSortBy, newSortOrder] = e.target.value.split('-') as [
+              typeof sortBy,
+              typeof sortOrder,
+            ];
             setSortBy(newSortBy);
             setSortOrder(newSortOrder);
           }}
           style={{
             padding: '8px 12px',
             border: '1px solid #ccc',
-            borderRadius: '4px'
+            borderRadius: '4px',
           }}
         >
           <option value="updatedAt-desc">Recently Updated</option>
@@ -330,28 +348,33 @@ export function ConversationDemo(): React.JSX.Element {
 
       {/* Stats */}
       <div style={{ marginBottom: '20px', fontSize: '14px', color: '#666' }}>
-        Total: {conversations.length} | 
-        Filtered: {filteredConversations.length} |
-        Active: {activeConversationId ? 'Yes' : 'None'}
+        Total: {conversations.length} | Filtered: {filteredConversations.length}{' '}
+        | Active: {activeConversationId ? 'Yes' : 'None'}
       </div>
 
       {/* Conversation List */}
-      <div style={{ 
-        display: 'grid', 
-        gap: '10px',
-        maxHeight: '400px',
-        overflowY: 'auto',
-        border: '1px solid #ddd',
-        borderRadius: '4px',
-        padding: '10px'
-      }}>
+      <div
+        style={{
+          display: 'grid',
+          gap: '10px',
+          maxHeight: '400px',
+          overflowY: 'auto',
+          border: '1px solid #ddd',
+          borderRadius: '4px',
+          padding: '10px',
+        }}
+      >
         {filteredConversations.length === 0 ? (
-          <div style={{ 
-            textAlign: 'center', 
-            padding: '40px', 
-            color: '#666' 
-          }}>
-            {searchQuery || selectedModel ? 'No conversations match your filters' : 'No conversations yet'}
+          <div
+            style={{
+              textAlign: 'center',
+              padding: '40px',
+              color: '#666',
+            }}
+          >
+            {searchQuery || selectedModel
+              ? 'No conversations match your filters'
+              : 'No conversations yet'}
           </div>
         ) : (
           filteredConversations.map((conversation) => (
@@ -361,18 +384,27 @@ export function ConversationDemo(): React.JSX.Element {
                 border: '1px solid #ddd',
                 borderRadius: '4px',
                 padding: '12px',
-                backgroundColor: activeConversationId === conversation.id ? '#e3f2fd' : 'white',
+                backgroundColor:
+                  activeConversationId === conversation.id
+                    ? '#e3f2fd'
+                    : 'white',
                 cursor: 'pointer',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.2s ease',
               }}
-              onClick={() => setActiveConversationId(
-                activeConversationId === conversation.id ? null : conversation.id
-              )}
+              onClick={() =>
+                setActiveConversationId(
+                  activeConversationId === conversation.id
+                    ? null
+                    : conversation.id
+                )
+              }
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
                   setActiveConversationId(
-                    activeConversationId === conversation.id ? null : conversation.id
+                    activeConversationId === conversation.id
+                      ? null
+                      : conversation.id
                   );
                 }
               }}
@@ -380,26 +412,36 @@ export function ConversationDemo(): React.JSX.Element {
               tabIndex={0}
               aria-pressed={activeConversationId === conversation.id}
             >
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'flex-start',
-                marginBottom: '8px'
-              }}>
-                <h3 style={{ 
-                  margin: 0, 
-                  fontSize: '16px',
-                  fontWeight: '500'
-                }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: '8px',
+                }}
+              >
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: '16px',
+                    fontWeight: '500',
+                  }}
+                >
                   {conversation.title}
                 </h3>
                 <div style={{ display: 'flex', gap: '5px' }}>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      const newTitle = prompt('Enter new title:', conversation.title);
+                      const newTitle = prompt(
+                        'Enter new title:',
+                        conversation.title
+                      );
                       if (newTitle !== null && newTitle.trim().length > 0) {
-                        handleRenameConversation(conversation.id, newTitle.trim());
+                        handleRenameConversation(
+                          conversation.id,
+                          newTitle.trim()
+                        );
                       }
                     }}
                     style={{
@@ -408,7 +450,7 @@ export function ConversationDemo(): React.JSX.Element {
                       border: '1px solid #ccc',
                       borderRadius: '3px',
                       backgroundColor: 'white',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
                     }}
                   >
                     ✏️
@@ -427,7 +469,7 @@ export function ConversationDemo(): React.JSX.Element {
                       borderRadius: '3px',
                       backgroundColor: '#dc3545',
                       color: 'white',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
                     }}
                   >
                     🗑️
@@ -435,40 +477,50 @@ export function ConversationDemo(): React.JSX.Element {
                 </div>
               </div>
 
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between',
-                fontSize: '12px',
-                color: '#666',
-                marginBottom: '8px'
-              }}>
-                <span style={{
-                  backgroundColor: '#f0f0f0',
-                  padding: '2px 6px',
-                  borderRadius: '3px',
-                  fontWeight: '500'
-                }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: '12px',
+                  color: '#666',
+                  marginBottom: '8px',
+                }}
+              >
+                <span
+                  style={{
+                    backgroundColor: '#f0f0f0',
+                    padding: '2px 6px',
+                    borderRadius: '3px',
+                    fontWeight: '500',
+                  }}
+                >
                   {conversation.selectedModel}
                 </span>
                 <span>{formatTimeAgo(conversation.updatedAt)}</span>
               </div>
 
-              <div style={{ 
-                fontSize: '14px',
-                color: '#333',
-                marginBottom: '8px'
-              }}>
-                {conversation.messages.length > 0 
-                  ? conversation.messages[conversation.messages.length - 1].content.slice(0, 100) + '...'
-                  : 'No messages yet'
-                }
+              <div
+                style={{
+                  fontSize: '14px',
+                  color: '#333',
+                  marginBottom: '8px',
+                }}
+              >
+                {conversation.messages.length > 0
+                  ? conversation.messages[
+                      conversation.messages.length - 1
+                    ].content.slice(0, 100) + '...'
+                  : 'No messages yet'}
               </div>
 
-              <div style={{ 
-                fontSize: '12px',
-                color: '#888'
-              }}>
-                {conversation.messages.length} message{conversation.messages.length !== 1 ? 's' : ''}
+              <div
+                style={{
+                  fontSize: '12px',
+                  color: '#888',
+                }}
+              >
+                {conversation.messages.length} message
+                {conversation.messages.length !== 1 ? 's' : ''}
               </div>
             </div>
           ))
@@ -477,27 +529,51 @@ export function ConversationDemo(): React.JSX.Element {
 
       {/* Active Conversation Details */}
       {activeConversationId !== null && activeConversationId !== undefined && (
-        <div style={{ 
-          marginTop: '20px',
-          padding: '15px',
-          border: '1px solid #007bff',
-          borderRadius: '4px',
-          backgroundColor: '#f8f9fa'
-        }}>
+        <div
+          style={{
+            marginTop: '20px',
+            padding: '15px',
+            border: '1px solid #007bff',
+            borderRadius: '4px',
+            backgroundColor: '#f8f9fa',
+          }}
+        >
           <h3>Active Conversation Details</h3>
           {(() => {
-            const activeConv = conversations.find(c => c.id === activeConversationId);
-            if (!activeConv) {return <p>Conversation not found</p>;}
-            
+            const activeConv = conversations.find(
+              (c) => c.id === activeConversationId
+            );
+            if (!activeConv) {
+              return <p>Conversation not found</p>;
+            }
+
             return (
               <div>
-                <p><strong>ID:</strong> {activeConv.id}</p>
-                <p><strong>Title:</strong> {activeConv.title}</p>
-                <p><strong>Model:</strong> {activeConv.selectedModel}</p>
-                <p><strong>Messages:</strong> {activeConv.messages.length}</p>
-                <p><strong>Created:</strong> {activeConv.createdAt.toLocaleString()}</p>
-                <p><strong>Updated:</strong> {activeConv.updatedAt.toLocaleString()}</p>
-                <p><strong>Context Usage:</strong> {activeConv.contextUsage?.currentTokens ?? 0} / {activeConv.contextUsage?.maxTokens ?? 0} tokens</p>
+                <p>
+                  <strong>ID:</strong> {activeConv.id}
+                </p>
+                <p>
+                  <strong>Title:</strong> {activeConv.title}
+                </p>
+                <p>
+                  <strong>Model:</strong> {activeConv.selectedModel}
+                </p>
+                <p>
+                  <strong>Messages:</strong> {activeConv.messages.length}
+                </p>
+                <p>
+                  <strong>Created:</strong>{' '}
+                  {activeConv.createdAt.toLocaleString()}
+                </p>
+                <p>
+                  <strong>Updated:</strong>{' '}
+                  {activeConv.updatedAt.toLocaleString()}
+                </p>
+                <p>
+                  <strong>Context Usage:</strong>{' '}
+                  {activeConv.contextUsage?.currentTokens ?? 0} /{' '}
+                  {activeConv.contextUsage?.maxTokens ?? 0} tokens
+                </p>
               </div>
             );
           })()}

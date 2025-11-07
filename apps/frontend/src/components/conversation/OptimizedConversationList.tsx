@@ -7,13 +7,7 @@
  * management hooks.
  */
 
-import React, {
-  memo,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import type { Conversation, Message } from '../../types/index.js';
 import {
   useConversations,
@@ -251,10 +245,13 @@ export function OptimizedConversationList({
     }
   }, [createConversation, handleSelect]);
 
-  const handleStartEdit = useCallback((conversationId: string, title: string) => {
-    setEditingId(conversationId);
-    setEditingTitle(title);
-  }, []);
+  const handleStartEdit = useCallback(
+    (conversationId: string, title: string) => {
+      setEditingId(conversationId);
+      setEditingTitle(title);
+    },
+    []
+  );
 
   const handleCancelEdit = useCallback(() => {
     setEditingId(null);
