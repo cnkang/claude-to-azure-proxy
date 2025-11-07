@@ -1,13 +1,19 @@
 /**
  * Focus Manager Component
- * 
+ *
  * Provides comprehensive focus management utilities including focus trapping,
  * focus restoration, and focus indicators for better keyboard navigation.
- * 
+ *
  * Requirements: 1.5, 10.4
  */
 
-import React, { useEffect, useRef, useCallback, useState, type ReactNode } from 'react';
+import React, {
+  useEffect,
+  useRef,
+  useCallback,
+  useState,
+  type ReactNode,
+} from 'react';
 
 export interface FocusManagerProps {
   children: ReactNode;
@@ -39,7 +45,7 @@ export const FocusManager: React.FC<FocusManagerProps> = ({
   trapFocus = false,
   restoreFocus = false,
   autoFocus = false,
-  className = ''
+  className = '',
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
@@ -67,56 +73,64 @@ export const FocusManager: React.FC<FocusManagerProps> = ({
       'object:not([aria-hidden="true"])',
       'embed:not([aria-hidden="true"])',
       'area[href]:not([aria-hidden="true"])',
-      'summary:not([aria-hidden="true"])'
+      'summary:not([aria-hidden="true"])',
     ].join(', ');
 
-    return Array.from(containerRef.current.querySelectorAll(focusableSelectors))
-      .filter((element) => {
-        const htmlElement = element as HTMLElement;
-        const style = window.getComputedStyle(htmlElement);
-        
-        return (
-          htmlElement.offsetWidth > 0 &&
-          htmlElement.offsetHeight > 0 &&
-          style.visibility !== 'hidden' &&
-          style.display !== 'none' &&
-          !htmlElement.hasAttribute('inert')
-        );
-      }) as HTMLElement[];
+    return Array.from(
+      containerRef.current.querySelectorAll(focusableSelectors)
+    ).filter((element) => {
+      const htmlElement = element as HTMLElement;
+      const style = window.getComputedStyle(htmlElement);
+
+      return (
+        htmlElement.offsetWidth > 0 &&
+        htmlElement.offsetHeight > 0 &&
+        style.visibility !== 'hidden' &&
+        style.display !== 'none' &&
+        !htmlElement.hasAttribute('inert')
+      );
+    }) as HTMLElement[];
   }, []);
 
   /**
    * Handle focus trap
    */
-  const handleFocusTrap = useCallback((event: KeyboardEvent): void => {
-    if (!trapFocus || event.key !== 'Tab') {
-      return;
-    }
-
-    const focusableElements = getFocusableElements();
-    if (focusableElements.length === 0) {
-      event.preventDefault();
-      return;
-    }
-
-    const firstElement = focusableElements[0];
-    const lastElement = focusableElements[focusableElements.length - 1];
-    const activeElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const isActiveInside = activeElement !== null && focusableElements.includes(activeElement);
-
-    if (event.shiftKey) {
-      if (!isActiveInside || activeElement === firstElement) {
-        event.preventDefault();
-        lastElement.focus();
+  const handleFocusTrap = useCallback(
+    (event: KeyboardEvent): void => {
+      if (!trapFocus || event.key !== 'Tab') {
+        return;
       }
-      return;
-    }
 
-    if (!isActiveInside || activeElement === lastElement) {
-      event.preventDefault();
-      firstElement.focus();
-    }
-  }, [trapFocus, getFocusableElements]);
+      const focusableElements = getFocusableElements();
+      if (focusableElements.length === 0) {
+        event.preventDefault();
+        return;
+      }
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+      const activeElement =
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null;
+      const isActiveInside =
+        activeElement !== null && focusableElements.includes(activeElement);
+
+      if (event.shiftKey) {
+        if (!isActiveInside || activeElement === firstElement) {
+          event.preventDefault();
+          lastElement.focus();
+        }
+        return;
+      }
+
+      if (!isActiveInside || activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    },
+    [trapFocus, getFocusableElements]
+  );
 
   /**
    * Handle focus visibility
@@ -206,7 +220,7 @@ export const FocusManager: React.FC<FocusManagerProps> = ({
     autoFocus,
     restoreFocus,
     getFocusableElements,
-    trapFocus
+    trapFocus,
   ]);
 
   return (
@@ -228,9 +242,14 @@ export const FocusManager: React.FC<FocusManagerProps> = ({
  */
 export const FocusIndicator: React.FC<FocusIndicatorProps> = ({
   visible,
-  className = ''
+  className = '',
 }) => {
-  const [position, setPosition] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
+  const [position, setPosition] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    height: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!visible) {
@@ -240,7 +259,10 @@ export const FocusIndicator: React.FC<FocusIndicatorProps> = ({
 
     const updatePosition = (): void => {
       const activeElement = document.activeElement;
-      if (activeElement instanceof HTMLElement && activeElement !== document.body) {
+      if (
+        activeElement instanceof HTMLElement &&
+        activeElement !== document.body
+      ) {
         const rect = activeElement.getBoundingClientRect();
         setPosition({
           top: rect.top + window.scrollY,
@@ -282,7 +304,7 @@ export const FocusIndicator: React.FC<FocusIndicatorProps> = ({
         borderRadius: '4px',
         pointerEvents: 'none',
         zIndex: 9999,
-        transition: 'all 0.15s ease'
+        transition: 'all 0.15s ease',
       }}
       aria-hidden="true"
     />
@@ -292,14 +314,20 @@ export const FocusIndicator: React.FC<FocusIndicatorProps> = ({
 /**
  * Hook for managing focus within a specific element
  */
-export const useFocusManager = (options: {
-  trapFocus?: boolean;
-  restoreFocus?: boolean;
-  autoFocus?: boolean;
-} = {}): FocusManagerHookResult => {
+export const useFocusManager = (
+  options: {
+    trapFocus?: boolean;
+    restoreFocus?: boolean;
+    autoFocus?: boolean;
+  } = {}
+): FocusManagerHookResult => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
-  const { trapFocus = false, restoreFocus = false, autoFocus = false } = options;
+  const {
+    trapFocus = false,
+    restoreFocus = false,
+    autoFocus = false,
+  } = options;
 
   const getFocusableElements = useCallback((): HTMLElement[] => {
     if (!containerRef.current) {
@@ -313,18 +341,19 @@ export const useFocusManager = (options: {
       'select:not([disabled])',
       'a[href]',
       '[tabindex]:not([tabindex="-1"])',
-      '[contenteditable="true"]'
+      '[contenteditable="true"]',
     ].join(', ');
 
-    return Array.from(containerRef.current.querySelectorAll(focusableSelectors))
-      .filter((element) => {
-        const htmlElement = element as HTMLElement;
-        return (
-          htmlElement.offsetWidth > 0 &&
-          htmlElement.offsetHeight > 0 &&
-          !htmlElement.hasAttribute('aria-hidden')
-        );
-      }) as HTMLElement[];
+    return Array.from(
+      containerRef.current.querySelectorAll(focusableSelectors)
+    ).filter((element) => {
+      const htmlElement = element as HTMLElement;
+      return (
+        htmlElement.offsetWidth > 0 &&
+        htmlElement.offsetHeight > 0 &&
+        !htmlElement.hasAttribute('aria-hidden')
+      );
+    }) as HTMLElement[];
   }, []);
 
   const focusFirst = useCallback((): void => {
@@ -343,49 +372,62 @@ export const useFocusManager = (options: {
 
   const focusNext = useCallback((): void => {
     const focusableElements = getFocusableElements();
-    const currentIndex = focusableElements.indexOf(document.activeElement as HTMLElement);
-    const nextIndex = currentIndex < focusableElements.length - 1 ? currentIndex + 1 : 0;
+    const currentIndex = focusableElements.indexOf(
+      document.activeElement as HTMLElement
+    );
+    const nextIndex =
+      currentIndex < focusableElements.length - 1 ? currentIndex + 1 : 0;
     const nextElement = focusableElements.at(nextIndex) ?? null;
     nextElement?.focus();
   }, [getFocusableElements]);
 
   const focusPrevious = useCallback((): void => {
     const focusableElements = getFocusableElements();
-    const currentIndex = focusableElements.indexOf(document.activeElement as HTMLElement);
-    const prevIndex = currentIndex > 0 ? currentIndex - 1 : focusableElements.length - 1;
+    const currentIndex = focusableElements.indexOf(
+      document.activeElement as HTMLElement
+    );
+    const prevIndex =
+      currentIndex > 0 ? currentIndex - 1 : focusableElements.length - 1;
     const previousElement = focusableElements.at(prevIndex) ?? null;
     previousElement?.focus();
   }, [getFocusableElements]);
 
-  const handleKeyDown = useCallback((event: KeyboardEvent): void => {
-    if (!trapFocus || event.key !== 'Tab') {
-      return;
-    }
-
-    const focusableElements = getFocusableElements();
-    if (focusableElements.length === 0) {
-      event.preventDefault();
-      return;
-    }
-
-    const firstElement = focusableElements[0];
-    const lastElement = focusableElements[focusableElements.length - 1];
-    const activeElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const isActiveInside = activeElement !== null && focusableElements.includes(activeElement);
-
-    if (event.shiftKey) {
-      if (!isActiveInside || activeElement === firstElement) {
-        event.preventDefault();
-        lastElement.focus();
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent): void => {
+      if (!trapFocus || event.key !== 'Tab') {
+        return;
       }
-      return;
-    }
 
-    if (!isActiveInside || activeElement === lastElement) {
-      event.preventDefault();
-      firstElement.focus();
-    }
-  }, [trapFocus, getFocusableElements]);
+      const focusableElements = getFocusableElements();
+      if (focusableElements.length === 0) {
+        event.preventDefault();
+        return;
+      }
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+      const activeElement =
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null;
+      const isActiveInside =
+        activeElement !== null && focusableElements.includes(activeElement);
+
+      if (event.shiftKey) {
+        if (!isActiveInside || activeElement === firstElement) {
+          event.preventDefault();
+          lastElement.focus();
+        }
+        return;
+      }
+
+      if (!isActiveInside || activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    },
+    [trapFocus, getFocusableElements]
+  );
 
   useEffect(() => {
     const container = containerRef.current;
@@ -426,7 +468,7 @@ export const useFocusManager = (options: {
     focusLast,
     focusNext,
     focusPrevious,
-    getFocusableElements
+    getFocusableElements,
   };
 };
 

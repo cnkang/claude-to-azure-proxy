@@ -108,8 +108,8 @@
   cursor: pointer;
 }
 
-.setting-label input[type="checkbox"],
-.setting-label input[type="radio"] {
+.setting-label input[type='checkbox'],
+.setting-label input[type='radio'] {
   margin: 0;
   cursor: pointer;
 }
@@ -186,11 +186,11 @@
   background: var(--color-hover);
 }
 
-.font-size-option input[type="radio"] {
+.font-size-option input[type='radio'] {
   margin: 0;
 }
 
-.font-size-option input[type="radio"]:checked + .option-label {
+.font-size-option input[type='radio']:checked + .option-label {
   color: var(--color-accent);
   font-weight: 600;
 }
@@ -270,12 +270,12 @@
   background: var(--color-hover);
 }
 
-.wcag-option input[type="radio"] {
+.wcag-option input[type='radio'] {
   margin: 0;
   margin-right: 0.5rem;
 }
 
-.wcag-option input[type="radio"]:checked ~ .option-label {
+.wcag-option input[type='radio']:checked ~ .option-label {
   color: var(--color-accent);
   font-weight: 600;
 }
@@ -321,15 +321,15 @@
   .accessibility-settings {
     padding: 1rem;
   }
-  
+
   .font-size-options {
     flex-direction: column;
   }
-  
+
   .font-size-option {
     min-width: auto;
   }
-  
+
   .setting-controls {
     flex-direction: column;
     align-items: flex-start;
@@ -341,15 +341,15 @@
   .accessibility-settings {
     padding: 0.5rem;
   }
-  
+
   .settings-section {
     padding: 1rem;
   }
-  
+
   .wcag-options {
     gap: 0.5rem;
   }
-  
+
   .wcag-option {
     padding: 0.5rem;
   }

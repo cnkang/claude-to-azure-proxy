@@ -1,9 +1,9 @@
 /**
  * High Contrast Mode Component
- * 
+ *
  * Provides high contrast mode support for users with visual impairments.
  * Includes automatic detection and manual toggle functionality.
- * 
+ *
  * Requirements: 1.5, 10.4
  */
 
@@ -39,10 +39,11 @@ interface HighContrastModeProps {
  */
 export const HighContrastMode: React.FC<HighContrastModeProps> = ({
   children,
-  className = ''
+  className = '',
 }) => {
   const [isHighContrast, setIsHighContrast] = useState<boolean>(false);
-  const [systemPrefersHighContrast, setSystemPrefersHighContrast] = useState<boolean>(false);
+  const [systemPrefersHighContrast, setSystemPrefersHighContrast] =
+    useState<boolean>(false);
   const [manualOverride, setManualOverride] = useState<boolean | null>(null);
   const { announce } = useScreenReaderAnnouncer();
 
@@ -50,7 +51,10 @@ export const HighContrastMode: React.FC<HighContrastModeProps> = ({
    * Check system preference for high contrast
    */
   const checkSystemPreference = useCallback((): boolean => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    if (
+      typeof window === 'undefined' ||
+      typeof window.matchMedia !== 'function'
+    ) {
       setSystemPrefersHighContrast(false);
       return false;
     }
@@ -67,8 +71,12 @@ export const HighContrastMode: React.FC<HighContrastModeProps> = ({
   const loadSavedPreference = useCallback((): boolean | null => {
     try {
       const saved = localStorage.getItem('highContrastMode');
-      if (saved === 'true') {return true;}
-      if (saved === 'false') {return false;}
+      if (saved === 'true') {
+        return true;
+      }
+      if (saved === 'false') {
+        return false;
+      }
       return null;
     } catch {
       return null;
@@ -94,14 +102,15 @@ export const HighContrastMode: React.FC<HighContrastModeProps> = ({
    * Toggle high contrast mode
    */
   const toggleHighContrast = useCallback((): void => {
-    const newManualOverride = manualOverride === null ? !systemPrefersHighContrast : !manualOverride;
+    const newManualOverride =
+      manualOverride === null ? !systemPrefersHighContrast : !manualOverride;
     setManualOverride(newManualOverride);
     savePreference(newManualOverride);
-    
+
     // Announce the change to screen readers
     announce(
-      newManualOverride 
-        ? 'accessibility.highContrast.enabled' 
+      newManualOverride
+        ? 'accessibility.highContrast.enabled'
         : 'accessibility.highContrast.disabled',
       'polite'
     );
@@ -122,7 +131,7 @@ export const HighContrastMode: React.FC<HighContrastModeProps> = ({
   useEffect(() => {
     const systemPrefers = checkSystemPreference();
     const savedPreference = loadSavedPreference();
-    
+
     setManualOverride(savedPreference);
     setIsHighContrast(savedPreference ?? systemPrefers);
   }, [checkSystemPreference, loadSavedPreference]);
@@ -131,15 +140,18 @@ export const HighContrastMode: React.FC<HighContrastModeProps> = ({
    * Listen for system preference changes
    */
   useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    if (
+      typeof window === 'undefined' ||
+      typeof window.matchMedia !== 'function'
+    ) {
       return;
     }
 
     const mediaQuery = window.matchMedia('(prefers-contrast: high)');
-    
+
     const handleChange = (event: MediaQueryListEvent): void => {
       setSystemPrefersHighContrast(event.matches);
-      
+
       // If no manual override, follow system preference
       if (manualOverride === null) {
         setIsHighContrast(event.matches);
@@ -147,7 +159,7 @@ export const HighContrastMode: React.FC<HighContrastModeProps> = ({
     };
 
     mediaQuery.addEventListener('change', handleChange);
-    
+
     return (): void => {
       mediaQuery.removeEventListener('change', handleChange);
     };
@@ -173,7 +185,7 @@ export const HighContrastMode: React.FC<HighContrastModeProps> = ({
     }
 
     const root = document.documentElement;
-    
+
     if (isHighContrast) {
       root.classList.add('high-contrast');
       root.setAttribute('data-high-contrast', 'true');
@@ -194,7 +206,7 @@ export const HighContrastMode: React.FC<HighContrastModeProps> = ({
       isSystemPreferred: systemPrefersHighContrast,
       hasManualOverride: manualOverride !== null,
       toggle: toggleHighContrast,
-      reset: resetToSystemPreference
+      reset: resetToSystemPreference,
     };
 
     return (): void => {
@@ -202,10 +214,16 @@ export const HighContrastMode: React.FC<HighContrastModeProps> = ({
         delete window.highContrastMode;
       }
     };
-  }, [isHighContrast, systemPrefersHighContrast, manualOverride, toggleHighContrast, resetToSystemPreference]);
+  }, [
+    isHighContrast,
+    systemPrefersHighContrast,
+    manualOverride,
+    toggleHighContrast,
+    resetToSystemPreference,
+  ]);
 
   return (
-    <div 
+    <div
       className={`high-contrast-mode ${isHighContrast ? 'high-contrast-enabled' : ''} ${className}`}
       data-high-contrast={isHighContrast}
     >
@@ -220,7 +238,7 @@ export const HighContrastMode: React.FC<HighContrastModeProps> = ({
 export const HighContrastToggle: React.FC<HighContrastProps> = ({
   enabled,
   onToggle,
-  className = ''
+  className = '',
 }) => {
   const { t } = useI18n();
 
@@ -230,14 +248,26 @@ export const HighContrastToggle: React.FC<HighContrastProps> = ({
       onClick={onToggle}
       className={`high-contrast-toggle ${enabled ? 'enabled' : 'disabled'} ${className}`}
       aria-pressed={enabled}
-      aria-label={t(enabled ? 'accessibility.highContrast.disable' : 'accessibility.highContrast.enable')}
-      title={t(enabled ? 'accessibility.highContrast.disable' : 'accessibility.highContrast.enable')}
+      aria-label={t(
+        enabled
+          ? 'accessibility.highContrast.disable'
+          : 'accessibility.highContrast.enable'
+      )}
+      title={t(
+        enabled
+          ? 'accessibility.highContrast.disable'
+          : 'accessibility.highContrast.enable'
+      )}
     >
       <span className="toggle-icon" aria-hidden="true">
         {enabled ? '🔆' : '🔅'}
       </span>
       <span className="toggle-text">
-        {t(enabled ? 'accessibility.highContrast.on' : 'accessibility.highContrast.off')}
+        {t(
+          enabled
+            ? 'accessibility.highContrast.on'
+            : 'accessibility.highContrast.off'
+        )}
       </span>
     </button>
   );
@@ -253,7 +283,8 @@ export const useHighContrastMode = (): {
   reset: () => void;
 } => {
   const [isHighContrast, setIsHighContrast] = useState<boolean>(false);
-  const [systemPrefersHighContrast, setSystemPrefersHighContrast] = useState<boolean>(false);
+  const [systemPrefersHighContrast, setSystemPrefersHighContrast] =
+    useState<boolean>(false);
 
   useEffect(() => {
     // Check if high contrast mode utilities are available
@@ -278,7 +309,10 @@ export const useHighContrastMode = (): {
     checkHighContrast();
 
     // Set up interval to check for changes
-    const intervalId = typeof window !== 'undefined' ? window.setInterval(checkHighContrast, 1000) : undefined;
+    const intervalId =
+      typeof window !== 'undefined'
+        ? window.setInterval(checkHighContrast, 1000)
+        : undefined;
 
     return (): void => {
       if (intervalId !== undefined) {
@@ -303,7 +337,7 @@ export const useHighContrastMode = (): {
     isHighContrast,
     systemPrefersHighContrast,
     toggle,
-    reset
+    reset,
   };
 };
 

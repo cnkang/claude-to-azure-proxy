@@ -1,9 +1,9 @@
 /**
  * Screen Reader Announcer Component
- * 
+ *
  * Provides live region announcements for screen readers to communicate
  * dynamic content changes and important status updates.
- * 
+ *
  * Requirements: 1.5, 10.4
  */
 
@@ -12,7 +12,11 @@ import { useI18n } from '../../contexts/I18nContext';
 
 declare global {
   interface Window {
-    announceToScreenReader?: (message: string, priority: 'polite' | 'assertive', clearAfter?: number) => void;
+    announceToScreenReader?: (
+      message: string,
+      priority: 'polite' | 'assertive',
+      clearAfter?: number
+    ) => void;
   }
 }
 
@@ -30,17 +34,25 @@ interface ScreenReaderAnnouncerProps {
  * Screen reader announcer with live regions
  */
 export const ScreenReaderAnnouncer: React.FC<ScreenReaderAnnouncerProps> = ({
-  className = ''
+  className = '',
 }) => {
   const [politeMessage, setPoliteMessage] = useState<string>('');
   const [assertiveMessage, setAssertiveMessage] = useState<string>('');
-  const politeTimeoutRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
-  const assertiveTimeoutRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
+  const politeTimeoutRef = useRef<ReturnType<
+    typeof globalThis.setTimeout
+  > | null>(null);
+  const assertiveTimeoutRef = useRef<ReturnType<
+    typeof globalThis.setTimeout
+  > | null>(null);
 
   /**
    * Announce a message to screen readers
    */
-  const announce = (message: string, priority: 'polite' | 'assertive' = 'polite', clearAfter = 5000): void => {
+  const announce = (
+    message: string,
+    priority: 'polite' | 'assertive' = 'polite',
+    clearAfter = 5000
+  ): void => {
     if (message.trim().length === 0) {
       return;
     }
@@ -50,9 +62,9 @@ export const ScreenReaderAnnouncer: React.FC<ScreenReaderAnnouncerProps> = ({
       if (assertiveTimeoutRef.current !== null) {
         globalThis.clearTimeout(assertiveTimeoutRef.current);
       }
-      
+
       setAssertiveMessage(message);
-      
+
       // Clear message after specified time
       assertiveTimeoutRef.current = globalThis.setTimeout(() => {
         setAssertiveMessage('');
@@ -62,9 +74,9 @@ export const ScreenReaderAnnouncer: React.FC<ScreenReaderAnnouncerProps> = ({
       if (politeTimeoutRef.current !== null) {
         globalThis.clearTimeout(politeTimeoutRef.current);
       }
-      
+
       setPoliteMessage(message);
-      
+
       // Clear message after specified time
       politeTimeoutRef.current = globalThis.setTimeout(() => {
         setPoliteMessage('');
@@ -91,7 +103,7 @@ export const ScreenReaderAnnouncer: React.FC<ScreenReaderAnnouncerProps> = ({
     }
 
     window.announceToScreenReader = announce;
-    
+
     return (): void => {
       if (window.announceToScreenReader) {
         delete window.announceToScreenReader;
@@ -111,7 +123,7 @@ export const ScreenReaderAnnouncer: React.FC<ScreenReaderAnnouncerProps> = ({
       >
         {politeMessage}
       </div>
-      
+
       {/* Assertive announcements - will interrupt current speech */}
       <div
         role="alert"
@@ -130,20 +142,32 @@ export const ScreenReaderAnnouncer: React.FC<ScreenReaderAnnouncerProps> = ({
  * Hook for announcing messages to screen readers
  */
 export const useScreenReaderAnnouncer = (): {
-  announce: (messageKey: string, priority?: 'polite' | 'assertive', interpolation?: Record<string, unknown>, clearAfter?: number) => void;
-  announceRaw: (message: string, priority?: 'polite' | 'assertive', clearAfter?: number) => void;
+  announce: (
+    messageKey: string,
+    priority?: 'polite' | 'assertive',
+    interpolation?: Record<string, unknown>,
+    clearAfter?: number
+  ) => void;
+  announceRaw: (
+    message: string,
+    priority?: 'polite' | 'assertive',
+    clearAfter?: number
+  ) => void;
 } => {
   const { t } = useI18n();
 
   const announce = (
-    messageKey: string, 
+    messageKey: string,
     priority: 'polite' | 'assertive' = 'polite',
     interpolation?: Record<string, unknown>,
     clearAfter = 5000
   ): void => {
     const message = t(messageKey, interpolation);
-    
-    if (typeof window !== 'undefined' && typeof window.announceToScreenReader === 'function') {
+
+    if (
+      typeof window !== 'undefined' &&
+      typeof window.announceToScreenReader === 'function'
+    ) {
       window.announceToScreenReader(message, priority, clearAfter);
     }
   };
@@ -153,7 +177,10 @@ export const useScreenReaderAnnouncer = (): {
     priority: 'polite' | 'assertive' = 'polite',
     clearAfter = 5000
   ): void => {
-    if (typeof window !== 'undefined' && typeof window.announceToScreenReader === 'function') {
+    if (
+      typeof window !== 'undefined' &&
+      typeof window.announceToScreenReader === 'function'
+    ) {
       window.announceToScreenReader(message, priority, clearAfter);
     }
   };
@@ -167,19 +194,21 @@ export const useScreenReaderAnnouncer = (): {
 export const Announcement: React.FC<AnnouncementProps> = ({
   message,
   priority,
-  clearAfter = 5000
+  clearAfter = 5000,
 }) => {
   const [currentMessage, setCurrentMessage] = useState<string>(message);
-  const timeoutRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(
+    null
+  );
 
   useEffect(() => {
     setCurrentMessage(message);
-    
+
     if (clearAfter > 0) {
       if (timeoutRef.current !== null) {
         globalThis.clearTimeout(timeoutRef.current);
       }
-      
+
       timeoutRef.current = globalThis.setTimeout(() => {
         setCurrentMessage('');
       }, clearAfter);

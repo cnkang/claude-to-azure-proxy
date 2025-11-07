@@ -1,9 +1,9 @@
 /**
  * Accessibility Settings Component
- * 
+ *
  * Provides a comprehensive settings interface for accessibility features
  * including high contrast mode, font size, reduced motion, and WCAG compliance.
- * 
+ *
  * Requirements: 1.5, 10.4
  */
 
@@ -22,7 +22,7 @@ interface AccessibilitySettingsProps {
  * Accessibility settings component
  */
 export const AccessibilitySettings: React.FC<AccessibilitySettingsProps> = ({
-  className = ''
+  className = '',
 }) => {
   const { t } = useI18n();
   const { announce } = useScreenReaderAnnouncer();
@@ -45,7 +45,7 @@ export const AccessibilitySettings: React.FC<AccessibilitySettingsProps> = ({
     resetReducedMotion,
     setFontSize,
     setZoomLevel,
-    setWcagLevel
+    setWcagLevel,
   } = useAccessibility();
 
   const { getMinimumContrastRatio } = useWCAGCompliance();
@@ -53,12 +53,16 @@ export const AccessibilitySettings: React.FC<AccessibilitySettingsProps> = ({
 
   const handleFontSizeChange = (size: typeof fontSize): void => {
     setFontSize(size);
-    announce('accessibility.fontSize.changed', 'polite', { size: t(`accessibility.fontSize.${size}`) });
+    announce('accessibility.fontSize.changed', 'polite', {
+      size: t(`accessibility.fontSize.${size}`),
+    });
   };
 
   const handleZoomChange = (level: number): void => {
     setZoomLevel(level);
-    announce('accessibility.zoom.changed', 'polite', { level: Math.round(level * 100) });
+    announce('accessibility.zoom.changed', 'polite', {
+      level: Math.round(level * 100),
+    });
   };
 
   const handleWcagLevelChange = (level: typeof wcagLevel): void => {
@@ -78,7 +82,9 @@ export const AccessibilitySettings: React.FC<AccessibilitySettingsProps> = ({
       <div className="settings-sections">
         {/* Screen Reader Support */}
         <section className="settings-section">
-          <h3 className="section-title">{t('accessibility.screenReader.title')}</h3>
+          <h3 className="section-title">
+            {t('accessibility.screenReader.title')}
+          </h3>
           <p className="section-description">
             {t('accessibility.screenReader.description')}
           </p>
@@ -86,10 +92,9 @@ export const AccessibilitySettings: React.FC<AccessibilitySettingsProps> = ({
           <div className="setting-group">
             <div className="setting-item">
               <span className="setting-status">
-                {screenReaderEnabled 
+                {screenReaderEnabled
                   ? t('accessibility.screenReader.detected')
-                  : t('accessibility.screenReader.notDetected')
-                }
+                  : t('accessibility.screenReader.notDetected')}
               </span>
             </div>
 
@@ -140,10 +145,9 @@ export const AccessibilitySettings: React.FC<AccessibilitySettingsProps> = ({
                 )}
               </div>
               <p className="setting-hint">
-                {systemPrefersHighContrast 
+                {systemPrefersHighContrast
                   ? t('accessibility.highContrast.systemEnabled')
-                  : t('accessibility.highContrast.systemDisabled')
-                }
+                  : t('accessibility.highContrast.systemDisabled')}
               </p>
             </div>
 
@@ -153,20 +157,22 @@ export const AccessibilitySettings: React.FC<AccessibilitySettingsProps> = ({
                 {t('accessibility.fontSize.title')}
               </label>
               <div className="font-size-options">
-                {(['small', 'medium', 'large', 'extra-large'] as const).map((size) => (
-                  <label key={size} className="font-size-option">
-                    <input
-                      type="radio"
-                      name="fontSize"
-                      value={size}
-                      checked={fontSize === size}
-                      onChange={() => handleFontSizeChange(size)}
-                    />
-                    <span className="option-label">
-                      {t(`accessibility.fontSize.${size}`)}
-                    </span>
-                  </label>
-                ))}
+                {(['small', 'medium', 'large', 'extra-large'] as const).map(
+                  (size) => (
+                    <label key={size} className="font-size-option">
+                      <input
+                        type="radio"
+                        name="fontSize"
+                        value={size}
+                        checked={fontSize === size}
+                        onChange={() => handleFontSizeChange(size)}
+                      />
+                      <span className="option-label">
+                        {t(`accessibility.fontSize.${size}`)}
+                      </span>
+                    </label>
+                  )
+                )}
               </div>
             </div>
 
@@ -224,10 +230,9 @@ export const AccessibilitySettings: React.FC<AccessibilitySettingsProps> = ({
                 )}
               </div>
               <p id="reduced-motion-description" className="setting-hint">
-                {systemPrefersReducedMotion 
+                {systemPrefersReducedMotion
                   ? t('accessibility.reducedMotion.systemEnabled')
-                  : t('accessibility.reducedMotion.systemDisabled')
-                }
+                  : t('accessibility.reducedMotion.systemDisabled')}
               </p>
             </div>
           </div>
@@ -297,18 +302,18 @@ export const AccessibilitySettings: React.FC<AccessibilitySettingsProps> = ({
                           checked={wcagLevel === level}
                           onChange={() => handleWcagLevelChange(level)}
                         />
-                        <span className="option-label">
-                          WCAG {level}
-                        </span>
+                        <span className="option-label">WCAG {level}</span>
                         <span className="option-description">
-                          {t(`accessibility.wcag.${level.toLowerCase()}.description`)}
+                          {t(
+                            `accessibility.wcag.${level.toLowerCase()}.description`
+                          )}
                         </span>
                       </label>
                     ))}
                   </div>
                   <p className="setting-hint">
-                    {t('accessibility.wcag.currentRatio', { 
-                      ratio: getMinimumContrastRatio() 
+                    {t('accessibility.wcag.currentRatio', {
+                      ratio: getMinimumContrastRatio(),
                     })}
                   </p>
                 </div>

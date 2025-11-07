@@ -1,9 +1,9 @@
 /**
  * Keyboard Navigation Component
- * 
+ *
  * Provides keyboard navigation utilities including focus management,
  * keyboard shortcuts, and focus trapping for modal dialogs.
- * 
+ *
  * Requirements: 1.5, 10.4
  */
 
@@ -30,7 +30,7 @@ export const KeyboardNavigation: React.FC<KeyboardNavigationProps> = ({
   trapFocus = false,
   autoFocus = false,
   restoreFocus = false,
-  className = ''
+  className = '',
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
@@ -59,11 +59,11 @@ export const KeyboardNavigation: React.FC<KeyboardNavigationProps> = ({
       'object',
       'embed',
       'area[href]',
-      'summary'
+      'summary',
     ].join(', ');
 
-    return Array.from(container.querySelectorAll(focusableSelectors))
-      .filter((element) => {
+    return Array.from(container.querySelectorAll(focusableSelectors)).filter(
+      (element) => {
         const htmlElement = element as HTMLElement;
         return (
           htmlElement.offsetWidth > 0 &&
@@ -71,95 +71,127 @@ export const KeyboardNavigation: React.FC<KeyboardNavigationProps> = ({
           !htmlElement.hasAttribute('aria-hidden') &&
           window.getComputedStyle(htmlElement).visibility !== 'hidden'
         );
-      }) as HTMLElement[];
+      }
+    ) as HTMLElement[];
   }, []);
 
   /**
    * Handle keyboard events
    */
-  const handleKeyDown = useCallback((event: KeyboardEvent): void => {
-    const container = containerRef.current;
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent): void => {
+      const container = containerRef.current;
 
-    switch (event.key) {
-      case 'Escape':
-        if (onEscape) {
-          event.preventDefault();
-          onEscape();
-        }
-        break;
-
-      case 'Enter':
-        if (onEnter && container && event.target === container) {
-          event.preventDefault();
-          onEnter();
-        }
-        break;
-
-      case 'Tab':
-        if (trapFocus) {
-          const focusableElements = getFocusableElements();
-          if (focusableElements.length === 0) {
+      switch (event.key) {
+        case 'Escape':
+          if (onEscape) {
             event.preventDefault();
-            return;
+            onEscape();
           }
+          break;
 
-          const firstElement = focusableElements.at(0) ?? null;
-          const lastElement = focusableElements.at(-1) ?? null;
-          const activeElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-          const isActiveInside = activeElement !== null && focusableElements.includes(activeElement);
-
-          if (event.shiftKey) {
-            if (!isActiveInside || activeElement === firstElement) {
-              event.preventDefault();
-              lastElement?.focus();
-            }
-          } else if (!isActiveInside || activeElement === lastElement) {
+        case 'Enter':
+          if (onEnter && container && event.target === container) {
             event.preventDefault();
+            onEnter();
+          }
+          break;
+
+        case 'Tab':
+          if (trapFocus) {
+            const focusableElements = getFocusableElements();
+            if (focusableElements.length === 0) {
+              event.preventDefault();
+              return;
+            }
+
+            const firstElement = focusableElements.at(0) ?? null;
+            const lastElement = focusableElements.at(-1) ?? null;
+            const activeElement =
+              document.activeElement instanceof HTMLElement
+                ? document.activeElement
+                : null;
+            const isActiveInside =
+              activeElement !== null &&
+              focusableElements.includes(activeElement);
+
+            if (event.shiftKey) {
+              if (!isActiveInside || activeElement === firstElement) {
+                event.preventDefault();
+                lastElement?.focus();
+              }
+            } else if (!isActiveInside || activeElement === lastElement) {
+              event.preventDefault();
+              firstElement?.focus();
+            }
+          }
+          break;
+
+        case 'ArrowDown':
+        case 'ArrowUp':
+          // Handle arrow key navigation for lists and menus
+          if (
+            container &&
+            (container.getAttribute('role') === 'menu' ||
+              container.getAttribute('role') === 'listbox')
+          ) {
+            event.preventDefault();
+            const focusableElements = getFocusableElements();
+            const activeElement =
+              document.activeElement instanceof HTMLElement
+                ? document.activeElement
+                : null;
+            const currentIndex = activeElement
+              ? focusableElements.indexOf(activeElement)
+              : -1;
+
+            let nextIndex: number;
+            if (event.key === 'ArrowDown') {
+              nextIndex =
+                currentIndex < focusableElements.length - 1
+                  ? currentIndex + 1
+                  : 0;
+            } else {
+              nextIndex =
+                currentIndex > 0
+                  ? currentIndex - 1
+                  : focusableElements.length - 1;
+            }
+
+            const nextElement = focusableElements.at(nextIndex) ?? null;
+            nextElement?.focus();
+          }
+          break;
+
+        case 'Home':
+          if (
+            container &&
+            (container.getAttribute('role') === 'menu' ||
+              container.getAttribute('role') === 'listbox')
+          ) {
+            event.preventDefault();
+            const focusableElements = getFocusableElements();
+            const firstElement = focusableElements.at(0) ?? null;
             firstElement?.focus();
           }
-        }
-        break;
+          break;
 
-      case 'ArrowDown':
-      case 'ArrowUp':
-        // Handle arrow key navigation for lists and menus
-        if (container && (container.getAttribute('role') === 'menu' || container.getAttribute('role') === 'listbox')) {
-          event.preventDefault();
-          const focusableElements = getFocusableElements();
-          const activeElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-          const currentIndex = activeElement ? focusableElements.indexOf(activeElement) : -1;
-          
-          let nextIndex: number;
-          if (event.key === 'ArrowDown') {
-            nextIndex = currentIndex < focusableElements.length - 1 ? currentIndex + 1 : 0;
-          } else {
-            nextIndex = currentIndex > 0 ? currentIndex - 1 : focusableElements.length - 1;
+        case 'End':
+          if (
+            container &&
+            (container.getAttribute('role') === 'menu' ||
+              container.getAttribute('role') === 'listbox')
+          ) {
+            event.preventDefault();
+            const focusableElements = getFocusableElements();
+            const lastElement = focusableElements.at(-1) ?? null;
+            lastElement?.focus();
           }
-          
-          const nextElement = focusableElements.at(nextIndex) ?? null;
-          nextElement?.focus();
-        }
-        break;
-
-      case 'Home':
-        if (container && (container.getAttribute('role') === 'menu' || container.getAttribute('role') === 'listbox')) {
-          event.preventDefault();
-          const focusableElements = getFocusableElements();
-          const firstElement = focusableElements.at(0) ?? null;
-          firstElement?.focus();
-        }
-        break;
-
-      case 'End':
-        if (container && (container.getAttribute('role') === 'menu' || container.getAttribute('role') === 'listbox')) {
-          event.preventDefault();
-          const focusableElements = getFocusableElements();
-          const lastElement = focusableElements.at(-1) ?? null;
-          lastElement?.focus();
-        }
-        break;
-    }
-  }, [onEscape, onEnter, trapFocus, getFocusableElements]);
+          break;
+      }
+    },
+    [onEscape, onEnter, trapFocus, getFocusableElements]
+  );
 
   /**
    * Set up keyboard event listeners
@@ -191,7 +223,7 @@ export const KeyboardNavigation: React.FC<KeyboardNavigationProps> = ({
 
     return (): void => {
       container.removeEventListener('keydown', handleKeyDown);
-      
+
       // Restore previous focus
       if (restoreFocus && previousFocusRef.current) {
         previousFocusRef.current.focus();
@@ -223,7 +255,7 @@ export interface SkipLinkProps {
 export const SkipLink: React.FC<SkipLinkProps> = ({
   href,
   children,
-  className = ''
+  className = '',
 }) => {
   return (
     <a
@@ -251,7 +283,9 @@ export const SkipLink: React.FC<SkipLinkProps> = ({
 /**
  * Focus trap hook for managing focus within a container
  */
-export const useFocusTrap = (isActive: boolean = true): React.RefObject<HTMLElement | null> => {
+export const useFocusTrap = (
+  isActive: boolean = true
+): React.RefObject<HTMLElement | null> => {
   const containerRef = useRef<HTMLElement | null>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
@@ -271,18 +305,19 @@ export const useFocusTrap = (isActive: boolean = true): React.RefObject<HTMLElem
         'select:not([disabled])',
         'a[href]',
         '[tabindex]:not([tabindex="-1"])',
-        '[contenteditable="true"]'
+        '[contenteditable="true"]',
       ].join(', ');
 
-      return Array.from(container.querySelectorAll(focusableSelectors))
-        .filter((element) => {
+      return Array.from(container.querySelectorAll(focusableSelectors)).filter(
+        (element) => {
           const htmlElement = element as HTMLElement;
           return (
             htmlElement.offsetWidth > 0 &&
             htmlElement.offsetHeight > 0 &&
             !htmlElement.hasAttribute('aria-hidden')
           );
-        }) as HTMLElement[];
+        }
+      ) as HTMLElement[];
     };
 
     const handleKeyDown = (event: KeyboardEvent): void => {
@@ -295,8 +330,12 @@ export const useFocusTrap = (isActive: boolean = true): React.RefObject<HTMLElem
 
         const firstElement = focusableElements.at(0) ?? null;
         const lastElement = focusableElements.at(-1) ?? null;
-        const activeElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-        const isActiveInside = activeElement !== null && focusableElements.includes(activeElement);
+        const activeElement =
+          document.activeElement instanceof HTMLElement
+            ? document.activeElement
+            : null;
+        const isActiveInside =
+          activeElement !== null && focusableElements.includes(activeElement);
 
         if (event.shiftKey) {
           if (!isActiveInside || activeElement === firstElement) {
@@ -321,7 +360,7 @@ export const useFocusTrap = (isActive: boolean = true): React.RefObject<HTMLElem
 
     return (): void => {
       document.removeEventListener('keydown', handleKeyDown);
-      
+
       // Restore previous focus
       if (previousFocusRef.current) {
         previousFocusRef.current.focus();
@@ -339,7 +378,11 @@ export const useRovingTabindex = (
   items: HTMLElement[],
   activeIndex: number = 0
 ): {
-  handleKeyDown: (event: KeyboardEvent, currentIndex: number, onIndexChange: (index: number) => void) => void;
+  handleKeyDown: (
+    event: KeyboardEvent,
+    currentIndex: number,
+    onIndexChange: (index: number) => void
+  ) => void;
 } => {
   useEffect(() => {
     items.forEach((item, index) => {
@@ -351,40 +394,47 @@ export const useRovingTabindex = (
     });
   }, [items, activeIndex]);
 
-  const handleKeyDown = useCallback((event: KeyboardEvent, currentIndex: number, onIndexChange: (index: number) => void): void => {
-    let newIndex = currentIndex;
+  const handleKeyDown = useCallback(
+    (
+      event: KeyboardEvent,
+      currentIndex: number,
+      onIndexChange: (index: number) => void
+    ): void => {
+      let newIndex = currentIndex;
 
-    switch (event.key) {
-      case 'ArrowDown':
-      case 'ArrowRight':
-        event.preventDefault();
-        newIndex = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
-        break;
+      switch (event.key) {
+        case 'ArrowDown':
+        case 'ArrowRight':
+          event.preventDefault();
+          newIndex = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
+          break;
 
-      case 'ArrowUp':
-      case 'ArrowLeft':
-        event.preventDefault();
-        newIndex = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
-        break;
+        case 'ArrowUp':
+        case 'ArrowLeft':
+          event.preventDefault();
+          newIndex = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
+          break;
 
-      case 'Home':
-        event.preventDefault();
-        newIndex = 0;
-        break;
+        case 'Home':
+          event.preventDefault();
+          newIndex = 0;
+          break;
 
-      case 'End':
-        event.preventDefault();
-        newIndex = items.length - 1;
-        break;
+        case 'End':
+          event.preventDefault();
+          newIndex = items.length - 1;
+          break;
 
-      default:
-        return;
-    }
+        default:
+          return;
+      }
 
-    onIndexChange(newIndex);
-    const nextElement = items.at(newIndex) ?? null;
-    nextElement?.focus();
-  }, [items]);
+      onIndexChange(newIndex);
+      const nextElement = items.at(newIndex) ?? null;
+      nextElement?.focus();
+    },
+    [items]
+  );
 
   return { handleKeyDown };
 };

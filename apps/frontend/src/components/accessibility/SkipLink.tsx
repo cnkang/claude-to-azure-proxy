@@ -1,6 +1,6 @@
 /**
  * SkipLink Component
- * 
+ *
  * Provides a skip link for keyboard navigation users to bypass repetitive content
  * and jump directly to main content areas. This is a WCAG 2.2 AAA requirement.
  */
@@ -19,23 +19,24 @@ interface SkipLinkProps {
 
 /**
  * SkipLink component for keyboard navigation accessibility
- * 
+ *
  * Features:
  * - Visually hidden until focused
  * - Keyboard accessible
  * - Customizable target and text
  * - Internationalization support
  */
-export const SkipLink: React.FC<SkipLinkProps> = ({ 
-  targetId, 
-  text, 
-  className = '' 
+export const SkipLink: React.FC<SkipLinkProps> = ({
+  targetId,
+  text,
+  className = '',
 }) => {
   const { t } = useTranslation();
-  
-  const skipText = typeof text === 'string' && text.trim().length > 0
-    ? text
-    : t('accessibility.skipToMainContent', 'Skip to main content');
+
+  const skipText =
+    typeof text === 'string' && text.trim().length > 0
+      ? text
+      : t('accessibility.skipToMainContent', 'Skip to main content');
 
   const focusTarget = (): void => {
     if (typeof document === 'undefined') {
@@ -59,7 +60,7 @@ export const SkipLink: React.FC<SkipLinkProps> = ({
 
     targetElement.scrollIntoView({
       behavior: 'smooth',
-      block: 'start'
+      block: 'start',
     });
   };
 
@@ -68,13 +69,15 @@ export const SkipLink: React.FC<SkipLinkProps> = ({
     focusTarget();
   };
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLAnchorElement>): void => {
+  const handleKeyDown = (
+    event: React.KeyboardEvent<HTMLAnchorElement>
+  ): void => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       focusTarget();
     }
   };
-  
+
   return (
     <a
       href={`#${targetId}`}

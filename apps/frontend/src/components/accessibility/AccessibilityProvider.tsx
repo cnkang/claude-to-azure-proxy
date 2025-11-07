@@ -1,9 +1,9 @@
 /**
  * Accessibility Provider Component
- * 
+ *
  * Central provider for accessibility features including screen reader support,
  * keyboard navigation, high contrast mode, and WCAG compliance utilities.
- * 
+ *
  * Requirements: 1.5, 10.4
  */
 
@@ -23,23 +23,23 @@ interface AccessibilityState {
   // Screen reader support
   screenReaderEnabled: boolean;
   announcements: boolean;
-  
+
   // Keyboard navigation
   keyboardNavigation: boolean;
   focusVisible: boolean;
-  
+
   // High contrast mode
   highContrastMode: boolean;
   systemPrefersHighContrast: boolean;
-  
+
   // Reduced motion
   reducedMotion: boolean;
   systemPrefersReducedMotion: boolean;
-  
+
   // Font size and zoom
   fontSize: 'small' | 'medium' | 'large' | 'extra-large';
   zoomLevel: number;
-  
+
   // WCAG compliance level
   wcagLevel: 'A' | 'AA' | 'AAA';
 }
@@ -48,30 +48,34 @@ interface AccessibilityActions {
   // Screen reader
   announce: (message: string, priority?: 'polite' | 'assertive') => void;
   toggleAnnouncements: () => void;
-  
+
   // Keyboard navigation
   toggleKeyboardNavigation: () => void;
   setFocusVisible: (visible: boolean) => void;
-  
+
   // High contrast
   toggleHighContrast: () => void;
   resetHighContrast: () => void;
-  
+
   // Reduced motion
   toggleReducedMotion: () => void;
   resetReducedMotion: () => void;
-  
+
   // Font size and zoom
   setFontSize: (size: AccessibilityState['fontSize']) => void;
   setZoomLevel: (level: number) => void;
-  
+
   // WCAG compliance
   setWcagLevel: (level: AccessibilityState['wcagLevel']) => void;
 }
 
-interface AccessibilityContextType extends AccessibilityState, AccessibilityActions {}
+interface AccessibilityContextType
+  extends AccessibilityState,
+    AccessibilityActions {}
 
-const AccessibilityContext = createContext<AccessibilityContextType | null>(null);
+const AccessibilityContext = createContext<AccessibilityContextType | null>(
+  null
+);
 
 export interface AccessibilityProviderProps {
   children: ReactNode;
@@ -83,10 +87,10 @@ export interface AccessibilityProviderProps {
  */
 export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
   children,
-  wcagLevel = 'AAA'
+  wcagLevel = 'AAA',
 }) => {
   const { t } = useI18n();
-  
+
   // State
   const [state, setState] = useState<AccessibilityState>({
     screenReaderEnabled: false,
@@ -99,7 +103,7 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
     systemPrefersReducedMotion: false,
     fontSize: 'medium',
     zoomLevel: 1,
-    wcagLevel
+    wcagLevel,
   });
 
   /**
@@ -111,7 +115,8 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
       return false;
     }
 
-    const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+    const userAgent =
+      typeof navigator !== 'undefined' ? navigator.userAgent : '';
     const hasKnownScreenReaderUA =
       userAgent.includes('NVDA') ||
       userAgent.includes('JAWS') ||
@@ -129,26 +134,49 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
    * Check system preferences
    */
   const checkSystemPreferences = (): void => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    if (
+      typeof window === 'undefined' ||
+      typeof window.matchMedia !== 'function'
+    ) {
       return;
     }
 
     // High contrast preference
     const highContrastQuery = window.matchMedia('(prefers-contrast: high)');
-    setState(prev => ({ ...prev, systemPrefersHighContrast: highContrastQuery.matches }));
+    setState((prev) => ({
+      ...prev,
+      systemPrefersHighContrast: highContrastQuery.matches,
+    }));
 
     // Reduced motion preference
-    const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setState(prev => ({ ...prev, systemPrefersReducedMotion: reducedMotionQuery.matches }));
+    const reducedMotionQuery = window.matchMedia(
+      '(prefers-reduced-motion: reduce)'
+    );
+    setState((prev) => ({
+      ...prev,
+      systemPrefersReducedMotion: reducedMotionQuery.matches,
+    }));
 
     // Listen for changes
-    highContrastQuery.addEventListener('change', (event: MediaQueryListEvent) => {
-      setState(prev => ({ ...prev, systemPrefersHighContrast: event.matches }));
-    });
+    highContrastQuery.addEventListener(
+      'change',
+      (event: MediaQueryListEvent) => {
+        setState((prev) => ({
+          ...prev,
+          systemPrefersHighContrast: event.matches,
+        }));
+      }
+    );
 
-    reducedMotionQuery.addEventListener('change', (event: MediaQueryListEvent) => {
-      setState(prev => ({ ...prev, systemPrefersReducedMotion: event.matches }));
-    });
+    reducedMotionQuery.addEventListener(
+      'change',
+      (event: MediaQueryListEvent) => {
+        setState((prev) => ({
+          ...prev,
+          systemPrefersReducedMotion: event.matches,
+        }));
+      }
+    );
   };
 
   /**
@@ -159,7 +187,7 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
       const saved = localStorage.getItem('accessibilityPreferences');
       if (saved !== null) {
         const preferences = JSON.parse(saved) as Partial<AccessibilityState>;
-        setState(prev => ({ ...prev, ...preferences }));
+        setState((prev) => ({ ...prev, ...preferences }));
       }
     } catch {
       // Ignore localStorage errors
@@ -173,7 +201,9 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
     try {
       const current = localStorage.getItem('accessibilityPreferences');
       const existing =
-        current !== null ? (JSON.parse(current) as Record<string, unknown>) : {};
+        current !== null
+          ? (JSON.parse(current) as Record<string, unknown>)
+          : {};
       const updated: Record<string, unknown> = { ...existing, ...newState };
       localStorage.setItem('accessibilityPreferences', JSON.stringify(updated));
     } catch {
@@ -195,19 +225,24 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
       }
 
       const existing = parsed as Record<string, unknown>;
-      const sanitizedEntries = Object.entries(existing).filter(([entryKey, value]) => {
-        if (entryKey === key) {
-          return false;
+      const sanitizedEntries = Object.entries(existing).filter(
+        ([entryKey, value]) => {
+          if (entryKey === key) {
+            return false;
+          }
+          return value !== undefined;
         }
-        return value !== undefined;
-      });
+      );
       if (sanitizedEntries.length === 0) {
         localStorage.removeItem('accessibilityPreferences');
         return;
       }
 
       const sanitizedPreferences = Object.fromEntries(sanitizedEntries);
-      localStorage.setItem('accessibilityPreferences', JSON.stringify(sanitizedPreferences));
+      localStorage.setItem(
+        'accessibilityPreferences',
+        JSON.stringify(sanitizedPreferences)
+      );
     } catch {
       // Ignore localStorage errors
     }
@@ -216,10 +251,18 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
   /**
    * Actions
    */
-  const announce = (message: string, priority: 'polite' | 'assertive' = 'polite'): void => {
-    const announcer = (window as typeof window & {
-      announceToScreenReader?: (_msg: string, announcePriority: 'polite' | 'assertive') => void;
-    }).announceToScreenReader;
+  const announce = (
+    message: string,
+    priority: 'polite' | 'assertive' = 'polite'
+  ): void => {
+    const announcer = (
+      window as typeof window & {
+        announceToScreenReader?: (
+          _msg: string,
+          announcePriority: 'polite' | 'assertive'
+        ) => void;
+      }
+    ).announceToScreenReader;
 
     if (state.announcements && typeof announcer === 'function') {
       announcer(message, priority);
@@ -228,11 +271,11 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
 
   const toggleAnnouncements = (): void => {
     const newValue = !state.announcements;
-    setState(prev => ({ ...prev, announcements: newValue }));
+    setState((prev) => ({ ...prev, announcements: newValue }));
     savePreferences({ announcements: newValue });
-    
+
     announce(
-      newValue 
+      newValue
         ? t('accessibility.announcements.enabled')
         : t('accessibility.announcements.disabled'),
       'assertive'
@@ -241,11 +284,11 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
 
   const toggleKeyboardNavigation = (): void => {
     const newValue = !state.keyboardNavigation;
-    setState(prev => ({ ...prev, keyboardNavigation: newValue }));
+    setState((prev) => ({ ...prev, keyboardNavigation: newValue }));
     savePreferences({ keyboardNavigation: newValue });
-    
+
     announce(
-      newValue 
+      newValue
         ? t('accessibility.keyboardNavigation.enabled')
         : t('accessibility.keyboardNavigation.disabled'),
       'polite'
@@ -253,16 +296,16 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
   };
 
   const setFocusVisible = (visible: boolean): void => {
-    setState(prev => ({ ...prev, focusVisible: visible }));
+    setState((prev) => ({ ...prev, focusVisible: visible }));
   };
 
   const toggleHighContrast = (): void => {
     const newValue = !state.highContrastMode;
-    setState(prev => ({ ...prev, highContrastMode: newValue }));
+    setState((prev) => ({ ...prev, highContrastMode: newValue }));
     savePreferences({ highContrastMode: newValue });
-    
+
     announce(
-      newValue 
+      newValue
         ? t('accessibility.highContrast.enabled')
         : t('accessibility.highContrast.disabled'),
       'polite'
@@ -270,18 +313,21 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
   };
 
   const resetHighContrast = (): void => {
-    setState(prev => ({ ...prev, highContrastMode: prev.systemPrefersHighContrast }));
+    setState((prev) => ({
+      ...prev,
+      highContrastMode: prev.systemPrefersHighContrast,
+    }));
     clearPreference('highContrastMode');
     announce(t('accessibility.highContrast.resetToSystem'), 'polite');
   };
 
   const toggleReducedMotion = (): void => {
     const newValue = !state.reducedMotion;
-    setState(prev => ({ ...prev, reducedMotion: newValue }));
+    setState((prev) => ({ ...prev, reducedMotion: newValue }));
     savePreferences({ reducedMotion: newValue });
-    
+
     announce(
-      newValue 
+      newValue
         ? t('accessibility.reducedMotion.enabled')
         : t('accessibility.reducedMotion.disabled'),
       'polite'
@@ -289,26 +335,34 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
   };
 
   const resetReducedMotion = (): void => {
-    setState(prev => ({ ...prev, reducedMotion: prev.systemPrefersReducedMotion }));
+    setState((prev) => ({
+      ...prev,
+      reducedMotion: prev.systemPrefersReducedMotion,
+    }));
     clearPreference('reducedMotion');
     announce(t('accessibility.reducedMotion.resetToSystem'), 'polite');
   };
 
   const setFontSize = (size: AccessibilityState['fontSize']): void => {
-    setState(prev => ({ ...prev, fontSize: size }));
+    setState((prev) => ({ ...prev, fontSize: size }));
     savePreferences({ fontSize: size });
     announce(t('accessibility.fontSize.changed', { size }), 'polite');
   };
 
   const setZoomLevel = (level: number): void => {
     const clampedLevel = Math.max(0.5, Math.min(3, level));
-    setState(prev => ({ ...prev, zoomLevel: clampedLevel }));
+    setState((prev) => ({ ...prev, zoomLevel: clampedLevel }));
     savePreferences({ zoomLevel: clampedLevel });
-    announce(t('accessibility.zoom.changed', { level: Math.round(clampedLevel * 100) }), 'polite');
+    announce(
+      t('accessibility.zoom.changed', {
+        level: Math.round(clampedLevel * 100),
+      }),
+      'polite'
+    );
   };
 
   const setWcagLevel = (level: AccessibilityState['wcagLevel']): void => {
-    setState(prev => ({ ...prev, wcagLevel: level }));
+    setState((prev) => ({ ...prev, wcagLevel: level }));
     savePreferences({ wcagLevel: level });
     announce(t('accessibility.wcag.levelChanged', { level }), 'polite');
   };
@@ -318,11 +372,14 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
    */
   useEffect(() => {
     // Detect screen reader
-    setState(prev => ({ ...prev, screenReaderEnabled: detectScreenReader() }));
-    
+    setState((prev) => ({
+      ...prev,
+      screenReaderEnabled: detectScreenReader(),
+    }));
+
     // Check system preferences
     checkSystemPreferences();
-    
+
     // Load saved preferences
     loadPreferences();
   }, []);
@@ -332,30 +389,30 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
    */
   useEffect(() => {
     const root = document.documentElement;
-    
+
     // High contrast mode
     if (state.highContrastMode) {
       root.classList.add('high-contrast');
     } else {
       root.classList.remove('high-contrast');
     }
-    
+
     // Reduced motion
     if (state.reducedMotion) {
       root.classList.add('reduced-motion');
     } else {
       root.classList.remove('reduced-motion');
     }
-    
+
     // Font size
     root.setAttribute('data-font-size', state.fontSize);
-    
+
     // Zoom level
     root.style.setProperty('--zoom-level', state.zoomLevel.toString());
-    
+
     // WCAG level
     root.setAttribute('data-wcag-level', state.wcagLevel);
-    
+
     // Focus visible
     if (state.focusVisible) {
       root.classList.add('focus-visible');
@@ -379,7 +436,7 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
     resetReducedMotion,
     setFontSize,
     setZoomLevel,
-    setWcagLevel
+    setWcagLevel,
   };
 
   return (
@@ -400,7 +457,9 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
 export const useAccessibility = (): AccessibilityContextType => {
   const context = useContext(AccessibilityContext);
   if (!context) {
-    throw new Error('useAccessibility must be used within an AccessibilityProvider');
+    throw new Error(
+      'useAccessibility must be used within an AccessibilityProvider'
+    );
   }
   return context;
 };
@@ -415,7 +474,7 @@ export const useWCAGCompliance = (): {
   getMinimumContrastRatio: () => number;
 } => {
   const { wcagLevel } = useAccessibility();
-  
+
   const getContrastRatio = (foreground: string, background: string): number => {
     // Simplified contrast ratio calculation
     // In a real implementation, you'd use a proper color contrast library
@@ -425,26 +484,31 @@ export const useWCAGCompliance = (): {
       if (!rgb) {
         return 0;
       }
-      
-      const [r, g, b] = rgb.map(c => {
+
+      const [r, g, b] = rgb.map((c) => {
         const val = parseInt(c, 10) / 255;
-        return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
+        return val <= 0.03928
+          ? val / 12.92
+          : Math.pow((val + 0.055) / 1.055, 2.4);
       });
-      
+
       return 0.2126 * r + 0.7152 * g + 0.0722 * b;
     };
-    
+
     const l1 = getLuminance(foreground);
     const l2 = getLuminance(background);
     const lighter = Math.max(l1, l2);
     const darker = Math.min(l1, l2);
-    
+
     return (lighter + 0.05) / (darker + 0.05);
   };
-  
-  const meetsContrastRequirement = (foreground: string, background: string): boolean => {
+
+  const meetsContrastRequirement = (
+    foreground: string,
+    background: string
+  ): boolean => {
     const ratio = getContrastRatio(foreground, background);
-    
+
     switch (wcagLevel) {
       case 'AAA':
         return ratio >= 7;
@@ -456,7 +520,7 @@ export const useWCAGCompliance = (): {
         return false;
     }
   };
-  
+
   const getMinimumContrastRatio = (): number => {
     switch (wcagLevel) {
       case 'AAA':
@@ -469,12 +533,12 @@ export const useWCAGCompliance = (): {
         return 3;
     }
   };
-  
+
   return {
     wcagLevel,
     getContrastRatio,
     meetsContrastRequirement,
-    getMinimumContrastRatio
+    getMinimumContrastRatio,
   };
 };
 
