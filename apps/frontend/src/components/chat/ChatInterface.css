@@ -8,7 +8,22 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: var(--background-primary);
+  background: linear-gradient(135deg, var(--color-background) 0%, var(--color-background-secondary) 100%);
+  position: relative;
+}
+
+.chat-interface::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 50%, var(--color-accent-light) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, var(--color-info-light) 0%, transparent 50%);
+  opacity: 0.3;
+  pointer-events: none;
 }
 
 /* Connection Error Banner */
@@ -50,12 +65,17 @@
   opacity: 0.8;
 }
 
-/* Chat Header */
+/* Chat Header with glassmorphism */
 .chat-header {
   flex-shrink: 0;
-  padding: 16px 20px;
-  background-color: var(--background-secondary);
-  border-bottom: 1px solid var(--border-color);
+  padding: 20px 24px;
+  background: var(--glass-background);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--glass-border);
+  box-shadow: var(--color-shadow-sm);
+  position: relative;
+  z-index: 10;
 }
 
 .conversation-info {
@@ -82,14 +102,21 @@
 }
 
 .model-badge {
-  padding: 4px 8px;
-  background-color: var(--primary-background);
-  color: var(--primary-color);
-  border: 1px solid var(--primary-border);
-  border-radius: 4px;
+  padding: 6px 12px;
+  background: var(--color-accent-gradient);
+  color: white;
+  border: none;
+  border-radius: 8px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   font-family: var(--font-mono);
+  box-shadow: var(--color-shadow-sm);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.model-badge:hover {
+  transform: scale(1.05);
+  box-shadow: var(--color-shadow-md);
 }
 
 .message-count {
