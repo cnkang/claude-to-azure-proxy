@@ -48,10 +48,11 @@ RUN if [ -f pnpm-workspace.yaml ]; then \
       # Monorepo build process
       echo "Building shared packages..." && \
       pnpm build:shared && \
-      echo "Cleaning backend build artifacts..." && \
-      rm -rf apps/backend/dist apps/backend/.tsbuildinfo && \
-      echo "Building backend application..." && \
-      cd apps/backend && pnpm run build && cd ../.. && \
+      echo "Building backend application (without project references)..." && \
+      cd apps/backend && \
+      # Build without project references to avoid timestamp issues
+      pnpm exec tsc --build --force && \
+      cd ../.. && \
       echo "Preparing build output..." && \
       mkdir -p /app/build && \
       cp -R apps/backend/dist /app/build/dist && \
