@@ -370,10 +370,10 @@ export class ProxyServer {
       detailedMetricsHandler as unknown as express.RequestHandler
     );
 
-    // Root endpoint
-    this.app.get('/', (req: Readonly<Request>, res: Readonly<Response>) => {
+    // API info endpoint moved to /api/info to avoid conflict with frontend root
+    this.app.get('/api/info', (req: Readonly<Request>, res: Readonly<Response>) => {
       const { correlationId } = req as unknown as RequestWithCorrelationId;
-      logger.info('Root endpoint accessed', correlationId);
+      logger.info('API info endpoint accessed', correlationId);
 
       res.json({
         service: 'Claude-to-Azure Proxy',
