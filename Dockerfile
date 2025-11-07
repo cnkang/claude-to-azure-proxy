@@ -13,10 +13,17 @@ FROM base AS deps
 COPY package.json pnpm-lock.yaml ./
 # Copy workspace configuration if it exists
 COPY pnpm-workspace.yaml* ./
-# Copy package.json files for workspace dependencies
-COPY apps/backend/package.json ./apps/backend/ 
-# Copy all packages directory content for workspace resolution
-COPY packages/ ./packages/
+# Copy all package.json files for workspace dependencies
+COPY apps/backend/package.json ./apps/backend/
+COPY packages/shared-types/package.json ./packages/shared-types/
+COPY packages/shared-utils/package.json ./packages/shared-utils/
+COPY packages/shared-config/package.json ./packages/shared-config/
+# Copy source files for packages that need to be built
+COPY packages/shared-types/src ./packages/shared-types/src
+COPY packages/shared-types/tsconfig.json ./packages/shared-types/
+COPY packages/shared-utils/src ./packages/shared-utils/src
+COPY packages/shared-utils/tsconfig.json ./packages/shared-utils/
+COPY packages/shared-utils/tsconfig.build.json ./packages/shared-utils/
 RUN if [ -f pnpm-workspace.yaml ]; then \
       echo "Installing dependencies for monorepo..." && \
       pnpm install --frozen-lockfile && \
@@ -53,8 +60,11 @@ FROM base AS prod-deps
 COPY package.json pnpm-lock.yaml ./
 COPY pnpm-workspace.yaml* ./
 COPY apps/backend/package.json ./apps/backend/
-# Copy all packages directory content for workspace resolution
-COPY packages/ ./packages/
+# Copy all package.json files for workspace dependencies
+COPY packages/shared-types/package.json ./packages/shared-types/
+COPY packages/shared-utils/package.json ./packages/shared-utils/
+COPY packages/shared-config/package.json ./packages/shared-config/
+# Copy built packages from builder stage (will be copied later)
 RUN if [ -f pnpm-workspace.yaml ]; then \
       echo "Installing production dependencies for monorepo..." && \
       pnpm install --prod --frozen-lockfile && \
