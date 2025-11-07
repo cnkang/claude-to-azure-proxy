@@ -1,9 +1,9 @@
 /**
  * App Context Provider
- * 
+ *
  * Provides global application state management including conversations, UI state,
  * and configuration. This is the root context that combines all other contexts.
- * 
+ *
  * Requirements: 1.1, 5.1, 5.2, 5.3, 10.1
  */
 
@@ -38,7 +38,10 @@ export type AppAction =
   | { type: 'SET_CONVERSATIONS_ERROR'; payload: string | null }
   | { type: 'SET_CONVERSATION_FILTERS'; payload: ConversationFilters }
   | { type: 'ADD_CONVERSATION'; payload: Conversation }
-  | { type: 'UPDATE_CONVERSATION'; payload: { id: string; updates: Partial<Conversation> } }
+  | {
+      type: 'UPDATE_CONVERSATION';
+      payload: { id: string; updates: Partial<Conversation> };
+    }
   | { type: 'DELETE_CONVERSATION'; payload: string }
   | { type: 'RESET_STATE' };
 
@@ -48,11 +51,11 @@ export type AppAction =
 export interface AppContextType {
   state: AppState;
   dispatch: React.Dispatch<AppAction>;
-  
+
   // Computed values
   activeConversation: import('../types/index.js').Conversation | null;
   conversationsList: import('../types/index.js').Conversation[];
-  
+
   // Actions
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
@@ -60,8 +63,13 @@ export interface AppContextType {
   setTheme: (theme: 'light' | 'dark' | 'auto') => void;
   setLanguage: (language: 'en' | 'zh') => void;
   setActiveConversation: (conversationId: string | null) => void;
-  addConversation: (conversation: import('../types/index.js').Conversation) => void;
-  updateConversation: (id: string, updates: Partial<import('../types/index.js').Conversation>) => void;
+  addConversation: (
+    conversation: import('../types/index.js').Conversation
+  ) => void;
+  updateConversation: (
+    id: string,
+    updates: Partial<import('../types/index.js').Conversation>
+  ) => void;
   deleteConversation: (id: string) => void;
   resetState: () => void;
 }
@@ -248,7 +256,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'UPDATE_CONVERSATION': {
       const updatedConversations = new Map(state.conversations.conversations);
       const existingConversation = updatedConversations.get(action.payload.id);
-      
+
       if (existingConversation) {
         updatedConversations.set(action.payload.id, {
           ...existingConversation,
@@ -271,9 +279,10 @@ function appReducer(state: AppState, action: AppAction): AppState {
       updatedConversations.delete(action.payload);
 
       // If we're deleting the active conversation, set active to null
-      const activeConversationId = state.conversations.activeConversationId === action.payload
-        ? null
-        : state.conversations.activeConversationId;
+      const activeConversationId =
+        state.conversations.activeConversationId === action.payload
+          ? null
+          : state.conversations.activeConversationId;
 
       return {
         ...state,
@@ -330,11 +339,12 @@ export function AppProvider({ children }: AppProviderProps): React.JSX.Element {
   const activeConversationId = state.conversations.activeConversationId;
   const activeConversation =
     activeConversationId !== null
-      ? state.conversations.conversations.get(activeConversationId) ?? null
+      ? (state.conversations.conversations.get(activeConversationId) ?? null)
       : null;
 
-  const conversationsList = Array.from(state.conversations.conversations.values())
-    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+  const conversationsList = Array.from(
+    state.conversations.conversations.values()
+  ).sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
   // Action creators
   const setLoading = (loading: boolean): void => {
@@ -363,11 +373,16 @@ export function AppProvider({ children }: AppProviderProps): React.JSX.Element {
     dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: conversationId });
   };
 
-  const addConversation = (conversation: import('../types/index.js').Conversation): void => {
+  const addConversation = (
+    conversation: import('../types/index.js').Conversation
+  ): void => {
     dispatch({ type: 'ADD_CONVERSATION', payload: conversation });
   };
 
-  const updateConversation = (id: string, updates: Partial<import('../types/index.js').Conversation>): void => {
+  const updateConversation = (
+    id: string,
+    updates: Partial<import('../types/index.js').Conversation>
+  ): void => {
     dispatch({ type: 'UPDATE_CONVERSATION', payload: { id, updates } });
   };
 
@@ -397,9 +412,7 @@ export function AppProvider({ children }: AppProviderProps): React.JSX.Element {
   };
 
   return (
-    <AppContext.Provider value={contextValue}>
-      {children}
-    </AppContext.Provider>
+    <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>
   );
 }
 
@@ -408,11 +421,11 @@ export function AppProvider({ children }: AppProviderProps): React.JSX.Element {
  */
 export function useAppContext(): AppContextType {
   const context = useContext(AppContext);
-  
+
   if (!context) {
     throw new Error('useAppContext must be used within an AppProvider');
   }
-  
+
   return context;
 }
 
@@ -427,8 +440,9 @@ export function useUI(): {
   setTheme: (theme: 'light' | 'dark' | 'auto') => void;
   setLanguage: (language: 'en' | 'zh') => void;
 } {
-  const { state, setLoading, setError, setSidebarOpen, setTheme, setLanguage } = useAppContext();
-  
+  const { state, setLoading, setError, setSidebarOpen, setTheme, setLanguage } =
+    useAppContext();
+
   return {
     ui: state.ui,
     setLoading,
@@ -460,7 +474,7 @@ export function useConversations(): {
     updateConversation,
     deleteConversation,
   } = useAppContext();
-  
+
   return {
     conversations: state.conversations,
     activeConversation,
@@ -480,11 +494,11 @@ export function useConfig(): {
   setConfig: (config: Partial<ConfigState>) => void;
 } {
   const { state, dispatch } = useAppContext();
-  
+
   const setConfig = (config: Partial<ConfigState>): void => {
     dispatch({ type: 'SET_CONFIG', payload: config });
   };
-  
+
   return {
     config: state.config,
     setConfig,
