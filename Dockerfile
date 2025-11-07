@@ -45,14 +45,11 @@ COPY --from=deps /app/packages/shared-types/node_modules ./packages/shared-types
 COPY --from=deps /app/packages/shared-utils/node_modules ./packages/shared-utils/node_modules
 COPY --from=deps /app/packages/shared-config/node_modules ./packages/shared-config/node_modules
 RUN if [ -f pnpm-workspace.yaml ]; then \
-      # Monorepo build process
+      # Monorepo build process with esbuild
       echo "Building shared packages..." && \
       pnpm build:shared && \
-      echo "Building backend application (without project references)..." && \
-      cd apps/backend && \
-      # Build without project references to avoid timestamp issues
-      pnpm exec tsc --build --force && \
-      cd ../.. && \
+      echo "Building backend application with esbuild..." && \
+      pnpm build:backend && \
       echo "Preparing build output..." && \
       mkdir -p /app/build && \
       cp -R apps/backend/dist /app/build/dist && \
@@ -129,4 +126,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
 # Run with: docker run --init -p 8080:8080 <image>
 # Run from apps/backend directory to ensure proper module resolution
 WORKDIR /app/apps/backend
-CMD ["node", "--enable-source-maps", "--max-old-space-size=512", "--experimental-specifier-resolution=node", "dist/index.js"]
+CMD ["node", "--enable-source-maps", "--max-old-space-size=512", "dist/index.js"]
