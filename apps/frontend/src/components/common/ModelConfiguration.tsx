@@ -1,9 +1,9 @@
 /**
  * Model Configuration Component
- * 
+ *
  * Provides advanced model configuration settings including temperature,
  * max tokens, and other model-specific parameters.
- * 
+ *
  * Requirements: 2.4, 2.5, 12.4
  */
 
@@ -41,7 +41,8 @@ export const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
 }) => {
   const { t } = useTranslation();
   const [localConfig, setLocalConfig] = useState<ModelConfig>(configuration);
-  const [showAdvancedSettings, setShowAdvancedSettings] = useState(showAdvanced);
+  const [showAdvancedSettings, setShowAdvancedSettings] =
+    useState(showAdvanced);
 
   // Update local config when prop changes
   useEffect(() => {
@@ -51,14 +52,14 @@ export const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
   /**
    * Handle configuration parameter change
    */
-  const handleParameterChange = useCallback((
-    parameter: keyof ModelConfig,
-    value: number | string | string[]
-  ): void => {
-    const updatedConfig = { ...localConfig, [parameter]: value };
-    setLocalConfig(updatedConfig);
-    onConfigurationChange(updatedConfig);
-  }, [localConfig, onConfigurationChange]);
+  const handleParameterChange = useCallback(
+    (parameter: keyof ModelConfig, value: number | string | string[]): void => {
+      const updatedConfig = { ...localConfig, [parameter]: value };
+      setLocalConfig(updatedConfig);
+      onConfigurationChange(updatedConfig);
+    },
+    [localConfig, onConfigurationChange]
+  );
 
   /**
    * Reset to default configuration
@@ -74,7 +75,7 @@ export const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
       presencePenalty: 0.0,
       stopSequences: [],
     };
-    
+
     setLocalConfig(defaultConfig);
     onConfigurationChange(defaultConfig);
   }, [model, onConfigurationChange]);
@@ -109,14 +110,16 @@ export const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
           max={max}
           step={step}
           value={value}
-          onChange={(e) => handleParameterChange(parameter, parseFloat(e.target.value))}
+          onChange={(e) =>
+            handleParameterChange(parameter, parseFloat(e.target.value))
+          }
           disabled={disabled}
           className="parameter-slider"
           aria-label={`${label}: ${value}`}
         />
         <div className="slider-track">
-          <div 
-            className="slider-fill" 
+          <div
+            className="slider-fill"
             style={{ width: `${((value - min) / (max - min)) * 100}%` }}
           />
         </div>
@@ -152,7 +155,9 @@ export const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
         value={value}
         min={min}
         max={max}
-        onChange={(e) => handleParameterChange(parameter, parseInt(e.target.value, 10))}
+        onChange={(e) =>
+          handleParameterChange(parameter, parseInt(e.target.value, 10))
+        }
         disabled={disabled}
         className="parameter-input"
         aria-label={label}
@@ -177,8 +182,8 @@ export const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
         onChange={(e) => {
           const sequences = e.target.value
             .split('\n')
-            .map(seq => seq.trim())
-            .filter(seq => seq.length > 0);
+            .map((seq) => seq.trim())
+            .filter((seq) => seq.length > 0);
           handleParameterChange('stopSequences', sequences);
         }}
         disabled={disabled}
@@ -222,7 +227,9 @@ export const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
   };
 
   return (
-    <div className={`model-configuration ${compact ? 'compact' : ''} ${disabled ? 'disabled' : ''}`}>
+    <div
+      className={`model-configuration ${compact ? 'compact' : ''} ${disabled ? 'disabled' : ''}`}
+    >
       <div className="config-header">
         <h3 className="config-title">
           {t('model.config.title', { modelName: model.name })}
@@ -233,10 +240,9 @@ export const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
             className="toggle-advanced-button"
             aria-expanded={showAdvancedSettings}
           >
-            {showAdvancedSettings 
-              ? t('model.config.hideAdvanced') 
-              : t('model.config.showAdvanced')
-            }
+            {showAdvancedSettings
+              ? t('model.config.hideAdvanced')
+              : t('model.config.showAdvanced')}
           </button>
           <button
             onClick={handleReset}
@@ -252,7 +258,7 @@ export const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
         {/* Basic Parameters */}
         <div className="config-section">
           <h4 className="section-title">{t('model.config.basic')}</h4>
-          
+
           {renderSlider(
             'temperature',
             t('model.config.temperature'),
@@ -269,87 +275,92 @@ export const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
             localConfig.maxTokens ?? getRecommendedMaxTokens(),
             1,
             Math.min(8192, model.contextLength),
-            t('model.config.maxTokens.description', { 
+            t('model.config.maxTokens.description', {
               recommended: getRecommendedMaxTokens(),
-              max: Math.min(8192, model.contextLength)
+              max: Math.min(8192, model.contextLength),
             })
           )}
         </div>
 
         {/* Advanced Parameters */}
-        {showAdvancedSettings !== null && showAdvancedSettings !== undefined && (
-          <div className="config-section">
-            <h4 className="section-title">{t('model.config.advanced')}</h4>
-            
-            {renderSlider(
-              'topP',
-              t('model.config.topP'),
-              0,
-              1,
-              0.05,
-              localConfig.topP ?? 1.0,
-              t('model.config.topP.description')
-            )}
+        {showAdvancedSettings !== null &&
+          showAdvancedSettings !== undefined && (
+            <div className="config-section">
+              <h4 className="section-title">{t('model.config.advanced')}</h4>
 
-            {renderSlider(
-              'frequencyPenalty',
-              t('model.config.frequencyPenalty'),
-              -2,
-              2,
-              0.1,
-              localConfig.frequencyPenalty ?? 0.0,
-              t('model.config.frequencyPenalty.description')
-            )}
+              {renderSlider(
+                'topP',
+                t('model.config.topP'),
+                0,
+                1,
+                0.05,
+                localConfig.topP ?? 1.0,
+                t('model.config.topP.description')
+              )}
 
-            {renderSlider(
-              'presencePenalty',
-              t('model.config.presencePenalty'),
-              -2,
-              2,
-              0.1,
-              localConfig.presencePenalty ?? 0.0,
-              t('model.config.presencePenalty.description')
-            )}
+              {renderSlider(
+                'frequencyPenalty',
+                t('model.config.frequencyPenalty'),
+                -2,
+                2,
+                0.1,
+                localConfig.frequencyPenalty ?? 0.0,
+                t('model.config.frequencyPenalty.description')
+              )}
 
-            {renderStopSequences()}
-            {renderSystemPrompt()}
-          </div>
-        )}
+              {renderSlider(
+                'presencePenalty',
+                t('model.config.presencePenalty'),
+                -2,
+                2,
+                0.1,
+                localConfig.presencePenalty ?? 0.0,
+                t('model.config.presencePenalty.description')
+              )}
+
+              {renderStopSequences()}
+              {renderSystemPrompt()}
+            </div>
+          )}
 
         {/* Model Information */}
         <div className="config-section">
           <h4 className="section-title">{t('model.config.modelInfo')}</h4>
-          
+
           <div className="model-info-grid">
             <div className="info-item">
               <span className="info-label">{t('model.contextLimit')}:</span>
               <span className="info-value">{model.contextLimitFormatted}</span>
             </div>
-            
+
             <div className="info-item">
               <span className="info-label">{t('model.provider')}:</span>
               <span className="info-value">
                 {model.providerInfo.icon} {model.providerInfo.name}
               </span>
             </div>
-            
+
             <div className="info-item">
               <span className="info-label">{t('model.category')}:</span>
               <span className="info-value">{model.categoryLabel}</span>
             </div>
-            
+
             <div className="info-item">
               <span className="info-label">{t('model.performance')}:</span>
-              <span className={`info-value performance-${model.performanceRating}`}>
+              <span
+                className={`info-value performance-${model.performanceRating}`}
+              >
                 {t(`model.performance.${model.performanceRating}`)}
               </span>
             </div>
           </div>
 
           <div className="capabilities-section">
-            <span className="capabilities-label">{t('model.capabilities')}:</span>
+            <span className="capabilities-label">
+              {t('model.capabilities')}:
+            </span>
             <div className="capabilities-list">
-              {model.capabilities.map(capability => (
+              {model.capabilities.map((capability) => (
                 <span key={capability} className="capability-tag">
                   {t(`model.capability.${capability}`, capability)}
                 </span>
@@ -362,38 +373,42 @@ export const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
         {!compact !== null && compact !== undefined && (
           <div className="config-section">
             <h4 className="section-title">{t('model.config.summary')}</h4>
-            
+
             <div className="config-summary">
               <div className="summary-item">
-                <span className="summary-label">{t('model.config.creativity')}:</span>
+                <span className="summary-label">
+                  {t('model.config.creativity')}:
+                </span>
                 <span className="summary-value">
-                  {localConfig.temperature && localConfig.temperature > 1.0 
+                  {localConfig.temperature && localConfig.temperature > 1.0
                     ? t('model.config.creativity.high')
                     : localConfig.temperature && localConfig.temperature > 0.5
-                    ? t('model.config.creativity.medium')
-                    : t('model.config.creativity.low')
-                  }
+                      ? t('model.config.creativity.medium')
+                      : t('model.config.creativity.low')}
                 </span>
               </div>
-              
+
               <div className="summary-item">
-                <span className="summary-label">{t('model.config.responseLength')}:</span>
+                <span className="summary-label">
+                  {t('model.config.responseLength')}:
+                </span>
                 <span className="summary-value">
-                  {t('model.config.responseLength.tokens', { 
-                    tokens: localConfig.maxTokens?.toLocaleString() ?? '0'
+                  {t('model.config.responseLength.tokens', {
+                    tokens: localConfig.maxTokens?.toLocaleString() ?? '0',
                   })}
                 </span>
               </div>
-              
+
               <div className="summary-item">
-                <span className="summary-label">{t('model.config.diversity')}:</span>
+                <span className="summary-label">
+                  {t('model.config.diversity')}:
+                </span>
                 <span className="summary-value">
                   {localConfig.topP && localConfig.topP < 0.5
                     ? t('model.config.diversity.low')
                     : localConfig.topP && localConfig.topP < 0.9
-                    ? t('model.config.diversity.medium')
-                    : t('model.config.diversity.high')
-                  }
+                      ? t('model.config.diversity.medium')
+                      : t('model.config.diversity.high')}
                 </span>
               </div>
             </div>

@@ -1,9 +1,9 @@
 /**
  * Model Demo Component
- * 
+ *
  * A demo component to test and showcase the model selection functionality.
  * This can be used for development and testing purposes.
- * 
+ *
  * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 12.1, 12.2, 12.3, 12.4
  */
 
@@ -13,7 +13,10 @@ import { ModelSelector } from './ModelSelector';
 import { ModelConfiguration } from './ModelConfiguration';
 import { ModelSwitchDialog } from './ModelSwitchDialog';
 import { useModelSelection } from '../../hooks/useModelSelection';
-import type { EnhancedModelInfo, ModelConfiguration as ModelConfig } from '../../services/models';
+import type {
+  EnhancedModelInfo,
+  ModelConfiguration as ModelConfig,
+} from '../../services/models';
 import type { ModelSwitchValidation } from '../../hooks/useModelSelection';
 import './ModelDemo.css';
 
@@ -25,8 +28,11 @@ export const ModelDemo: React.FC = () => {
   const [selectedModelId, setSelectedModelId] = useState<string>('gpt-4');
   const [showConfiguration, setShowConfiguration] = useState(false);
   const [showSwitchDialog, setShowSwitchDialog] = useState(false);
-  const [targetModel, setTargetModel] = useState<EnhancedModelInfo | null>(null);
-  const [switchValidation, setSwitchValidation] = useState<ModelSwitchValidation | null>(null);
+  const [targetModel, setTargetModel] = useState<EnhancedModelInfo | null>(
+    null
+  );
+  const [switchValidation, setSwitchValidation] =
+    useState<ModelSwitchValidation | null>(null);
   const [contextTokens] = useState(15000); // Mock context tokens
 
   const {
@@ -43,57 +49,73 @@ export const ModelDemo: React.FC = () => {
   /**
    * Handle model selection
    */
-  const handleModelChange = useCallback(async (_modelId: string) => {
-    if (_modelId === selectedModelId) {
-      return;
-    }
-
-    const model = getModelById(_modelId);
-    if (!model) {
-      return;
-    }
-
-    // If we have a current model, validate the switch
-    if (selectedModelId && contextTokens > 0) {
-      const validation = await validateModelSwitch(selectedModelId, _modelId, contextTokens);
-      
-      if (!validation.compatible || validation.warnings.length > 0) {
-        setTargetModel(model);
-        setSwitchValidation(validation);
-        setShowSwitchDialog(true);
+  const handleModelChange = useCallback(
+    async (_modelId: string) => {
+      if (_modelId === selectedModelId) {
         return;
       }
-    }
 
-    // Direct switch if no validation needed or validation passed
-    const success = await selectModel(_modelId);
-    if (success === true) {
-      setSelectedModelId(_modelId);
-    }
-  }, [selectedModelId, contextTokens, validateModelSwitch, selectModel, getModelById]);
+      const model = getModelById(_modelId);
+      if (!model) {
+        return;
+      }
+
+      // If we have a current model, validate the switch
+      if (selectedModelId && contextTokens > 0) {
+        const validation = await validateModelSwitch(
+          selectedModelId,
+          _modelId,
+          contextTokens
+        );
+
+        if (!validation.compatible || validation.warnings.length > 0) {
+          setTargetModel(model);
+          setSwitchValidation(validation);
+          setShowSwitchDialog(true);
+          return;
+        }
+      }
+
+      // Direct switch if no validation needed or validation passed
+      const success = await selectModel(_modelId);
+      if (success === true) {
+        setSelectedModelId(_modelId);
+      }
+    },
+    [
+      selectedModelId,
+      contextTokens,
+      validateModelSwitch,
+      selectModel,
+      getModelById,
+    ]
+  );
 
   /**
    * Handle switch confirmation
    */
-  const handleSwitchConfirm = useCallback(async (options: { preserveContext: boolean; createNew: boolean }) => {
-    if (!targetModel) {
-      return;
-    }
+  const handleSwitchConfirm = useCallback(
+    async (options: { preserveContext: boolean; createNew: boolean }) => {
+      if (!targetModel) {
+        return;
+      }
 
-    const success = await selectModel(targetModel.id, {
-      preserveContext: options.preserveContext,
-      notifyUser: true,
-      validateCompatibility: false, // Already validated
-    });
+      const success = await selectModel(targetModel.id, {
+        preserveContext: options.preserveContext,
+        notifyUser: true,
+        validateCompatibility: false, // Already validated
+      });
 
-    if (success === true) {
-      setSelectedModelId(targetModel.id);
-    }
+      if (success === true) {
+        setSelectedModelId(targetModel.id);
+      }
 
-    setShowSwitchDialog(false);
-    setTargetModel(null);
-    setSwitchValidation(null);
-  }, [targetModel, selectModel]);
+      setShowSwitchDialog(false);
+      setTargetModel(null);
+      setSwitchValidation(null);
+    },
+    [targetModel, selectModel]
+  );
 
   /**
    * Handle switch cancellation
@@ -107,9 +129,12 @@ export const ModelDemo: React.FC = () => {
   /**
    * Handle configuration change
    */
-  const handleConfigurationChange = useCallback((config: ModelConfig): void => {
-    updateModelConfiguration(selectedModelId, config);
-  }, [selectedModelId, updateModelConfiguration]);
+  const handleConfigurationChange = useCallback(
+    (config: ModelConfig): void => {
+      updateModelConfiguration(selectedModelId, config);
+    },
+    [selectedModelId, updateModelConfiguration]
+  );
 
   const selectedModel = getModelById(selectedModelId);
   const configuration = getModelConfiguration(selectedModelId);
@@ -170,38 +195,54 @@ export const ModelDemo: React.FC = () => {
                   <div className="model-title">
                     <span className="model-name">{selectedModel.name}</span>
                     <span className="provider-badge">
-                      {selectedModel.providerInfo.icon} {selectedModel.providerInfo.name}
+                      {selectedModel.providerInfo.icon}{' '}
+                      {selectedModel.providerInfo.name}
                     </span>
                   </div>
-                  <span className={`performance-badge performance-${selectedModel.performanceRating}`}>
+                  <span
+                    className={`performance-badge performance-${selectedModel.performanceRating}`}
+                  >
                     {t(`model.performance.${selectedModel.performanceRating}`)}
                   </span>
                 </div>
-                
+
                 <p className="model-description">{selectedModel.description}</p>
-                
+
                 <div className="model-stats">
                   <div className="stat-item">
-                    <span className="stat-label">{t('model.contextLimit')}:</span>
-                    <span className="stat-value">{selectedModel.contextLimitFormatted}</span>
+                    <span className="stat-label">
+                      {t('model.contextLimit')}:
+                    </span>
+                    <span className="stat-value">
+                      {selectedModel.contextLimitFormatted}
+                    </span>
                   </div>
                   <div className="stat-item">
                     <span className="stat-label">{t('model.category')}:</span>
-                    <span className="stat-value">{selectedModel.categoryLabel}</span>
+                    <span className="stat-value">
+                      {selectedModel.categoryLabel}
+                    </span>
                   </div>
                   <div className="stat-item">
                     <span className="stat-label">Context Usage:</span>
                     <span className="stat-value">
-                      {contextTokens.toLocaleString()} / {selectedModel.contextLength.toLocaleString()} 
-                      ({((contextTokens / selectedModel.contextLength) * 100).toFixed(1)}%)
+                      {contextTokens.toLocaleString()} /{' '}
+                      {selectedModel.contextLength.toLocaleString()}(
+                      {(
+                        (contextTokens / selectedModel.contextLength) *
+                        100
+                      ).toFixed(1)}
+                      %)
                     </span>
                   </div>
                 </div>
 
                 <div className="capabilities-section">
-                  <span className="capabilities-label">{t('model.capabilities')}:</span>
+                  <span className="capabilities-label">
+                    {t('model.capabilities')}:
+                  </span>
                   <div className="capabilities-list">
-                    {selectedModel.capabilities.map(capability => (
+                    {selectedModel.capabilities.map((capability) => (
                       <span key={capability} className="capability-tag">
                         {t(`model.capability.${capability}`, capability)}
                       </span>
@@ -222,10 +263,12 @@ export const ModelDemo: React.FC = () => {
                 onClick={() => setShowConfiguration(!showConfiguration)}
                 className="toggle-button"
               >
-                {showConfiguration ? 'Hide Configuration' : 'Show Configuration'}
+                {showConfiguration
+                  ? 'Hide Configuration'
+                  : 'Show Configuration'}
               </button>
             </div>
-            
+
             {showConfiguration !== null && showConfiguration !== undefined && (
               <div className="section-content">
                 <ModelConfiguration
@@ -249,7 +292,9 @@ export const ModelDemo: React.FC = () => {
                 <span className="stat-label">Total Models</span>
               </div>
               <div className="stat-card">
-                <span className="stat-number">{state.models.filter(m => m.isAvailable).length}</span>
+                <span className="stat-number">
+                  {state.models.filter((m) => m.isAvailable).length}
+                </span>
                 <span className="stat-label">Available</span>
               </div>
               <div className="stat-card">
@@ -257,7 +302,9 @@ export const ModelDemo: React.FC = () => {
                 <span className="stat-label">Recommended</span>
               </div>
               <div className="stat-card">
-                <span className="stat-number">{Object.keys(state.categories).length}</span>
+                <span className="stat-number">
+                  {Object.keys(state.categories).length}
+                </span>
                 <span className="stat-label">Categories</span>
               </div>
             </div>
@@ -269,9 +316,11 @@ export const ModelDemo: React.FC = () => {
                     {t(`model.category.${category}`, category)}
                   </h4>
                   <div className="category-models">
-                    {models.slice(0, 3).map(model => (
+                    {models.slice(0, 3).map((model) => (
                       <div key={model.id} className="model-chip">
-                        <span className="chip-icon">{model.providerInfo.icon}</span>
+                        <span className="chip-icon">
+                          {model.providerInfo.icon}
+                        </span>
                         <span className="chip-name">{model.name}</span>
                       </div>
                     ))}
@@ -289,17 +338,21 @@ export const ModelDemo: React.FC = () => {
       </div>
 
       {/* Model Switch Dialog */}
-      {showSwitchDialog && selectedModel && targetModel && switchValidation !== null && switchValidation !== undefined && (
-        <ModelSwitchDialog
-          isOpen={showSwitchDialog}
-          currentModel={selectedModel}
-          targetModel={targetModel}
-          validation={switchValidation}
-          contextTokens={contextTokens}
-          onConfirm={handleSwitchConfirm}
-          onCancel={handleSwitchCancel}
-        />
-      )}
+      {showSwitchDialog &&
+        selectedModel &&
+        targetModel &&
+        switchValidation !== null &&
+        switchValidation !== undefined && (
+          <ModelSwitchDialog
+            isOpen={showSwitchDialog}
+            currentModel={selectedModel}
+            targetModel={targetModel}
+            validation={switchValidation}
+            contextTokens={contextTokens}
+            onConfirm={handleSwitchConfirm}
+            onCancel={handleSwitchCancel}
+          />
+        )}
     </div>
   );
 };

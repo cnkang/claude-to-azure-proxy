@@ -1,9 +1,9 @@
 /**
  * Lazy Component Wrapper
- * 
+ *
  * Higher-order component for lazy loading components with loading states
  * and error boundaries. Implements React code splitting patterns.
- * 
+ *
  * Requirements: 5.4
  */
 
@@ -19,18 +19,19 @@ interface LazyLoadingProps {
   className?: string;
 }
 
-function LazyLoading({ message, className = '' }: LazyLoadingProps): React.JSX.Element {
+function LazyLoading({
+  message,
+  className = '',
+}: LazyLoadingProps): React.JSX.Element {
   const { t } = useI18n();
-  
+
   return (
     <div className={`lazy-loading ${className}`}>
       <div className="lazy-loading-content">
         <div className="lazy-loading-spinner">
           <div className="spinner" />
         </div>
-        <p className="lazy-loading-text">
-          {message || t('common.loading')}
-        </p>
+        <p className="lazy-loading-text">{message || t('common.loading')}</p>
       </div>
     </div>
   );
@@ -45,24 +46,22 @@ interface LazyErrorFallbackProps {
   className?: string;
 }
 
-function LazyErrorFallback({ error, retry, className = '' }: LazyErrorFallbackProps): React.JSX.Element {
+function LazyErrorFallback({
+  error,
+  retry,
+  className = '',
+}: LazyErrorFallbackProps): React.JSX.Element {
   const { t } = useI18n();
-  
+
   return (
     <div className={`lazy-error ${className}`}>
       <div className="lazy-error-content">
         <div className="lazy-error-icon">⚠️</div>
-        <h3 className="lazy-error-title">
-          {t('error.lazyLoadFailed')}
-        </h3>
+        <h3 className="lazy-error-title">{t('error.lazyLoadFailed')}</h3>
         <p className="lazy-error-message">
           {error.message || t('error.componentLoadError')}
         </p>
-        <button
-          type="button"
-          onClick={retry}
-          className="lazy-error-retry"
-        >
+        <button type="button" onClick={retry} className="lazy-error-retry">
           {t('common.retry')}
         </button>
       </div>
@@ -98,7 +97,7 @@ export function withLazyLoading<P extends object>(
     const [retryKey, setRetryKey] = React.useState(0);
 
     const handleRetry = React.useCallback(() => {
-      setRetryKey(prev => prev + 1);
+      setRetryKey((prev) => prev + 1);
     }, []);
 
     return (
@@ -107,10 +106,14 @@ export function withLazyLoading<P extends object>(
         fallbackRender={({ error, resetError }) => (
           <LazyErrorFallback
             error={error}
-            retry={retryable ? () => {
-              resetError();
-              handleRetry();
-            } : resetError}
+            retry={
+              retryable
+                ? () => {
+                    resetError();
+                    handleRetry();
+                  }
+                : resetError
+            }
             className={className}
           />
         )}
@@ -118,10 +121,7 @@ export function withLazyLoading<P extends object>(
       >
         <Suspense
           fallback={
-            <LazyLoading
-              message={loadingMessage}
-              className={className}
-            />
+            <LazyLoading message={loadingMessage} className={className} />
           }
         >
           <LazyComponent {...props} />
@@ -156,7 +156,7 @@ export function useDynamicImport<T>(
   const [retryKey, setRetryKey] = React.useState(0);
 
   const retry = React.useCallback(() => {
-    setRetryKey(prev => prev + 1);
+    setRetryKey((prev) => prev + 1);
     setState({
       component: null,
       loading: true,
@@ -169,9 +169,9 @@ export function useDynamicImport<T>(
 
     const loadComponent = async (): Promise<void> => {
       try {
-        setState(prev => ({ ...prev, loading: true, _error: null }));
+        setState((prev) => ({ ...prev, loading: true, _error: null }));
         const module = await importFn();
-        
+
         if (!cancelled) {
           setState({
             component: module.default,
@@ -217,12 +217,13 @@ export function preloadLazyComponent<T>(
   lazyComponent: LazyExoticComponent<ComponentType<T>>
 ): Promise<{ default: ComponentType<T> }> {
   // Access the internal _payload to trigger loading
-  const internalComponent = lazyComponent as unknown as LazyComponentInternal<T>;
+  const internalComponent =
+    lazyComponent as unknown as LazyComponentInternal<T>;
   const payload = internalComponent._payload;
   if (payload && typeof payload._result === 'function') {
     return payload._result();
   }
-  
+
   return new Promise((resolve, reject) => {
     try {
       const initializer = internalComponent._init;
@@ -241,7 +242,11 @@ export function preloadLazyComponent<T>(
 
       resolve({ default: lazyComponent as unknown as ComponentType<T> });
     } catch (error) {
-      reject(error instanceof Error ? error : new Error('Failed to preload lazy component'));
+      reject(
+        error instanceof Error
+          ? error
+          : new Error('Failed to preload lazy component')
+      );
     }
   });
 }
@@ -255,17 +260,19 @@ interface PreloadOnHoverProps {
   className?: string;
 }
 
-export function PreloadOnHover({ 
-  children, 
-  preload, 
-  className = '' 
+export function PreloadOnHover({
+  children,
+  preload,
+  className = '',
 }: PreloadOnHoverProps): React.JSX.Element {
   const [hasPreloaded, setHasPreloaded] = React.useState(false);
 
   const handleMouseEnter = React.useCallback(() => {
     if (!hasPreloaded) {
       setHasPreloaded(true);
-      preload().catch(() => {/* Ignore preload errors */});
+      preload().catch(() => {
+        /* Ignore preload errors */
+      });
     }
   }, [hasPreloaded, preload]);
 
@@ -302,7 +309,10 @@ class LazyComponentRegistry {
     return this.loadedComponents.has(componentName);
   }
 
-  static preload(componentName: string, importFn: () => Promise<unknown>): Promise<void> {
+  static preload(
+    componentName: string,
+    importFn: () => Promise<unknown>
+  ): Promise<void> {
     if (this.isLoaded(componentName)) {
       return Promise.resolve();
     }

@@ -1,15 +1,18 @@
 /**
  * Model Selector Component
- * 
+ *
  * Provides model selection with categorization, provider information,
  * and capability display. Supports model switching with context preservation.
- * 
+ *
  * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 12.1, 12.2, 12.3, 12.4
  */
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { EnhancedModelInfo, ModelSelectionCriteria } from '../../services/models';
+import type {
+  EnhancedModelInfo,
+  ModelSelectionCriteria,
+} from '../../services/models';
 import { getModelService, MODEL_CATEGORIES } from '../../services/models';
 import { useScreenReaderAnnouncer } from '../accessibility';
 import './ModelSelector.css';
@@ -32,7 +35,11 @@ export interface ModelSelectorProps {
   /** Current conversation context tokens (for compatibility checking) */
   contextTokens?: number;
   /** Callback for model switch validation */
-  onValidationResult?: (result: { compatible: boolean; warnings: string[]; errors: string[] }) => void;
+  onValidationResult?: (result: {
+    compatible: boolean;
+    warnings: string[];
+    errors: string[];
+  }) => void;
 }
 
 /**
@@ -52,7 +59,9 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   const { t } = useTranslation();
   const { announce } = useScreenReaderAnnouncer();
   const [models, setModels] = useState<EnhancedModelInfo[]>([]);
-  const [, setGroupedModels] = useState<Record<string, EnhancedModelInfo[]>>({});
+  const [, setGroupedModels] = useState<Record<string, EnhancedModelInfo[]>>(
+    {}
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -77,7 +86,8 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       setModels(enhancedModels);
       setGroupedModels(modelsByCategory);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load models';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to load models';
       setError(errorMessage);
       // Development logging disabled for production
     } finally {
@@ -88,40 +98,54 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   /**
    * Handle model selection with validation
    */
-  const handleModelSelect = useCallback(async (_modelId: string) => {
-    if (disabled || _modelId === selectedModel) {
-      return;
-    }
+  const handleModelSelect = useCallback(
+    async (_modelId: string) => {
+      if (disabled || _modelId === selectedModel) {
+        return;
+      }
 
-    try {
-      // Validate model switch if context tokens are provided
-      if (contextTokens > 0 && onValidationResult) {
-        const validation = await modelService.validateModelSwitch(
-          selectedModel,
-          _modelId,
-          contextTokens
-        );
-        
-        onValidationResult(validation);
-        
-        // Don't proceed if there are errors
-        if (!validation.compatible) {
-          return;
+      try {
+        // Validate model switch if context tokens are provided
+        if (contextTokens > 0 && onValidationResult) {
+          const validation = await modelService.validateModelSwitch(
+            selectedModel,
+            _modelId,
+            contextTokens
+          );
+
+          onValidationResult(validation);
+
+          // Don't proceed if there are errors
+          if (!validation.compatible) {
+            return;
+          }
         }
-      }
 
-      onModelChange(_modelId);
-      setIsOpen(false);
-      
-      // Announce model selection to screen readers
-      const selectedModelInfo = models.find(m => m.id === _modelId);
-      if (selectedModelInfo) {
-        announce('model.selected', 'polite', { model: selectedModelInfo.name });
+        onModelChange(_modelId);
+        setIsOpen(false);
+
+        // Announce model selection to screen readers
+        const selectedModelInfo = models.find((m) => m.id === _modelId);
+        if (selectedModelInfo) {
+          announce('model.selected', 'polite', {
+            model: selectedModelInfo.name,
+          });
+        }
+      } catch (_err) {
+        // Error handling: validation failed
       }
-    } catch (_err) {
-      // Error handling: validation failed
-    }
-  }, [disabled, selectedModel, contextTokens, onValidationResult, modelService, onModelChange, models, announce]);
+    },
+    [
+      disabled,
+      selectedModel,
+      contextTokens,
+      onValidationResult,
+      modelService,
+      onModelChange,
+      models,
+      announce,
+    ]
+  );
 
   /**
    * Filter models based on search query and category
@@ -131,16 +155,19 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
     // Filter by category
     if (selectedCategory !== 'all') {
-      filtered = filtered.filter(model => model.category === selectedCategory);
+      filtered = filtered.filter(
+        (model) => model.category === selectedCategory
+      );
     }
 
     // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(model =>
-        model.name.toLowerCase().includes(query) ||
-        model.description.toLowerCase().includes(query) ||
-        model.capabilities.some(cap => cap.toLowerCase().includes(query))
+      filtered = filtered.filter(
+        (model) =>
+          model.name.toLowerCase().includes(query) ||
+          model.description.toLowerCase().includes(query) ||
+          model.capabilities.some((cap) => cap.toLowerCase().includes(query))
       );
     }
 
@@ -151,7 +178,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
    * Get the currently selected model info
    */
   const selectedModelInfo = useMemo(() => {
-    return models.find(model => model.id === selectedModel);
+    return models.find((model) => model.id === selectedModel);
   }, [models, selectedModel]);
 
   // Load models on mount
@@ -164,7 +191,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
    */
   const renderCapabilities = (capabilities: string[]): React.ReactElement => (
     <div className="model-capabilities">
-      {capabilities.slice(0, 3).map(capability => (
+      {capabilities.slice(0, 3).map((capability) => (
         <span key={capability} className="capability-badge">
           {t(`model.capability.${capability}`, capability)}
         </span>
@@ -180,11 +207,15 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   /**
    * Render model performance indicator
    */
-  const renderPerformanceIndicator = (rating: 'high' | 'medium' | 'low'): React.ReactElement => (
+  const renderPerformanceIndicator = (
+    rating: 'high' | 'medium' | 'low'
+  ): React.ReactElement => (
     <div className={`performance-indicator performance-${rating}`}>
       <div className="performance-dots">
         <div className="dot active" />
-        <div className={`dot ${rating === 'high' || rating === 'medium' ? 'active' : ''}`} />
+        <div
+          className={`dot ${rating === 'high' || rating === 'medium' ? 'active' : ''}`}
+        />
         <div className={`dot ${rating === 'high' ? 'active' : ''}`} />
       </div>
       <span className="performance-label">
@@ -226,9 +257,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
           )}
         </div>
         {!model.isAvailable && (
-          <span className="unavailable-badge">
-            {t('model.unavailable')}
-          </span>
+          <span className="unavailable-badge">{t('model.unavailable')}</span>
         )}
       </div>
 
@@ -237,18 +266,18 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
           <p className="model-description" id={`model-${model.id}-description`}>
             {model.description}
           </p>
-          
+
           <div className="model-info">
             <div className="model-info-item">
               <span className="info-label">{t('model.contextLimit')}:</span>
               <span className="info-value">{model.contextLimitFormatted}</span>
             </div>
-            
+
             <div className="model-info-item">
               <span className="info-label">{t('model.provider')}:</span>
               <span className="info-value">{model.providerInfo.name}</span>
             </div>
-            
+
             <div className="model-info-item">
               <span className="info-label">{t('model.category')}:</span>
               <span className="info-value">{model.categoryLabel}</span>
@@ -308,7 +337,9 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
   if (isLoading) {
     return (
-      <div className={`model-selector ${compact ? 'compact' : ''} ${disabled ? 'disabled' : ''}`}>
+      <div
+        className={`model-selector ${compact ? 'compact' : ''} ${disabled ? 'disabled' : ''}`}
+      >
         <div className="model-selector-loading">
           <div className="loading-spinner" />
           <span>{t('model.loading')}</span>
@@ -319,7 +350,9 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
   if (error !== null && error.length > 0) {
     return (
-      <div className={`model-selector ${compact ? 'compact' : ''} ${disabled ? 'disabled' : ''}`}>
+      <div
+        className={`model-selector ${compact ? 'compact' : ''} ${disabled ? 'disabled' : ''}`}
+      >
         <div className="model-selector-error">
           <span className="error-icon">⚠️</span>
           <span>{t('model.error', { error })}</span>
@@ -332,7 +365,9 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   }
 
   return (
-    <div className={`model-selector ${compact ? 'compact' : ''} ${disabled ? 'disabled' : ''}`}>
+    <div
+      className={`model-selector ${compact ? 'compact' : ''} ${disabled ? 'disabled' : ''}`}
+    >
       {/* Selected model display */}
       <div
         className={`selected-model ${isOpen ? 'open' : ''}`}
@@ -354,8 +389,13 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
           {selectedModelInfo ? (
             <>
               <div className="selected-model-main">
-                <span className="selected-model-name">{selectedModelInfo.name}</span>
-                <span className="selected-provider-icon" title={selectedModelInfo.providerInfo.name}>
+                <span className="selected-model-name">
+                  {selectedModelInfo.name}
+                </span>
+                <span
+                  className="selected-provider-icon"
+                  title={selectedModelInfo.providerInfo.name}
+                >
                   {selectedModelInfo.providerInfo.icon}
                 </span>
               </div>
@@ -382,14 +422,12 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         <div id="model-dropdown" className="model-dropdown" role="listbox">
           {showCategories && renderCategoryTabs()}
           {renderSearchInput()}
-          
+
           <div className="model-list">
             {filteredModels.length > 0 ? (
               filteredModels.map(renderModelItem)
             ) : (
-              <div className="no-models-found">
-                {t('model.noModelsFound')}
-              </div>
+              <div className="no-models-found">{t('model.noModelsFound')}</div>
             )}
           </div>
         </div>

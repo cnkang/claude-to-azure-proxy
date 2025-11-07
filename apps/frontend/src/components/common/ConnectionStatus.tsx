@@ -1,9 +1,9 @@
 /**
  * Connection Status Component
- * 
+ *
  * Displays real-time connection status for SSE and network connectivity
  * with user-friendly indicators and retry options.
- * 
+ *
  * Requirements: 6.3, 7.3
  */
 
@@ -58,14 +58,16 @@ export function ConnectionStatus({
     if (!isOnline) {
       showWarning(t('error.network.connectionFailed'), {
         persistent: true,
-        actions: [{
-          label: t('common.retry'),
-          action: () => {
-            if (networkUtils.isOnline()) {
-              onRetry?.();
-            }
+        actions: [
+          {
+            label: t('common.retry'),
+            action: () => {
+              if (networkUtils.isOnline()) {
+                onRetry?.();
+              }
+            },
           },
-        }],
+        ],
       });
     }
   }, [isOnline, showWarning, t, onRetry]);
@@ -73,14 +75,19 @@ export function ConnectionStatus({
   // Show error for failed connections
   useEffect(() => {
     if (connectionState === 'error' && connectionHealth) {
-      if (connectionHealth.reconnectAttempts >= connectionHealth.maxReconnectAttempts) {
+      if (
+        connectionHealth.reconnectAttempts >=
+        connectionHealth.maxReconnectAttempts
+      ) {
         showError(t('error.sse.maxAttemptsReached'), {
           persistent: true,
-          actions: [{
-            label: t('error.sse.retryManually'),
-            action: () => window.location.reload(),
-            primary: true,
-          }],
+          actions: [
+            {
+              label: t('error.sse.retryManually'),
+              action: () => window.location.reload(),
+              primary: true,
+            },
+          ],
         });
       }
     }
@@ -92,8 +99,10 @@ export function ConnectionStatus({
   }
 
   const getStatusColor = (): string => {
-    if (!isOnline) {return '#ef4444';} // Red for offline
-    
+    if (!isOnline) {
+      return '#ef4444';
+    } // Red for offline
+
     switch (connectionState) {
       case 'connected':
         return '#10b981'; // Green
@@ -130,8 +139,10 @@ export function ConnectionStatus({
   };
 
   const getStatusIcon = (): string => {
-    if (!isOnline) {return '⚠️';}
-    
+    if (!isOnline) {
+      return '⚠️';
+    }
+
     switch (connectionState) {
       case 'connected':
         return '🟢';
@@ -148,10 +159,11 @@ export function ConnectionStatus({
 
   const shouldShowRetry = (): boolean => {
     return (
-      connectionState === 'error' || 
-      connectionState === 'disconnected' || 
-      !isOnline
-    ) && onRetry !== undefined;
+      (connectionState === 'error' ||
+        connectionState === 'disconnected' ||
+        !isOnline) &&
+      onRetry !== undefined
+    );
   };
 
   const handleRetry = (): void => {
@@ -185,14 +197,13 @@ export function ConnectionStatus({
       aria-label={`Connection status: ${getStatusText()}`}
     >
       <span style={{ fontSize: '1rem' }}>{getStatusIcon()}</span>
-      
-      <span style={{ fontWeight: '500' }}>
-        {getStatusText()}
-      </span>
+
+      <span style={{ fontWeight: '500' }}>{getStatusText()}</span>
 
       {connectionHealth && showDetailedStatus && (
         <span style={{ color: '#6b7280', fontSize: '0.75rem' }}>
-          ({connectionHealth.reconnectAttempts}/{connectionHealth.maxReconnectAttempts})
+          ({connectionHealth.reconnectAttempts}/
+          {connectionHealth.maxReconnectAttempts})
         </span>
       )}
 
@@ -266,18 +277,28 @@ export function ConnectionStatus({
           <div style={{ marginBottom: '0.5rem' }}>
             <strong>Connection Health:</strong>
           </div>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '0.5rem',
+            }}
+          >
             <div>
               <div>State: {connectionHealth.state}</div>
               <div>Online: {connectionHealth.isOnline ? 'Yes' : 'No'}</div>
             </div>
-            
+
             <div>
-              <div>Attempts: {connectionHealth.reconnectAttempts}/{connectionHealth.maxReconnectAttempts}</div>
+              <div>
+                Attempts: {connectionHealth.reconnectAttempts}/
+                {connectionHealth.maxReconnectAttempts}
+              </div>
               {connectionHealth.lastConnected && (
                 <div>
-                  Last: {new Intl.DateTimeFormat('en', {
+                  Last:{' '}
+                  {new Intl.DateTimeFormat('en', {
                     hour: '2-digit',
                     minute: '2-digit',
                     second: '2-digit',
@@ -287,11 +308,13 @@ export function ConnectionStatus({
             </div>
           </div>
 
-          {connectionHealth.nextReconnectDelay > 0 && connectionHealth.state === 'reconnecting' && (
-            <div style={{ marginTop: '0.5rem', fontStyle: 'italic' }}>
-              Next attempt in {Math.round(connectionHealth.nextReconnectDelay / 1000)}s
-            </div>
-          )}
+          {connectionHealth.nextReconnectDelay > 0 &&
+            connectionHealth.state === 'reconnecting' && (
+              <div style={{ marginTop: '0.5rem', fontStyle: 'italic' }}>
+                Next attempt in{' '}
+                {Math.round(connectionHealth.nextReconnectDelay / 1000)}s
+              </div>
+            )}
         </div>
       )}
     </div>
@@ -317,8 +340,10 @@ export function ConnectionIndicator({
   const { t } = useTranslation();
 
   const getColor = (): string => {
-    if (!isOnline) {return '#ef4444';}
-    
+    if (!isOnline) {
+      return '#ef4444';
+    }
+
     switch (connectionState) {
       case 'connected':
         return '#10b981';
@@ -345,8 +370,10 @@ export function ConnectionIndicator({
   };
 
   const getStatusText = (): string => {
-    if (!isOnline) {return t('error.network.connectionFailed');}
-    
+    if (!isOnline) {
+      return t('error.network.connectionFailed');
+    }
+
     switch (connectionState) {
       case 'connected':
         return t('chat.connected');
@@ -384,8 +411,9 @@ export function ConnectionIndicator({
           transition: 'background-color 0.2s ease-in-out',
         }}
       />
-      
-      {connectionState === 'connecting' || connectionState === 'reconnecting' ? (
+
+      {connectionState === 'connecting' ||
+      connectionState === 'reconnecting' ? (
         <div
           style={{
             width: getSize(),

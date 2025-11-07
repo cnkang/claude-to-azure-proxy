@@ -22,7 +22,9 @@
 .model-switch-dialog {
   background: var(--surface-color);
   border-radius: 0.75rem;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
   max-width: 600px;
   width: 100%;
   max-height: 90vh;
@@ -480,8 +482,12 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .footer-note {
@@ -510,34 +516,34 @@
   .model-switch-dialog-overlay {
     padding: 0.5rem;
   }
-  
+
   .model-switch-dialog {
     max-height: 95vh;
   }
-  
+
   .dialog-header,
   .dialog-content,
   .dialog-footer {
     padding: 1rem;
   }
-  
+
   .comparison-grid {
     grid-template-columns: 1fr;
     gap: 0.75rem;
   }
-  
+
   .comparison-arrow {
     transform: rotate(90deg);
   }
-  
+
   .context-details {
     grid-template-columns: 1fr;
   }
-  
+
   .footer-actions {
     flex-direction: column-reverse;
   }
-  
+
   .cancel-button,
   .confirm-button {
     width: 100%;
@@ -549,11 +555,11 @@
   .model-column {
     border-width: 2px;
   }
-  
+
   .option-item {
     border-width: 2px;
   }
-  
+
   .validation-section {
     border-width: 2px;
   }
@@ -567,7 +573,7 @@
   .confirm-button {
     transition: none;
   }
-  
+
   .loading-spinner {
     animation: none;
   }
@@ -578,7 +584,7 @@
   .model-switch-dialog-overlay {
     background: rgba(0, 0, 0, 0.7);
   }
-  
+
   .model-switch-dialog {
     --surface-color: #2a2a2a;
     --background-color: #1a1a1a;

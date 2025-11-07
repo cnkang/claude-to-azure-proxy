@@ -1,9 +1,9 @@
 /**
  * Model Switch Confirmation Dialog
- * 
+ *
  * Provides a confirmation dialog for model switching with validation
  * results, warnings, and context preservation options.
- * 
+ *
  * Requirements: 12.1, 12.2, 12.3, 12.4
  */
 
@@ -25,7 +25,10 @@ export interface ModelSwitchDialogProps {
   /** Current context tokens */
   contextTokens: number;
   /** Callback when confirmed */
-  onConfirm: (_options: { preserveContext: boolean; createNew: boolean }) => void;
+  onConfirm: (_options: {
+    preserveContext: boolean;
+    createNew: boolean;
+  }) => void;
   /** Callback when cancelled */
   onCancel: () => void;
   /** Whether the switch is in progress */
@@ -55,8 +58,6 @@ export const ModelSwitchDialog: React.FC<ModelSwitchDialogProps> = ({
   const handleConfirm = useCallback((): void => {
     onConfirm({ preserveContext, createNew });
   }, [onConfirm, preserveContext, createNew]);
-
-
 
   /**
    * Render validation messages
@@ -124,7 +125,7 @@ export const ModelSwitchDialog: React.FC<ModelSwitchDialogProps> = ({
       <div className="comparison-header">
         <h4 className="comparison-title">{t('model.switch.comparison')}</h4>
       </div>
-      
+
       <div className="comparison-grid">
         {/* Current Model */}
         <div className="model-column current-model">
@@ -132,24 +133,30 @@ export const ModelSwitchDialog: React.FC<ModelSwitchDialogProps> = ({
             <span className="model-label">{t('model.switch.current')}</span>
             <div className="model-info">
               <span className="model-name">{currentModel.name}</span>
-              <span className="provider-icon">{currentModel.providerInfo.icon}</span>
+              <span className="provider-icon">
+                {currentModel.providerInfo.icon}
+              </span>
             </div>
           </div>
-          
+
           <div className="model-details">
             <div className="detail-item">
               <span className="detail-label">{t('model.contextLimit')}:</span>
-              <span className="detail-value">{currentModel.contextLimitFormatted}</span>
+              <span className="detail-value">
+                {currentModel.contextLimitFormatted}
+              </span>
             </div>
-            
+
             <div className="detail-item">
               <span className="detail-label">{t('model.category')}:</span>
               <span className="detail-value">{currentModel.categoryLabel}</span>
             </div>
-            
+
             <div className="detail-item">
               <span className="detail-label">{t('model.performance')}:</span>
-              <span className={`detail-value performance-${currentModel.performanceRating}`}>
+              <span
+                className={`detail-value performance-${currentModel.performanceRating}`}
+              >
                 {t(`model.performance.${currentModel.performanceRating}`)}
               </span>
             </div>
@@ -167,24 +174,30 @@ export const ModelSwitchDialog: React.FC<ModelSwitchDialogProps> = ({
             <span className="model-label">{t('model.switch.target')}</span>
             <div className="model-info">
               <span className="model-name">{targetModel.name}</span>
-              <span className="provider-icon">{targetModel.providerInfo.icon}</span>
+              <span className="provider-icon">
+                {targetModel.providerInfo.icon}
+              </span>
             </div>
           </div>
-          
+
           <div className="model-details">
             <div className="detail-item">
               <span className="detail-label">{t('model.contextLimit')}:</span>
-              <span className="detail-value">{targetModel.contextLimitFormatted}</span>
+              <span className="detail-value">
+                {targetModel.contextLimitFormatted}
+              </span>
             </div>
-            
+
             <div className="detail-item">
               <span className="detail-label">{t('model.category')}:</span>
               <span className="detail-value">{targetModel.categoryLabel}</span>
             </div>
-            
+
             <div className="detail-item">
               <span className="detail-label">{t('model.performance')}:</span>
-              <span className={`detail-value performance-${targetModel.performanceRating}`}>
+              <span
+                className={`detail-value performance-${targetModel.performanceRating}`}
+              >
                 {t(`model.performance.${targetModel.performanceRating}`)}
               </span>
             </div>
@@ -202,21 +215,33 @@ export const ModelSwitchDialog: React.FC<ModelSwitchDialogProps> = ({
       <div className="context-header">
         <h4 className="context-title">{t('model.switch.contextInfo')}</h4>
       </div>
-      
+
       <div className="context-details">
         <div className="context-item">
-          <span className="context-label">{t('model.switch.currentTokens')}:</span>
-          <span className="context-value">{contextTokens.toLocaleString()}</span>
+          <span className="context-label">
+            {t('model.switch.currentTokens')}:
+          </span>
+          <span className="context-value">
+            {contextTokens.toLocaleString()}
+          </span>
         </div>
-        
+
         <div className="context-item">
-          <span className="context-label">{t('model.switch.targetLimit')}:</span>
-          <span className="context-value">{targetModel.contextLength.toLocaleString()}</span>
+          <span className="context-label">
+            {t('model.switch.targetLimit')}:
+          </span>
+          <span className="context-value">
+            {targetModel.contextLength.toLocaleString()}
+          </span>
         </div>
-        
+
         <div className="context-item">
-          <span className="context-label">{t('model.switch.utilization')}:</span>
-          <span className={`context-value ${contextTokens / targetModel.contextLength > 0.8 ? 'high-usage' : ''}`}>
+          <span className="context-label">
+            {t('model.switch.utilization')}:
+          </span>
+          <span
+            className={`context-value ${contextTokens / targetModel.contextLength > 0.8 ? 'high-usage' : ''}`}
+          >
             {((contextTokens / targetModel.contextLength) * 100).toFixed(1)}%
           </span>
         </div>
@@ -232,9 +257,13 @@ export const ModelSwitchDialog: React.FC<ModelSwitchDialogProps> = ({
       <div className="options-header">
         <h4 className="options-title">{t('model.switch.options')}</h4>
       </div>
-      
+
       <div className="option-group">
-        <label className="option-item" htmlFor="preserve-context-checkbox" aria-label={t('model.switch.preserveContext')}>
+        <label
+          className="option-item"
+          htmlFor="preserve-context-checkbox"
+          aria-label={t('model.switch.preserveContext')}
+        >
           <input
             id="preserve-context-checkbox"
             type="checkbox"
@@ -245,14 +274,20 @@ export const ModelSwitchDialog: React.FC<ModelSwitchDialogProps> = ({
             aria-label={t('model.switch.preserveContext')}
           />
           <div className="option-content">
-            <span className="option-label">{t('model.switch.preserveContext')}</span>
+            <span className="option-label">
+              {t('model.switch.preserveContext')}
+            </span>
             <span className="option-description">
               {t('model.switch.preserveContext.description')}
             </span>
           </div>
         </label>
-        
-        <label className="option-item" htmlFor="create-new-checkbox" aria-label={t('model.switch.createNew')}>
+
+        <label
+          className="option-item"
+          htmlFor="create-new-checkbox"
+          aria-label={t('model.switch.createNew')}
+        >
           <input
             id="create-new-checkbox"
             type="checkbox"
@@ -277,8 +312,8 @@ export const ModelSwitchDialog: React.FC<ModelSwitchDialogProps> = ({
   }
 
   return (
-    <div 
-      className="model-switch-dialog-overlay" 
+    <div
+      className="model-switch-dialog-overlay"
       onClick={onCancel}
       role="presentation"
       onKeyDown={(e) => {
@@ -287,7 +322,7 @@ export const ModelSwitchDialog: React.FC<ModelSwitchDialogProps> = ({
         }
       }}
     >
-      <div 
+      <div
         className="model-switch-dialog"
         role="dialog"
         aria-modal="true"
@@ -311,7 +346,7 @@ export const ModelSwitchDialog: React.FC<ModelSwitchDialogProps> = ({
           {renderModelComparison()}
           {renderContextInfo()}
           {renderValidationMessages()}
-          
+
           {validation.compatible && renderOptions()}
         </div>
 
@@ -324,7 +359,7 @@ export const ModelSwitchDialog: React.FC<ModelSwitchDialogProps> = ({
             >
               {t('common.cancel')}
             </button>
-            
+
             <button
               onClick={handleConfirm}
               disabled={!validation.compatible || isLoading}
@@ -342,7 +377,7 @@ export const ModelSwitchDialog: React.FC<ModelSwitchDialogProps> = ({
               )}
             </button>
           </div>
-          
+
           {!validation.compatible && (
             <div className="footer-note">
               <span className="note-icon">ℹ️</span>

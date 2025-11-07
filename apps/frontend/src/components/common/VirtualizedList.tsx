@@ -1,21 +1,21 @@
 /**
  * Virtualized List Component
- * 
+ *
  * High-performance virtualized list component for rendering large datasets
  * with minimal DOM nodes. Supports dynamic item heights and smooth scrolling.
- * 
+ *
  * Requirements: 5.4, 14.5
  */
 
-import React, { 
-  memo, 
-  useCallback, 
-  useEffect, 
-  useRef, 
-  useState, 
+import React, {
+  memo,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
   useMemo,
   forwardRef,
-  useImperativeHandle
+  useImperativeHandle,
 } from 'react';
 import { useThrottledCallback } from '../../utils/performance';
 
@@ -53,7 +53,10 @@ export interface VirtualizedListProps<T> {
  * Virtualized list ref methods
  */
 export interface VirtualizedListRef {
-  scrollToItem: (index: number, alignment?: 'start' | 'center' | 'end' | 'auto') => void;
+  scrollToItem: (
+    index: number,
+    alignment?: 'start' | 'center' | 'end' | 'auto'
+  ) => void;
   scrollToTop: () => void;
   scrollToBottom: () => void;
   getScrollOffset: () => number;
@@ -72,7 +75,8 @@ function calculateItemPositions(
 
   for (let i = 0; i < itemCount; i++) {
     positions[i] = currentPosition;
-    const height = typeof itemHeight === 'function' ? itemHeight(i) : itemHeight;
+    const height =
+      typeof itemHeight === 'function' ? itemHeight(i) : itemHeight;
     currentPosition += height || estimatedHeight;
   }
 
@@ -94,7 +98,7 @@ function findVisibleRange(
   estimatedHeight = 50
 ): { startIndex: number; endIndex: number } {
   const itemCount = positions.length;
-  
+
   if (itemCount === 0) {
     return { startIndex: 0, endIndex: 0 };
   }
@@ -102,14 +106,15 @@ function findVisibleRange(
   // Binary search for start index
   let startIndex = 0;
   let endIndex = itemCount - 1;
-  
+
   while (startIndex < endIndex) {
     const mid = Math.floor((startIndex + endIndex) / 2);
     const itemTop = positions[mid];
-    const itemBottom = itemTop + (
-      typeof itemHeight === 'function' ? itemHeight(mid) : itemHeight
-    ) || estimatedHeight;
-    
+    const itemBottom =
+      itemTop +
+        (typeof itemHeight === 'function' ? itemHeight(mid) : itemHeight) ||
+      estimatedHeight;
+
     if (itemBottom <= scrollTop) {
       startIndex = mid + 1;
     } else {
@@ -120,7 +125,7 @@ function findVisibleRange(
   // Find end index
   const visibleStartIndex = Math.max(0, startIndex - overscan);
   let visibleEndIndex = visibleStartIndex;
-  
+
   for (let i = visibleStartIndex; i < itemCount; i++) {
     const itemTop = positions[i];
     if (itemTop > scrollTop + containerHeight + overscan * estimatedHeight) {
@@ -161,14 +166,22 @@ const VirtualizedListComponent = <T,>(
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Calculate item positions
-  const { positions, totalHeight } = useMemo(() => 
-    calculateItemPositions(items.length, itemHeight, estimatedItemHeight),
+  const { positions, totalHeight } = useMemo(
+    () => calculateItemPositions(items.length, itemHeight, estimatedItemHeight),
     [items.length, itemHeight, estimatedItemHeight]
   );
 
   // Find visible items
-  const { startIndex, endIndex } = useMemo(() =>
-    findVisibleRange(scrollTop, height, positions, itemHeight, overscan, estimatedItemHeight),
+  const { startIndex, endIndex } = useMemo(
+    () =>
+      findVisibleRange(
+        scrollTop,
+        height,
+        positions,
+        itemHeight,
+        overscan,
+        estimatedItemHeight
+      ),
     [scrollTop, height, positions, itemHeight, overscan, estimatedItemHeight]
   );
 
@@ -179,12 +192,12 @@ const VirtualizedListComponent = <T,>(
     const newScrollTop = event.currentTarget.scrollTop;
     setScrollTop(newScrollTop);
     setIsScrolling(true);
-    
+
     // Clear existing timeout
     if (scrollTimeoutRef.current !== null) {
       clearTimeout(scrollTimeoutRef.current);
     }
-    
+
     // Set scrolling to false after scroll ends
     scrollTimeoutRef.current = setTimeout(() => {
       setIsScrolling(false);
@@ -194,41 +207,47 @@ const VirtualizedListComponent = <T,>(
   }, 16); // ~60fps
 
   // Scroll to specific index
-  const scrollToItem = useCallback((
-    index: number, 
-    alignment: 'start' | 'center' | 'end' | 'auto' = 'auto'
-  ) => {
-    if (!containerRef.current || index < 0 || index >= items.length) {
-      return;
-    }
+  const scrollToItem = useCallback(
+    (
+      index: number,
+      alignment: 'start' | 'center' | 'end' | 'auto' = 'auto'
+    ) => {
+      if (!containerRef.current || index < 0 || index >= items.length) {
+        return;
+      }
 
-    const itemTop = positions[index];
-    const itemBottom = itemTop + (
-      typeof itemHeight === 'function' ? itemHeight(index) : itemHeight
-    );
-    
-    let targetScrollTop = itemTop;
+      const itemTop = positions[index];
+      const itemBottom =
+        itemTop +
+        (typeof itemHeight === 'function' ? itemHeight(index) : itemHeight);
 
-    switch (alignment) {
-      case 'center':
-        targetScrollTop = itemTop - (height - (itemBottom - itemTop)) / 2;
-        break;
-      case 'end':
-        targetScrollTop = itemBottom - height;
-        break;
-      case 'auto':
-        if (itemTop < scrollTop) {
-          targetScrollTop = itemTop;
-        } else if (itemBottom > scrollTop + height) {
+      let targetScrollTop = itemTop;
+
+      switch (alignment) {
+        case 'center':
+          targetScrollTop = itemTop - (height - (itemBottom - itemTop)) / 2;
+          break;
+        case 'end':
           targetScrollTop = itemBottom - height;
-        } else {
-          return; // Item is already visible
-        }
-        break;
-    }
+          break;
+        case 'auto':
+          if (itemTop < scrollTop) {
+            targetScrollTop = itemTop;
+          } else if (itemBottom > scrollTop + height) {
+            targetScrollTop = itemBottom - height;
+          } else {
+            return; // Item is already visible
+          }
+          break;
+      }
 
-    containerRef.current.scrollTop = Math.max(0, Math.min(targetScrollTop, totalHeight - height));
-  }, [positions, itemHeight, height, scrollTop, totalHeight, items.length]);
+      containerRef.current.scrollTop = Math.max(
+        0,
+        Math.min(targetScrollTop, totalHeight - height)
+      );
+    },
+    [positions, itemHeight, height, scrollTop, totalHeight, items.length]
+  );
 
   // Scroll to top/bottom
   const scrollToTop = useCallback(() => {
@@ -246,12 +265,16 @@ const VirtualizedListComponent = <T,>(
   const getScrollOffset = useCallback(() => scrollTop, [scrollTop]);
 
   // Expose methods via ref
-  useImperativeHandle(ref, () => ({
-    scrollToItem,
-    scrollToTop,
-    scrollToBottom,
-    getScrollOffset,
-  }), [scrollToItem, scrollToTop, scrollToBottom, getScrollOffset]);
+  useImperativeHandle(
+    ref,
+    () => ({
+      scrollToItem,
+      scrollToTop,
+      scrollToBottom,
+      getScrollOffset,
+    }),
+    [scrollToItem, scrollToTop, scrollToBottom, getScrollOffset]
+  );
 
   // Handle scrollToIndex prop
   useEffect(() => {
@@ -263,14 +286,17 @@ const VirtualizedListComponent = <T,>(
   // Render visible items
   const visibleItems = useMemo(() => {
     const result = [];
-    
+
     for (let i = startIndex; i <= endIndex; i++) {
-      if (i >= items.length) {break;}
-      
+      if (i >= items.length) {
+        break;
+      }
+
       const item = items[i];
       const itemTop = positions[i];
-      const itemHeightValue = typeof itemHeight === 'function' ? itemHeight(i) : itemHeight;
-      
+      const itemHeightValue =
+        typeof itemHeight === 'function' ? itemHeight(i) : itemHeight;
+
       const style: React.CSSProperties = {
         position: 'absolute',
         top: itemTop,
@@ -289,17 +315,17 @@ const VirtualizedListComponent = <T,>(
         </div>
       );
     }
-    
+
     return result;
   }, [
-    startIndex, 
-    endIndex, 
-    items, 
-    positions, 
-    itemHeight, 
-    renderItem, 
-    getItemKey, 
-    isScrolling
+    startIndex,
+    endIndex,
+    items,
+    positions,
+    itemHeight,
+    renderItem,
+    getItemKey,
+    isScrolling,
   ]);
 
   return (
@@ -327,7 +353,7 @@ const VirtualizedListComponent = <T,>(
       >
         {visibleItems}
       </div>
-      
+
       {/* Scrolling indicator */}
       {isScrolling && (
         <div
@@ -356,9 +382,7 @@ const ForwardedVirtualizedList = forwardRef(VirtualizedListComponent);
 
 ForwardedVirtualizedList.displayName = 'VirtualizedList';
 
-export const VirtualizedList = memo(ForwardedVirtualizedList) as <
-  T
->(
+export const VirtualizedList = memo(ForwardedVirtualizedList) as <T>(
   props: VirtualizedListProps<T> & React.RefAttributes<VirtualizedListRef>
 ) => React.JSX.Element;
 
@@ -377,14 +401,21 @@ export function useVirtualizedList<T>({
   overscan?: number;
 }) {
   const [scrollTop, setScrollTop] = useState(0);
-  
-  const { positions, totalHeight } = useMemo(() => 
-    calculateItemPositions(items.length, itemHeight),
+
+  const { positions, totalHeight } = useMemo(
+    () => calculateItemPositions(items.length, itemHeight),
     [items.length, itemHeight]
   );
 
-  const { startIndex, endIndex } = useMemo(() =>
-    findVisibleRange(scrollTop, containerHeight, positions, itemHeight, overscan),
+  const { startIndex, endIndex } = useMemo(
+    () =>
+      findVisibleRange(
+        scrollTop,
+        containerHeight,
+        positions,
+        itemHeight,
+        overscan
+      ),
     [scrollTop, containerHeight, positions, itemHeight, overscan]
   );
 
@@ -395,9 +426,10 @@ export function useVirtualizedList<T>({
       style: {
         position: 'absolute' as const,
         top: positions[startIndex + relativeIndex],
-        height: typeof itemHeight === 'function' 
-          ? itemHeight(startIndex + relativeIndex) 
-          : itemHeight,
+        height:
+          typeof itemHeight === 'function'
+            ? itemHeight(startIndex + relativeIndex)
+            : itemHeight,
         width: '100%',
       },
     }));

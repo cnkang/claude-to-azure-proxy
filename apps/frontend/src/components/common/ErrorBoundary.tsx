@@ -1,9 +1,9 @@
 /**
  * Error Boundary Component
- * 
+ *
  * Catches JavaScript errors anywhere in the child component tree,
  * logs those errors, and displays a fallback UI instead of crashing.
- * 
+ *
  * Requirements: 6.3, 7.3
  */
 
@@ -18,7 +18,9 @@ interface ErrorBoundaryFallbackParams {
   eventId: string | null;
 }
 
-type ErrorBoundaryFallbackRender = (params: ErrorBoundaryFallbackParams) => ReactNode;
+type ErrorBoundaryFallbackRender = (
+  params: ErrorBoundaryFallbackParams
+) => ReactNode;
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -39,7 +41,10 @@ interface ErrorBoundaryState {
 /**
  * Error Boundary class component
  */
-class ErrorBoundaryClass extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+class ErrorBoundaryClass extends Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
   private resetTimeoutId: number | null = null;
 
   constructor(props: ErrorBoundaryProps) {
@@ -171,7 +176,12 @@ interface ErrorFallbackProps {
   onReset: () => void;
 }
 
-function ErrorFallback({ error, _errorInfo, eventId, onReset }: ErrorFallbackProps): React.JSX.Element {
+function ErrorFallback({
+  error,
+  _errorInfo,
+  eventId,
+  onReset,
+}: ErrorFallbackProps): React.JSX.Element {
   const { t } = useTranslation();
 
   const handleReloadPage = (): void => {
@@ -179,7 +189,9 @@ function ErrorFallback({ error, _errorInfo, eventId, onReset }: ErrorFallbackPro
   };
 
   const handleCopyError = async (): Promise<void> => {
-    if (!error) {return;}
+    if (!error) {
+      return;
+    }
 
     const errorDetails = {
       message: error.message,
@@ -192,7 +204,9 @@ function ErrorFallback({ error, _errorInfo, eventId, onReset }: ErrorFallbackPro
     };
 
     try {
-      await navigator.clipboard.writeText(JSON.stringify(errorDetails, null, 2));
+      await navigator.clipboard.writeText(
+        JSON.stringify(errorDetails, null, 2)
+      );
     } catch {
       // Fallback for older browsers
       const textArea = document.createElement('textarea');
@@ -218,15 +232,24 @@ function ErrorFallback({ error, _errorInfo, eventId, onReset }: ErrorFallbackPro
         textAlign: 'center',
       }}
     >
-      <h2 style={{ marginBottom: '1rem', fontSize: '1.5rem', fontWeight: 'bold' }}>
+      <h2
+        style={{ marginBottom: '1rem', fontSize: '1.5rem', fontWeight: 'bold' }}
+      >
         {t('error.boundary.title')}
       </h2>
-      
+
       <p style={{ marginBottom: '1.5rem', color: '#7f1d1d' }}>
         {t('error.boundary.message')}
       </p>
 
-      <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+      <div
+        style={{
+          display: 'flex',
+          gap: '1rem',
+          justifyContent: 'center',
+          flexWrap: 'wrap',
+        }}
+      >
         <button
           onClick={onReset}
           style={{
@@ -280,7 +303,13 @@ function ErrorFallback({ error, _errorInfo, eventId, onReset }: ErrorFallbackPro
 
       {import.meta.env.DEV && error && (
         <details style={{ marginTop: '1.5rem', textAlign: 'left' }}>
-          <summary style={{ cursor: 'pointer', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+          <summary
+            style={{
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              marginBottom: '0.5rem',
+            }}
+          >
             {t('error.boundary.details')}
           </summary>
           <pre
@@ -345,7 +374,7 @@ export function withErrorBoundary<P extends object>(
   );
 
   WrappedComponent.displayName = `withErrorBoundary(${Component.displayName || Component.name})`;
-  
+
   return WrappedComponent;
 }
 

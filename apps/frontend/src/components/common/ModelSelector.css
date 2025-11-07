@@ -43,8 +43,12 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Error state */
@@ -479,26 +483,26 @@
   .model-selector {
     max-width: none;
   }
-  
+
   .model-dropdown {
     max-height: 60vh;
   }
-  
+
   .category-tabs {
     overflow-x: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
-  
+
   .category-tabs::-webkit-scrollbar {
     display: none;
   }
-  
+
   .category-tab {
     white-space: nowrap;
     min-width: fit-content;
   }
-  
+
   .model-info {
     grid-template-columns: 1fr;
   }
@@ -509,11 +513,11 @@
   .model-item.selected {
     border-left-width: 4px;
   }
-  
+
   .capability-badge {
     border: 1px solid var(--border-color);
   }
-  
+
   .performance-indicator .dot {
     border: 1px solid var(--text-secondary);
   }
@@ -528,7 +532,7 @@
   .dropdown-arrow {
     transition: none;
   }
-  
+
   .loading-spinner {
     animation: none;
   }
