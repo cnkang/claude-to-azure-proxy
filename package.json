@@ -140,8 +140,11 @@
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "@humanfs/node": "^0.16.7",
+    "@swc/cli": "^0.7.9",
+    "@swc/core": "^1.15.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",
+    "@types/glob": "^9.0.0",
     "@types/node": "^24.10.0",
     "@types/superagent": "^8.1.9",
     "@types/supertest": "^6.0.3",
@@ -150,9 +153,9 @@
     "@vitest/coverage-v8": "^4.0.7",
     "@vitest/ui": "^4.0.7",
     "concurrently": "^9.2.1",
-    "esbuild": "^0.25.12",
     "eslint": "^9.39.1",
     "eslint-plugin-security": "^3.0.1",
+    "glob": "^11.0.3",
     "http-server": "^14.1.1",
     "husky": "^9.1.7",
     "jiti": "^2.6.1",
@@ -182,8 +185,6 @@
     ]
   },
   "pnpm": {
-    "overrides": {
-      "esbuild": "^0.25.12"
-    }
+    "overrides": {}
   }
 }

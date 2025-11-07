@@ -1,5 +1,5 @@
 import { defineConfig, loadEnv } from 'vite';
-import react from '@vitejs/plugin-react';
+import react from '@vitejs/plugin-react-swc';
 import { resolve } from 'path';
 import autoprefixer from 'autoprefixer';
 import cssnano from 'cssnano';
@@ -13,17 +13,8 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react({
-        // Production optimizations
-        babel: isProduction
-          ? {
-              plugins: [
-                [
-                  'babel-plugin-react-remove-properties',
-                  { properties: ['data-testid'] },
-                ],
-              ],
-            }
-          : undefined,
+        // SWC plugin configuration
+        // Automatically handles JSX transformation and React refresh
       }),
     ],
     resolve: {
@@ -211,26 +202,8 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       host: true,
     },
-    // Production optimizations
-    esbuild: isProduction
-      ? {
-          drop: ['console', 'debugger'],
-          legalComments: 'none',
-          minifyIdentifiers: true,
-          minifySyntax: true,
-          minifyWhitespace: true,
-          treeShaking: true,
-          // Advanced esbuild optimizations
-          pure: [
-            'console.log',
-            'console.info',
-            'console.debug',
-            'console.warn',
-          ],
-          ignoreAnnotations: false,
-          keepNames: false,
-        }
-      : {},
+    // SWC handles transpilation, esbuild still used for dependency pre-bundling
+    // Production optimizations handled by terser and SWC
     // CSS optimization
     css: {
       devSourcemap: !isProduction,

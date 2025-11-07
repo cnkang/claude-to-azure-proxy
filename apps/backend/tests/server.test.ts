@@ -118,12 +118,12 @@ describe('ProxyServer integration', () => {
     );
   });
 
-  it('serves service metadata with correlation IDs on the root endpoint', async () => {
+  it('serves service metadata with correlation IDs on the API info endpoint', async () => {
     const server = createProxyServer();
     const app = getAppFromServer(server);
 
     const response = await request(app)
-      .get('/')
+      .get('/api/info')
       .set('x-correlation-id', 'server-test-correlation');
 
     expect(response.status).toBe(200);
@@ -133,7 +133,7 @@ describe('ProxyServer integration', () => {
       correlationId: 'server-test-correlation',
     });
     expect(loggerMock.info).toHaveBeenCalledWith(
-      'Root endpoint accessed',
+      'API info endpoint accessed',
       'server-test-correlation'
     );
   });

@@ -43,6 +43,8 @@ jobs:
           format: "sarif"
           output: "trivy-results.sarif"
           severity: "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
+          # Skip esbuild binaries - these are build-time only and not in production
+          skip-files: "**/node_modules/@esbuild/**,**/node_modules/.pnpm/@esbuild**"
 
       - name: Upload Trivy scan results
         uses: github/codeql-action/upload-sarif@v3
