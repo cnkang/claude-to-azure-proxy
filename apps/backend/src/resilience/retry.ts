@@ -3,6 +3,7 @@
  * Provides resilient operation execution with configurable retry strategies
  */
 
+import { performance } from 'node:perf_hooks';
 import { TimeoutError } from '../errors/index';
 
 export interface RetryConfig {
@@ -18,6 +19,7 @@ export interface RetryConfig {
 export interface RetryAttempt {
   readonly attemptNumber: number;
   readonly delayMs: number;
+  readonly durationMs: number;
   readonly error?: Error;
   readonly timestamp: Date;
 }
@@ -97,7 +99,7 @@ export class RetryStrategy {
     correlationId: string,
     operationName?: string
   ): Promise<RetryResult<T>> {
-    const startTime = Date.now();
+    const startTime = performance.now();
     const attempts: RetryAttempt[] = [];
     let lastError: Error | undefined;
     let delayBeforeAttempt = 0;
@@ -107,7 +109,8 @@ export class RetryStrategy {
         await this.delay(delayBeforeAttempt);
       }
 
-      const attemptStartTime = Date.now();
+      const attemptStartTime = performance.now();
+      const attemptTimestamp = new Date();
       const recordedDelay = attempt === 1 ? 0 : delayBeforeAttempt;
 
       try {
@@ -123,13 +126,15 @@ export class RetryStrategy {
             : await operation();
 
         // Success - record attempt and return
+        const attemptDurationMs = performance.now() - attemptStartTime;
         attempts.push({
           attemptNumber: attempt,
           delayMs: recordedDelay,
-          timestamp: new Date(attemptStartTime),
+          durationMs: attemptDurationMs,
+          timestamp: attemptTimestamp,
         });
 
-        const totalDurationMs = Date.now() - startTime;
+        const totalDurationMs = performance.now() - startTime;
         this.updateMetrics(true, attempt, totalDurationMs);
 
         return {
@@ -141,11 +146,13 @@ export class RetryStrategy {
       } catch (error) {
         lastError = error as Error;
 
+        const attemptDurationMs = performance.now() - attemptStartTime;
         attempts.push({
           attemptNumber: attempt,
           delayMs: recordedDelay,
+          durationMs: attemptDurationMs,
           error: lastError,
-          timestamp: new Date(attemptStartTime),
+          timestamp: attemptTimestamp,
         });
 
         // Check if error is retryable
@@ -161,7 +168,7 @@ export class RetryStrategy {
     }
 
     // All attempts failed
-    const totalDurationMs = Date.now() - startTime;
+    const totalDurationMs = performance.now() - startTime;
     this.updateMetrics(false, attempts.length, totalDurationMs);
 
     return {
