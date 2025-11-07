@@ -7,9 +7,11 @@ const setThemeMode = vi.fn();
 const setLanguage = vi.fn();
 const resetSession = vi.fn().mockResolvedValue(undefined);
 const deleteMultipleConversations = vi.fn().mockResolvedValue(undefined);
-const exportConversations = vi.fn().mockResolvedValue(
-  JSON.stringify({ conversations: [], exportedAt: '2024-01-01' })
-);
+const exportConversations = vi
+  .fn()
+  .mockResolvedValue(
+    JSON.stringify({ conversations: [], exportedAt: '2024-01-01' })
+  );
 const clearAllData = vi.fn().mockResolvedValue(undefined);
 
 const translationMap: Record<string, string> = {
@@ -78,8 +80,20 @@ vi.mock('../contexts/I18nContext.js', () => ({
     language: 'en',
     setLanguage,
     supportedLanguages: [
-      { code: 'en', name: 'English', nativeName: 'English', flag: '🇺🇸', rtl: false },
-      { code: 'zh', name: 'Chinese', nativeName: '中文', flag: '🇨🇳', rtl: false },
+      {
+        code: 'en',
+        name: 'English',
+        nativeName: 'English',
+        flag: 'EN',
+        rtl: false,
+      },
+      {
+        code: 'zh',
+        name: 'Chinese',
+        nativeName: '中文',
+        flag: '中',
+        rtl: false,
+      },
     ],
     formatFileSize: (bytes: number) => `${(bytes / 1024).toFixed(1)} KB`,
   }),
@@ -213,11 +227,15 @@ describe('SettingsPage data management', () => {
   it('clears conversations after confirmation', async () => {
     render(<SettingsPage />);
 
-    const clearButton = screen.getByRole('button', { name: /clear conversations/i });
+    const clearButton = screen.getByRole('button', {
+      name: /clear conversations/i,
+    });
     fireEvent.click(clearButton);
 
     await waitFor(() =>
-      expect(screen.getByRole('heading', { name: /confirm clear/i })).toBeDefined()
+      expect(
+        screen.getByRole('heading', { name: /confirm clear/i })
+      ).toBeDefined()
     );
 
     const confirmButton = screen.getByRole('button', { name: /confirm/i });
@@ -231,10 +249,14 @@ describe('SettingsPage data management', () => {
   it('clears all data and resets session', async () => {
     render(<SettingsPage />);
 
-    const clearAllButton = screen.getByRole('button', { name: /clear all data/i });
+    const clearAllButton = screen.getByRole('button', {
+      name: /clear all data/i,
+    });
     fireEvent.click(clearAllButton);
 
-    const confirmButton = await screen.findByRole('button', { name: /confirm/i });
+    const confirmButton = await screen.findByRole('button', {
+      name: /confirm/i,
+    });
     fireEvent.click(confirmButton);
 
     await waitFor(() => {

@@ -29,9 +29,11 @@ const translations: Record<string, string> = {
   'common.retry': 'Retry',
 };
 
-const changeLanguageSpy = vi.fn().mockImplementation(async (language: string) => {
-  activeLanguage = language;
-});
+const changeLanguageSpy = vi
+  .fn()
+  .mockImplementation(async (language: string) => {
+    activeLanguage = language;
+  });
 
 let activeLanguage: 'en' | 'zh' = 'en';
 
@@ -126,11 +128,15 @@ describe('I18nProvider and context', () => {
     );
 
     expect(screen.getByTestId('language-code').textContent).toBe('en');
-    expect(screen.getByTestId('language-flag').textContent).toBe('🇺🇸');
+    expect(screen.getByTestId('language-flag').textContent).toBe('EN');
     expect(screen.getByTestId('supported-count').textContent).toBe('2');
-    expect(screen.getByTestId('translated-text').textContent).toBe('AI Chat Assistant');
+    expect(screen.getByTestId('translated-text').textContent).toBe(
+      'AI Chat Assistant'
+    );
     expect(screen.getByTestId('formatted-date').textContent).toContain('2024');
-    expect(screen.getByTestId('formatted-number').textContent).not.toHaveLength(0);
+    expect(screen.getByTestId('formatted-number').textContent).not.toHaveLength(
+      0
+    );
     expect(screen.getByTestId('formatted-size').textContent).toContain('KB');
     expect(screen.getByTestId('relative-time').textContent).not.toHaveLength(0);
   });

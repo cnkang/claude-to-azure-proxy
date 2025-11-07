@@ -21,8 +21,12 @@ describe('Security utilities integration', () => {
 
     class MockFileReader {
       public result: ArrayBuffer | null = null;
-      public onload: ((this: FileReader, ev: ProgressEvent<FileReader>) => void) | null = null;
-      public onerror: ((this: FileReader, ev: ProgressEvent<FileReader>) => void) | null = null;
+      public onload:
+        | ((this: FileReader, ev: ProgressEvent<FileReader>) => void)
+        | null = null;
+      public onerror:
+        | ((this: FileReader, ev: ProgressEvent<FileReader>) => void)
+        | null = null;
 
       public readAsArrayBuffer(blob: Blob): void {
         blob
@@ -30,7 +34,10 @@ describe('Security utilities integration', () => {
           .then((buffer) => {
             this.result = buffer;
             if (typeof this.onload === 'function') {
-              this.onload.call(this as unknown as FileReader, {} as ProgressEvent<FileReader>);
+              this.onload.call(
+                this as unknown as FileReader,
+                {} as ProgressEvent<FileReader>
+              );
             }
           })
           .catch((error) => {
@@ -61,8 +68,12 @@ describe('Security utilities integration', () => {
   });
 
   it('validates MIME types for known extensions', () => {
-    const textFile = new File(['content'], 'notes.md', { type: 'text/markdown' });
-    const binaryFile = new File(['content'], 'notes.md', { type: 'application/octet-stream' });
+    const textFile = new File(['content'], 'notes.md', {
+      type: 'text/markdown',
+    });
+    const binaryFile = new File(['content'], 'notes.md', {
+      type: 'application/octet-stream',
+    });
 
     expect(validateMimeType(textFile)).toBe(true);
     expect(validateMimeType(binaryFile)).toBe(false);
@@ -70,7 +81,7 @@ describe('Security utilities integration', () => {
 
   it('flags dangerous executable files during scanning', async () => {
     const scanner = new SecurityScanner();
-    const executable = new File([new Uint8Array([0x4D, 0x5A])], 'payload.exe', {
+    const executable = new File([new Uint8Array([0x4d, 0x5a])], 'payload.exe', {
       type: 'application/x-msdownload',
     });
 
@@ -87,7 +98,7 @@ describe('Security utilities integration', () => {
 
   it('detects suspicious file names and embedded archives', async () => {
     const scanner = new SecurityScanner();
-    const zipSignature = new Uint8Array([0x50, 0x4B, 0x03, 0x04, 0x00, 0x00]);
+    const zipSignature = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x00, 0x00]);
     const payload = new File([zipSignature], '../../AutoExec.BAT', {
       type: 'application/zip',
     });
@@ -110,7 +121,10 @@ describe('Security utilities integration', () => {
       public onerror: FileReader['onerror'] = null;
       public readAsArrayBuffer(): void {
         if (typeof this.onerror === 'function') {
-          this.onerror.call(this as unknown as FileReader, new Event('error') as ProgressEvent<FileReader>);
+          this.onerror.call(
+            this as unknown as FileReader,
+            new Event('error') as ProgressEvent<FileReader>
+          );
         }
       }
     }

@@ -48,7 +48,9 @@ vi.mock('../hooks/useSession.js', () => ({
   useSession: () => sessionHookMock,
 }));
 
-const createConversation = (overrides?: Partial<Conversation>): Conversation => {
+const createConversation = (
+  overrides?: Partial<Conversation>
+): Conversation => {
   const now = new Date('2024-02-01T12:00:00.000Z');
   return {
     id: overrides?.id ?? 'conv-1',
@@ -58,19 +60,17 @@ const createConversation = (overrides?: Partial<Conversation>): Conversation => 
     updatedAt: overrides?.updatedAt ?? now,
     sessionId: overrides?.sessionId ?? 'session-ctx',
     isStreaming: overrides?.isStreaming ?? false,
-    messages:
-      overrides?.messages ??
-      [
-        {
-          id: 'msg-1',
-          role: 'assistant',
-          content: 'Welcome to the project workspace',
-          timestamp: now,
-          correlationId: 'corr-1',
-          conversationId: overrides?.id ?? 'conv-1',
-          isComplete: true,
-        },
-      ],
+    messages: overrides?.messages ?? [
+      {
+        id: 'msg-1',
+        role: 'assistant',
+        content: 'Welcome to the project workspace',
+        timestamp: now,
+        correlationId: 'corr-1',
+        conversationId: overrides?.id ?? 'conv-1',
+        isComplete: true,
+      },
+    ],
     modelHistory: overrides?.modelHistory ?? [],
     contextUsage: overrides?.contextUsage ?? {
       currentTokens: 128,
@@ -139,12 +139,17 @@ describe('useConversations', () => {
     await waitFor(() => {
       expect(result.current.conversations).toHaveLength(1);
       expect(result.current.state.isLoading).toBe(false);
-      expect(result.current.conversations[0].title).toBe('Existing conversation');
+      expect(result.current.conversations[0].title).toBe(
+        'Existing conversation'
+      );
     });
 
     let createdId = '';
     await act(async () => {
-      const created = await result.current.createConversation('Design review', 'gpt-4o-mini');
+      const created = await result.current.createConversation(
+        'Design review',
+        'gpt-4o-mini'
+      );
       createdId = created.id;
     });
 
@@ -240,8 +245,12 @@ describe('useConversations', () => {
     });
 
     await waitFor(() => {
-      expect(combinedHook.result.current.conv.filteredConversations).toHaveLength(1);
-      expect(combinedHook.result.current.conv.filteredConversations[0].id).toBe('conv-search');
+      expect(
+        combinedHook.result.current.conv.filteredConversations
+      ).toHaveLength(1);
+      expect(combinedHook.result.current.conv.filteredConversations[0].id).toBe(
+        'conv-search'
+      );
     });
 
     act(() => {
@@ -249,9 +258,13 @@ describe('useConversations', () => {
       combinedHook.result.current.conv.clearFilters();
     });
 
-    const exportPayload = await combinedHook.result.current.conv.exportConversations();
+    const exportPayload =
+      await combinedHook.result.current.conv.exportConversations();
     const parsed = JSON.parse(exportPayload) as {
-      conversations: Array<{ id: string; messages: Array<{ timestamp: string }> }>;
+      conversations: Array<{
+        id: string;
+        messages: Array<{ timestamp: string }>;
+      }>;
       conversationCount: number;
     };
 
@@ -263,8 +276,12 @@ describe('useConversations', () => {
     });
 
     await waitFor(() => {
-      expect(combinedHook.result.current.conv.state.filters.sortBy).toBe('title');
-      expect(combinedHook.result.current.conv.state.filters.sortOrder).toBe('asc');
+      expect(combinedHook.result.current.conv.state.filters.sortBy).toBe(
+        'title'
+      );
+      expect(combinedHook.result.current.conv.state.filters.sortOrder).toBe(
+        'asc'
+      );
     });
 
     act(() => {
@@ -274,7 +291,9 @@ describe('useConversations', () => {
     await waitFor(() => {
       expect(combinedHook.result.current.search.isSearching).toBe(true);
       expect(
-        combinedHook.result.current.search.searchResults.some((c) => c.id === 'conv-secondary')
+        combinedHook.result.current.search.searchResults.some(
+          (c) => c.id === 'conv-secondary'
+        )
       ).toBe(true);
     });
 

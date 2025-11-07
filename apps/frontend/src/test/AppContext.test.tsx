@@ -2,7 +2,12 @@ import React from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Conversation } from '../types/index.js';
-import { AppProvider, useAppContext, useConfig, useUI } from '../contexts/AppContext.js';
+import {
+  AppProvider,
+  useAppContext,
+  useConfig,
+  useUI,
+} from '../contexts/AppContext.js';
 
 const updatePreferencesSpy = vi.fn();
 
@@ -27,7 +32,9 @@ vi.mock('../contexts/SessionContext.js', () => ({
   }),
 }));
 
-const createConversation = (overrides: Partial<Conversation> = {}): Conversation => {
+const createConversation = (
+  overrides: Partial<Conversation> = {}
+): Conversation => {
   const timestamp = new Date('2024-02-10T10:00:00.000Z');
   return {
     id: 'conv-1',
@@ -64,10 +71,13 @@ const renderAppAndConfig = () => {
     <AppProvider>{children}</AppProvider>
   );
 
-  return renderHook(() => ({
-    app: useAppContext(),
-    config: useConfig(),
-  }), { wrapper });
+  return renderHook(
+    () => ({
+      app: useAppContext(),
+      config: useConfig(),
+    }),
+    { wrapper }
+  );
 };
 
 describe('AppContext', () => {
@@ -153,7 +163,9 @@ describe('AppContext', () => {
     expect(result.current.activeConversation?.title).toBe('Renamed');
     const latestUpdate = result.current.conversationsList[0]?.updatedAt;
     expect(latestUpdate).toBeInstanceOf(Date);
-    expect(latestUpdate?.getTime()).toBeGreaterThanOrEqual(firstConversation.updatedAt.getTime());
+    expect(latestUpdate?.getTime()).toBeGreaterThanOrEqual(
+      firstConversation.updatedAt.getTime()
+    );
 
     act(() => {
       result.current.deleteConversation('conv-1');
@@ -170,7 +182,10 @@ describe('AppContext', () => {
       result.current.app.setError('temporary');
     });
 
-    expect(result.current.app.state.config.availableModels).toEqual(['gpt-4', 'gpt-4o']);
+    expect(result.current.app.state.config.availableModels).toEqual([
+      'gpt-4',
+      'gpt-4o',
+    ]);
     expect(result.current.app.state.ui.error).toBe('temporary');
 
     act(() => {

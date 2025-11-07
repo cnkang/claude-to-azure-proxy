@@ -1,6 +1,6 @@
 /**
  * Test Wrapper Component
- * 
+ *
  * Provides necessary context providers for testing components
  * that depend on i18n, theme, or other global contexts.
  */
@@ -23,9 +23,7 @@ export const TestWrapper: React.FC<TestWrapperProps> = ({ children }) => {
     <SessionProvider>
       <AppProvider>
         <ThemeProvider>
-          <I18nProvider>
-            {children}
-          </I18nProvider>
+          <I18nProvider>{children}</I18nProvider>
         </ThemeProvider>
       </AppProvider>
     </SessionProvider>
@@ -36,9 +34,5 @@ export const TestWrapper: React.FC<TestWrapperProps> = ({ children }) => {
  * Custom render function that includes all necessary providers
  */
 export const renderWithProviders = (ui: React.ReactElement) => {
-  return (
-    <TestWrapper>
-      {ui}
-    </TestWrapper>
-  );
+  return <TestWrapper>{ui}</TestWrapper>;
 };

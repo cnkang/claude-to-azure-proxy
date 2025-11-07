@@ -193,7 +193,9 @@ describe('SessionContext', () => {
     expect(updatePreferencesSpy).toHaveBeenCalledTimes(4);
     expect(updatePreferencesSpy).toHaveBeenCalledWith({ theme: 'dark' });
     expect(updatePreferencesSpy).toHaveBeenCalledWith({ language: 'zh' });
-    expect(updatePreferencesSpy).toHaveBeenCalledWith({ selectedModel: 'gpt-4o-mini' });
+    expect(updatePreferencesSpy).toHaveBeenCalledWith({
+      selectedModel: 'gpt-4o-mini',
+    });
     expect(updatePreferencesSpy).toHaveBeenCalledWith({ theme: 'light' });
   });
 

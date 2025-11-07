@@ -77,7 +77,9 @@ describe('ThemeContext', () => {
     const probe = screen.getByTestId('theme-context');
     expect(probe.dataset.mode).toBe('light');
     expect(probe.dataset.resolved).toBe('light');
-    expect(document.documentElement.classList.contains('theme-light')).toBe(true);
+    expect(document.documentElement.classList.contains('theme-light')).toBe(
+      true
+    );
     expect(document.documentElement.getAttribute('data-theme')).toBe('light');
   });
 
@@ -211,7 +213,9 @@ describe('ThemeContext', () => {
       </ThemeProvider>
     );
 
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'auto' } });
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'auto' },
+    });
     expect(setThemeMock).toHaveBeenLastCalledWith('auto');
   });
 

@@ -117,8 +117,12 @@ describe('MessageItem syntax highlighting', () => {
     render(<MessageItem message={createMessage()} onCopyCode={onCopy} />);
 
     expect(screen.getByText('Assistant')).toBeDefined();
-    expect(screen.getByText((text) => text.includes('const answer = 42;'))).toBeDefined();
-    expect(screen.getByText((text) => text.includes('console.log(answer);'))).toBeDefined();
+    expect(
+      screen.getByText((text) => text.includes('const answer = 42;'))
+    ).toBeDefined();
+    expect(
+      screen.getByText((text) => text.includes('console.log(answer);'))
+    ).toBeDefined();
     expect(highlightSpy).toHaveBeenCalled();
 
     const copyButton = screen.getByRole('button', { name: /copy code/i });
