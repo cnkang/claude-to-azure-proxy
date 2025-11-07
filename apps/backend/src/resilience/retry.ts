@@ -110,20 +110,23 @@ export class RetryStrategy {
       }
 
       const attemptStartTime = performance.now();
-      const attemptTimestamp = new Date();
       const recordedDelay = attempt === 1 ? 0 : delayBeforeAttempt;
+      let attemptTimestamp: Date | undefined;
 
       try {
+        const operationPromise = operation();
+        attemptTimestamp = new Date(performance.timeOrigin + attemptStartTime);
+
         // Add timeout wrapper if configured
         const result =
           this.config.timeoutMs !== undefined && this.config.timeoutMs > 0
             ? await this.withTimeout(
-                operation(),
+                operationPromise,
                 this.config.timeoutMs,
                 correlationId,
                 operationName
               )
-            : await operation();
+            : await operationPromise;
 
         // Success - record attempt and return
         const attemptDurationMs = performance.now() - attemptStartTime;
@@ -131,7 +134,9 @@ export class RetryStrategy {
           attemptNumber: attempt,
           delayMs: recordedDelay,
           durationMs: attemptDurationMs,
-          timestamp: attemptTimestamp,
+          timestamp:
+            attemptTimestamp ??
+            new Date(performance.timeOrigin + attemptStartTime),
         });
 
         const totalDurationMs = performance.now() - startTime;
@@ -152,7 +157,9 @@ export class RetryStrategy {
           delayMs: recordedDelay,
           durationMs: attemptDurationMs,
           error: lastError,
-          timestamp: attemptTimestamp,
+          timestamp:
+            attemptTimestamp ??
+            new Date(performance.timeOrigin + attemptStartTime),
         });
 
         // Check if error is retryable
