@@ -1,592 +1,626 @@
 export default {
-  "app": {
-    "title": "AI Chat Assistant",
-    "subtitle": "Powered by Claude-to-Azure Proxy"
+  app: {
+    title: 'AI Chat Assistant',
+    subtitle: 'Powered by Claude-to-Azure Proxy',
   },
-  "common": {
-    "loading": "Loading...",
-    "cancel": "Cancel",
-    "confirm": "Confirm",
-    "processing": "Processing...",
-    "save": "Save",
-    "delete": "Delete",
-    "edit": "Edit",
-    "close": "Close",
-    "back": "Back",
-    "next": "Next",
-    "previous": "Previous",
-    "search": "Search",
-    "clear": "Clear",
-    "refresh": "Refresh",
-    "retry": "Retry",
-    "error": "Error",
-    "success": "Success",
-    "warning": "Warning",
-    "info": "Information"
+  common: {
+    loading: 'Loading...',
+    cancel: 'Cancel',
+    confirm: 'Confirm',
+    processing: 'Processing...',
+    save: 'Save',
+    delete: 'Delete',
+    edit: 'Edit',
+    close: 'Close',
+    back: 'Back',
+    next: 'Next',
+    previous: 'Previous',
+    search: 'Search',
+    clear: 'Clear',
+    refresh: 'Refresh',
+    retry: 'Retry',
+    error: 'Error',
+    success: 'Success',
+    warning: 'Warning',
+    info: 'Information',
   },
-  "navigation": {
-    "chat": "Chat",
-    "settings": "Settings",
-    "conversation": "Conversation",
-    "breadcrumb": "Navigation breadcrumb"
+  navigation: {
+    chat: 'Chat',
+    settings: 'Settings',
+    conversation: 'Conversation',
+    breadcrumb: 'Navigation breadcrumb',
   },
-  "header": {
-    "openSidebar": "Open sidebar",
-    "closeSidebar": "Close sidebar",
-    "settings": "Settings"
+  header: {
+    openSidebar: 'Open sidebar',
+    closeSidebar: 'Close sidebar',
+    settings: 'Settings',
   },
-  "sidebar": {
-    "navigation": "Main navigation",
-    "newConversation": "New Conversation",
-    "conversations": "Conversations",
-    "noConversations": "No conversations yet",
-    "startFirstConversation": "Start your first conversation to get started",
-    "selectConversation": "Select conversation: {{title}}",
-    "conversationOptions": "Conversation options",
-    "close": "Close sidebar",
-    "session": "Session",
-    "settings": "Settings",
-    "help": "Help"
+  sidebar: {
+    navigation: 'Main navigation',
+    newConversation: 'New Conversation',
+    conversations: 'Conversations',
+    noConversations: 'No conversations yet',
+    startFirstConversation: 'Start your first conversation to get started',
+    selectConversation: 'Select conversation: {{title}}',
+    conversationOptions: 'Conversation options',
+    close: 'Close sidebar',
+    session: 'Session',
+    settings: 'Settings',
+    help: 'Help',
   },
-  "chat": {
-    "messageCount": "{{count}} message",
-    "messageCount_plural": "{{count}} messages",
-    "startConversation": "Start a new conversation",
-    "startConversationHint": "Type your message below to begin chatting with the AI assistant.",
-    "inputPlaceholder": "Type your message...",
-    "sendMessage": "Send message",
-    "noConversationSelected": "No conversation selected",
-    "selectConversationHint": "Select a conversation from the sidebar to start chatting.",
-    "noMessages": "No messages yet",
-    "you": "You",
-    "assistant": "Assistant",
-    "justNow": "Just now",
-    "minutesAgo": "{{count}} minute ago",
-    "minutesAgo_plural": "{{count}} minutes ago",
-    "copyCode": "Copy code",
-    "copy": "Copy",
-    "copied": "Copied!",
-    "expandCode": "Expand code",
-    "collapseCode": "Collapse code",
-    "showAllLines": "Show all ({{count}} lines)",
-    "showMoreLines": "Show {{count}} more lines...",
-    "codeLanguage": "Language: {{language}}",
-    "codeFile": "File: {{filename}}",
-    "codeLines": "Lines {{start}}-{{end}}",
-    "contextTokens": "{{count}} token",
-    "contextTokens_plural": "{{count}} tokens",
-    "scrollToBottom": "Scroll to bottom",
-    "newMessages": "New messages",
-    "aiTyping": "AI is typing...",
-    "connectionError": "Connection lost. Please check your internet connection.",
-    "retry": "Retry",
-    "sendError": "Failed to send message. Please try again.",
-    "attachFile": "Attach file",
-    "attachedFiles": "{{count}} file attached",
-    "attachedFiles_plural": "{{count}} files attached",
-    "removeFile": "Remove {{name}}",
-    "messageInput": "Message input",
-    "keyboardHint": "Press Enter to send, Shift+Enter for new line",
-    "messageTooLong": "Message is too long (max {{max}} characters)",
-    "emptyMessage": "Please enter a message or attach a file",
-    "connected": "Connected",
-    "connecting": "Connecting",
-    "disconnected": "Disconnected",
-    "unknown": "Unknown",
-    "messageSent": "Message sent",
-    "responseReceived": "Response received from AI",
-    "retryingConnection": "Retrying connection",
-    "currentModel": "Current model: {{model}}",
-    "messageHistory": "Message history"
+  chat: {
+    messageCount: '{{count}} message',
+    messageCount_plural: '{{count}} messages',
+    startConversation: 'Start a new conversation',
+    startConversationHint:
+      'Type your message below to begin chatting with the AI assistant.',
+    inputPlaceholder: 'Type your message...',
+    sendMessage: 'Send message',
+    noConversationSelected: 'No conversation selected',
+    selectConversationHint:
+      'Select a conversation from the sidebar to start chatting.',
+    noMessages: 'No messages yet',
+    you: 'You',
+    assistant: 'Assistant',
+    justNow: 'Just now',
+    minutesAgo: '{{count}} minute ago',
+    minutesAgo_plural: '{{count}} minutes ago',
+    copyCode: 'Copy code',
+    copy: 'Copy',
+    copied: 'Copied!',
+    expandCode: 'Expand code',
+    collapseCode: 'Collapse code',
+    showAllLines: 'Show all ({{count}} lines)',
+    showMoreLines: 'Show {{count}} more lines...',
+    codeLanguage: 'Language: {{language}}',
+    codeFile: 'File: {{filename}}',
+    codeLines: 'Lines {{start}}-{{end}}',
+    contextTokens: '{{count}} token',
+    contextTokens_plural: '{{count}} tokens',
+    scrollToBottom: 'Scroll to bottom',
+    newMessages: 'New messages',
+    aiTyping: 'AI is typing...',
+    connectionError: 'Connection lost. Please check your internet connection.',
+    retry: 'Retry',
+    sendError: 'Failed to send message. Please try again.',
+    attachFile: 'Attach file',
+    attachedFiles: '{{count}} file attached',
+    attachedFiles_plural: '{{count}} files attached',
+    removeFile: 'Remove {{name}}',
+    messageInput: 'Message input',
+    keyboardHint: 'Press Enter to send, Shift+Enter for new line',
+    messageTooLong: 'Message is too long (max {{max}} characters)',
+    emptyMessage: 'Please enter a message or attach a file',
+    connected: 'Connected',
+    connecting: 'Connecting',
+    disconnected: 'Disconnected',
+    unknown: 'Unknown',
+    messageSent: 'Message sent',
+    responseReceived: 'Response received from AI',
+    retryingConnection: 'Retrying connection',
+    currentModel: 'Current model: {{model}}',
+    messageHistory: 'Message history',
   },
-  "fileUpload": {
-    "dropZoneLabel": "File upload area",
-    "dropFiles": "Drop files here",
-    "dragOrClick": "Drag files here or click to browse",
-    "supportedTypes": "Supported: {{types}} (max {{maxSize}})",
-    "uploading": "Uploading files...",
-    "scanning": "Scanning files for security threats...",
-    "tooManyFiles": "Too many files selected (max {{max}})",
-    "invalidFile": "Invalid file",
-    "uploadFailed": "Upload failed",
-    "uploadSuccess": "File uploaded successfully",
-    "uploadError": "Upload failed",
-    "securityScanning": "Scanning for security threats",
-    "previewFile": "Preview {{name}}",
-    "previewAlt": "Preview of {{name}}",
-    "security": {
-      "safe": "Security scan passed",
-      "threatDetected": "Security threat detected: {{threats}}",
-      "suspiciousPath": "File name contains suspicious path characters",
-      "executableFile": "Executable file type not allowed",
-      "imageTooLarge": "Image file too large (max 5MB)",
-      "codeTooLarge": "Code file too large (max 1MB)",
-      "textTooLarge": "Text file too large (max 512KB)"
+  fileUpload: {
+    dropZoneLabel: 'File upload area',
+    dropFiles: 'Drop files here',
+    dragOrClick: 'Drag files here or click to browse',
+    supportedTypes: 'Supported: {{types}} (max {{maxSize}})',
+    uploading: 'Uploading files...',
+    scanning: 'Scanning files for security threats...',
+    tooManyFiles: 'Too many files selected (max {{max}})',
+    invalidFile: 'Invalid file',
+    uploadFailed: 'Upload failed',
+    uploadSuccess: 'File uploaded successfully',
+    uploadError: 'Upload failed',
+    securityScanning: 'Scanning for security threats',
+    previewFile: 'Preview {{name}}',
+    previewAlt: 'Preview of {{name}}',
+    security: {
+      safe: 'Security scan passed',
+      threatDetected: 'Security threat detected: {{threats}}',
+      suspiciousPath: 'File name contains suspicious path characters',
+      executableFile: 'Executable file type not allowed',
+      imageTooLarge: 'Image file too large (max 5MB)',
+      codeTooLarge: 'Code file too large (max 1MB)',
+      textTooLarge: 'Text file too large (max 512KB)',
     },
-    "preview": {
-      "loading": "Loading preview...",
-      "loadError": "Failed to load file preview",
-      "unknownType": "Unknown file type",
-      "unsupportedType": "Preview not available for this file type",
-      "fileInfo": "{{name}} ({{size}}, {{type}})",
-      "copyContent": "Copy content to clipboard"
-    }
+    preview: {
+      loading: 'Loading preview...',
+      loadError: 'Failed to load file preview',
+      unknownType: 'Unknown file type',
+      unsupportedType: 'Preview not available for this file type',
+      fileInfo: '{{name}} ({{size}}, {{type}})',
+      copyContent: 'Copy content to clipboard',
+    },
   },
-  "welcome": {
-    "title": "Welcome to AI Chat Assistant",
-    "description": "Start a conversation with our AI assistant to get help with coding, writing, analysis, and more.",
-    "startChat": "Start Chatting"
+  welcome: {
+    title: 'Welcome to AI Chat Assistant',
+    description:
+      'Start a conversation with our AI assistant to get help with coding, writing, analysis, and more.',
+    startChat: 'Start Chatting',
   },
-  "settings": {
-    "title": "Settings",
-    "description": "Customize your chat experience and manage your data.",
-    "appearance": {
-      "title": "Appearance",
-      "description": "Customize the look and feel of the application.",
-      "theme": "Theme",
-      "light": "Light",
-      "dark": "Dark",
-      "auto": "Auto",
-      "autoHint": "Currently using {{current}} theme based on your system preference."
+  settings: {
+    title: 'Settings',
+    description: 'Customize your chat experience and manage your data.',
+    appearance: {
+      title: 'Appearance',
+      description: 'Customize the look and feel of the application.',
+      theme: 'Theme',
+      light: 'Light',
+      dark: 'Dark',
+      auto: 'Auto',
+      autoHint:
+        'Currently using {{current}} theme based on your system preference.',
     },
-    "language": {
-      "title": "Language",
-      "description": "Choose your preferred language for the interface.",
-      "select": "Language"
+    language: {
+      title: 'Language',
+      description: 'Choose your preferred language for the interface.',
+      select: 'Language',
     },
-    "storage": {
-      "title": "Storage",
-      "description": "View your local storage usage and manage your data.",
-      "conversations": "Conversations",
-      "messages": "Messages"
+    storage: {
+      title: 'Storage',
+      description: 'View your local storage usage and manage your data.',
+      conversations: 'Conversations',
+      messages: 'Messages',
     },
-    "session": {
-      "title": "Session Information",
-      "description": "Information about your current session.",
-      "id": "Session ID",
-      "created": "Created"
+    session: {
+      title: 'Session Information',
+      description: 'Information about your current session.',
+      id: 'Session ID',
+      created: 'Created',
     },
-    "data": {
-      "title": "Data Management",
-      "description": "Export or clear your conversation data.",
-      "export": "Export Data",
-      "exporting": "Exporting...",
-      "clearConversations": "Clear Conversations",
-      "clearingConversations": "Clearing conversations...",
-      "resetSession": "Reset Session",
-      "resettingSession": "Resetting session...",
-      "clearAll": "Clear All Data",
-      "clearingAllData": "Clearing all data..."
+    data: {
+      title: 'Data Management',
+      description: 'Export or clear your conversation data.',
+      export: 'Export Data',
+      exporting: 'Exporting...',
+      clearConversations: 'Clear Conversations',
+      clearingConversations: 'Clearing conversations...',
+      resetSession: 'Reset Session',
+      resettingSession: 'Resetting session...',
+      clearAll: 'Clear All Data',
+      clearingAllData: 'Clearing all data...',
     },
-    "confirm": {
-      "clearConversations": {
-        "title": "Clear Conversations",
-        "message": "Are you sure you want to clear all conversations? This action cannot be undone."
+    confirm: {
+      clearConversations: {
+        title: 'Clear Conversations',
+        message:
+          'Are you sure you want to clear all conversations? This action cannot be undone.',
       },
-      "resetSession": {
-        "title": "Reset Session",
-        "message": "Are you sure you want to reset your session? This will clear all session data and start fresh."
+      resetSession: {
+        title: 'Reset Session',
+        message:
+          'Are you sure you want to reset your session? This will clear all session data and start fresh.',
       },
-      "clearAll": {
-        "title": "Clear All Data",
-        "message": "Are you sure you want to clear all data? This will remove all conversations, settings, and session information. This action cannot be undone."
-      }
+      clearAll: {
+        title: 'Clear All Data',
+        message:
+          'Are you sure you want to clear all data? This will remove all conversations, settings, and session information. This action cannot be undone.',
+      },
     },
-    "processing": {
-      "title": "Processing..."
-    }
+    processing: {
+      title: 'Processing...',
+    },
   },
-  "language": {
-    "select": "Select language"
+  language: {
+    select: 'Select language',
   },
-  "notFound": {
-    "title": "Page Not Found",
-    "description": "The page you're looking for doesn't exist or has been moved.",
-    "goHome": "Go to Chat"
+  notFound: {
+    title: 'Page Not Found',
+    description: "The page you're looking for doesn't exist or has been moved.",
+    goHome: 'Go to Chat',
   },
-  "context": {
-    "tokens": "tokens",
-    "usage": {
-      "label": "Context usage",
-      "tooltip": "{{current}} / {{max}} tokens ({{percentage}}%)"
+  context: {
+    tokens: 'tokens',
+    usage: {
+      label: 'Context usage',
+      tooltip: '{{current}} / {{max}} tokens ({{percentage}}%)',
     },
-    "extended": {
-      "tooltip": "Context has been extended"
+    extended: {
+      tooltip: 'Context has been extended',
     },
-    "warning": {
-      "title": "Context Limit Warning",
-      "warning": {
-        "title": "Context Limit Warning",
-        "message": "You're approaching the context limit ({{percentage}}%). Consider extending context or compressing the conversation.",
-        "tip": "Large conversations may affect response quality and speed."
+    warning: {
+      title: 'Context Limit Warning',
+      warning: {
+        title: 'Context Limit Warning',
+        message:
+          "You're approaching the context limit ({{percentage}}%). Consider extending context or compressing the conversation.",
+        tip: 'Large conversations may affect response quality and speed.',
       },
-      "critical": {
-        "title": "Context Limit Critical",
-        "message": "You're very close to the context limit ({{percentage}}%). Action required to continue the conversation.",
-        "tip": "The conversation will be truncated if you don't extend or compress the context."
+      critical: {
+        title: 'Context Limit Critical',
+        message:
+          "You're very close to the context limit ({{percentage}}%). Action required to continue the conversation.",
+        tip: "The conversation will be truncated if you don't extend or compress the context.",
       },
-      "extended": "Context has been extended to support longer conversations."
+      extended: 'Context has been extended to support longer conversations.',
     },
-    "actions": {
-      "extend": "Extend Context",
-      "extending": "Extending...",
-      "compress": "Compress Conversation",
-      "compressing": "Compressing..."
+    actions: {
+      extend: 'Extend Context',
+      extending: 'Extending...',
+      compress: 'Compress Conversation',
+      compressing: 'Compressing...',
     },
-    "compression": {
-      "title": "Compress Conversation",
-      "description": "This will create a compressed summary of your conversation while preserving key information.",
-      "current": "Current tokens",
-      "compressed": "Compressed",
-      "estimated": "Estimated tokens after compression",
-      "reduction": "Estimated reduction",
-      "startCompression": "Start Compression",
-      "compressing": "Compressing conversation...",
-      "newConversation": "New conversation title",
-      "createConversation": "Create Compressed Conversation",
-      "advancedOptions": "Advanced Options",
-      "method": {
-        "label": "Compression Method",
-        "aiSummary": "AI Summary",
-        "selectiveRemoval": "Selective Removal",
-        "hierarchical": "Hierarchical",
-        "aiSummary.description": "Uses AI to create an intelligent summary preserving key information",
-        "selectiveRemoval.description": "Removes less important messages while keeping critical content",
-        "hierarchical.description": "Compresses based on message importance and recency"
+    compression: {
+      title: 'Compress Conversation',
+      description:
+        'This will create a compressed summary of your conversation while preserving key information.',
+      current: 'Current tokens',
+      compressed: 'Compressed',
+      estimated: 'Estimated tokens after compression',
+      reduction: 'Estimated reduction',
+      startCompression: 'Start Compression',
+      compressing: 'Compressing conversation...',
+      newConversation: 'New conversation title',
+      createConversation: 'Create Compressed Conversation',
+      advancedOptions: 'Advanced Options',
+      method: {
+        label: 'Compression Method',
+        aiSummary: 'AI Summary',
+        selectiveRemoval: 'Selective Removal',
+        hierarchical: 'Hierarchical',
+        'aiSummary.description':
+          'Uses AI to create an intelligent summary preserving key information',
+        'selectiveRemoval.description':
+          'Removes less important messages while keeping critical content',
+        'hierarchical.description':
+          'Compresses based on message importance and recency',
       },
-      "targetReduction": {
-        "label": "Target Reduction"
+      targetReduction: {
+        label: 'Target Reduction',
       },
-      "preserveCodeBlocks": "Preserve code blocks",
-      "preserveCodeBlocks.description": "Keep all code examples and technical content intact",
-      "preserveRecent": {
-        "label": "Preserve recent messages",
-        "description": "Number of most recent messages to keep unchanged"
+      preserveCodeBlocks: 'Preserve code blocks',
+      'preserveCodeBlocks.description':
+        'Keep all code examples and technical content intact',
+      preserveRecent: {
+        label: 'Preserve recent messages',
+        description: 'Number of most recent messages to keep unchanged',
       },
-      "benefits": {
-        "title": "Benefits of Compression",
-        "preserve": "Preserves important context and decisions",
-        "reduce": "Reduces token usage significantly",
-        "continue": "Allows you to continue the conversation",
-        "performance": "Improves response speed and quality"
+      benefits: {
+        title: 'Benefits of Compression',
+        preserve: 'Preserves important context and decisions',
+        reduce: 'Reduces token usage significantly',
+        continue: 'Allows you to continue the conversation',
+        performance: 'Improves response speed and quality',
       },
-      "preview": {
-        "title": "Compression Preview",
-        "content": "Compressed Content Preview",
-        "description": "Review the compressed conversation before creating a new conversation with this context."
+      preview: {
+        title: 'Compression Preview',
+        content: 'Compressed Content Preview',
+        description:
+          'Review the compressed conversation before creating a new conversation with this context.',
       },
-      "creating": {
-        "title": "Creating Compressed Conversation",
-        "message": "Creating a new conversation with compressed context..."
+      creating: {
+        title: 'Creating Compressed Conversation',
+        message: 'Creating a new conversation with compressed context...',
       },
-      "original": "Original tokens"
-    }
+      original: 'Original tokens',
+    },
   },
-  "accessibility": {
-    "skipToMain": "Skip to main content",
-    "chatInterface": "Chat interface",
-    "closeError": "Close error",
-    "focusTrap": "Focus trap container",
-    "announcements": {
-      "enabled": "Screen reader announcements enabled",
-      "disabled": "Screen reader announcements disabled"
+  accessibility: {
+    skipToMain: 'Skip to main content',
+    chatInterface: 'Chat interface',
+    closeError: 'Close error',
+    focusTrap: 'Focus trap container',
+    announcements: {
+      enabled: 'Screen reader announcements enabled',
+      disabled: 'Screen reader announcements disabled',
     },
-    "keyboardNavigation": {
-      "enabled": "Keyboard navigation enabled",
-      "disabled": "Keyboard navigation disabled",
-      "instructions": "Use Tab to navigate, Enter to activate, Escape to close"
+    keyboardNavigation: {
+      enabled: 'Keyboard navigation enabled',
+      disabled: 'Keyboard navigation disabled',
+      instructions: 'Use Tab to navigate, Enter to activate, Escape to close',
     },
-    "highContrast": {
-      "enabled": "High contrast mode enabled",
-      "disabled": "High contrast mode disabled",
-      "enable": "Enable high contrast mode",
-      "disable": "Disable high contrast mode",
-      "on": "High Contrast On",
-      "off": "High Contrast Off",
-      "resetToSystem": "Reset to system preference"
+    highContrast: {
+      enabled: 'High contrast mode enabled',
+      disabled: 'High contrast mode disabled',
+      enable: 'Enable high contrast mode',
+      disable: 'Disable high contrast mode',
+      on: 'High Contrast On',
+      off: 'High Contrast Off',
+      resetToSystem: 'Reset to system preference',
     },
-    "reducedMotion": {
-      "enabled": "Reduced motion enabled",
-      "disabled": "Reduced motion disabled",
-      "resetToSystem": "Reset to system preference"
+    reducedMotion: {
+      enabled: 'Reduced motion enabled',
+      disabled: 'Reduced motion disabled',
+      resetToSystem: 'Reset to system preference',
     },
-    "fontSize": {
-      "changed": "Font size changed to {{size}}",
-      "small": "Small",
-      "medium": "Medium",
-      "large": "Large",
-      "extraLarge": "Extra Large"
+    fontSize: {
+      changed: 'Font size changed to {{size}}',
+      small: 'Small',
+      medium: 'Medium',
+      large: 'Large',
+      extraLarge: 'Extra Large',
     },
-    "zoom": {
-      "changed": "Zoom level changed to {{level}}%"
+    zoom: {
+      changed: 'Zoom level changed to {{level}}%',
     },
-    "wcag": {
-      "title": "WCAG Compliance Level",
-      "currentRatio": "Minimum contrast ratio: {{ratio}}:1",
-      "a": {
-        "description": "Basic accessibility (3:1 contrast ratio)"
+    wcag: {
+      title: 'WCAG Compliance Level',
+      currentRatio: 'Minimum contrast ratio: {{ratio}}:1',
+      a: {
+        description: 'Basic accessibility (3:1 contrast ratio)',
       },
-      "aa": {
-        "description": "Standard accessibility (4.5:1 contrast ratio)"
+      aa: {
+        description: 'Standard accessibility (4.5:1 contrast ratio)',
       },
-      "aaa": {
-        "description": "Enhanced accessibility (7:1 contrast ratio)"
-      }
+      aaa: {
+        description: 'Enhanced accessibility (7:1 contrast ratio)',
+      },
     },
-    "navigation": {
-      "landmark": "Navigation landmark",
-      "main": "Main content",
-      "complementary": "Complementary content",
-      "contentinfo": "Content information",
-      "banner": "Banner"
+    navigation: {
+      landmark: 'Navigation landmark',
+      main: 'Main content',
+      complementary: 'Complementary content',
+      contentinfo: 'Content information',
+      banner: 'Banner',
     },
-    "status": {
-      "loading": "Loading",
-      "error": "Error occurred",
-      "success": "Action completed successfully",
-      "processing": "Processing"
+    status: {
+      loading: 'Loading',
+      error: 'Error occurred',
+      success: 'Action completed successfully',
+      processing: 'Processing',
     },
-    "controls": {
-      "expand": "Expand",
-      "collapse": "Collapse",
-      "close": "Close",
-      "open": "Open",
-      "select": "Select",
-      "toggle": "Toggle",
-      "menu": "Menu",
-      "submenu": "Submenu"
+    controls: {
+      expand: 'Expand',
+      collapse: 'Collapse',
+      close: 'Close',
+      open: 'Open',
+      select: 'Select',
+      toggle: 'Toggle',
+      menu: 'Menu',
+      submenu: 'Submenu',
     },
-    "settings": {
-      "title": "Accessibility Settings",
-      "description": "Configure accessibility features to improve your experience"
+    settings: {
+      title: 'Accessibility Settings',
+      description:
+        'Configure accessibility features to improve your experience',
     },
-    "screenReader": {
-      "title": "Screen Reader Support",
-      "description": "Settings for screen reader users",
-      "detected": "Screen reader detected",
-      "notDetected": "No screen reader detected"
+    screenReader: {
+      title: 'Screen Reader Support',
+      description: 'Settings for screen reader users',
+      detected: 'Screen reader detected',
+      notDetected: 'No screen reader detected',
     },
-    "visual": {
-      "title": "Visual Accessibility",
-      "description": "Settings for visual accessibility and display preferences"
+    visual: {
+      title: 'Visual Accessibility',
+      description: 'Settings for visual accessibility and display preferences',
     },
-    "motion": {
-      "title": "Motion and Animation",
-      "description": "Control animations and motion effects"
+    motion: {
+      title: 'Motion and Animation',
+      description: 'Control animations and motion effects',
     },
-    "keyboard": {
-      "title": "Keyboard Navigation",
-      "description": "Settings for keyboard-only navigation"
+    keyboard: {
+      title: 'Keyboard Navigation',
+      description: 'Settings for keyboard-only navigation',
     },
-    "advanced": {
-      "title": "Advanced Settings",
-      "description": "Advanced accessibility configuration options"
-    }
+    advanced: {
+      title: 'Advanced Settings',
+      description: 'Advanced accessibility configuration options',
+    },
   },
-  "loading": {
-    "default": "Loading...",
-    "conversations": "Loading conversations...",
-    "messages": "Loading messages..."
+  loading: {
+    default: 'Loading...',
+    conversations: 'Loading conversations...',
+    messages: 'Loading messages...',
   },
-  "error": {
-    "boundary": {
-      "title": "Something went wrong",
-      "message": "We're sorry, but something unexpected happened. Please try refreshing the page.",
-      "tryAgain": "Try Again",
-      "reloadPage": "Reload Page",
-      "details": "Error Details (Development)"
+  error: {
+    boundary: {
+      title: 'Something went wrong',
+      message:
+        "We're sorry, but something unexpected happened. Please try refreshing the page.",
+      tryAgain: 'Try Again',
+      reloadPage: 'Reload Page',
+      details: 'Error Details (Development)',
     },
-    "network": {
-      "title": "Connection Error",
-      "message": "Unable to connect to the server. Please check your internet connection and try again.",
-      "retry": "Retry Connection",
-      "connectionFailed": "Connection failed. Please check your internet connection.",
-      "timeout": "Request timed out. Please try again.",
-      "serverError": "Server error occurred. Please try again later.",
-      "rateLimited": "Too many requests. Please wait a moment and try again.",
-      "unauthorized": "Authentication required. Please refresh the page.",
-      "forbidden": "Access denied. You don't have permission to perform this action.",
-      "notFound": "The requested resource was not found.",
-      "validationError": "Invalid request data. Please check your input.",
-      "unknown": "An unexpected error occurred. Please try again.",
-      "retryConnection": "Check your internet connection and try again",
-      "retryTimeout": "The request timed out. Try again with a stable connection",
-      "retryServer": "Server is temporarily unavailable. Try again in a few moments",
-      "retryRateLimit": "You're making requests too quickly. Please wait a moment",
-      "retryGeneric": "Please try again"
+    network: {
+      title: 'Connection Error',
+      message:
+        'Unable to connect to the server. Please check your internet connection and try again.',
+      retry: 'Retry Connection',
+      connectionFailed:
+        'Connection failed. Please check your internet connection.',
+      timeout: 'Request timed out. Please try again.',
+      serverError: 'Server error occurred. Please try again later.',
+      rateLimited: 'Too many requests. Please wait a moment and try again.',
+      unauthorized: 'Authentication required. Please refresh the page.',
+      forbidden:
+        "Access denied. You don't have permission to perform this action.",
+      notFound: 'The requested resource was not found.',
+      validationError: 'Invalid request data. Please check your input.',
+      unknown: 'An unexpected error occurred. Please try again.',
+      retryConnection: 'Check your internet connection and try again',
+      retryTimeout: 'The request timed out. Try again with a stable connection',
+      retryServer:
+        'Server is temporarily unavailable. Try again in a few moments',
+      retryRateLimit:
+        "You're making requests too quickly. Please wait a moment",
+      retryGeneric: 'Please try again',
     },
-    "general": {
-      "title": "Error",
-      "message": "An error occurred. Please try again."
+    general: {
+      title: 'Error',
+      message: 'An error occurred. Please try again.',
     },
-    "validation": {
-      "required": "This field is required",
-      "invalid": "Please enter a valid value"
+    validation: {
+      required: 'This field is required',
+      invalid: 'Please enter a valid value',
     },
-    "sse": {
-      "connectionLost": "Connection lost",
-      "reconnecting": "Reconnecting...",
-      "reconnectFailed": "Failed to reconnect",
-      "maxAttemptsReached": "Maximum reconnection attempts reached",
-      "retryManually": "Please try refreshing the page"
-    }
+    sse: {
+      connectionLost: 'Connection lost',
+      reconnecting: 'Reconnecting...',
+      reconnectFailed: 'Failed to reconnect',
+      maxAttemptsReached: 'Maximum reconnection attempts reached',
+      retryManually: 'Please try refreshing the page',
+    },
   },
-  "time": {
-    "justNow": "Just now",
-    "minutesAgo": "{{count}}m ago",
-    "minutesAgo_plural": "{{count}}m ago",
-    "hoursAgo": "{{count}}h ago",
-    "hoursAgo_plural": "{{count}}h ago",
-    "daysAgo": "{{count}}d ago",
-    "daysAgo_plural": "{{count}}d ago"
+  time: {
+    justNow: 'Just now',
+    minutesAgo: '{{count}}m ago',
+    minutesAgo_plural: '{{count}}m ago',
+    hoursAgo: '{{count}}h ago',
+    hoursAgo_plural: '{{count}}h ago',
+    daysAgo: '{{count}}d ago',
+    daysAgo_plural: '{{count}}d ago',
   },
-  "conversation": {
-    "conversations": "Conversations",
-    "newConversation": "New Conversation",
-    "createFirst": "Create First Conversation",
-    "noConversations": "No conversations yet",
-    "noMessages": "No messages",
-    "noSearchResults": "No conversations found",
-    "loading": "Loading conversations...",
-    "searchPlaceholder": "Search conversations...",
-    "searchConversations": "Search conversations",
-    "clearSearch": "Clear search",
-    "searchResults": "{{count}} result for \"{{query}}\"",
-    "searchResults_plural": "{{count}} results for \"{{query}}\"",
-    "selectConversation": "Select conversation: {{title}}",
-    "messageCount": "{{count}} message",
-    "messageCount_plural": "{{count}} messages",
-    "totalCount": "{{count}} total",
-    "filteredCount": "{{count}} filtered",
-    "selectedCount": "{{count}} selected",
-    "rename": "Rename conversation",
-    "delete": "Delete conversation",
-    "deleteConfirm": "Are you sure you want to delete \"{{title}}\"? This action cannot be undone.",
-    "bulkDeleteConfirm": "Are you sure you want to delete {{count}} conversation? This action cannot be undone.",
-    "bulkDeleteConfirm_plural": "Are you sure you want to delete {{count}} conversations? This action cannot be undone.",
-    "editTitle": "Edit conversation title",
-    "filters": "Filters",
-    "toggleFilters": "Toggle filters",
-    "toggleBulkActions": "Toggle bulk actions",
-    "sortBy": "Sort by",
-    "sortUpdatedDesc": "Recently updated",
-    "sortUpdatedAsc": "Oldest updated",
-    "sortCreatedDesc": "Recently created",
-    "sortCreatedAsc": "Oldest created",
-    "sortTitleAsc": "Title A-Z",
-    "sortTitleDesc": "Title Z-A",
-    "filterByModel": "Filter by model",
-    "allModels": "All models",
-    "dateRange": "Date range",
-    "from": "From",
-    "to": "To",
-    "clearFilters": "Clear filters",
-    "selectAll": "Select all",
-    "clearSelection": "Clear selection",
-    "exportSelected": "Export selected",
-    "deleteSelected": "Delete selected"
+  conversation: {
+    conversations: 'Conversations',
+    newConversation: 'New Conversation',
+    createFirst: 'Create First Conversation',
+    noConversations: 'No conversations yet',
+    noMessages: 'No messages',
+    noSearchResults: 'No conversations found',
+    loading: 'Loading conversations...',
+    searchPlaceholder: 'Search conversations...',
+    searchConversations: 'Search conversations',
+    clearSearch: 'Clear search',
+    searchResults: '{{count}} result for "{{query}}"',
+    searchResults_plural: '{{count}} results for "{{query}}"',
+    selectConversation: 'Select conversation: {{title}}',
+    messageCount: '{{count}} message',
+    messageCount_plural: '{{count}} messages',
+    totalCount: '{{count}} total',
+    filteredCount: '{{count}} filtered',
+    selectedCount: '{{count}} selected',
+    rename: 'Rename conversation',
+    delete: 'Delete conversation',
+    deleteConfirm:
+      'Are you sure you want to delete "{{title}}"? This action cannot be undone.',
+    bulkDeleteConfirm:
+      'Are you sure you want to delete {{count}} conversation? This action cannot be undone.',
+    bulkDeleteConfirm_plural:
+      'Are you sure you want to delete {{count}} conversations? This action cannot be undone.',
+    editTitle: 'Edit conversation title',
+    filters: 'Filters',
+    toggleFilters: 'Toggle filters',
+    toggleBulkActions: 'Toggle bulk actions',
+    sortBy: 'Sort by',
+    sortUpdatedDesc: 'Recently updated',
+    sortUpdatedAsc: 'Oldest updated',
+    sortCreatedDesc: 'Recently created',
+    sortCreatedAsc: 'Oldest created',
+    sortTitleAsc: 'Title A-Z',
+    sortTitleDesc: 'Title Z-A',
+    filterByModel: 'Filter by model',
+    allModels: 'All models',
+    dateRange: 'Date range',
+    from: 'From',
+    to: 'To',
+    clearFilters: 'Clear filters',
+    selectAll: 'Select all',
+    clearSelection: 'Clear selection',
+    exportSelected: 'Export selected',
+    deleteSelected: 'Delete selected',
   },
-  "languages": {
-    "en": "English",
-    "zh": "Chinese"
+  languages: {
+    en: 'English',
+    zh: 'Chinese',
   },
-  "model": {
-    "loading": "Loading models...",
-    "error": "Failed to load models: {{error}}",
-    "noSelection": "Select a model",
-    "noModelsFound": "No models found",
-    "unavailable": "Unavailable",
-    "recommended": "Recommended",
-    "selector": {
-      "label": "Select AI model"
+  model: {
+    loading: 'Loading models...',
+    error: 'Failed to load models: {{error}}',
+    noSelection: 'Select a model',
+    noModelsFound: 'No models found',
+    unavailable: 'Unavailable',
+    recommended: 'Recommended',
+    selector: {
+      label: 'Select AI model',
     },
-    "search": {
-      "placeholder": "Search models...",
-      "label": "Search models"
+    search: {
+      placeholder: 'Search models...',
+      label: 'Search models',
     },
-    "category": {
-      "all": "All Models",
-      "general": "General Purpose",
-      "coding": "Code & Development",
-      "reasoning": "Advanced Reasoning"
+    category: {
+      all: 'All Models',
+      general: 'General Purpose',
+      coding: 'Code & Development',
+      reasoning: 'Advanced Reasoning',
     },
-    "provider": "Provider",
-    "contextLimit": "Context Limit",
-    "capabilities": "Capabilities",
-    "performance": {
-      "high": "High Performance",
-      "medium": "Medium Performance",
-      "low": "Basic Performance"
+    provider: 'Provider',
+    contextLimit: 'Context Limit',
+    capabilities: 'Capabilities',
+    performance: {
+      high: 'High Performance',
+      medium: 'Medium Performance',
+      low: 'Basic Performance',
     },
-    "capability": {
-      "text-generation": "Text Generation",
-      "code-generation": "Code Generation",
-      "code-analysis": "Code Analysis",
-      "reasoning": "Reasoning",
-      "conversation": "Conversation",
-      "file-upload": "File Upload",
-      "image-analysis": "Image Analysis",
-      "context-extension": "Context Extension",
-      "streaming": "Streaming"
+    capability: {
+      'text-generation': 'Text Generation',
+      'code-generation': 'Code Generation',
+      'code-analysis': 'Code Analysis',
+      reasoning: 'Reasoning',
+      conversation: 'Conversation',
+      'file-upload': 'File Upload',
+      'image-analysis': 'Image Analysis',
+      'context-extension': 'Context Extension',
+      streaming: 'Streaming',
     },
-    "config": {
-      "title": "Model Configuration - {{modelName}}",
-      "showAdvanced": "Show Advanced",
-      "hideAdvanced": "Hide Advanced",
-      "reset": "Reset to Defaults",
-      "basic": "Basic Parameters",
-      "advanced": "Advanced Parameters",
-      "modelInfo": "Model Information",
-      "summary": "Configuration Summary",
-      "temperature": "Temperature",
-      "temperature.description": "Controls randomness in responses. Higher values make output more creative, lower values more focused.",
-      "maxTokens": "Max Tokens",
-      "maxTokens.description": "Maximum number of tokens to generate. Recommended: {{recommended}}, Max: {{max}}",
-      "topP": "Top P",
-      "topP.description": "Controls diversity via nucleus sampling. Lower values focus on more likely tokens.",
-      "frequencyPenalty": "Frequency Penalty",
-      "frequencyPenalty.description": "Reduces repetition by penalizing frequently used tokens.",
-      "presencePenalty": "Presence Penalty",
-      "presencePenalty.description": "Encourages new topics by penalizing tokens that have appeared.",
-      "stopSequences": "Stop Sequences",
-      "stopSequences.description": "Text sequences that will stop generation (one per line).",
-      "stopSequences.placeholder": "Enter stop sequences...",
-      "systemPrompt": "System Prompt",
-      "systemPrompt.description": "Instructions that guide the model's behavior and responses.",
-      "systemPrompt.placeholder": "Enter system prompt...",
-      "creativity": "Creativity Level",
-      "creativity.high": "High",
-      "creativity.medium": "Medium",
-      "creativity.low": "Low",
-      "responseLength": "Response Length",
-      "responseLength.tokens": "Up to {{tokens}} tokens",
-      "diversity": "Response Diversity",
-      "diversity.high": "High",
-      "diversity.medium": "Medium",
-      "diversity.low": "Low"
+    config: {
+      title: 'Model Configuration - {{modelName}}',
+      showAdvanced: 'Show Advanced',
+      hideAdvanced: 'Hide Advanced',
+      reset: 'Reset to Defaults',
+      basic: 'Basic Parameters',
+      advanced: 'Advanced Parameters',
+      modelInfo: 'Model Information',
+      summary: 'Configuration Summary',
+      temperature: 'Temperature',
+      'temperature.description':
+        'Controls randomness in responses. Higher values make output more creative, lower values more focused.',
+      maxTokens: 'Max Tokens',
+      'maxTokens.description':
+        'Maximum number of tokens to generate. Recommended: {{recommended}}, Max: {{max}}',
+      topP: 'Top P',
+      'topP.description':
+        'Controls diversity via nucleus sampling. Lower values focus on more likely tokens.',
+      frequencyPenalty: 'Frequency Penalty',
+      'frequencyPenalty.description':
+        'Reduces repetition by penalizing frequently used tokens.',
+      presencePenalty: 'Presence Penalty',
+      'presencePenalty.description':
+        'Encourages new topics by penalizing tokens that have appeared.',
+      stopSequences: 'Stop Sequences',
+      'stopSequences.description':
+        'Text sequences that will stop generation (one per line).',
+      'stopSequences.placeholder': 'Enter stop sequences...',
+      systemPrompt: 'System Prompt',
+      'systemPrompt.description':
+        "Instructions that guide the model's behavior and responses.",
+      'systemPrompt.placeholder': 'Enter system prompt...',
+      creativity: 'Creativity Level',
+      'creativity.high': 'High',
+      'creativity.medium': 'Medium',
+      'creativity.low': 'Low',
+      responseLength: 'Response Length',
+      'responseLength.tokens': 'Up to {{tokens}} tokens',
+      diversity: 'Response Diversity',
+      'diversity.high': 'High',
+      'diversity.medium': 'Medium',
+      'diversity.low': 'Low',
     },
-    "switch": {
-      "title": "Switch AI Model",
-      "current": "Current Model",
-      "target": "Target Model",
-      "comparison": "Model Comparison",
-      "contextInfo": "Context Information",
-      "currentTokens": "Current Tokens",
-      "targetLimit": "Target Limit",
-      "utilization": "Utilization",
-      "errors": "Compatibility Issues",
-      "warnings": "Warnings",
-      "suggestions": "Suggestions",
-      "options": "Switch Options",
-      "preserveContext": "Preserve conversation context",
-      "preserveContext.description": "Keep the current conversation history when switching models",
-      "createNew": "Create new conversation",
-      "createNew.description": "Start a fresh conversation with the new model",
-      "confirm": "Switch Model",
-      "cannotSwitch": "Cannot Switch",
-      "switching": "Switching...",
-      "incompatibleNote": "This model switch is not compatible with the current conversation context."
+    switch: {
+      title: 'Switch AI Model',
+      current: 'Current Model',
+      target: 'Target Model',
+      comparison: 'Model Comparison',
+      contextInfo: 'Context Information',
+      currentTokens: 'Current Tokens',
+      targetLimit: 'Target Limit',
+      utilization: 'Utilization',
+      errors: 'Compatibility Issues',
+      warnings: 'Warnings',
+      suggestions: 'Suggestions',
+      options: 'Switch Options',
+      preserveContext: 'Preserve conversation context',
+      'preserveContext.description':
+        'Keep the current conversation history when switching models',
+      createNew: 'Create new conversation',
+      'createNew.description': 'Start a fresh conversation with the new model',
+      confirm: 'Switch Model',
+      cannotSwitch: 'Cannot Switch',
+      switching: 'Switching...',
+      incompatibleNote:
+        'This model switch is not compatible with the current conversation context.',
     },
-    "selected": "Selected model: {{model}}"
-  }
+    selected: 'Selected model: {{model}}',
+  },
 } as const;
