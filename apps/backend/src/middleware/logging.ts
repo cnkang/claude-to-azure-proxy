@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { IncomingHttpHeaders } from 'http';
+import { performance } from 'node:perf_hooks';
 import type {
   ErrorLogEntry,
   HealthLogEntry,
@@ -313,7 +314,7 @@ export const requestLoggingMiddleware = (
   res: Response,
   next: NextFunction
 ): void => {
-  const startTime = Date.now();
+  const startTime = performance.now();
   const correlationId = resolveCorrelationId(
     (req as Partial<RequestWithCorrelationId>).correlationId,
     () => 'unknown'
@@ -360,7 +361,7 @@ export const requestLoggingMiddleware = (
 
   // Log response when finished
   res.on('finish', () => {
-    const responseTime = Date.now() - startTime;
+    const responseTime = Math.round(performance.now() - startTime);
     const responseContentLengthHeader = res.getHeader('content-length');
     const responseContentLength =
       responseContentLengthHeader !== undefined
