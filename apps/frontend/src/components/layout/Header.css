@@ -7,12 +7,15 @@
 
 .app-header {
   grid-area: header;
-  background-color: var(--color-background);
-  border-bottom: 1px solid var(--color-border);
+  background: var(--glass-background);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--glass-border);
   display: flex;
   flex-direction: column;
   z-index: var(--z-header);
   position: relative;
+  box-shadow: var(--color-shadow-sm);
 }
 
 .header-content {
@@ -50,27 +53,44 @@
   contain: layout style;
 }
 
-/* Menu toggle button */
+/* Menu toggle button with modern interactions */
 .menu-toggle {
   background: none;
   border: none;
   cursor: pointer;
   padding: var(--spacing-sm);
-  border-radius: 6px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color var(--transition-fast);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   color: var(--color-foreground);
+  position: relative;
+}
+
+.menu-toggle::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  background: var(--color-hover);
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 .menu-toggle:hover {
   background-color: var(--color-background-secondary);
+  transform: scale(1.05);
+}
+
+.menu-toggle:hover::before {
+  opacity: 1;
 }
 
 .menu-toggle:focus {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--color-focus);
 }
 
 .menu-icon {
@@ -167,28 +187,49 @@
   outline-offset: 2px;
 }
 
-/* Theme toggle */
+/* Theme toggle with smooth animations */
 .theme-toggle {
-  background: none;
-  border: none;
+  background: var(--color-background-elevated);
+  border: 1px solid var(--color-border);
   cursor: pointer;
   padding: var(--spacing-sm);
-  border-radius: 6px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
   font-size: 16px;
   color: var(--color-foreground);
-  transition: background-color var(--transition-fast);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--color-shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+.theme-toggle::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--color-accent-gradient);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
 }
 
 .theme-toggle:hover {
   background-color: var(--color-background-secondary);
+  transform: translateY(-2px);
+  box-shadow: var(--color-shadow-md);
+  border-color: var(--color-accent);
+}
+
+.theme-toggle:hover::after {
+  opacity: 0.1;
 }
 
 .theme-toggle:focus {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--color-focus);
 }
 
 .theme-label {

@@ -41,7 +41,7 @@
 
 /* Theme colors are now defined in styles/themes.css */
 
-/* Base layout */
+/* Base layout with modern background */
 .app-layout {
   display: grid;
   grid-template-areas:
@@ -50,13 +50,34 @@
   grid-template-columns: var(--sidebar-width) 1fr;
   grid-template-rows: var(--header-height) 1fr;
   height: 100vh;
-  background-color: var(--color-background);
+  background: linear-gradient(135deg, var(--color-background) 0%, var(--color-background-secondary) 100%);
   color: var(--color-foreground);
   font-family:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   transition: grid-template-columns var(--transition-normal);
   /* Prevent layout shift during language changes */
   contain: layout style;
+  position: relative;
+}
+
+.app-layout::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 10% 20%, var(--color-accent-light) 0%, transparent 50%),
+    radial-gradient(circle at 90% 80%, var(--color-info-light) 0%, transparent 50%);
+  opacity: 0.4;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.app-layout > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* Language-specific font optimizations */
