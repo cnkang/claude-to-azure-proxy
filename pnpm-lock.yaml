@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  esbuild: ^0.25.11
+  esbuild: ^0.25.12
 
 importers:
 
@@ -200,7 +200,7 @@ importers:
         specifier: ^4.0.7
         version: 4.0.7(vitest@4.0.7)
       esbuild:
-        specifier: ^0.25.11
+        specifier: ^0.25.12
         version: 0.25.12
       supertest:
         specifier: ^7.1.4
