@@ -48,8 +48,10 @@ RUN if [ -f pnpm-workspace.yaml ]; then \
       # Monorepo build process
       echo "Building shared packages..." && \
       pnpm build:shared && \
+      echo "Cleaning backend build artifacts..." && \
+      rm -rf apps/backend/dist apps/backend/.tsbuildinfo && \
       echo "Building backend application..." && \
-      pnpm build:backend && \
+      cd apps/backend && pnpm run build && cd ../.. && \
       echo "Preparing build output..." && \
       mkdir -p /app/build && \
       cp -R apps/backend/dist /app/build/dist && \
