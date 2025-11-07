@@ -67,6 +67,12 @@
     "vite": "^7.2.1",
     "vitest": "^4.0.7"
   },
+  "sideEffects": [
+    "*.css",
+    "*.scss",
+    "src/i18n/**/*",
+    "src/main.tsx"
+  ],
   "engines": {
     "node": ">=24.0.0"
   },

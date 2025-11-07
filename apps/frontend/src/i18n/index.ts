@@ -13,8 +13,8 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 import { frontendLogger } from '../utils/logger.js';
 
 // Import translation resources
-import enTranslations from './locales/en.json';
-import zhTranslations from './locales/zh.json';
+import enTranslations from './locales/en.js';
+import zhTranslations from './locales/zh.js';
 
 /**
  * Supported languages

@@ -1,0 +1,582 @@
+export default {
+  "app": {
+    "title": "AI 聊天助手",
+    "subtitle": "由 Claude-to-Azure 代理提供支持"
+  },
+  "common": {
+    "loading": "加载中...",
+    "cancel": "取消",
+    "confirm": "确认",
+    "processing": "处理中...",
+    "save": "保存",
+    "delete": "删除",
+    "edit": "编辑",
+    "close": "关闭",
+    "back": "返回",
+    "next": "下一步",
+    "previous": "上一步",
+    "search": "搜索",
+    "clear": "清除",
+    "refresh": "刷新",
+    "retry": "重试",
+    "error": "错误",
+    "success": "成功",
+    "warning": "警告",
+    "info": "信息"
+  },
+  "navigation": {
+    "chat": "聊天",
+    "settings": "设置",
+    "conversation": "对话",
+    "breadcrumb": "导航面包屑"
+  },
+  "header": {
+    "openSidebar": "打开侧边栏",
+    "closeSidebar": "关闭侧边栏",
+    "settings": "设置"
+  },
+  "sidebar": {
+    "navigation": "主导航",
+    "newConversation": "新对话",
+    "conversations": "对话列表",
+    "noConversations": "暂无对话",
+    "startFirstConversation": "开始您的第一个对话",
+    "selectConversation": "选择对话：{{title}}",
+    "conversationOptions": "对话选项",
+    "close": "关闭侧边栏",
+    "session": "会话",
+    "settings": "设置",
+    "help": "帮助"
+  },
+  "chat": {
+    "messageCount": "{{count}} 条消息",
+    "startConversation": "开始新对话",
+    "startConversationHint": "在下方输入您的消息，开始与 AI 助手聊天。",
+    "inputPlaceholder": "输入您的消息...",
+    "sendMessage": "发送消息",
+    "noConversationSelected": "未选择对话",
+    "selectConversationHint": "从侧边栏选择一个对话开始聊天。",
+    "noMessages": "暂无消息",
+    "you": "您",
+    "assistant": "助手",
+    "justNow": "刚刚",
+    "minutesAgo": "{{count}} 分钟前",
+    "copyCode": "复制代码",
+    "copy": "复制",
+    "copied": "已复制！",
+    "expandCode": "展开代码",
+    "collapseCode": "折叠代码",
+    "showAllLines": "显示全部（{{count}} 行）",
+    "showMoreLines": "显示更多 {{count}} 行...",
+    "codeLanguage": "语言：{{language}}",
+    "codeFile": "文件：{{filename}}",
+    "codeLines": "第 {{start}}-{{end}} 行",
+    "contextTokens": "{{count}} 个令牌",
+    "scrollToBottom": "滚动到底部",
+    "newMessages": "新消息",
+    "aiTyping": "AI 正在输入...",
+    "connectionError": "连接丢失。请检查您的网络连接。",
+    "retry": "重试",
+    "sendError": "发送消息失败。请重试。",
+    "attachFile": "附加文件",
+    "attachedFiles": "已附加 {{count}} 个文件",
+    "removeFile": "移除 {{name}}",
+    "messageInput": "消息输入",
+    "keyboardHint": "按 Enter 发送，Shift+Enter 换行",
+    "messageTooLong": "消息过长（最多 {{max}} 个字符）",
+    "emptyMessage": "请输入消息或附加文件",
+    "connected": "已连接",
+    "connecting": "连接中",
+    "disconnected": "已断开",
+    "unknown": "未知",
+    "messageSent": "消息已发送",
+    "responseReceived": "已收到 AI 回复",
+    "retryingConnection": "正在重试连接",
+    "currentModel": "当前模型：{{model}}",
+    "messageHistory": "消息历史"
+  },
+  "fileUpload": {
+    "dropZoneLabel": "文件上传区域",
+    "dropFiles": "将文件拖放到此处",
+    "dragOrClick": "将文件拖放到此处或点击浏览",
+    "supportedTypes": "支持：{{types}}（最大 {{maxSize}}）",
+    "uploading": "正在上传文件...",
+    "scanning": "正在扫描文件安全威胁...",
+    "tooManyFiles": "选择的文件过多（最多 {{max}} 个）",
+    "invalidFile": "无效文件",
+    "uploadFailed": "上传失败",
+    "uploadSuccess": "文件上传成功",
+    "uploadError": "上传失败",
+    "securityScanning": "正在扫描安全威胁",
+    "previewFile": "预览 {{name}}",
+    "previewAlt": "{{name}} 的预览",
+    "security": {
+      "safe": "安全扫描通过",
+      "threatDetected": "检测到安全威胁：{{threats}}",
+      "suspiciousPath": "文件名包含可疑路径字符",
+      "executableFile": "不允许可执行文件类型",
+      "imageTooLarge": "图片文件过大（最大 5MB）",
+      "codeTooLarge": "代码文件过大（最大 1MB）",
+      "textTooLarge": "文本文件过大（最大 512KB）"
+    },
+    "preview": {
+      "loading": "加载预览中...",
+      "loadError": "加载文件预览失败",
+      "unknownType": "未知文件类型",
+      "unsupportedType": "此文件类型不支持预览",
+      "fileInfo": "{{name}}（{{size}}，{{type}}）",
+      "copyContent": "复制内容到剪贴板"
+    }
+  },
+  "welcome": {
+    "title": "欢迎使用 AI 聊天助手",
+    "description": "与我们的 AI 助手开始对话，获得编程、写作、分析等方面的帮助。",
+    "startChat": "开始聊天"
+  },
+  "settings": {
+    "title": "设置",
+    "description": "自定义您的聊天体验并管理您的数据。",
+    "appearance": {
+      "title": "外观",
+      "description": "自定义应用程序的外观和感觉。",
+      "theme": "主题",
+      "light": "浅色",
+      "dark": "深色",
+      "auto": "自动",
+      "autoHint": "当前根据您的系统偏好使用{{current}}主题。"
+    },
+    "language": {
+      "title": "语言",
+      "description": "选择您偏好的界面语言。",
+      "select": "语言"
+    },
+    "storage": {
+      "title": "存储",
+      "description": "查看您的本地存储使用情况并管理您的数据。",
+      "conversations": "对话",
+      "messages": "消息"
+    },
+    "session": {
+      "title": "会话信息",
+      "description": "关于您当前会话的信息。",
+      "id": "会话 ID",
+      "created": "创建时间"
+    },
+    "data": {
+      "title": "数据管理",
+      "description": "导出或清除您的对话数据。",
+      "export": "导出数据",
+      "exporting": "导出中...",
+      "clearConversations": "清除对话",
+      "clearingConversations": "清除对话中...",
+      "resetSession": "重置会话",
+      "resettingSession": "重置会话中...",
+      "clearAll": "清除所有数据",
+      "clearingAllData": "清除所有数据中..."
+    },
+    "confirm": {
+      "clearConversations": {
+        "title": "清除对话",
+        "message": "您确定要清除所有对话吗？此操作无法撤销。"
+      },
+      "resetSession": {
+        "title": "重置会话",
+        "message": "您确定要重置会话吗？这将清除所有会话数据并重新开始。"
+      },
+      "clearAll": {
+        "title": "清除所有数据",
+        "message": "您确定要清除所有数据吗？这将删除所有对话、设置和会话信息。此操作无法撤销。"
+      }
+    },
+    "processing": {
+      "title": "处理中..."
+    }
+  },
+  "language": {
+    "select": "选择语言"
+  },
+  "notFound": {
+    "title": "页面未找到",
+    "description": "您要查找的页面不存在或已被移动。",
+    "goHome": "返回聊天"
+  },
+  "context": {
+    "tokens": "令牌",
+    "usage": {
+      "label": "上下文使用情况",
+      "tooltip": "{{current}} / {{max}} 令牌 ({{percentage}}%)"
+    },
+    "extended": {
+      "tooltip": "上下文已扩展"
+    },
+    "warning": {
+      "title": "上下文限制警告",
+      "warning": {
+        "title": "上下文限制警告",
+        "message": "您正在接近上下文限制（{{percentage}}%）。考虑扩展上下文或压缩对话。",
+        "tip": "长对话可能会影响响应质量和速度。"
+      },
+      "critical": {
+        "title": "上下文限制严重",
+        "message": "您非常接近上下文限制（{{percentage}}%）。需要采取行动才能继续对话。",
+        "tip": "如果不扩展或压缩上下文，对话将被截断。"
+      },
+      "extended": "上下文已扩展以支持更长的对话。"
+    },
+    "actions": {
+      "extend": "扩展上下文",
+      "extending": "扩展中...",
+      "compress": "压缩对话",
+      "compressing": "压缩中..."
+    },
+    "compression": {
+      "title": "压缩对话",
+      "description": "这将创建对话的压缩摘要，同时保留关键信息。",
+      "current": "当前令牌数",
+      "compressed": "已压缩",
+      "estimated": "压缩后预计令牌数",
+      "reduction": "预计减少",
+      "startCompression": "开始压缩",
+      "compressing": "正在压缩对话...",
+      "newConversation": "新对话标题",
+      "createConversation": "创建压缩对话",
+      "advancedOptions": "高级选项",
+      "method": {
+        "label": "压缩方法",
+        "aiSummary": "AI 摘要",
+        "selectiveRemoval": "选择性删除",
+        "hierarchical": "分层压缩",
+        "aiSummary.description": "使用 AI 创建智能摘要，保留关键信息",
+        "selectiveRemoval.description": "删除不太重要的消息，保留关键内容",
+        "hierarchical.description": "基于消息重要性和时间进行压缩"
+      },
+      "targetReduction": {
+        "label": "目标减少量"
+      },
+      "preserveCodeBlocks": "保留代码块",
+      "preserveCodeBlocks.description": "保持所有代码示例和技术内容完整",
+      "preserveRecent": {
+        "label": "保留最近消息",
+        "description": "保持不变的最近消息数量"
+      },
+      "benefits": {
+        "title": "压缩的好处",
+        "preserve": "保留重要的上下文和决策",
+        "reduce": "显著减少令牌使用",
+        "continue": "允许您继续对话",
+        "performance": "提高响应速度和质量"
+      },
+      "preview": {
+        "title": "压缩预览",
+        "content": "压缩内容预览",
+        "description": "在使用此上下文创建新对话之前，请查看压缩后的对话。"
+      },
+      "creating": {
+        "title": "创建压缩对话",
+        "message": "正在使用压缩上下文创建新对话..."
+      },
+      "original": "原始令牌数"
+    }
+  },
+  "accessibility": {
+    "skipToMain": "跳转到主内容",
+    "chatInterface": "聊天界面",
+    "closeError": "关闭错误",
+    "focusTrap": "焦点陷阱容器",
+    "announcements": {
+      "enabled": "屏幕阅读器通知已启用",
+      "disabled": "屏幕阅读器通知已禁用"
+    },
+    "keyboardNavigation": {
+      "enabled": "键盘导航已启用",
+      "disabled": "键盘导航已禁用",
+      "instructions": "使用 Tab 键导航，Enter 键激活，Escape 键关闭"
+    },
+    "highContrast": {
+      "enabled": "高对比度模式已启用",
+      "disabled": "高对比度模式已禁用",
+      "enable": "启用高对比度模式",
+      "disable": "禁用高对比度模式",
+      "on": "高对比度开启",
+      "off": "高对比度关闭",
+      "resetToSystem": "重置为系统偏好"
+    },
+    "reducedMotion": {
+      "enabled": "减少动画已启用",
+      "disabled": "减少动画已禁用",
+      "resetToSystem": "重置为系统偏好"
+    },
+    "fontSize": {
+      "changed": "字体大小已更改为{{size}}",
+      "small": "小",
+      "medium": "中",
+      "large": "大",
+      "extraLarge": "特大"
+    },
+    "zoom": {
+      "changed": "缩放级别已更改为{{level}}%"
+    },
+    "wcag": {
+      "title": "WCAG 合规级别",
+      "currentRatio": "最小对比度：{{ratio}}:1",
+      "a": {
+        "description": "基础无障碍（3:1 对比度）"
+      },
+      "aa": {
+        "description": "标准无障碍（4.5:1 对比度）"
+      },
+      "aaa": {
+        "description": "增强无障碍（7:1 对比度）"
+      }
+    },
+    "navigation": {
+      "landmark": "导航地标",
+      "main": "主要内容",
+      "complementary": "补充内容",
+      "contentinfo": "内容信息",
+      "banner": "横幅"
+    },
+    "status": {
+      "loading": "加载中",
+      "error": "发生错误",
+      "success": "操作成功完成",
+      "processing": "处理中"
+    },
+    "controls": {
+      "expand": "展开",
+      "collapse": "折叠",
+      "close": "关闭",
+      "open": "打开",
+      "select": "选择",
+      "toggle": "切换",
+      "menu": "菜单",
+      "submenu": "子菜单"
+    },
+    "settings": {
+      "title": "无障碍设置",
+      "description": "配置无障碍功能以改善您的使用体验"
+    },
+    "screenReader": {
+      "title": "屏幕阅读器支持",
+      "description": "屏幕阅读器用户的设置",
+      "detected": "检测到屏幕阅读器",
+      "notDetected": "未检测到屏幕阅读器"
+    },
+    "visual": {
+      "title": "视觉无障碍",
+      "description": "视觉无障碍和显示偏好设置"
+    },
+    "motion": {
+      "title": "动画和运动",
+      "description": "控制动画和运动效果"
+    },
+    "keyboard": {
+      "title": "键盘导航",
+      "description": "纯键盘导航的设置"
+    },
+    "advanced": {
+      "title": "高级设置",
+      "description": "高级无障碍配置选项"
+    }
+  },
+  "loading": {
+    "default": "加载中...",
+    "conversations": "加载对话中...",
+    "messages": "加载消息中..."
+  },
+  "error": {
+    "boundary": {
+      "title": "出现错误",
+      "message": "很抱歉，发生了意外错误。请尝试刷新页面。",
+      "tryAgain": "重试",
+      "reloadPage": "重新加载页面",
+      "details": "错误详情（开发模式）"
+    },
+    "network": {
+      "title": "连接错误",
+      "message": "无法连接到服务器。请检查您的网络连接并重试。",
+      "retry": "重试连接",
+      "connectionFailed": "连接失败。请检查您的网络连接。",
+      "timeout": "请求超时。请重试。",
+      "serverError": "服务器错误。请稍后重试。",
+      "rateLimited": "请求过于频繁。请稍等片刻后重试。",
+      "unauthorized": "需要身份验证。请刷新页面。",
+      "forbidden": "访问被拒绝。您没有执行此操作的权限。",
+      "notFound": "未找到请求的资源。",
+      "validationError": "请求数据无效。请检查您的输入。",
+      "unknown": "发生意外错误。请重试。",
+      "retryConnection": "检查您的网络连接并重试",
+      "retryTimeout": "请求超时。请在稳定的连接下重试",
+      "retryServer": "服务器暂时不可用。请稍后重试",
+      "retryRateLimit": "您的请求过于频繁。请稍等片刻",
+      "retryGeneric": "请重试"
+    },
+    "general": {
+      "title": "错误",
+      "message": "发生错误。请重试。"
+    },
+    "validation": {
+      "required": "此字段为必填项",
+      "invalid": "请输入有效值"
+    },
+    "sse": {
+      "connectionLost": "连接丢失",
+      "reconnecting": "重新连接中...",
+      "reconnectFailed": "重新连接失败",
+      "maxAttemptsReached": "已达到最大重连尝试次数",
+      "retryManually": "请尝试刷新页面"
+    }
+  },
+  "time": {
+    "justNow": "刚刚",
+    "minutesAgo": "{{count}}分钟前",
+    "hoursAgo": "{{count}}小时前",
+    "daysAgo": "{{count}}天前"
+  },
+  "conversation": {
+    "conversations": "对话列表",
+    "newConversation": "新对话",
+    "createFirst": "创建第一个对话",
+    "noConversations": "暂无对话",
+    "noMessages": "暂无消息",
+    "noSearchResults": "未找到对话",
+    "loading": "加载对话中...",
+    "searchPlaceholder": "搜索对话...",
+    "searchConversations": "搜索对话",
+    "clearSearch": "清除搜索",
+    "searchResults": "\"{{query}}\" 的 {{count}} 个结果",
+    "selectConversation": "选择对话：{{title}}",
+    "messageCount": "{{count}} 条消息",
+    "totalCount": "共 {{count}} 个",
+    "filteredCount": "筛选出 {{count}} 个",
+    "selectedCount": "已选择 {{count}} 个",
+    "rename": "重命名对话",
+    "delete": "删除对话",
+    "deleteConfirm": "您确定要删除 \"{{title}}\" 吗？此操作无法撤销。",
+    "bulkDeleteConfirm": "您确定要删除 {{count}} 个对话吗？此操作无法撤销。",
+    "editTitle": "编辑对话标题",
+    "filters": "筛选器",
+    "toggleFilters": "切换筛选器",
+    "toggleBulkActions": "切换批量操作",
+    "sortBy": "排序方式",
+    "sortUpdatedDesc": "最近更新",
+    "sortUpdatedAsc": "最早更新",
+    "sortCreatedDesc": "最近创建",
+    "sortCreatedAsc": "最早创建",
+    "sortTitleAsc": "标题 A-Z",
+    "sortTitleDesc": "标题 Z-A",
+    "filterByModel": "按模型筛选",
+    "allModels": "所有模型",
+    "dateRange": "日期范围",
+    "from": "从",
+    "to": "到",
+    "clearFilters": "清除筛选器",
+    "selectAll": "全选",
+    "clearSelection": "清除选择",
+    "exportSelected": "导出选中项",
+    "deleteSelected": "删除选中项"
+  },
+  "languages": {
+    "en": "英语",
+    "zh": "中文"
+  },
+  "model": {
+    "loading": "加载模型中...",
+    "error": "加载模型失败：{{error}}",
+    "noSelection": "选择模型",
+    "noModelsFound": "未找到模型",
+    "unavailable": "不可用",
+    "recommended": "推荐",
+    "selector": {
+      "label": "选择 AI 模型"
+    },
+    "search": {
+      "placeholder": "搜索模型...",
+      "label": "搜索模型"
+    },
+    "category": {
+      "all": "所有模型",
+      "general": "通用模型",
+      "coding": "编程开发",
+      "reasoning": "高级推理"
+    },
+    "provider": "提供商",
+    "contextLimit": "上下文限制",
+    "capabilities": "功能特性",
+    "performance": {
+      "high": "高性能",
+      "medium": "中等性能",
+      "low": "基础性能"
+    },
+    "capability": {
+      "text-generation": "文本生成",
+      "code-generation": "代码生成",
+      "code-analysis": "代码分析",
+      "reasoning": "逻辑推理",
+      "conversation": "对话交流",
+      "file-upload": "文件上传",
+      "image-analysis": "图像分析",
+      "context-extension": "上下文扩展",
+      "streaming": "流式响应"
+    },
+    "config": {
+      "title": "模型配置 - {{modelName}}",
+      "showAdvanced": "显示高级选项",
+      "hideAdvanced": "隐藏高级选项",
+      "reset": "重置为默认值",
+      "basic": "基础参数",
+      "advanced": "高级参数",
+      "modelInfo": "模型信息",
+      "summary": "配置摘要",
+      "temperature": "温度",
+      "temperature.description": "控制响应的随机性。较高的值使输出更有创意，较低的值更专注。",
+      "maxTokens": "最大令牌数",
+      "maxTokens.description": "生成的最大令牌数。推荐：{{recommended}}，最大：{{max}}",
+      "topP": "Top P",
+      "topP.description": "通过核采样控制多样性。较低的值专注于更可能的令牌。",
+      "frequencyPenalty": "频率惩罚",
+      "frequencyPenalty.description": "通过惩罚频繁使用的令牌来减少重复。",
+      "presencePenalty": "存在惩罚",
+      "presencePenalty.description": "通过惩罚已出现的令牌来鼓励新话题。",
+      "stopSequences": "停止序列",
+      "stopSequences.description": "将停止生成的文本序列（每行一个）。",
+      "stopSequences.placeholder": "输入停止序列...",
+      "systemPrompt": "系统提示",
+      "systemPrompt.description": "指导模型行为和响应的指令。",
+      "systemPrompt.placeholder": "输入系统提示...",
+      "creativity": "创造力水平",
+      "creativity.high": "高",
+      "creativity.medium": "中",
+      "creativity.low": "低",
+      "responseLength": "响应长度",
+      "responseLength.tokens": "最多 {{tokens}} 个令牌",
+      "diversity": "响应多样性",
+      "diversity.high": "高",
+      "diversity.medium": "中",
+      "diversity.low": "低"
+    },
+    "switch": {
+      "title": "切换 AI 模型",
+      "current": "当前模型",
+      "target": "目标模型",
+      "comparison": "模型对比",
+      "contextInfo": "上下文信息",
+      "currentTokens": "当前令牌数",
+      "targetLimit": "目标限制",
+      "utilization": "使用率",
+      "errors": "兼容性问题",
+      "warnings": "警告",
+      "suggestions": "建议",
+      "options": "切换选项",
+      "preserveContext": "保留对话上下文",
+      "preserveContext.description": "切换模型时保留当前对话历史",
+      "createNew": "创建新对话",
+      "createNew.description": "使用新模型开始全新对话",
+      "confirm": "切换模型",
+      "cannotSwitch": "无法切换",
+      "switching": "切换中...",
+      "incompatibleNote": "此模型切换与当前对话上下文不兼容。"
+    },
+    "selected": "已选择模型：{{model}}"
+  }
+} as const;
