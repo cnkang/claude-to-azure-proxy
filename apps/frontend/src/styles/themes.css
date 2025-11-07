@@ -10,7 +10,7 @@
 /* Theme Transition Animations */
 :root {
   /* Smooth theme transitions for all color properties */
-  --theme-transition: 
+  --theme-transition:
     background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
@@ -39,46 +39,46 @@
   --color-background-secondary: #f8f9fa;
   --color-background-tertiary: #f1f3f4;
   --color-background-elevated: #ffffff;
-  
+
   /* Text colors with AAA contrast ratios */
-  --color-foreground: #1a1a1a;           /* 15.3:1 contrast ratio */
+  --color-foreground: #1a1a1a; /* 15.3:1 contrast ratio */
   --color-foreground-secondary: #4a4a4a; /* 9.7:1 contrast ratio */
-  --color-foreground-tertiary: #6a6a6a;  /* 7.1:1 contrast ratio */
-  --color-foreground-muted: #8a8a8a;     /* 5.2:1 contrast ratio (AA) */
-  
+  --color-foreground-tertiary: #6a6a6a; /* 7.1:1 contrast ratio */
+  --color-foreground-muted: #8a8a8a; /* 5.2:1 contrast ratio (AA) */
+
   /* Border colors */
   --color-border: #e1e4e8;
   --color-border-secondary: #d1d5da;
   --color-border-focus: #0366d6;
-  
+
   /* Accent colors with AAA compliance */
-  --color-accent: #0052cc;               /* 7.5:1 contrast ratio */
-  --color-accent-hover: #003d99;         /* 10.1:1 contrast ratio */
+  --color-accent: #0052cc; /* 7.5:1 contrast ratio */
+  --color-accent-hover: #003d99; /* 10.1:1 contrast ratio */
   --color-accent-light: #e6f2ff;
-  --color-accent-text: #ffffff;          /* 15.8:1 contrast on accent */
-  
+  --color-accent-text: #ffffff; /* 15.8:1 contrast on accent */
+
   /* Semantic colors with AAA compliance */
-  --color-success: #0d7d32;             /* 7.2:1 contrast ratio */
+  --color-success: #0d7d32; /* 7.2:1 contrast ratio */
   --color-success-light: #e6f7ea;
-  --color-warning: #b8860b;             /* 7.1:1 contrast ratio */
+  --color-warning: #b8860b; /* 7.1:1 contrast ratio */
   --color-warning-light: #fff8e1;
-  --color-error: #c5221f;               /* 7.8:1 contrast ratio */
+  --color-error: #c5221f; /* 7.8:1 contrast ratio */
   --color-error-light: #ffeaea;
-  --color-info: #0052cc;                /* 7.5:1 contrast ratio */
+  --color-info: #0052cc; /* 7.5:1 contrast ratio */
   --color-info-light: #e6f2ff;
-  
+
   /* Interactive states */
   --color-hover: rgba(0, 82, 204, 0.08);
   --color-active: rgba(0, 82, 204, 0.12);
   --color-focus: rgba(0, 82, 204, 0.2);
   --color-disabled: #f5f5f5;
-  --color-disabled-text: #999999;       /* 4.5:1 contrast ratio (AA) */
-  
+  --color-disabled-text: #999999; /* 4.5:1 contrast ratio (AA) */
+
   /* Shadows and overlays */
   --color-shadow: rgba(0, 0, 0, 0.1);
   --color-shadow-elevated: rgba(0, 0, 0, 0.15);
   --color-overlay: rgba(0, 0, 0, 0.5);
-  
+
   /* Code syntax highlighting (light theme) */
   --color-code-background: #f6f8fa;
   --color-code-border: #e1e4e8;
@@ -97,46 +97,46 @@
   --color-background-secondary: #161b22;
   --color-background-tertiary: #21262d;
   --color-background-elevated: #1c2128;
-  
+
   /* Text colors with AAA contrast ratios */
-  --color-foreground: #f0f6fc;           /* 15.8:1 contrast ratio */
+  --color-foreground: #f0f6fc; /* 15.8:1 contrast ratio */
   --color-foreground-secondary: #c9d1d9; /* 11.2:1 contrast ratio */
-  --color-foreground-tertiary: #8b949e;  /* 7.1:1 contrast ratio */
-  --color-foreground-muted: #6e7681;     /* 5.2:1 contrast ratio (AA) */
-  
+  --color-foreground-tertiary: #8b949e; /* 7.1:1 contrast ratio */
+  --color-foreground-muted: #6e7681; /* 5.2:1 contrast ratio (AA) */
+
   /* Border colors */
   --color-border: #30363d;
   --color-border-secondary: #21262d;
   --color-border-focus: #58a6ff;
-  
+
   /* Accent colors with AAA compliance */
-  --color-accent: #58a6ff;              /* 8.2:1 contrast ratio */
-  --color-accent-hover: #79c0ff;        /* 10.5:1 contrast ratio */
+  --color-accent: #58a6ff; /* 8.2:1 contrast ratio */
+  --color-accent-hover: #79c0ff; /* 10.5:1 contrast ratio */
   --color-accent-light: #0d2d5c;
-  --color-accent-text: #0d1117;         /* 15.8:1 contrast on accent */
-  
+  --color-accent-text: #0d1117; /* 15.8:1 contrast on accent */
+
   /* Semantic colors with AAA compliance */
-  --color-success: #3fb950;             /* 7.8:1 contrast ratio */
+  --color-success: #3fb950; /* 7.8:1 contrast ratio */
   --color-success-light: #0f2419;
-  --color-warning: #d29922;             /* 7.2:1 contrast ratio */
+  --color-warning: #d29922; /* 7.2:1 contrast ratio */
   --color-warning-light: #2d1b00;
-  --color-error: #f85149;               /* 7.1:1 contrast ratio */
+  --color-error: #f85149; /* 7.1:1 contrast ratio */
   --color-error-light: #2d0d0e;
-  --color-info: #58a6ff;                /* 8.2:1 contrast ratio */
+  --color-info: #58a6ff; /* 8.2:1 contrast ratio */
   --color-info-light: #0d2d5c;
-  
+
   /* Interactive states */
   --color-hover: rgba(88, 166, 255, 0.1);
   --color-active: rgba(88, 166, 255, 0.15);
   --color-focus: rgba(88, 166, 255, 0.3);
   --color-disabled: #21262d;
-  --color-disabled-text: #484f58;       /* 4.5:1 contrast ratio (AA) */
-  
+  --color-disabled-text: #484f58; /* 4.5:1 contrast ratio (AA) */
+
   /* Shadows and overlays */
   --color-shadow: rgba(0, 0, 0, 0.3);
   --color-shadow-elevated: rgba(0, 0, 0, 0.5);
   --color-overlay: rgba(0, 0, 0, 0.7);
-  
+
   /* Code syntax highlighting (dark theme) */
   --color-code-background: #161b22;
   --color-code-border: #30363d;
@@ -160,7 +160,7 @@
     --color-warning: #cc6600;
     --color-error: #cc0000;
   }
-  
+
   .theme-dark {
     --color-foreground: #ffffff;
     --color-background: #000000;
@@ -193,18 +193,18 @@
 
 /* Enhanced button styles for better accessibility */
 button,
-[role="button"] {
+[role='button'] {
   position: relative;
   overflow: hidden;
 }
 
 button:hover:not(:disabled),
-[role="button"]:hover:not([aria-disabled="true"]) {
+[role='button']:hover:not([aria-disabled='true']) {
   background-color: var(--color-hover);
 }
 
 button:active:not(:disabled),
-[role="button"]:active:not([aria-disabled="true"]) {
+[role='button']:active:not([aria-disabled='true']) {
   background-color: var(--color-active);
 }
 
@@ -212,7 +212,9 @@ button:active:not(:disabled),
 a {
   color: var(--color-accent);
   text-decoration-color: transparent;
-  transition: var(--theme-transition), text-decoration-color 0.2s ease;
+  transition:
+    var(--theme-transition),
+    text-decoration-color 0.2s ease;
 }
 
 a:hover {
@@ -251,7 +253,9 @@ code {
   color: var(--color-code-text);
   padding: 0.125rem 0.25rem;
   border-radius: 3px;
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-family:
+    'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New',
+    monospace;
 }
 
 pre {
@@ -448,7 +452,7 @@ pre code {
 
 /* Ensure proper contrast for all interactive elements */
 button:not(:disabled),
-[role="button"]:not([aria-disabled="true"]),
+[role='button']:not([aria-disabled='true']),
 a,
 input:not(:disabled),
 textarea:not(:disabled),
