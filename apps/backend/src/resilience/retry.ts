@@ -122,7 +122,7 @@ export class RetryStrategy {
     for (let attempt = 1; attempt <= this.config.maxAttempts; attempt++) {
       if (attempt > 1 && delayBeforeAttempt > 0) {
         try {
-          await abortableDelay(delayBeforeAttempt, signal);
+          await this.delay(delayBeforeAttempt, signal);
         } catch (delayError) {
           lastError = delayError as Error;
           if (isAbortError(lastError)) {
@@ -247,6 +247,17 @@ export class RetryStrategy {
     const finalDelay = Math.max(0, cappedDelay + jitter);
 
     return Math.round(finalDelay);
+  }
+
+  /**
+   * Delay execution for specified milliseconds with abort support
+   */
+  private delay(ms: number, signal?: AbortSignal): Promise<void> {
+    if (ms <= 0) {
+      return Promise.resolve();
+    }
+
+    return abortableDelay(ms, signal);
   }
 
   /**

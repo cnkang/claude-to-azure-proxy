@@ -209,11 +209,9 @@ async function makeResponsesAPIRequestWithResilience(
   // Execute with circuit breaker protection
   const circuitResult = await circuitBreaker.execute(
     async () => {
-      throwIfAborted(signal, 'Azure Responses request aborted before retry');
       // Execute with retry logic
       const retryResult = await retryStrategy.execute(
         async () => {
-          throwIfAborted(signal, 'Azure Responses request aborted before call');
           try {
             logger.debug('Making Azure Responses API request', correlationId, {
               model: params.model,
