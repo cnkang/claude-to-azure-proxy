@@ -188,7 +188,8 @@ describe('Completions Route - Responses API Integration', () => {
           reasoning: expect.objectContaining({
             effort: expect.any(String),
           }),
-        })
+        }),
+        expect.any(AbortSignal)
       );
     });
 
@@ -222,7 +223,8 @@ describe('Completions Route - Responses API Integration', () => {
               content: 'You are a helpful TypeScript expert.',
             }),
           ]),
-        })
+        }),
+        expect.any(AbortSignal)
       );
     });
 
@@ -258,7 +260,12 @@ describe('Completions Route - Responses API Integration', () => {
         'role',
         'assistant'
       );
-      expect(mockResponsesClient.createResponse).toHaveBeenCalled();
+      expect(mockResponsesClient.createResponse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: expect.any(Array),
+        }),
+        expect.any(AbortSignal)
+      );
     });
   });
 
@@ -322,7 +329,8 @@ describe('Completions Route - Responses API Integration', () => {
           input: expect.any(Array),
           max_output_tokens: openAIRequest.max_tokens,
           temperature: openAIRequest.temperature,
-        })
+        }),
+        expect.any(AbortSignal)
       );
     });
 
@@ -346,7 +354,8 @@ describe('Completions Route - Responses API Integration', () => {
       expect(mockResponsesClient.createResponse).toHaveBeenCalledWith(
         expect.objectContaining({
           max_output_tokens: 1500,
-        })
+        }),
+        expect.any(AbortSignal)
       );
     });
   });
@@ -416,7 +425,8 @@ describe('Completions Route - Responses API Integration', () => {
       expect(mockResponsesClient.createResponse).toHaveBeenCalledWith(
         expect.objectContaining({
           // stream parameter is not passed to non-streaming API
-        })
+        }),
+        expect.any(AbortSignal)
       );
     });
 
@@ -449,7 +459,10 @@ describe('Completions Route - Responses API Integration', () => {
         .expect(200);
 
       expect(response.headers['content-type']).toBe('text/event-stream');
-      expect(mockResponsesClient.createResponse).toHaveBeenCalled();
+      expect(mockResponsesClient.createResponse).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.any(AbortSignal)
+      );
     });
   });
 
@@ -675,7 +688,8 @@ describe('Completions Route - Responses API Integration', () => {
           reasoning: expect.objectContaining({
             effort: expect.stringMatching(/^(medium|high)$/),
           }),
-        })
+        }),
+        expect.any(AbortSignal)
       );
     });
 
@@ -721,7 +735,8 @@ describe('Completions Route - Responses API Integration', () => {
           reasoning: expect.objectContaining({
             effort: expect.stringMatching(/^(minimal|low)$/),
           }),
-        })
+        }),
+        expect.any(AbortSignal)
       );
     });
   });

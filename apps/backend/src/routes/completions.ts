@@ -43,6 +43,12 @@ import {
   detectRequestFormat,
   getResponseFormat,
 } from '../utils/format-detection';
+import {
+  createAbortError,
+  isAbortError,
+  throwIfAborted,
+  registerAbortListener,
+} from '../utils/abort-utils';
 
 import { transformResponsesToClaude } from '../utils/responses-to-claude-transformer';
 import { transformResponsesToOpenAI } from '../utils/responses-to-openai-transformer';
@@ -169,8 +175,11 @@ const reasoningAnalyzer = createReasoningEffortAnalyzer();
 async function makeResponsesAPIRequestWithResilience(
   client: AzureResponsesClient,
   params: import('../types/index.js').ResponsesCreateParams,
-  correlationId: string
+  correlationId: string,
+  signal?: AbortSignal
 ): Promise<ResponsesResponse> {
+  throwIfAborted(signal, 'Azure Responses request aborted before execution');
+
   // Get circuit breaker for Azure OpenAI
   const circuitBreaker = circuitBreakerRegistry.getCircuitBreaker(
     'azure-responses-api',
@@ -195,9 +204,11 @@ async function makeResponsesAPIRequestWithResilience(
   // Execute with circuit breaker protection
   const circuitResult = await circuitBreaker.execute(
     async () => {
+      throwIfAborted(signal, 'Azure Responses request aborted before retry');
       // Execute with retry logic
       const retryResult = await retryStrategy.execute(
         async () => {
+          throwIfAborted(signal, 'Azure Responses request aborted before call');
           try {
             logger.debug('Making Azure Responses API request', correlationId, {
               model: params.model,
@@ -211,7 +222,7 @@ async function makeResponsesAPIRequestWithResilience(
                   : 0,
             });
 
-            const response = await client.createResponse(params);
+            const response = await client.createResponse(params, signal);
 
             logger.debug(
               'Azure Responses API request successful',
@@ -260,7 +271,8 @@ async function makeResponsesAPIRequestWithResilience(
           }
         },
         correlationId,
-        'azure-responses-api-request'
+        'azure-responses-api-request',
+        signal
       );
 
       if (retryResult.success && retryResult.data !== undefined) {
@@ -270,6 +282,9 @@ async function makeResponsesAPIRequestWithResilience(
       const retryFailureError =
         retryResult.error ??
         new Error('Request failed after all retry attempts');
+      if (isAbortError(retryFailureError)) {
+        throw retryFailureError;
+      }
       throw retryFailureError;
     },
     correlationId,
@@ -283,6 +298,9 @@ async function makeResponsesAPIRequestWithResilience(
   const circuitFailureError =
     circuitResult.error ??
     new Error('Circuit breaker prevented request execution');
+  if (isAbortError(circuitFailureError)) {
+    throw circuitFailureError;
+  }
   throw circuitFailureError;
 }
 
@@ -519,6 +537,18 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
         startTime: Date.now(),
         requestSize: JSON.stringify(req.body).length,
       };
+
+      const abortController = new AbortController();
+      const abortRequest = (): void => {
+        if (!abortController.signal.aborted) {
+          abortController.abort(
+            createAbortError('Client connection closed during request')
+          );
+        }
+      };
+
+      req.on('close', abortRequest);
+      req.on('aborted', abortRequest);
 
       try {
         // Detect request format to determine response format
@@ -779,7 +809,8 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
             req,
             res,
             metrics,
-            routingDecision
+            routingDecision,
+            abortController.signal
           );
           return;
         }
@@ -806,7 +837,8 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
             correlationId,
             req,
             res,
-            metrics
+            metrics,
+            abortController.signal
           );
           return;
         }
@@ -819,7 +851,8 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
           responsesAPIResponse = await makeResponsesAPIRequestWithResilience(
             responsesClient,
             azureParams, // Use non-streaming params
-            correlationId
+            correlationId,
+            abortController.signal
           );
 
           metrics.azureRequestTime = Date.now() - azureRequestStart;
@@ -847,6 +880,13 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
           );
         } catch (error) {
           metrics.azureRequestTime = Date.now() - azureRequestStart;
+
+          if (isAbortError(error) || abortController.signal.aborted) {
+            logger.info('Azure Responses request aborted by client', correlationId, {
+              azureRequestTime: metrics.azureRequestTime,
+            });
+            return;
+          }
 
           // Update conversation with error
           conversationManager.updateConversationMetrics(conversationId, {
@@ -1064,6 +1104,13 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
           .set(responseTransformationResult.headers)
           .json(responseTransformationResult.body);
       } catch (error) {
+        if (isAbortError(error) || abortController.signal.aborted) {
+          logger.info('Completions request aborted by client', correlationId, {
+            totalTime: Date.now() - metrics.startTime,
+          });
+          return;
+        }
+
         // Global error handler for unexpected errors
         metrics.totalTime = Date.now() - metrics.startTime;
 
@@ -1117,6 +1164,9 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
           .status(mappedError.statusCode)
           .set(mappedError.headers)
           .json(mappedError.body);
+      } finally {
+        req.off('close', abortRequest);
+        req.off('aborted', abortRequest);
       }
     }
   );
@@ -1128,8 +1178,11 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
 async function makeBedrockAPIRequestWithResilience(
   client: AWSBedrockClient,
   params: import('../types/index.js').ResponsesCreateParams,
-  correlationId: string
+  correlationId: string,
+  signal?: AbortSignal
 ): Promise<ResponsesResponse> {
+  throwIfAborted(signal, 'Bedrock request aborted before execution');
+
   // Get circuit breaker for AWS Bedrock
   const circuitBreaker = circuitBreakerRegistry.getCircuitBreaker(
     'aws-bedrock-api',
@@ -1151,9 +1204,11 @@ async function makeBedrockAPIRequestWithResilience(
   // Execute with circuit breaker protection
   const circuitResult = await circuitBreaker.execute(
     async () => {
+      throwIfAborted(signal, 'Bedrock request aborted before retry');
       // Execute with retry logic
       const retryResult = await retryStrategy.execute(
         async () => {
+          throwIfAborted(signal, 'Bedrock request aborted before call');
           try {
             logger.debug('Making AWS Bedrock API request', correlationId, {
               model: params.model,
@@ -1211,7 +1266,8 @@ async function makeBedrockAPIRequestWithResilience(
           }
         },
         correlationId,
-        'aws-bedrock-api-request'
+        'aws-bedrock-api-request',
+        signal
       );
 
       if (retryResult.success && retryResult.data !== undefined) {
@@ -1221,6 +1277,9 @@ async function makeBedrockAPIRequestWithResilience(
       const retryFailureError =
         retryResult.error ??
         new Error('Request failed after all retry attempts');
+      if (isAbortError(retryFailureError)) {
+        throw retryFailureError;
+      }
       throw retryFailureError;
     },
     correlationId,
@@ -1234,6 +1293,9 @@ async function makeBedrockAPIRequestWithResilience(
   const circuitFailureError =
     circuitResult.error ??
     new Error('Circuit breaker prevented request execution');
+  if (isAbortError(circuitFailureError)) {
+    throw circuitFailureError;
+  }
   throw circuitFailureError;
 }
 
@@ -1246,8 +1308,11 @@ async function handleBedrockRequest(
   req: RequestWithCorrelationId,
   res: Response,
   metrics: RequestMetrics,
-  routingDecision: ModelRoutingDecision
+  routingDecision: ModelRoutingDecision,
+  signal: AbortSignal
 ): Promise<void> {
+  throwIfAborted(signal);
+
   const { responsesParams, reasoningEffort } = processingResult;
 
   // Track Bedrock request start (Requirement 4.1)
@@ -1297,7 +1362,8 @@ async function handleBedrockRequest(
       correlationId,
       req,
       res,
-      metrics
+      metrics,
+      signal
     );
     return;
   }
@@ -1305,12 +1371,18 @@ async function handleBedrockRequest(
   // Make non-streaming request to AWS Bedrock with circuit breaker and retry logic
   let bedrockAPIResponse: ResponsesResponse;
   const bedrockRequestStart = Date.now();
+  const cleanupAbortListener = registerAbortListener(signal, () => {
+    if (!res.writableEnded) {
+      res.end();
+    }
+  });
 
   try {
     bedrockAPIResponse = await makeBedrockAPIRequestWithResilience(
       client,
       bedrockParams,
-      correlationId
+      correlationId,
+      signal
     );
 
     metrics.bedrockRequestTime = Date.now() - bedrockRequestStart;
@@ -1335,6 +1407,17 @@ async function handleBedrockRequest(
     );
   } catch (error) {
     metrics.bedrockRequestTime = Date.now() - bedrockRequestStart;
+
+    if (isAbortError(error) || signal.aborted) {
+      if (bedrockMonitor) {
+        bedrockMonitor.completeBedrockRequest(correlationId, false, 'AbortError');
+      }
+
+      logger.info('Bedrock request aborted by client', correlationId, {
+        bedrockRequestTime: metrics.bedrockRequestTime,
+      });
+      return;
+    }
 
     // Track Bedrock request error (Requirement 4.2)
     if (bedrockMonitor) {
@@ -1585,8 +1668,11 @@ async function handleBedrockSimulatedStreamingRequest(
   correlationId: string,
   req: RequestWithCorrelationId,
   res: Response,
-  metrics: RequestMetrics
+  metrics: RequestMetrics,
+  signal: AbortSignal
 ): Promise<void> {
+  throwIfAborted(signal, 'Bedrock simulated streaming aborted before start');
+
   const bedrockRequestStart = Date.now();
 
   // Track Bedrock streaming request start (Requirement 4.1)
@@ -1619,11 +1705,14 @@ async function handleBedrockSimulatedStreamingRequest(
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Headers', 'Cache-Control');
 
+    throwIfAborted(signal, 'Bedrock simulated streaming aborted before request');
+
     // Make non-streaming request to Bedrock
     const bedrockAPIResponse = await makeBedrockAPIRequestWithResilience(
       client,
       processingResult.responsesParams,
-      correlationId
+      correlationId,
+      signal
     );
 
     metrics.bedrockRequestTime = Date.now() - bedrockRequestStart;
@@ -1633,7 +1722,8 @@ async function handleBedrockSimulatedStreamingRequest(
       bedrockAPIResponse,
       responseFormat,
       correlationId,
-      res
+      res,
+      signal
     );
 
     // Track conversation for continuity
@@ -1671,6 +1761,18 @@ async function handleBedrockSimulatedStreamingRequest(
   } catch (error) {
     metrics.totalTime = Date.now() - metrics.startTime;
     metrics.bedrockRequestTime = Date.now() - bedrockRequestStart;
+
+    if (isAbortError(error) || signal.aborted) {
+      if (bedrockMonitor) {
+        bedrockMonitor.completeBedrockRequest(correlationId, false, 'AbortError');
+      }
+
+      logger.info('Bedrock simulated streaming aborted by client', correlationId, {
+        totalTime: metrics.totalTime,
+        bedrockRequestTime: metrics.bedrockRequestTime,
+      });
+      return;
+    }
 
     // Track Bedrock streaming request error (Requirement 4.2)
     if (bedrockMonitor) {
@@ -1717,6 +1819,8 @@ async function handleBedrockSimulatedStreamingRequest(
     }
 
     res.end();
+  } finally {
+    cleanupAbortListener();
   }
 }
 
@@ -1732,9 +1836,17 @@ async function handleSimulatedStreamingRequest(
   correlationId: string,
   req: RequestWithCorrelationId,
   res: Response,
-  metrics: RequestMetrics
+  metrics: RequestMetrics,
+  signal: AbortSignal
 ): Promise<void> {
+  throwIfAborted(signal, 'Simulated streaming aborted before start');
+
   const azureRequestStart = Date.now();
+  const cleanupAbortListener = registerAbortListener(signal, () => {
+    if (!res.writableEnded) {
+      res.end();
+    }
+  });
 
   try {
     logger.debug('Starting simulated streaming request', correlationId, {
@@ -1750,11 +1862,14 @@ async function handleSimulatedStreamingRequest(
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Headers', 'Cache-Control');
 
+    throwIfAborted(signal, 'Simulated streaming aborted before Azure request');
+
     // Make non-streaming request to Azure
     const responsesAPIResponse = await makeResponsesAPIRequestWithResilience(
       client,
       processingResult.responsesParams,
-      correlationId
+      correlationId,
+      signal
     );
 
     metrics.azureRequestTime = Date.now() - azureRequestStart;
@@ -1764,7 +1879,8 @@ async function handleSimulatedStreamingRequest(
       responsesAPIResponse,
       responseFormat,
       correlationId,
-      res
+      res,
+      signal
     );
 
     // Track conversation for continuity
@@ -1793,6 +1909,14 @@ async function handleSimulatedStreamingRequest(
   } catch (error) {
     metrics.totalTime = Date.now() - metrics.startTime;
     metrics.azureRequestTime = Date.now() - azureRequestStart;
+
+    if (isAbortError(error) || signal.aborted) {
+      logger.info('Simulated streaming aborted by client', correlationId, {
+        totalTime: metrics.totalTime,
+        azureRequestTime: metrics.azureRequestTime,
+      });
+      return;
+    }
 
     logger.error('Simulated streaming request failed', correlationId, {
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -1832,6 +1956,8 @@ async function handleSimulatedStreamingRequest(
     }
 
     res.end();
+  } finally {
+    cleanupAbortListener();
   }
 }
 
@@ -1842,13 +1968,25 @@ async function simulateStreamingResponse(
   response: import('../types/index.js').ResponsesResponse,
   responseFormat: import('../types/index.js').ResponseFormat,
   correlationId: string,
-  res: Response
+  res: Response,
+  signal?: AbortSignal
 ): Promise<void> {
-  if (responseFormat === 'claude') {
-    // Send Claude-format streaming events
+  throwIfAborted(signal);
+  if (res.writableEnded) {
+    return;
+  }
 
-    // 1. Send message_start event
+  const ensureWritable = (): void => {
+    throwIfAborted(signal);
+    if (res.writableEnded) {
+      throw createAbortError('Response stream closed by client');
+    }
+  };
+
+  if (responseFormat === 'claude') {
+    ensureWritable();
     res.write('event: message_start\n');
+    ensureWritable();
     res.write(
       `data: ${JSON.stringify({
         type: 'message_start',
@@ -1867,12 +2005,12 @@ async function simulateStreamingResponse(
       })}\n\n`
     );
 
-    // 2. Extract text content from response
     const textContent = extractTextFromResponseOutput(response.output);
 
     if (textContent && textContent.length > 0) {
-      // 3. Send content_block_start event
+      ensureWritable();
       res.write('event: content_block_start\n');
+      ensureWritable();
       res.write(
         `data: ${JSON.stringify({
           type: 'content_block_start',
@@ -1884,12 +2022,13 @@ async function simulateStreamingResponse(
         })}\n\n`
       );
 
-      // 4. Simulate streaming by sending text in chunks
-      const chunkSize = Math.max(1, Math.floor(textContent.length / 5)); // Break into ~5 chunks
+      const chunkSize = Math.max(1, Math.floor(textContent.length / 5));
       for (let i = 0; i < textContent.length; i += chunkSize) {
         const chunk = textContent.slice(i, i + chunkSize);
 
+        ensureWritable();
         res.write('event: content_block_delta\n');
+        ensureWritable();
         res.write(
           `data: ${JSON.stringify({
             type: 'content_block_delta',
@@ -1901,12 +2040,16 @@ async function simulateStreamingResponse(
           })}\n\n`
         );
 
-        // Small delay to simulate real streaming
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        await new Promise<void>((resolve) => setTimeout(resolve, 50));
+        throwIfAborted(signal);
+        if (res.writableEnded) {
+          throw createAbortError('Response stream closed during simulation');
+        }
       }
 
-      // 5. Send content_block_stop event
+      ensureWritable();
       res.write('event: content_block_stop\n');
+      ensureWritable();
       res.write(
         `data: ${JSON.stringify({
           type: 'content_block_stop',
@@ -1915,8 +2058,9 @@ async function simulateStreamingResponse(
       );
     }
 
-    // 6. Send message_stop event
+    ensureWritable();
     res.write('event: message_stop\n');
+    ensureWritable();
     res.write(
       `data: ${JSON.stringify({
         type: 'message_stop',
@@ -1927,9 +2071,7 @@ async function simulateStreamingResponse(
       })}\n\n`
     );
   } else {
-    // Send OpenAI-format streaming events
-
-    // 1. Send initial chunk with role
+    ensureWritable();
     res.write(
       `data: ${JSON.stringify({
         id: response.id,
@@ -1948,15 +2090,14 @@ async function simulateStreamingResponse(
       })}\n\n`
     );
 
-    // 2. Extract text content from response
     const textContent = extractTextFromResponseOutput(response.output);
 
     if (textContent && textContent.length > 0) {
-      // 3. Simulate streaming by sending text in chunks
-      const chunkSize = Math.max(1, Math.floor(textContent.length / 5)); // Break into ~5 chunks
+      const chunkSize = Math.max(1, Math.floor(textContent.length / 5));
       for (let i = 0; i < textContent.length; i += chunkSize) {
         const chunk = textContent.slice(i, i + chunkSize);
 
+        ensureWritable();
         res.write(
           `data: ${JSON.stringify({
             id: response.id,
@@ -1975,12 +2116,15 @@ async function simulateStreamingResponse(
           })}\n\n`
         );
 
-        // Small delay to simulate real streaming
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        await new Promise<void>((resolve) => setTimeout(resolve, 50));
+        throwIfAborted(signal);
+        if (res.writableEnded) {
+          throw createAbortError('Response stream closed during simulation');
+        }
       }
     }
 
-    // 4. Send final chunk
+    ensureWritable();
     res.write(
       `data: ${JSON.stringify({
         id: response.id,
@@ -2002,11 +2146,13 @@ async function simulateStreamingResponse(
       })}\n\n`
     );
 
-    // 5. Send [DONE] marker
+    ensureWritable();
     res.write('data: [DONE]\n\n');
   }
 
-  res.end();
+  if (!res.writableEnded) {
+    res.end();
+  }
 }
 
 /**
