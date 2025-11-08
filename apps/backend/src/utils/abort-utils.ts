@@ -1,3 +1,5 @@
+import { setTimeout as delay } from 'node:timers/promises';
+
 import { logger } from '../middleware/logging';
 
 const ABORT_ERROR_NAME = 'AbortError' as const;
@@ -66,6 +68,25 @@ export const isAbortError = (error: unknown): error is Error => {
   return isAbortErrorInstance(error, new Set());
 };
 
+export const abortableDelay = async (
+  ms: number,
+  signal?: AbortSignal,
+  reason?: unknown
+): Promise<void> => {
+  if (ms <= 0) {
+    return;
+  }
+
+  try {
+    await delay(ms, undefined, signal ? { signal } : undefined);
+  } catch (error) {
+    if (isAbortError(error)) {
+      throw createAbortError(signal?.reason ?? reason ?? error);
+    }
+    throw error;
+  }
+};
+
 export const throwIfAborted = (
   signal?: AbortSignal,
   reason?: unknown
@@ -103,3 +124,21 @@ export const registerAbortListener = (
     signal.removeEventListener('abort', abortHandler);
   };
 };
+
+export const waitForAbort = (
+  signal: AbortSignal,
+  reason?: unknown
+): Promise<never> =>
+  new Promise((_, reject) => {
+    const abort = (): void => {
+      signal.removeEventListener('abort', abort);
+      reject(createAbortError(signal.reason ?? reason));
+    };
+
+    if (signal.aborted) {
+      abort();
+      return;
+    }
+
+    signal.addEventListener('abort', abort, { once: true });
+  });

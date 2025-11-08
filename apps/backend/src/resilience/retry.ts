@@ -5,6 +5,7 @@
 
 import { TimeoutError } from '../errors/index';
 import {
+  abortableDelay,
   createAbortError,
   isAbortError,
   throwIfAborted,
@@ -121,7 +122,7 @@ export class RetryStrategy {
     for (let attempt = 1; attempt <= this.config.maxAttempts; attempt++) {
       if (attempt > 1 && delayBeforeAttempt > 0) {
         try {
-          await this.delay(delayBeforeAttempt, signal);
+          await abortableDelay(delayBeforeAttempt, signal);
         } catch (delayError) {
           lastError = delayError as Error;
           if (isAbortError(lastError)) {
@@ -249,47 +250,6 @@ export class RetryStrategy {
   }
 
   /**
-   * Delay execution for specified milliseconds
-   */
-  private async delay(ms: number, signal?: AbortSignal): Promise<void> {
-    if (ms <= 0) {
-      return;
-    }
-
-    await new Promise<void>((resolve, reject) => {
-      let timeoutId: NodeJS.Timeout | undefined;
-      const onAbort = (): void => {
-        cleanup();
-        reject(createAbortError(signal?.reason));
-      };
-
-      const cleanup = (): void => {
-        if (timeoutId !== undefined) {
-          clearTimeout(timeoutId);
-        }
-        if (signal) {
-          signal.removeEventListener('abort', onAbort);
-        }
-      };
-
-      if (signal?.aborted) {
-        cleanup();
-        reject(createAbortError(signal.reason));
-        return;
-      }
-
-      timeoutId = setTimeout(() => {
-        cleanup();
-        resolve();
-      }, ms);
-
-      if (signal) {
-        signal.addEventListener('abort', onAbort, { once: true });
-      }
-    });
-  }
-
-  /**
    * Wrap operation with timeout
    */
   private async withTimeout<T>(
@@ -299,39 +259,43 @@ export class RetryStrategy {
     operationName?: string,
     signal?: AbortSignal
   ): Promise<T> {
+    if (timeoutMs <= 0) {
+      return promise;
+    }
+
+    const timeoutSignal = AbortSignal.timeout(timeoutMs);
+    const combinedSignal =
+      signal !== undefined
+        ? AbortSignal.any([signal, timeoutSignal])
+        : timeoutSignal;
+
     return new Promise<T>((resolve, reject) => {
-      let timeoutId: NodeJS.Timeout | undefined;
+      const cleanup = (): void => {
+        combinedSignal.removeEventListener('abort', onAbort);
+      };
+
       const onAbort = (): void => {
         cleanup();
-        reject(createAbortError(signal?.reason));
+        if (timeoutSignal.aborted && !(signal?.aborted ?? false)) {
+          reject(
+            new TimeoutError(
+              `Operation timed out after ${timeoutMs}ms`,
+              correlationId,
+              timeoutMs,
+              operationName
+            )
+          );
+        } else {
+          reject(createAbortError(signal?.reason));
+        }
       };
 
-      const cleanup = (): void => {
-        if (timeoutId !== undefined) {
-          clearTimeout(timeoutId);
-        }
-        if (signal) {
-          signal.removeEventListener('abort', onAbort);
-        }
-      };
-
-      if (signal?.aborted) {
-        cleanup();
-        reject(createAbortError(signal.reason));
+      if (combinedSignal.aborted) {
+        onAbort();
         return;
       }
 
-      timeoutId = setTimeout(() => {
-        cleanup();
-        reject(
-          new TimeoutError(
-            `Operation timed out after ${timeoutMs}ms`,
-            correlationId,
-            timeoutMs,
-            operationName
-          )
-        );
-      }, timeoutMs);
+      combinedSignal.addEventListener('abort', onAbort, { once: true });
 
       promise
         .then((value) => {
@@ -342,10 +306,6 @@ export class RetryStrategy {
           cleanup();
           reject(error);
         });
-
-      if (signal) {
-        signal.addEventListener('abort', onAbort, { once: true });
-      }
     });
   }
 

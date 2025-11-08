@@ -47,8 +47,13 @@ import {
   createAbortError,
   isAbortError,
   throwIfAborted,
-  registerAbortListener,
+  abortableDelay,
 } from '../utils/abort-utils';
+
+import {
+  createAbortableStreamWriter,
+  endResponseOnAbort,
+} from '../utils/streaming-helpers';
 
 import { transformResponsesToClaude } from '../utils/responses-to-claude-transformer';
 import { transformResponsesToOpenAI } from '../utils/responses-to-openai-transformer';
@@ -1359,11 +1364,7 @@ async function handleBedrockRequest(
   // Make non-streaming request to AWS Bedrock with circuit breaker and retry logic
   let bedrockAPIResponse: ResponsesResponse;
   const bedrockRequestStart = Date.now();
-  const cleanupAbortListener = registerAbortListener(signal, () => {
-    if (!res.writableEnded) {
-      res.end();
-    }
-  });
+  const cleanupAbortListener = endResponseOnAbort(res, signal);
 
   try {
     bedrockAPIResponse = await makeBedrockAPIRequestWithResilience(
@@ -1665,11 +1666,7 @@ async function handleBedrockSimulatedStreamingRequest(
 
   const bedrockRequestStart = Date.now();
 
-  const cleanupAbortListener = registerAbortListener(signal, () => {
-    if (!res.writableEnded) {
-      res.end();
-    }
-  });
+  const cleanupAbortListener = endResponseOnAbort(res, signal);
 
   // Track Bedrock streaming request start (Requirement 4.1)
   const healthMonitor = getHealthMonitor();
@@ -1838,11 +1835,7 @@ async function handleSimulatedStreamingRequest(
   throwIfAborted(signal, 'Simulated streaming aborted before start');
 
   const azureRequestStart = Date.now();
-  const cleanupAbortListener = registerAbortListener(signal, () => {
-    if (!res.writableEnded) {
-      res.end();
-    }
-  });
+  const cleanupAbortListener = endResponseOnAbort(res, signal);
 
   try {
     logger.debug('Starting simulated streaming request', correlationId, {
@@ -1972,18 +1965,14 @@ async function simulateStreamingResponse(
     return;
   }
 
-  const ensureWritable = (): void => {
-    throwIfAborted(signal);
-    if (res.writableEnded) {
-      throw createAbortError('Response stream closed by client');
-    }
-  };
+  const writer = createAbortableStreamWriter(res, signal);
+  const simulationOptions = {
+    closedMessage: 'Response stream closed during simulation',
+  } as const;
 
   if (responseFormat === 'claude') {
-    ensureWritable();
-    res.write('event: message_start\n');
-    ensureWritable();
-    res.write(
+    writer.write('event: message_start\n');
+    writer.write(
       `data: ${JSON.stringify({
         type: 'message_start',
         message: {
@@ -2004,10 +1993,8 @@ async function simulateStreamingResponse(
     const textContent = extractTextFromResponseOutput(response.output);
 
     if (textContent && textContent.length > 0) {
-      ensureWritable();
-      res.write('event: content_block_start\n');
-      ensureWritable();
-      res.write(
+      writer.write('event: content_block_start\n');
+      writer.write(
         `data: ${JSON.stringify({
           type: 'content_block_start',
           index: 0,
@@ -2022,10 +2009,8 @@ async function simulateStreamingResponse(
       for (let i = 0; i < textContent.length; i += chunkSize) {
         const chunk = textContent.slice(i, i + chunkSize);
 
-        ensureWritable();
-        res.write('event: content_block_delta\n');
-        ensureWritable();
-        res.write(
+        writer.write('event: content_block_delta\n', simulationOptions);
+        writer.write(
           `data: ${JSON.stringify({
             type: 'content_block_delta',
             index: 0,
@@ -2033,20 +2018,16 @@ async function simulateStreamingResponse(
               type: 'text_delta',
               text: chunk,
             },
-          })}\n\n`
+          })}\n\n`,
+          simulationOptions
         );
 
-        await new Promise<void>((resolve) => setTimeout(resolve, 50));
-        throwIfAborted(signal);
-        if (res.writableEnded) {
-          throw createAbortError('Response stream closed during simulation');
-        }
+        await abortableDelay(50, signal, 'Simulated streaming delay aborted');
+        writer.ensureWritable(simulationOptions);
       }
 
-      ensureWritable();
-      res.write('event: content_block_stop\n');
-      ensureWritable();
-      res.write(
+      writer.write('event: content_block_stop\n');
+      writer.write(
         `data: ${JSON.stringify({
           type: 'content_block_stop',
           index: 0,
@@ -2054,10 +2035,8 @@ async function simulateStreamingResponse(
       );
     }
 
-    ensureWritable();
-    res.write('event: message_stop\n');
-    ensureWritable();
-    res.write(
+    writer.write('event: message_stop\n');
+    writer.write(
       `data: ${JSON.stringify({
         type: 'message_stop',
         usage: {
@@ -2067,8 +2046,7 @@ async function simulateStreamingResponse(
       })}\n\n`
     );
   } else {
-    ensureWritable();
-    res.write(
+    writer.write(
       `data: ${JSON.stringify({
         id: response.id,
         object: 'chat.completion.chunk',
@@ -2093,8 +2071,7 @@ async function simulateStreamingResponse(
       for (let i = 0; i < textContent.length; i += chunkSize) {
         const chunk = textContent.slice(i, i + chunkSize);
 
-        ensureWritable();
-        res.write(
+        writer.write(
           `data: ${JSON.stringify({
             id: response.id,
             object: 'chat.completion.chunk',
@@ -2109,19 +2086,16 @@ async function simulateStreamingResponse(
                 finish_reason: null,
               },
             ],
-          })}\n\n`
+          })}\n\n`,
+          simulationOptions
         );
 
-        await new Promise<void>((resolve) => setTimeout(resolve, 50));
-        throwIfAborted(signal);
-        if (res.writableEnded) {
-          throw createAbortError('Response stream closed during simulation');
-        }
+        await abortableDelay(50, signal, 'Simulated streaming delay aborted');
+        writer.ensureWritable(simulationOptions);
       }
     }
 
-    ensureWritable();
-    res.write(
+    writer.write(
       `data: ${JSON.stringify({
         id: response.id,
         object: 'chat.completion.chunk',
@@ -2142,13 +2116,10 @@ async function simulateStreamingResponse(
       })}\n\n`
     );
 
-    ensureWritable();
-    res.write('data: [DONE]\n\n');
+    writer.write('data: [DONE]\n\n');
   }
 
-  if (!res.writableEnded) {
-    res.end();
-  }
+  writer.end();
 }
 
 /**
