@@ -116,6 +116,16 @@ export class AWSBedrockClient implements AsyncDisposable {
     validateResponsesCreateParams(params);
     throwIfAborted(signal);
 
+    let aborted = false;
+    const removeAbortListener = registerAbortListener(signal, () => {
+      aborted = true;
+    });
+
+    if (signal?.aborted) {
+      removeAbortListener();
+      throw createAbortError(signal.reason);
+    }
+
     // Create connection resource for tracking
     const connectionResource = createHTTPConnectionResource(
       undefined,
@@ -123,10 +133,6 @@ export class AWSBedrockClient implements AsyncDisposable {
       undefined
     );
     this.activeConnections.add(connectionResource);
-    let aborted = false;
-    const removeAbortListener = registerAbortListener(signal, () => {
-      aborted = true;
-    });
 
     try {
       const modelId = this.getBedrockModelId(params.model);
