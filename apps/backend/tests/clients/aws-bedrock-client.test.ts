@@ -167,6 +167,75 @@ describe('AWSBedrockClient', () => {
     });
   });
 
+  describe('abort handling', () => {
+    let client: AWSBedrockClient;
+    let validParams: ResponsesCreateParams;
+
+    beforeEach(() => {
+      client = new AWSBedrockClient(validConfig);
+      validParams = {
+        model: 'qwen.qwen3-coder-480b-a35b-v1:0',
+        input: [{ role: 'user', content: 'Abort test' }],
+        max_output_tokens: 256,
+      };
+    });
+
+    it('should not execute request when signal already aborted', async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      const postSpy = vi.spyOn(
+        (client as unknown as {
+          client: { post: typeof client['client']['post'] };
+        }).client,
+        'post'
+      );
+
+      await expect(
+        client.createResponse(validParams, controller.signal)
+      ).rejects.toMatchObject({ name: 'AbortError' });
+
+      expect(postSpy).not.toHaveBeenCalled();
+
+      const stats = client.getResourceStats();
+      expect(stats.activeConnections).toBe(0);
+      expect(stats.activeStreams).toBe(0);
+
+      postSpy.mockRestore();
+    });
+
+    it('should not start streaming when signal already aborted', async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      const postSpy = vi.spyOn(
+        (client as unknown as {
+          client: { post: typeof client['client']['post'] };
+        }).client,
+        'post'
+      );
+
+      const stream = client.createResponseStream(
+        { ...validParams, stream: true },
+        controller.signal
+      );
+
+      await expect(async () => {
+        for await (const _ of stream) {
+          // no-op
+        }
+      }).rejects.toMatchObject({ name: 'AbortError' });
+
+      expect(postSpy).not.toHaveBeenCalled();
+
+      const stats = client.getResourceStats();
+      expect(stats.activeConnections).toBe(0);
+      expect(stats.activeStreams).toBe(0);
+
+      postSpy.mockRestore();
+    });
+  });
+
   describe('getConfig', () => {
     it('should return sanitized configuration', () => {
       const client = new AWSBedrockClient(validConfig);

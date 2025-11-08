@@ -5,45 +5,65 @@ const ABORT_ERROR_CODE = 'ABORT_ERR' as const;
 
 const DEFAULT_ABORT_MESSAGE = 'Operation aborted by caller';
 
-export const createAbortError = (reason?: unknown): Error => {
-  if (reason instanceof Error) {
-    const abortError = reason;
-    if (!abortError.name || abortError.name === 'Error') {
-      abortError.name = ABORT_ERROR_NAME;
-    }
-    if (!(abortError as Error & { code?: string }).code) {
-      (abortError as Error & { code?: string }).code = ABORT_ERROR_CODE;
-    }
-    return abortError;
-  }
+const ABORT_ERROR_CODES = new Set(['ERR_CANCELED', ABORT_ERROR_CODE]);
 
-  const message =
-    typeof reason === 'string' && reason.trim().length > 0
-      ? reason
-      : DEFAULT_ABORT_MESSAGE;
+const ABORT_ERROR_NAMES = new Set([ABORT_ERROR_NAME]);
+
+export const createAbortError = (reason?: unknown): Error => {
+  let message = DEFAULT_ABORT_MESSAGE;
+  let cause: unknown;
+
+  if (reason instanceof Error) {
+    message = reason.message?.trim().length > 0 ? reason.message : message;
+    cause = reason;
+  } else if (typeof reason === 'string' && reason.trim().length > 0) {
+    message = reason;
+  }
 
   const abortError = new Error(message);
   abortError.name = ABORT_ERROR_NAME;
   (abortError as Error & { code?: string }).code = ABORT_ERROR_CODE;
+  if (cause !== undefined) {
+    (abortError as Error & { cause?: unknown }).cause = cause;
+    if (cause instanceof Error && typeof cause.stack === 'string') {
+      abortError.stack = cause.stack;
+    }
+  }
   return abortError;
 };
 
-export const isAbortError = (error: unknown): error is Error => {
-  if (error instanceof Error) {
-    const code = (error as Error & { code?: string }).code;
-    if (error.name === ABORT_ERROR_NAME) {
-      return true;
-    }
-    if (typeof code === 'string' && code === ABORT_ERROR_CODE) {
-      return true;
-    }
-    const message = error.message.toLowerCase();
-    if (message.includes('aborted') || message.includes('abort')) {
-      return true;
-    }
+const isAbortErrorInstance = (
+  error: Error,
+  seen: Set<Error>
+): boolean => {
+  if (seen.has(error)) {
+    return false;
+  }
+  seen.add(error);
+
+  if (ABORT_ERROR_NAMES.has(error.name)) {
+    return true;
+  }
+
+  const { code } = error as Error & { code?: string };
+  if (typeof code === 'string' && ABORT_ERROR_CODES.has(code)) {
+    return true;
+  }
+
+  const { cause } = error as Error & { cause?: unknown };
+  if (cause instanceof Error) {
+    return isAbortErrorInstance(cause, seen);
   }
 
   return false;
+};
+
+export const isAbortError = (error: unknown): error is Error => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return isAbortErrorInstance(error, new Set());
 };
 
 export const throwIfAborted = (

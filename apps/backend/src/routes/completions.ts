@@ -282,9 +282,6 @@ async function makeResponsesAPIRequestWithResilience(
       const retryFailureError =
         retryResult.error ??
         new Error('Request failed after all retry attempts');
-      if (isAbortError(retryFailureError)) {
-        throw retryFailureError;
-      }
       throw retryFailureError;
     },
     correlationId,
@@ -298,9 +295,6 @@ async function makeResponsesAPIRequestWithResilience(
   const circuitFailureError =
     circuitResult.error ??
     new Error('Circuit breaker prevented request execution');
-  if (isAbortError(circuitFailureError)) {
-    throw circuitFailureError;
-  }
   throw circuitFailureError;
 }
 
@@ -1222,7 +1216,7 @@ async function makeBedrockAPIRequestWithResilience(
                   : 0,
             });
 
-            const response = await client.createResponse(params);
+            const response = await client.createResponse(params, signal);
 
             logger.debug('AWS Bedrock API request successful', correlationId, {
               responseId: response.id,
@@ -1277,9 +1271,6 @@ async function makeBedrockAPIRequestWithResilience(
       const retryFailureError =
         retryResult.error ??
         new Error('Request failed after all retry attempts');
-      if (isAbortError(retryFailureError)) {
-        throw retryFailureError;
-      }
       throw retryFailureError;
     },
     correlationId,
@@ -1293,9 +1284,6 @@ async function makeBedrockAPIRequestWithResilience(
   const circuitFailureError =
     circuitResult.error ??
     new Error('Circuit breaker prevented request execution');
-  if (isAbortError(circuitFailureError)) {
-    throw circuitFailureError;
-  }
   throw circuitFailureError;
 }
 
@@ -1555,6 +1543,8 @@ async function handleBedrockRequest(
       .set(mappedError.headers)
       .json(mappedError.body);
     return;
+  } finally {
+    cleanupAbortListener();
   }
 
   // Transform Bedrock API response to appropriate format
@@ -1674,6 +1664,12 @@ async function handleBedrockSimulatedStreamingRequest(
   throwIfAborted(signal, 'Bedrock simulated streaming aborted before start');
 
   const bedrockRequestStart = Date.now();
+
+  const cleanupAbortListener = registerAbortListener(signal, () => {
+    if (!res.writableEnded) {
+      res.end();
+    }
+  });
 
   // Track Bedrock streaming request start (Requirement 4.1)
   const healthMonitor = getHealthMonitor();

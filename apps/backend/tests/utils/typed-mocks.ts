@@ -16,10 +16,12 @@ import type {
 import type { UniversalProcessingResult } from '../../src/utils/universal-request-processor';
 
 type CreateResponseFn = (
-  params: ResponsesCreateParams
+  params: ResponsesCreateParams,
+  signal?: AbortSignal
 ) => Promise<ResponsesResponse>;
 type CreateResponseStreamFn = (
-  params: ResponsesCreateParams
+  params: ResponsesCreateParams,
+  signal?: AbortSignal
 ) => AsyncIterable<ResponsesStreamChunk>;
 
 export interface TypedAzureResponsesClientMock {

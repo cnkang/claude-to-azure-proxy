@@ -227,7 +227,7 @@ export class AzureResponsesClient implements AsyncDisposable {
     } catch (error) {
       if (isAbortError(error)) {
         aborted = true;
-        throw createAbortError(signal?.reason ?? error);
+        throw error as Error;
       }
       throw this.handleApiError(error, 'createResponse');
     } finally {
@@ -440,7 +440,7 @@ export class AzureResponsesClient implements AsyncDisposable {
     } catch (error) {
       if (isAbortError(error)) {
         aborted = true;
-        throw createAbortError(signal?.reason ?? error);
+        throw error as Error;
       }
       if (error instanceof Error) {
         throw ErrorFactory.fromAzureOpenAIError(

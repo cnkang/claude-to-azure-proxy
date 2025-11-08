@@ -172,6 +172,10 @@ describe('Completions handler - Bedrock routing', () => {
     expect(response.body.correlationId).toBeDefined();
     expect(mocks.bedrockClient.createResponse).toHaveBeenCalled();
     expect(mocks.azureClient.createResponse).not.toHaveBeenCalled();
+
+    const bedrockCall = mocks.bedrockClient.createResponse.mock.calls[0];
+    expect(bedrockCall?.[1]).toBeDefined();
+    expect(typeof bedrockCall?.[1]?.aborted).toBe('boolean');
   });
 
   it('simulates streaming responses for Bedrock requests when clients request stream', async () => {
@@ -200,5 +204,10 @@ describe('Completions handler - Bedrock routing', () => {
     expect(response.text).toContain('data:');
     expect(response.text).toContain('[DONE]');
     expect(mocks.bedrockClient.createResponse).toHaveBeenCalled();
+
+    const bedrockStreamingCall =
+      mocks.bedrockClient.createResponse.mock.calls.at(-1);
+    expect(bedrockStreamingCall?.[1]).toBeDefined();
+    expect(typeof bedrockStreamingCall?.[1]?.aborted).toBe('boolean');
   });
 });
