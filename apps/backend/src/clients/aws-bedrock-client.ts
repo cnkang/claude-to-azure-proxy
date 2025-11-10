@@ -166,7 +166,7 @@ export class AWSBedrockClient implements AsyncDisposable {
     } catch (error) {
       if (isAbortError(error)) {
         aborted = true;
-        throw error as Error;
+        throw error;
       }
       throw this.handleApiError(error, 'createResponse');
     } finally {
@@ -351,7 +351,7 @@ export class AWSBedrockClient implements AsyncDisposable {
     } catch (error) {
       if (isAbortError(error)) {
         aborted = true;
-        throw error as Error;
+        throw error;
       }
       throw this.handleApiError(error, 'createResponseStream');
     } finally {

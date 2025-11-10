@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/prefer-readonly-parameter-types */
 import type { Response } from 'express';
 
 import { createAbortError, registerAbortListener, throwIfAborted } from './abort-utils';

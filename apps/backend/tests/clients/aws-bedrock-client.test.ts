@@ -256,7 +256,7 @@ describe('AWSBedrockClient', () => {
       postSpy.mockResolvedValue(
         {
           data: dataStream,
-        } as unknown as Awaited<ReturnType<typeof client['client']['post']>>
+        } as unknown
       );
 
       const parseSpy = vi.spyOn(

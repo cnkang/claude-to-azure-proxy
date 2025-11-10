@@ -9,7 +9,6 @@ import {
   abortableDelay,
   createAbortError,
   isAbortError,
-  throwIfAborted,
 } from '../utils/abort-utils';
 
 export interface RetryConfig {
@@ -316,9 +315,9 @@ export class RetryStrategy {
           cleanup();
           resolve(value);
         })
-        .catch((error) => {
+        .catch((error: unknown) => {
           cleanup();
-          reject(error);
+          reject(error instanceof Error ? error : new Error(String(error)));
         });
     });
   }

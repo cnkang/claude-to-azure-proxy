@@ -47,7 +47,6 @@ import {
 import {
   createAbortError,
   isAbortError,
-  throwIfAborted,
   abortableDelay,
 } from '../utils/abort-utils';
 

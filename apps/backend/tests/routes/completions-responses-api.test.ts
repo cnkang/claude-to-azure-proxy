@@ -392,7 +392,7 @@ describe('Completions Route - Responses API Integration', () => {
       },
     };
 
-    const mockStreamChunks: ResponsesStreamChunk[] = [
+    const _mockStreamChunks: ResponsesStreamChunk[] = [
       {
         id: 'resp_stream_test123',
         object: 'response.chunk',
