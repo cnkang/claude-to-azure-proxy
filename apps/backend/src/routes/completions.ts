@@ -1753,6 +1753,19 @@ async function handleBedrockSimulatedStreamingRequest(
 
     metrics.bedrockRequestTime = performance.now() - bedrockRequestStart;
 
+    // Check if request was aborted or response already ended before setting headers
+    if (signal.aborted || res.writableEnded) {
+      logger.info(
+        'Request aborted or response ended before streaming headers could be set',
+        correlationId,
+        {
+          aborted: signal.aborted,
+          writableEnded: res.writableEnded,
+        }
+      );
+      return;
+    }
+
     // Now set streaming headers after we have the response
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -1914,6 +1927,19 @@ async function handleSimulatedStreamingRequest(
     );
 
     metrics.azureRequestTime = performance.now() - azureRequestStart;
+
+    // Check if request was aborted or response already ended before setting headers
+    if (signal.aborted || res.writableEnded) {
+      logger.info(
+        'Request aborted or response ended before streaming headers could be set',
+        correlationId,
+        {
+          aborted: signal.aborted,
+          writableEnded: res.writableEnded,
+        }
+      );
+      return;
+    }
 
     // Now set streaming headers after we have the response
     res.setHeader('Content-Type', 'text/event-stream');
