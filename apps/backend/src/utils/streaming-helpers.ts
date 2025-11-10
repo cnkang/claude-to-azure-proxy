@@ -43,11 +43,27 @@ export const createAbortableStreamWriter = (
     end: (finalChunk?: string, options?: WritableOptions): void => {
       if (finalChunk !== undefined) {
         ensureWritable(options);
-        res.write(finalChunk);
+        try {
+          res.write(finalChunk);
+        } catch (writeError) {
+          throw createAbortError(
+            writeError instanceof Error 
+              ? writeError.message 
+              : 'Failed to write final chunk to response stream'
+          );
+        }
       }
 
       if (!res.writableEnded) {
-        res.end();
+        try {
+          res.end();
+        } catch (endError) {
+          throw createAbortError(
+            endError instanceof Error 
+              ? endError.message 
+              : 'Failed to end response stream'
+          );
+        }
       }
     },
   };
