@@ -423,7 +423,7 @@ export class RetryManager {
       return result.data as T;
     }
 
-    const error =
+    const error: Error =
       result.error ??
       new Error(
         'Retry operation failed after all attempts without error details'
