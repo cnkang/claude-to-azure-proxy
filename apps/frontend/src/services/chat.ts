@@ -7,6 +7,7 @@
  * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 6.3, 7.3
  */
 
+import { fetchEventSource } from '@microsoft/fetch-event-source';
 import type {
   Message,
   StreamChunk,
@@ -74,7 +75,7 @@ export interface ChatEvents {
  * Chat SSE Client for real-time streaming with enhanced error handling
  */
 export class ChatSSEClient {
-  private eventSource: EventSource | null = null;
+  private abortController: AbortController | null = null;
   private connectionState: SSEConnectionState = 'disconnected';
   private reconnectAttempts = 0;
   private readonly maxReconnectAttempts = 5;
@@ -139,32 +140,109 @@ export class ChatSSEClient {
     this.isManuallyDisconnected = false;
     this.setConnectionState('connecting');
 
-    try {
-      const sessionId = this.sessionManager.getSessionId();
-      if (!sessionId) {
-        throw new NetworkError('No active session', 'unauthorized', {
-          retryable: false,
-        });
-      }
-
-      const url = `${CHAT_STREAM_ENDPOINT}/${this.conversationId}?sessionId=${encodeURIComponent(sessionId)}`;
-
-      this.eventSource = new EventSource(url);
-      this.setupEventHandlers();
-      this.startHealthCheck();
-    } catch (error) {
-      const networkError =
-        error instanceof NetworkError
-          ? error
-          : networkErrorHandler.classifyError(error);
-
-      frontendLogger.error('Failed to connect to SSE stream', {
-        metadata: { conversationId: this.conversationId },
-        error: networkError,
+    const sessionId = this.sessionManager.getSessionId();
+    if (!sessionId) {
+      const networkError = new NetworkError('No active session', 'unauthorized', {
+        retryable: false,
       });
-
       this.handleConnectionError(networkError);
+      return;
     }
+
+    const url = `${CHAT_STREAM_ENDPOINT}/${this.conversationId}`;
+    this.abortController = new AbortController();
+
+    fetchEventSource(url, {
+      method: 'GET',
+      headers: {
+        'x-session-id': sessionId,
+      },
+      signal: this.abortController.signal,
+      
+      onopen: async (response) => {
+        if (response.ok) {
+          frontendLogger.info('SSE connection established', {
+            metadata: { conversationId: this.conversationId },
+          });
+
+          this.lastConnected = new Date();
+          this.setConnectionState('connected');
+          this.reconnectAttempts = 0;
+          this.reconnectDelay = 1000;
+          this.emitHealthChange();
+          this.startHealthCheck();
+        } else {
+          // Handle non-OK responses
+          const errorText = await response.text();
+          let errorMessage = 'SSE connection failed';
+          
+          try {
+            const errorData = JSON.parse(errorText);
+            errorMessage = errorData.error?.message || errorMessage;
+          } catch {
+            errorMessage = errorText || errorMessage;
+          }
+
+          throw new NetworkError(
+            errorMessage,
+            response.status === 401 ? 'unauthorized' : 'connection_failed',
+            {
+              statusCode: response.status,
+              retryable: response.status >= 500,
+            }
+          );
+        }
+      },
+
+      onmessage: (event) => {
+        try {
+          const data = JSON.parse(event.data) as StreamChunk;
+          this.handleStreamChunk(data);
+        } catch (error) {
+          frontendLogger.error('Failed to parse SSE message', {
+            metadata: {
+              conversationId: this.conversationId,
+              eventData: event.data,
+            },
+            error: error instanceof Error ? error : new Error(String(error)),
+          });
+        }
+      },
+
+      onerror: (error) => {
+        const networkError =
+          error instanceof NetworkError
+            ? error
+            : networkErrorHandler.classifyError(error);
+
+        frontendLogger.error('SSE connection error', {
+          metadata: { conversationId: this.conversationId },
+          error: networkError,
+        });
+
+        this.handleConnectionError(networkError);
+        
+        // Throw to stop the connection
+        throw networkError;
+      },
+
+      openWhenHidden: true, // Keep connection open when tab is hidden
+    }).catch((error) => {
+      // Handle errors that weren't caught by onerror
+      if (!this.isManuallyDisconnected) {
+        const networkError =
+          error instanceof NetworkError
+            ? error
+            : networkErrorHandler.classifyError(error);
+
+        frontendLogger.error('Failed to connect to SSE stream', {
+          metadata: { conversationId: this.conversationId },
+          error: networkError,
+        });
+
+        this.handleConnectionError(networkError);
+      }
+    });
   }
 
   /**
@@ -176,9 +254,9 @@ export class ChatSSEClient {
     this.stopHealthCheck();
     this.removeNetworkListeners();
 
-    if (this.eventSource) {
-      this.eventSource.close();
-      this.eventSource = null;
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
     }
 
     this.setConnectionState('disconnected');
@@ -226,56 +304,7 @@ export class ChatSSEClient {
     }, 100);
   }
 
-  /**
-   * Setup event handlers for EventSource
-   */
-  private setupEventHandlers(): void {
-    if (!this.eventSource) {
-      return;
-    }
 
-    this.eventSource.onopen = (): void => {
-      frontendLogger.info('SSE connection established', {
-        metadata: { conversationId: this.conversationId },
-      });
-
-      this.lastConnected = new Date();
-      this.setConnectionState('connected');
-      this.reconnectAttempts = 0;
-      this.reconnectDelay = 1000;
-      this.emitHealthChange();
-    };
-
-    this.eventSource.onmessage = (event): void => {
-      try {
-        const data = JSON.parse(event.data) as StreamChunk;
-        this.handleStreamChunk(data);
-      } catch (error) {
-        frontendLogger.error('Failed to parse SSE message', {
-          metadata: {
-            conversationId: this.conversationId,
-            eventData: event.data,
-          },
-          error: error instanceof Error ? error : new Error(String(error)),
-        });
-      }
-    };
-
-    this.eventSource.onerror = (event): void => {
-      const networkError = new NetworkError(
-        'SSE connection error',
-        'connection_failed',
-        { retryable: true }
-      );
-
-      frontendLogger.error('SSE connection error', {
-        metadata: { conversationId: this.conversationId, event },
-        error: networkError,
-      });
-
-      this.handleConnectionError(networkError);
-    };
-  }
 
   /**
    * Handle incoming stream chunks
@@ -329,9 +358,9 @@ export class ChatSSEClient {
     this.eventListeners.connectionError?.(error);
     this.emitHealthChange();
 
-    if (this.eventSource) {
-      this.eventSource.close();
-      this.eventSource = null;
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
     }
 
     // Don't reconnect if manually disconnected
