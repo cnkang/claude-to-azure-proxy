@@ -1,5 +1,6 @@
 import type { Response } from 'express';
 import rateLimit from 'express-rate-limit';
+import { performance } from 'node:perf_hooks';
 import type {
   RequestWithCorrelationId,
   ServerConfig,
@@ -109,6 +110,9 @@ interface RequestMetrics {
   responseTransformationTime?: number;
   totalTime?: number;
 }
+
+const formatDurationForLog = (value?: number): number | undefined =>
+  value !== undefined ? Math.round(value) : undefined;
 
 // Initialize universal request processor with configuration from environment
 const CLAUDE_MODEL_ALIASES = ALLOWED_MODELS.filter(
@@ -531,8 +535,8 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
     async (req: RequestWithCorrelationId, res: Response): Promise<void> => {
       const { correlationId } = req;
       const metrics: RequestMetrics = {
-        startTime: Date.now(),
-        requestSize: JSON.stringify(req.body).length,
+        startTime: performance.now(),
+        requestSize: Buffer.byteLength(JSON.stringify(req.body), 'utf8'),
       };
 
       const abortController = new AbortController();
@@ -549,7 +553,7 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
 
       try {
         // Detect request format to determine response format
-        const formatDetectionStart = Date.now();
+        const formatDetectionStart = performance.now();
         const incomingRequest: IncomingRequest = {
           headers: req.headers as Record<string, string>,
           body: req.body,
@@ -573,7 +577,7 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
         }
 
         const responseFormat = getResponseFormat(requestFormat);
-        metrics.formatDetectionTime = Date.now() - formatDetectionStart;
+        metrics.formatDetectionTime = performance.now() - formatDetectionStart;
 
         logger.info('Completions request started', correlationId, {
           ip: req.ip,
@@ -581,7 +585,9 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
           requestSize: metrics.requestSize,
           requestFormat,
           responseFormat,
-          formatDetectionTime: metrics.formatDetectionTime,
+          formatDetectionTime: formatDurationForLog(
+            metrics.formatDetectionTime
+          ),
         });
 
         // Validate Azure OpenAI configuration
@@ -711,12 +717,12 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
           conversationManager.getConversationContext(conversationId);
 
         // Process request with universal processor
-        const transformationStart = Date.now();
+        const transformationStart = performance.now();
         const processingResult = await universalProcessor.processRequest(
           incomingRequest,
           conversationContext
         );
-        metrics.transformationTime = Date.now() - transformationStart;
+        metrics.transformationTime = performance.now() - transformationStart;
 
         logger.debug('Request processing completed', correlationId, {
           requestFormat: processingResult.requestFormat,
@@ -724,7 +730,7 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
           conversationId: processingResult.conversationId,
           estimatedComplexity: processingResult.estimatedComplexity,
           reasoningEffort: processingResult.reasoningEffort,
-          transformationTime: metrics.transformationTime,
+          transformationTime: formatDurationForLog(metrics.transformationTime),
         });
 
         let { responsesParams } = processingResult;
@@ -842,7 +848,7 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
 
         // Make non-streaming request to Azure Responses API with circuit breaker and retry logic
         let responsesAPIResponse: ResponsesResponse;
-        const azureRequestStart = Date.now();
+        const azureRequestStart = performance.now();
 
         try {
           responsesAPIResponse = await makeResponsesAPIRequestWithResilience(
@@ -852,11 +858,11 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
             abortController.signal
           );
 
-          metrics.azureRequestTime = Date.now() - azureRequestStart;
+          metrics.azureRequestTime = performance.now() - azureRequestStart;
 
           logger.debug('Azure Responses API request completed', correlationId, {
             responseId: responsesAPIResponse.id,
-            azureRequestTime: metrics.azureRequestTime,
+            azureRequestTime: formatDurationForLog(metrics.azureRequestTime),
             outputCount: responsesAPIResponse.output.length,
             totalTokens: responsesAPIResponse.usage.total_tokens,
             reasoningTokens: responsesAPIResponse.usage.reasoning_tokens,
@@ -876,12 +882,16 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
             }
           );
         } catch (error) {
-          metrics.azureRequestTime = Date.now() - azureRequestStart;
+          metrics.azureRequestTime = performance.now() - azureRequestStart;
 
           if (isAbortError(error) || abortController.signal.aborted) {
-            logger.info('Azure Responses request aborted by client', correlationId, {
-              azureRequestTime: metrics.azureRequestTime,
-            });
+            logger.info(
+              'Azure Responses request aborted by client',
+              correlationId,
+              {
+                azureRequestTime: metrics.azureRequestTime,
+              }
+            );
             return;
           }
 
@@ -1009,7 +1019,7 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
         }
 
         // Transform Responses API response to appropriate format
-        const responseTransformStart = Date.now();
+        const responseTransformStart = performance.now();
         let responseTransformationResult;
 
         try {
@@ -1025,20 +1035,24 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
           );
 
           metrics.responseTransformationTime =
-            Date.now() - responseTransformStart;
+            performance.now() - responseTransformStart;
 
           logger.debug('Response transformation successful', correlationId, {
-            responseTransformationTime: metrics.responseTransformationTime,
+            responseTransformationTime: formatDurationForLog(
+              metrics.responseTransformationTime
+            ),
             responseFormat,
             outputCount: responsesAPIResponse.output.length,
           });
         } catch (error) {
           metrics.responseTransformationTime =
-            Date.now() - responseTransformStart;
+            performance.now() - responseTransformStart;
 
           logger.error('Response transformation failed', correlationId, {
             error: error instanceof Error ? error.message : 'Unknown error',
-            responseTransformationTime: metrics.responseTransformationTime,
+            responseTransformationTime: formatDurationForLog(
+              metrics.responseTransformationTime
+            ),
           });
 
           // Create fallback error response
@@ -1058,19 +1072,24 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
         }
 
         // Calculate total processing time
-        metrics.totalTime = Date.now() - metrics.startTime;
+        metrics.totalTime = performance.now() - metrics.startTime;
 
         // Performance monitoring and logging
         logger.info('Completions request completed', correlationId, {
           statusCode: responseTransformationResult.statusCode,
-          totalTime: metrics.totalTime,
+          totalTime: formatDurationForLog(metrics.totalTime),
           requestSize: metrics.requestSize,
-          formatDetectionTime: metrics.formatDetectionTime,
-          transformationTime: metrics.transformationTime,
-          azureRequestTime: metrics.azureRequestTime,
-          responseTransformationTime: metrics.responseTransformationTime,
-          responseSize: JSON.stringify(responseTransformationResult.body)
-            .length,
+          formatDetectionTime: formatDurationForLog(
+            metrics.formatDetectionTime
+          ),
+          transformationTime: formatDurationForLog(metrics.transformationTime),
+          azureRequestTime: formatDurationForLog(metrics.azureRequestTime),
+          responseTransformationTime: formatDurationForLog(
+            metrics.responseTransformationTime
+          ),
+          responseSize: Buffer.byteLength(
+            JSON.stringify(responseTransformationResult.body)
+          ),
           responseFormat,
           conversationId,
           reasoningEffort: finalReasoningEffort,
@@ -1083,12 +1102,16 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
         if (metrics.totalTime > timeoutMs * 0.25) {
           // 25% of configured timeout
           logger.warn('Slow completion request detected', correlationId, {
-            totalTime: metrics.totalTime,
+            totalTime: formatDurationForLog(metrics.totalTime),
             breakdown: {
-              formatDetection: metrics.formatDetectionTime,
-              transformation: metrics.transformationTime,
-              azureRequest: metrics.azureRequestTime,
-              responseTransformation: metrics.responseTransformationTime,
+              formatDetection: formatDurationForLog(
+                metrics.formatDetectionTime
+              ),
+              transformation: formatDurationForLog(metrics.transformationTime),
+              azureRequest: formatDurationForLog(metrics.azureRequestTime),
+              responseTransformation: formatDurationForLog(
+                metrics.responseTransformationTime
+              ),
             },
             conversationId,
             reasoningEffort: finalReasoningEffort,
@@ -1109,12 +1132,12 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
         }
 
         // Global error handler for unexpected errors
-        metrics.totalTime = Date.now() - metrics.startTime;
+        metrics.totalTime = performance.now() - metrics.startTime;
 
         logger.error('Unexpected error in completions handler', correlationId, {
           error: error instanceof Error ? error.message : 'Unknown error',
           stack: error instanceof Error ? error.stack : undefined,
-          totalTime: metrics.totalTime,
+          totalTime: formatDurationForLog(metrics.totalTime),
           requestSize: metrics.requestSize,
         });
 
@@ -1361,7 +1384,7 @@ async function handleBedrockRequest(
 
   // Make non-streaming request to AWS Bedrock with circuit breaker and retry logic
   let bedrockAPIResponse: ResponsesResponse;
-  const bedrockRequestStart = Date.now();
+  const bedrockRequestStart = performance.now();
   const cleanupAbortListener = endResponseOnAbort(res, signal);
 
   try {
@@ -1372,11 +1395,11 @@ async function handleBedrockRequest(
       signal
     );
 
-    metrics.bedrockRequestTime = Date.now() - bedrockRequestStart;
+    metrics.bedrockRequestTime = performance.now() - bedrockRequestStart;
 
     logger.debug('AWS Bedrock API request completed', correlationId, {
       responseId: bedrockAPIResponse.id,
-      bedrockRequestTime: metrics.bedrockRequestTime,
+      bedrockRequestTime: formatDurationForLog(metrics.bedrockRequestTime),
       outputCount: bedrockAPIResponse.output.length,
       totalTokens: bedrockAPIResponse.usage.total_tokens,
     });
@@ -1393,11 +1416,15 @@ async function handleBedrockRequest(
       }
     );
   } catch (error) {
-    metrics.bedrockRequestTime = Date.now() - bedrockRequestStart;
+    metrics.bedrockRequestTime = performance.now() - bedrockRequestStart;
 
     if (isAbortError(error) || signal.aborted) {
       if (bedrockMonitor) {
-        bedrockMonitor.completeBedrockRequest(correlationId, false, 'AbortError');
+        bedrockMonitor.completeBedrockRequest(
+          correlationId,
+          false,
+          'AbortError'
+        );
       }
 
       logger.info('Bedrock request aborted by client', correlationId, {
@@ -1547,7 +1574,7 @@ async function handleBedrockRequest(
   }
 
   // Transform Bedrock API response to appropriate format
-  const responseTransformStart = Date.now();
+  const responseTransformStart = performance.now();
   let responseTransformationResult;
 
   try {
@@ -1562,19 +1589,25 @@ async function handleBedrockRequest(
       correlationId
     );
 
-    metrics.responseTransformationTime = Date.now() - responseTransformStart;
+    metrics.responseTransformationTime =
+      performance.now() - responseTransformStart;
 
     logger.debug('Bedrock response transformation successful', correlationId, {
-      responseTransformationTime: metrics.responseTransformationTime,
+      responseTransformationTime: formatDurationForLog(
+        metrics.responseTransformationTime
+      ),
       responseFormat,
       outputCount: bedrockAPIResponse.output.length,
     });
   } catch (error) {
-    metrics.responseTransformationTime = Date.now() - responseTransformStart;
+    metrics.responseTransformationTime =
+      performance.now() - responseTransformStart;
 
     logger.error('Bedrock response transformation failed', correlationId, {
       error: error instanceof Error ? error.message : 'Unknown error',
-      responseTransformationTime: metrics.responseTransformationTime,
+      responseTransformationTime: formatDurationForLog(
+        metrics.responseTransformationTime
+      ),
     });
 
     // Create fallback error response
@@ -1594,17 +1627,19 @@ async function handleBedrockRequest(
   }
 
   // Calculate total processing time
-  metrics.totalTime = Date.now() - metrics.startTime;
+  metrics.totalTime = performance.now() - metrics.startTime;
 
   // Performance monitoring and logging
   logger.info('Bedrock completions request completed', correlationId, {
     statusCode: responseTransformationResult.statusCode,
-    totalTime: metrics.totalTime,
+    totalTime: formatDurationForLog(metrics.totalTime),
     requestSize: metrics.requestSize,
-    formatDetectionTime: metrics.formatDetectionTime,
-    transformationTime: metrics.transformationTime,
-    bedrockRequestTime: metrics.bedrockRequestTime,
-    responseTransformationTime: metrics.responseTransformationTime,
+    formatDetectionTime: formatDurationForLog(metrics.formatDetectionTime),
+    transformationTime: formatDurationForLog(metrics.transformationTime),
+    bedrockRequestTime: formatDurationForLog(metrics.bedrockRequestTime),
+    responseTransformationTime: formatDurationForLog(
+      metrics.responseTransformationTime
+    ),
     responseSize: JSON.stringify(responseTransformationResult.body).length,
     responseFormat,
     conversationId,
@@ -1621,12 +1656,14 @@ async function handleBedrockRequest(
   if (metrics.totalTime > timeoutMs * 0.25) {
     // 25% of configured timeout
     logger.warn('Slow Bedrock completion request detected', correlationId, {
-      totalTime: metrics.totalTime,
+      totalTime: formatDurationForLog(metrics.totalTime),
       breakdown: {
-        formatDetection: metrics.formatDetectionTime,
-        transformation: metrics.transformationTime,
-        bedrockRequest: metrics.bedrockRequestTime,
-        responseTransformation: metrics.responseTransformationTime,
+        formatDetection: formatDurationForLog(metrics.formatDetectionTime),
+        transformation: formatDurationForLog(metrics.transformationTime),
+        bedrockRequest: formatDurationForLog(metrics.bedrockRequestTime),
+        responseTransformation: formatDurationForLog(
+          metrics.responseTransformationTime
+        ),
       },
       conversationId,
       reasoningEffort,
@@ -1662,7 +1699,7 @@ async function handleBedrockSimulatedStreamingRequest(
 ): Promise<void> {
   throwIfAborted(signal, 'Bedrock simulated streaming aborted before start');
 
-  const bedrockRequestStart = Date.now();
+  const bedrockRequestStart = performance.now();
 
   const cleanupAbortListener = endResponseOnAbort(res, signal);
 
@@ -1696,7 +1733,10 @@ async function handleBedrockSimulatedStreamingRequest(
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Headers', 'Cache-Control');
 
-    throwIfAborted(signal, 'Bedrock simulated streaming aborted before request');
+    throwIfAborted(
+      signal,
+      'Bedrock simulated streaming aborted before request'
+    );
 
     // Make non-streaming request to Bedrock
     const bedrockAPIResponse = await makeBedrockAPIRequestWithResilience(
@@ -1706,7 +1746,7 @@ async function handleBedrockSimulatedStreamingRequest(
       signal
     );
 
-    metrics.bedrockRequestTime = Date.now() - bedrockRequestStart;
+    metrics.bedrockRequestTime = performance.now() - bedrockRequestStart;
 
     // Simulate streaming by breaking the response into chunks
     await simulateStreamingResponse(
@@ -1729,7 +1769,7 @@ async function handleBedrockSimulatedStreamingRequest(
       }
     );
 
-    metrics.totalTime = Date.now() - metrics.startTime;
+    metrics.totalTime = performance.now() - metrics.startTime;
 
     // Track Bedrock streaming request completion (Requirement 4.2)
     if (bedrockMonitor) {
@@ -1740,8 +1780,8 @@ async function handleBedrockSimulatedStreamingRequest(
       'Bedrock simulated streaming request completed',
       correlationId,
       {
-        totalTime: metrics.totalTime,
-        bedrockRequestTime: metrics.bedrockRequestTime,
+        totalTime: formatDurationForLog(metrics.totalTime),
+        bedrockRequestTime: formatDurationForLog(metrics.bedrockRequestTime),
         chunkCount: 'simulated',
         totalTokens: bedrockAPIResponse.usage.total_tokens,
         conversationId,
@@ -1750,18 +1790,26 @@ async function handleBedrockSimulatedStreamingRequest(
       }
     );
   } catch (error) {
-    metrics.totalTime = Date.now() - metrics.startTime;
-    metrics.bedrockRequestTime = Date.now() - bedrockRequestStart;
+    metrics.totalTime = performance.now() - metrics.startTime;
+    metrics.bedrockRequestTime = performance.now() - bedrockRequestStart;
 
     if (isAbortError(error) || signal.aborted) {
       if (bedrockMonitor) {
-        bedrockMonitor.completeBedrockRequest(correlationId, false, 'AbortError');
+        bedrockMonitor.completeBedrockRequest(
+          correlationId,
+          false,
+          'AbortError'
+        );
       }
 
-      logger.info('Bedrock simulated streaming aborted by client', correlationId, {
-        totalTime: metrics.totalTime,
-        bedrockRequestTime: metrics.bedrockRequestTime,
-      });
+      logger.info(
+        'Bedrock simulated streaming aborted by client',
+        correlationId,
+        {
+          totalTime: metrics.totalTime,
+          bedrockRequestTime: metrics.bedrockRequestTime,
+        }
+      );
       return;
     }
 
@@ -1774,8 +1822,8 @@ async function handleBedrockSimulatedStreamingRequest(
 
     logger.error('Bedrock simulated streaming request failed', correlationId, {
       error: error instanceof Error ? error.message : 'Unknown error',
-      totalTime: metrics.totalTime,
-      bedrockRequestTime: metrics.bedrockRequestTime,
+      totalTime: formatDurationForLog(metrics.totalTime),
+      bedrockRequestTime: formatDurationForLog(metrics.bedrockRequestTime),
     });
 
     // Update conversation with error
@@ -1832,7 +1880,7 @@ async function handleSimulatedStreamingRequest(
 ): Promise<void> {
   throwIfAborted(signal, 'Simulated streaming aborted before start');
 
-  const azureRequestStart = Date.now();
+  const azureRequestStart = performance.now();
   const cleanupAbortListener = endResponseOnAbort(res, signal);
 
   try {
@@ -1859,7 +1907,7 @@ async function handleSimulatedStreamingRequest(
       signal
     );
 
-    metrics.azureRequestTime = Date.now() - azureRequestStart;
+    metrics.azureRequestTime = performance.now() - azureRequestStart;
 
     // Simulate streaming by breaking the response into chunks
     await simulateStreamingResponse(
@@ -1882,11 +1930,11 @@ async function handleSimulatedStreamingRequest(
       }
     );
 
-    metrics.totalTime = Date.now() - metrics.startTime;
+    metrics.totalTime = performance.now() - metrics.startTime;
 
     logger.info('Simulated streaming request completed', correlationId, {
-      totalTime: metrics.totalTime,
-      azureRequestTime: metrics.azureRequestTime,
+      totalTime: formatDurationForLog(metrics.totalTime),
+      azureRequestTime: formatDurationForLog(metrics.azureRequestTime),
       chunkCount: 'simulated',
       totalTokens: responsesAPIResponse.usage.total_tokens,
       reasoningTokens: responsesAPIResponse.usage.reasoning_tokens,
@@ -1894,8 +1942,8 @@ async function handleSimulatedStreamingRequest(
       responseFormat,
     });
   } catch (error) {
-    metrics.totalTime = Date.now() - metrics.startTime;
-    metrics.azureRequestTime = Date.now() - azureRequestStart;
+    metrics.totalTime = performance.now() - metrics.startTime;
+    metrics.azureRequestTime = performance.now() - azureRequestStart;
 
     if (isAbortError(error) || signal.aborted) {
       logger.info('Simulated streaming aborted by client', correlationId, {
@@ -1907,8 +1955,8 @@ async function handleSimulatedStreamingRequest(
 
     logger.error('Simulated streaming request failed', correlationId, {
       error: error instanceof Error ? error.message : 'Unknown error',
-      totalTime: metrics.totalTime,
-      azureRequestTime: metrics.azureRequestTime,
+      totalTime: formatDurationForLog(metrics.totalTime),
+      azureRequestTime: formatDurationForLog(metrics.azureRequestTime),
     });
 
     // Update conversation with error

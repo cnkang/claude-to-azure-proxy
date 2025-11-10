@@ -7,9 +7,9 @@ const ABORT_ERROR_CODE = 'ABORT_ERR' as const;
 
 const DEFAULT_ABORT_MESSAGE = 'Operation aborted by caller';
 
-const ABORT_ERROR_CODES = new Set(['ERR_CANCELED', ABORT_ERROR_CODE]);
+const ABORT_ERROR_CODES = new Set<string>(['ERR_CANCELED', ABORT_ERROR_CODE]);
 
-const ABORT_ERROR_NAMES = new Set([ABORT_ERROR_NAME]);
+const ABORT_ERROR_NAMES = new Set<string>([ABORT_ERROR_NAME]);
 
 export const createAbortError = (reason?: unknown): Error => {
   let message = DEFAULT_ABORT_MESSAGE;
@@ -34,16 +34,13 @@ export const createAbortError = (reason?: unknown): Error => {
   return abortError;
 };
 
-const isAbortErrorInstance = (
-  error: Error,
-  seen: Set<Error>
-): boolean => {
+const isAbortErrorInstance = (error: Error, seen: Set<Error>): boolean => {
   if (seen.has(error)) {
     return false;
   }
   seen.add(error);
 
-  if (ABORT_ERROR_NAMES.has(error.name)) {
+  if (typeof error.name === 'string' && ABORT_ERROR_NAMES.has(error.name)) {
     return true;
   }
 
