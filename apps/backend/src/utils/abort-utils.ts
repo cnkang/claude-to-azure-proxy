@@ -63,7 +63,12 @@ export const isAbortError = (error: unknown): error is Error => {
     return false;
   }
 
-  return isAbortErrorInstance(error, new Set());
+export const isAbortError = (error: unknown): error is Error => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return isAbortErrorInstance(error, new Set(), 0);
 };
 
 export const abortableDelay = async (
