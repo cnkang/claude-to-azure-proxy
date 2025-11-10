@@ -111,16 +111,6 @@ export class RetryStrategy {
     let lastError: Error | undefined;
     let delayBeforeAttempt = 0;
 
-    if (signal?.aborted) {
-      const abortError = createAbortError(signal.reason);
-      return {
-        success: false,
-        error: abortError,
-        attempts,
-        totalDurationMs: Date.now() - startTime,
-      };
-    }
-
     for (let attempt = 1; attempt <= this.config.maxAttempts; attempt++) {
       if (attempt > 1 && delayBeforeAttempt > 0) {
         try {
@@ -139,7 +129,6 @@ export class RetryStrategy {
       let attemptTimestamp: Date | undefined;
 
       try {
-        throwIfAborted(signal);
         const operationPromise = operation();
         attemptTimestamp = new Date(performance.timeOrigin + attemptStartTime);
 
