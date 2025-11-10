@@ -187,8 +187,6 @@ async function makeResponsesAPIRequestWithResilience(
   correlationId: string,
   signal?: AbortSignal
 ): Promise<ResponsesResponse> {
-  throwIfAborted(signal, 'Azure Responses request aborted before execution');
-
   // Get circuit breaker for Azure OpenAI
   const circuitBreaker = circuitBreakerRegistry.getCircuitBreaker(
     'azure-responses-api',
@@ -540,11 +538,21 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
       };
 
       const abortController = new AbortController();
+      let cleanupDone = false;
+      
       const abortRequest = (): void => {
         if (!abortController.signal.aborted) {
           abortController.abort(
             createAbortError('Client connection closed during request')
           );
+        }
+      };
+
+      const cleanup = (): void => {
+        if (!cleanupDone) {
+          cleanupDone = true;
+          req.off('close', abortRequest);
+          req.off('aborted', abortRequest);
         }
       };
 
@@ -884,7 +892,7 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
         } catch (error) {
           metrics.azureRequestTime = performance.now() - azureRequestStart;
 
-          if (isAbortError(error) || abortController.signal.aborted) {
+          if (isAbortError(error)) {
             logger.info(
               'Azure Responses request aborted by client',
               correlationId,
@@ -892,6 +900,11 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
                 azureRequestTime: metrics.azureRequestTime,
               }
             );
+            
+            // Ensure response is ended if not already sent
+            if (!res.headersSent) {
+              res.status(499).end(); // 499 Client Closed Request
+            }
             return;
           }
 
@@ -1124,10 +1137,15 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
           .set(responseTransformationResult.headers)
           .json(responseTransformationResult.body);
       } catch (error) {
-        if (isAbortError(error) || abortController.signal.aborted) {
+        if (isAbortError(error)) {
           logger.info('Completions request aborted by client', correlationId, {
             totalTime: Date.now() - metrics.startTime,
           });
+          
+          // Ensure response is ended if not already sent
+          if (!res.headersSent) {
+            res.status(499).end(); // 499 Client Closed Request
+          }
           return;
         }
 
@@ -1185,8 +1203,7 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
           .set(mappedError.headers)
           .json(mappedError.body);
       } finally {
-        req.off('close', abortRequest);
-        req.off('aborted', abortRequest);
+        cleanup();
       }
     }
   );
@@ -1201,8 +1218,6 @@ async function makeBedrockAPIRequestWithResilience(
   correlationId: string,
   signal?: AbortSignal
 ): Promise<ResponsesResponse> {
-  throwIfAborted(signal, 'Bedrock request aborted before execution');
-
   // Get circuit breaker for AWS Bedrock
   const circuitBreaker = circuitBreakerRegistry.getCircuitBreaker(
     'aws-bedrock-api',
@@ -1224,11 +1239,9 @@ async function makeBedrockAPIRequestWithResilience(
   // Execute with circuit breaker protection
   const circuitResult = await circuitBreaker.execute(
     async () => {
-      throwIfAborted(signal, 'Bedrock request aborted before retry');
       // Execute with retry logic
       const retryResult = await retryStrategy.execute(
         async () => {
-          throwIfAborted(signal, 'Bedrock request aborted before call');
           try {
             logger.debug('Making AWS Bedrock API request', correlationId, {
               model: params.model,
@@ -1325,8 +1338,6 @@ async function handleBedrockRequest(
   routingDecision: ModelRoutingDecision,
   signal: AbortSignal
 ): Promise<void> {
-  throwIfAborted(signal);
-
   const { responsesParams, reasoningEffort } = processingResult;
 
   // Track Bedrock request start (Requirement 4.1)
@@ -1418,7 +1429,7 @@ async function handleBedrockRequest(
   } catch (error) {
     metrics.bedrockRequestTime = performance.now() - bedrockRequestStart;
 
-    if (isAbortError(error) || signal.aborted) {
+    if (isAbortError(error)) {
       if (bedrockMonitor) {
         bedrockMonitor.completeBedrockRequest(
           correlationId,
@@ -1430,6 +1441,11 @@ async function handleBedrockRequest(
       logger.info('Bedrock request aborted by client', correlationId, {
         bedrockRequestTime: metrics.bedrockRequestTime,
       });
+      
+      // Ensure response is ended if not already sent
+      if (!res.headersSent) {
+        res.status(499).end(); // 499 Client Closed Request
+      }
       return;
     }
 
@@ -1697,8 +1713,6 @@ async function handleBedrockSimulatedStreamingRequest(
   metrics: RequestMetrics,
   signal: AbortSignal
 ): Promise<void> {
-  throwIfAborted(signal, 'Bedrock simulated streaming aborted before start');
-
   const bedrockRequestStart = performance.now();
 
   const cleanupAbortListener = endResponseOnAbort(res, signal);
@@ -1726,19 +1740,7 @@ async function handleBedrockSimulatedStreamingRequest(
       }
     );
 
-    // Set streaming headers
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Headers', 'Cache-Control');
-
-    throwIfAborted(
-      signal,
-      'Bedrock simulated streaming aborted before request'
-    );
-
-    // Make non-streaming request to Bedrock
+    // Make non-streaming request to Bedrock FIRST, before setting streaming headers
     const bedrockAPIResponse = await makeBedrockAPIRequestWithResilience(
       client,
       processingResult.responsesParams,
@@ -1747,6 +1749,13 @@ async function handleBedrockSimulatedStreamingRequest(
     );
 
     metrics.bedrockRequestTime = performance.now() - bedrockRequestStart;
+
+    // Now set streaming headers after we have the response
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Cache-Control');
 
     // Simulate streaming by breaking the response into chunks
     await simulateStreamingResponse(
@@ -1793,7 +1802,7 @@ async function handleBedrockSimulatedStreamingRequest(
     metrics.totalTime = performance.now() - metrics.startTime;
     metrics.bedrockRequestTime = performance.now() - bedrockRequestStart;
 
-    if (isAbortError(error) || signal.aborted) {
+    if (isAbortError(error)) {
       if (bedrockMonitor) {
         bedrockMonitor.completeBedrockRequest(
           correlationId,
@@ -1810,6 +1819,11 @@ async function handleBedrockSimulatedStreamingRequest(
           bedrockRequestTime: metrics.bedrockRequestTime,
         }
       );
+      
+      // Ensure response is ended if not already sent
+      if (!res.headersSent) {
+        res.status(499).end(); // 499 Client Closed Request
+      }
       return;
     }
 
@@ -1878,8 +1892,6 @@ async function handleSimulatedStreamingRequest(
   metrics: RequestMetrics,
   signal: AbortSignal
 ): Promise<void> {
-  throwIfAborted(signal, 'Simulated streaming aborted before start');
-
   const azureRequestStart = performance.now();
   const cleanupAbortListener = endResponseOnAbort(res, signal);
 
@@ -1890,16 +1902,7 @@ async function handleSimulatedStreamingRequest(
       reasoningEffort: processingResult.reasoningEffort,
     });
 
-    // Set streaming headers
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Headers', 'Cache-Control');
-
-    throwIfAborted(signal, 'Simulated streaming aborted before Azure request');
-
-    // Make non-streaming request to Azure
+    // Make non-streaming request to Azure FIRST, before setting streaming headers
     const responsesAPIResponse = await makeResponsesAPIRequestWithResilience(
       client,
       processingResult.responsesParams,
@@ -1908,6 +1911,13 @@ async function handleSimulatedStreamingRequest(
     );
 
     metrics.azureRequestTime = performance.now() - azureRequestStart;
+
+    // Now set streaming headers after we have the response
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Cache-Control');
 
     // Simulate streaming by breaking the response into chunks
     await simulateStreamingResponse(
@@ -1945,11 +1955,16 @@ async function handleSimulatedStreamingRequest(
     metrics.totalTime = performance.now() - metrics.startTime;
     metrics.azureRequestTime = performance.now() - azureRequestStart;
 
-    if (isAbortError(error) || signal.aborted) {
+    if (isAbortError(error)) {
       logger.info('Simulated streaming aborted by client', correlationId, {
         totalTime: metrics.totalTime,
         azureRequestTime: metrics.azureRequestTime,
       });
+      
+      // Ensure response is ended if not already sent
+      if (!res.headersSent) {
+        res.status(499).end(); // 499 Client Closed Request
+      }
       return;
     }
 
@@ -2006,7 +2021,6 @@ async function simulateStreamingResponse(
   res: Response,
   signal?: AbortSignal
 ): Promise<void> {
-  throwIfAborted(signal);
   if (res.writableEnded) {
     return;
   }
@@ -2016,7 +2030,8 @@ async function simulateStreamingResponse(
     closedMessage: 'Response stream closed during simulation',
   } as const;
 
-  if (responseFormat === 'claude') {
+  try {
+    if (responseFormat === 'claude') {
     writer.write('event: message_start\n');
     writer.write(
       `data: ${JSON.stringify({
@@ -2166,6 +2181,17 @@ async function simulateStreamingResponse(
   }
 
   writer.end();
+  } catch (error) {
+    // If aborted, just end the stream gracefully
+    if (isAbortError(error)) {
+      if (!res.writableEnded) {
+        writer.end();
+      }
+      return;
+    }
+    // Re-throw other errors
+    throw error;
+  }
 }
 
 /**
