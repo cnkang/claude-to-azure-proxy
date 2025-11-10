@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/prefer-readonly-parameter-types */
 import { setTimeout as delay } from 'node:timers/promises';
 
 import { logger } from '../middleware/logging';
