@@ -905,8 +905,9 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
             );
             
             // Ensure response is ended if not already sent
+            // 408 Request Timeout is a standard code for client aborts/timeouts
             if (!res.headersSent) {
-              res.status(499).end(); // 499 Client Closed Request
+              res.status(408).end(); // 408 Request Timeout
             }
             return;
           }
@@ -1146,8 +1147,9 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
           });
           
           // Ensure response is ended if not already sent
+          // 408 Request Timeout is a standard code for client aborts/timeouts
           if (!res.headersSent) {
-            res.status(499).end(); // 499 Client Closed Request
+            res.status(408).end(); // 408 Request Timeout
           }
           return;
         }
@@ -1446,8 +1448,9 @@ async function handleBedrockRequest(
       });
       
       // Ensure response is ended if not already sent
+      // 408 Request Timeout is a standard code for client aborts/timeouts
       if (!res.headersSent) {
-        res.status(499).end(); // 499 Client Closed Request
+        res.status(408).end(); // 408 Request Timeout
       }
       return;
     }
@@ -1837,8 +1840,9 @@ async function handleBedrockSimulatedStreamingRequest(
       );
       
       // Ensure response is ended if not already sent
+      // 408 Request Timeout is a standard code for client aborts/timeouts
       if (!res.headersSent) {
-        res.status(499).end(); // 499 Client Closed Request
+        res.status(408).end(); // 408 Request Timeout
       }
       return;
     }
@@ -1991,8 +1995,9 @@ async function handleSimulatedStreamingRequest(
       });
       
       // Ensure response is ended if not already sent
+      // 408 Request Timeout is a standard code for client aborts/timeouts
       if (!res.headersSent) {
-        res.status(499).end(); // 499 Client Closed Request
+        res.status(408).end(); // 408 Request Timeout
       }
       return;
     }
