@@ -243,7 +243,7 @@ export class AWSBedrockClient implements AsyncDisposable {
 
       let responseId = correlationId;
       let createdAt = Math.floor(Date.now() / 1000);
-      const model = params.model;
+      const {model} = params;
       let chunkCount = 0;
       const startTime = performance.now();
 
@@ -857,7 +857,7 @@ export class AWSBedrockClient implements AsyncDisposable {
     if (this.isAxiosError(error)) {
       const status = error.response?.status ?? 500;
       const rawData = error.response?.data;
-      let message = error.message;
+      let {message} = error;
 
       if (
         rawData !== undefined &&
@@ -1001,10 +1001,8 @@ export class AWSBedrockClient implements AsyncDisposable {
 
   private shouldRetry(error: AxiosError): boolean {
     const status = error.response?.status;
-    if (status !== undefined) {
-      if (status >= 500 || status === 429) {
-        return true;
-      }
+    if (status !== undefined && (status >= 500 || status === 429)) {
+          return true;
     }
 
     const code = error.code ?? '';
