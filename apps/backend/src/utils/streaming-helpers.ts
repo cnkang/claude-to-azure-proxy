@@ -29,7 +29,16 @@ export const createAbortableStreamWriter = (
     ensureWritable,
     write: (chunk: string, options?: WritableOptions): void => {
       ensureWritable(options);
-      res.write(chunk);
+      try {
+        res.write(chunk);
+      } catch (writeError) {
+        // Convert write errors to abort errors for consistent handling
+        throw createAbortError(
+          writeError instanceof Error 
+            ? writeError.message 
+            : 'Failed to write to response stream'
+        );
+      }
     },
     end: (finalChunk?: string, options?: WritableOptions): void => {
       if (finalChunk !== undefined) {
