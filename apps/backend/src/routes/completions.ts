@@ -49,6 +49,7 @@ import {
   isAbortError,
   abortableDelay,
 } from '../utils/abort-utils';
+import { HTTP_STATUS_CLIENT_CLOSED_REQUEST } from '../constants/http-status-codes.js';
 
 import {
   createAbortableStreamWriter,
@@ -909,9 +910,9 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
             );
             
             // Ensure response is ended if not already sent
-            // 408 Request Timeout is a standard code for client aborts/timeouts
+            // 499 Client Closed Request - client actively closed the connection
             if (!res.headersSent) {
-              res.status(408).end(); // 408 Request Timeout
+              res.status(HTTP_STATUS_CLIENT_CLOSED_REQUEST).end();
             }
             return;
           }
@@ -1151,9 +1152,9 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
           });
           
           // Ensure response is ended if not already sent
-          // 408 Request Timeout is a standard code for client aborts/timeouts
+          // 499 Client Closed Request - client actively closed the connection
           if (!res.headersSent) {
-            res.status(408).end(); // 408 Request Timeout
+            res.status(HTTP_STATUS_CLIENT_CLOSED_REQUEST).end();
           }
           return;
         }
@@ -1452,9 +1453,9 @@ async function handleBedrockRequest(
       });
       
       // Ensure response is ended if not already sent
-      // 408 Request Timeout is a standard code for client aborts/timeouts
+      // 499 Client Closed Request - client actively closed the connection
       if (!res.headersSent) {
-        res.status(408).end(); // 408 Request Timeout
+        res.status(HTTP_STATUS_CLIENT_CLOSED_REQUEST).end();
       }
       return;
     }
@@ -1844,9 +1845,9 @@ async function handleBedrockSimulatedStreamingRequest(
       );
       
       // Ensure response is ended if not already sent
-      // 408 Request Timeout is a standard code for client aborts/timeouts
+      // 499 Client Closed Request - client actively closed the connection
       if (!res.headersSent) {
-        res.status(408).end(); // 408 Request Timeout
+        res.status(HTTP_STATUS_CLIENT_CLOSED_REQUEST).end();
       }
       return;
     }
@@ -1999,9 +2000,9 @@ async function handleSimulatedStreamingRequest(
       });
       
       // Ensure response is ended if not already sent
-      // 408 Request Timeout is a standard code for client aborts/timeouts
+      // 499 Client Closed Request - client actively closed the connection
       if (!res.headersSent) {
-        res.status(408).end(); // 408 Request Timeout
+        res.status(HTTP_STATUS_CLIENT_CLOSED_REQUEST).end();
       }
       return;
     }

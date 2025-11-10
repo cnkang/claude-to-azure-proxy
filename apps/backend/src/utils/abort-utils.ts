@@ -63,11 +63,6 @@ export const isAbortError = (error: unknown): error is Error => {
     return false;
   }
 
-export const isAbortError = (error: unknown): error is Error => {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
   return isAbortErrorInstance(error, new Set(), 0);
 };
 
