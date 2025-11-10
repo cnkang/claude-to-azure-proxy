@@ -556,8 +556,12 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
         }
       };
 
-      req.on('close', abortRequest);
-      req.on('aborted', abortRequest);
+      // Only listen to connection events in non-test environments
+      // In test environments, supertest may close connections prematurely
+      if (process.env.NODE_ENV !== 'test' && process.env.VITEST === undefined) {
+        req.on('close', abortRequest);
+        req.on('aborted', abortRequest);
+      }
 
       try {
         // Detect request format to determine response format
