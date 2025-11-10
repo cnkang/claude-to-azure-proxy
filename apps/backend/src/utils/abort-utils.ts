@@ -34,8 +34,9 @@ export const createAbortError = (reason?: unknown): Error => {
   return abortError;
 };
 
-const isAbortErrorInstance = (error: Error, seen: Set<Error>): boolean => {
-  if (seen.has(error)) {
+const isAbortErrorInstance = (error: Error, seen: Set<Error>, depth = 0): boolean => {
+  // Prevent infinite recursion with maximum depth limit
+  if (depth > 10 || seen.has(error)) {
     return false;
   }
   seen.add(error);
@@ -51,7 +52,7 @@ const isAbortErrorInstance = (error: Error, seen: Set<Error>): boolean => {
 
   const { cause } = error as Error & { cause?: unknown };
   if (cause instanceof Error) {
-    return isAbortErrorInstance(cause, seen);
+    return isAbortErrorInstance(cause, seen, depth + 1);
   }
 
   return false;
