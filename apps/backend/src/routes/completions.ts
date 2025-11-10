@@ -558,6 +558,10 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
       // Only listen to connection events in non-test environments
       // In test environments, supertest may close connections prematurely
       if (process.env.NODE_ENV !== 'test' && process.env.VITEST === undefined) {
+        // Check if already aborted before adding listeners to prevent race condition
+        if (abortController.signal.aborted) {
+          return;
+        }
         req.on('close', abortRequest);
         req.on('aborted', abortRequest);
       }
