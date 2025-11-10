@@ -188,6 +188,8 @@ export class AzureResponsesClient implements AsyncDisposable {
   ): Promise<ResponsesResponse> {
     this.ensureNotDisposed();
     validateResponsesCreateParams(params);
+
+    // Check for abort before creating resources
     throwIfAborted(signal);
 
     // Create connection resource for tracking
@@ -197,6 +199,10 @@ export class AzureResponsesClient implements AsyncDisposable {
       undefined
     );
     this.activeConnections.add(connectionResource);
+
+    // Check for abort again after resource creation to catch aborts during setup
+    throwIfAborted(signal);
+
     let aborted = false;
     const removeAbortListener = registerAbortListener(signal, () => {
       aborted = true;

@@ -114,6 +114,8 @@ export class AWSBedrockClient implements AsyncDisposable {
   ): Promise<ResponsesResponse> {
     this.ensureNotDisposed();
     validateResponsesCreateParams(params);
+
+    // Check for abort before creating resources
     throwIfAborted(signal);
 
     let aborted = false;
@@ -133,6 +135,9 @@ export class AWSBedrockClient implements AsyncDisposable {
       undefined
     );
     this.activeConnections.add(connectionResource);
+
+    // Check for abort again after resource creation to catch aborts during setup
+    throwIfAborted(signal);
 
     try {
       const modelId = this.getBedrockModelId(params.model);
