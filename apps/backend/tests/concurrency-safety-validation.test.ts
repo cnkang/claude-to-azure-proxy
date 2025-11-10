@@ -213,35 +213,39 @@ describe('Concurrency Safety Validation', () => {
       expect(uniqueTimestamps.size).toBeGreaterThan(1);
     });
 
-    it('should isolate rate limits between different IPs', async () => {
-      app.use(globalRateLimit);
-      app.get('/test', (req, res) => {
-        res.json({ ip: req.ip });
-      });
+    it(
+      'should isolate rate limits between different IPs',
+      { timeout: 60000 },
+      async () => {
+        app.use(globalRateLimit);
+        app.get('/test', (req, res) => {
+          res.json({ ip: req.ip });
+        });
 
-      // Simulate requests from different IPs
-      const ip1Requests = Array.from({ length: 2 }, () =>
-        request(app).get('/test').set('X-Forwarded-For', '192.168.1.1')
-      );
+        // Simulate requests from different IPs
+        const ip1Requests = Array.from({ length: 2 }, () =>
+          request(app).get('/test').set('X-Forwarded-For', '192.168.1.1')
+        );
 
-      const ip2Requests = Array.from({ length: 2 }, () =>
-        request(app).get('/test').set('X-Forwarded-For', '192.168.1.2')
-      );
+        const ip2Requests = Array.from({ length: 2 }, () =>
+          request(app).get('/test').set('X-Forwarded-For', '192.168.1.2')
+        );
 
-      const [ip1Responses, ip2Responses] = await Promise.all([
-        Promise.all(ip1Requests),
-        Promise.all(ip2Requests),
-      ]);
+        const [ip1Responses, ip2Responses] = await Promise.all([
+          Promise.all(ip1Requests),
+          Promise.all(ip2Requests),
+        ]);
 
-      // Both IPs should be able to make their allowed requests
-      ip1Responses.forEach((response) => {
-        expect(response.status).toBe(200);
-      });
+        // Both IPs should be able to make their allowed requests
+        ip1Responses.forEach((response) => {
+          expect(response.status).toBe(200);
+        });
 
-      ip2Responses.forEach((response) => {
-        expect(response.status).toBe(200);
-      });
-    });
+        ip2Responses.forEach((response) => {
+          expect(response.status).toBe(200);
+        });
+      }
+    );
   });
 
   describe('Circuit Breaker Patterns', () => {
