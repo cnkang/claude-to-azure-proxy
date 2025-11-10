@@ -11,7 +11,7 @@
  * @since 1.0.0
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AzureResponsesClient } from '../../src/clients/azure-responses-client';
 import type {
   AzureOpenAIConfig,
@@ -192,6 +192,77 @@ describe('AzureResponsesClient', () => {
       await expect(client.createResponse(invalidParams)).rejects.toThrow(
         'Invalid reasoning effort: must be minimal, low, medium, or high'
       );
+    });
+  });
+
+  describe('abort handling', () => {
+    let client: AzureResponsesClient;
+    let validParams: ResponsesCreateParams;
+
+    beforeEach(() => {
+      client = new AzureResponsesClient(validConfig);
+      validParams = {
+        model: 'gpt-5-codex',
+        input: [{ role: 'user', content: 'Abort test' }],
+        max_output_tokens: 256,
+      };
+    });
+
+    it('should not execute request when signal already aborted', async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      const createSpy = vi.spyOn(
+        (client as unknown as {
+          client: { responses: { create: typeof client['client']['responses']['create'] } };
+        }).client.responses,
+        'create'
+      );
+
+      await expect(
+        client.createResponse(validParams, controller.signal)
+      ).rejects.toMatchObject({ name: 'AbortError' });
+
+      expect(createSpy).not.toHaveBeenCalled();
+
+      const stats = client.getResourceStats();
+      expect(stats.activeConnections).toBe(0);
+      expect(stats.activeStreams).toBe(0);
+    });
+
+    it('should not start streaming when signal already aborted', async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      const streamSpy = vi.spyOn(
+        (client as unknown as {
+          client: {
+            responses: {
+              stream: typeof client['client']['responses']['stream'];
+            };
+          };
+        }).client.responses,
+        'stream'
+      );
+
+      const stream = client.createResponseStream(
+        { ...validParams, stream: true },
+        controller.signal
+      );
+
+      await expect(async () => {
+        for await (const _ of stream) {
+          // no-op
+        }
+      }).rejects.toMatchObject({ name: 'AbortError' });
+
+      expect(streamSpy).not.toHaveBeenCalled();
+
+      const stats = client.getResourceStats();
+      expect(stats.activeConnections).toBe(0);
+      expect(stats.activeStreams).toBe(0);
+
+      streamSpy.mockRestore();
     });
   });
 

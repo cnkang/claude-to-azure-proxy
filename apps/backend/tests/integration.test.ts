@@ -10,6 +10,7 @@ import {
   MaliciousDataFactory,
   AuthTestDataFactory,
   TestDataUtils,
+  ResponsesResponseFactory,
 } from './test-factories';
 import type { ServerConfig } from '../src/types/index';
 import { gracefulDegradationManager } from '../src/resilience/index';
@@ -151,10 +152,13 @@ describe('Integration Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Default successful Azure OpenAI response
+    // Default successful Responses API response
     (mockAxiosInstance.post as ReturnType<typeof vi.fn>).mockResolvedValue({
       status: 200,
-      data: AzureResponseFactory.create({ includeOptional: true }),
+      data: ResponsesResponseFactory.create({
+        content: 'Test response content',
+        includeReasoning: false,
+      }),
     });
 
     (mockAxiosInstance.get as ReturnType<typeof vi.fn>).mockResolvedValue({

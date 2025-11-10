@@ -130,6 +130,54 @@ describe('Retry Strategy', () => {
     });
   });
 
+  describe('Abort handling', () => {
+    it('should handle aborted signal during operation execution', async () => {
+      const controller = new AbortController();
+      controller.abort();
+      
+      // Operation should still be called but can check signal internally
+      const operation = vi.fn().mockRejectedValue(new Error('Operation aborted'));
+
+      const result = await retryStrategy.execute(
+        operation,
+        'test-correlation-id',
+        'test-operation',
+        controller.signal
+      );
+
+      // Operation is called at least once
+      expect(operation).toHaveBeenCalled();
+      expect(result.success).toBe(false);
+      expect(result.error).toBeInstanceOf(Error);
+    });
+
+    it('should abort during retry delay without invoking further attempts', async () => {
+      const controller = new AbortController();
+      const operation = vi
+        .fn()
+        .mockRejectedValueOnce(new Error('NETWORK_ERROR'))
+        .mockResolvedValue('should-not-run');
+
+      const executePromise = retryStrategy.execute(
+        operation,
+        'test-correlation-id',
+        'test-operation',
+        controller.signal
+      );
+
+      await vi.advanceTimersByTimeAsync(50);
+      controller.abort();
+      await vi.advanceTimersByTimeAsync(1000);
+
+      const result = await executePromise;
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBeInstanceOf(Error);
+      expect((result.error as Error).name).toBe('AbortError');
+      expect(operation).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('Delay Calculation', () => {
     it('should calculate exponential backoff delays', async () => {
       const error = new Error('NETWORK_ERROR');

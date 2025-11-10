@@ -68,6 +68,12 @@ import {
   type StreamResource,
 } from '../runtime/resource-manager';
 import { memoryManager } from '../utils/memory-manager';
+import {
+  createAbortError,
+  isAbortError,
+  throwIfAborted,
+  registerAbortListener,
+} from '../utils/abort-utils';
 
 /**
  * Azure OpenAI v1 Responses API client with comprehensive error handling and monitoring.
@@ -177,10 +183,14 @@ export class AzureResponsesClient implements AsyncDisposable {
    * ```
    */
   public async createResponse(
-    params: ResponsesCreateParams
+    params: ResponsesCreateParams,
+    signal?: AbortSignal
   ): Promise<ResponsesResponse> {
     this.ensureNotDisposed();
     validateResponsesCreateParams(params);
+
+    // Check for abort before creating resources
+    throwIfAborted(signal);
 
     // Create connection resource for tracking
     const connectionResource = createHTTPConnectionResource(
@@ -189,6 +199,14 @@ export class AzureResponsesClient implements AsyncDisposable {
       undefined
     );
     this.activeConnections.add(connectionResource);
+
+    // Check for abort again after resource creation to catch aborts during setup
+    throwIfAborted(signal);
+
+    let aborted = false;
+    const removeAbortListener = registerAbortListener(signal, () => {
+      aborted = true;
+    });
 
     try {
       const requestParams = this.buildRequestParams(
@@ -199,7 +217,7 @@ export class AzureResponsesClient implements AsyncDisposable {
       // Make the API call using the OpenAI client with enhanced monitoring
       const startTime = performance.now();
       const response: OpenAIResponse =
-        await this.client.responses.create(requestParams);
+        await this.client.responses.create(requestParams, { signal });
       const duration = performance.now() - startTime;
 
       // Log performance metrics
@@ -213,9 +231,26 @@ export class AzureResponsesClient implements AsyncDisposable {
       const normalized = this.normalizeResponsesResponse(response);
       return assertValidResponsesResponse(normalized);
     } catch (error) {
+      if (isAbortError(error)) {
+        aborted = true;
+        throw error;
+      }
       throw this.handleApiError(error, 'createResponse');
     } finally {
+      removeAbortListener();
       this.activeConnections.delete(connectionResource);
+      if (aborted && !connectionResource.disposed) {
+        try {
+          await connectionResource[Symbol.asyncDispose]();
+        } catch (disposeError) {
+          logger.warn('Failed to dispose aborted Azure connection', '', {
+            error:
+              disposeError instanceof Error
+                ? disposeError.message
+                : 'Unknown error',
+          });
+        }
+      }
     }
   }
 
@@ -243,16 +278,20 @@ export class AzureResponsesClient implements AsyncDisposable {
    * ```
    */
   public async *createResponseStream(
-    params: ResponsesCreateParams
+    params: ResponsesCreateParams,
+    signal?: AbortSignal
   ): AsyncIterable<ResponsesStreamChunk> {
     this.ensureNotDisposed();
     validateResponsesCreateParams(params);
+    throwIfAborted(signal);
 
     const correlationId = uuidv4();
 
     // Create stream resource for tracking and automatic cleanup
     // Note: We'll create the resource after we have the actual stream
     let streamResource: StreamResource | undefined;
+    let aborted = false;
+    let removeAbortListener: (() => void) | undefined;
 
     try {
       const streamParams = this.buildRequestParams(
@@ -260,7 +299,21 @@ export class AzureResponsesClient implements AsyncDisposable {
         true
       ) as unknown as ResponseCreateParamsStreaming;
 
-      const stream = this.client.responses.stream(streamParams);
+      const stream = this.client.responses.stream(streamParams, { signal });
+
+      removeAbortListener = registerAbortListener(signal, () => {
+        aborted = true;
+        try {
+          stream.controller.abort();
+        } catch (abortError) {
+          logger.debug('Failed to abort Azure response stream controller', '', {
+            error:
+              abortError instanceof Error
+                ? abortError.message
+                : 'Unknown error',
+          });
+        }
+      });
 
       // Create stream resource now that we have the actual stream
       streamResource = createStreamResource(
@@ -276,6 +329,7 @@ export class AzureResponsesClient implements AsyncDisposable {
       const startTime = performance.now();
 
       for await (const event of stream as AsyncIterable<ResponseStreamEvent>) {
+        throwIfAborted(signal);
         // Check memory pressure periodically during streaming
         if (chunkCount % 10 === 0) {
           const memoryMetrics = memoryManager.getMemoryMetrics();
@@ -390,6 +444,10 @@ export class AzureResponsesClient implements AsyncDisposable {
         }
       }
     } catch (error) {
+      if (isAbortError(error)) {
+        aborted = true;
+        throw error;
+      }
       if (error instanceof Error) {
         throw ErrorFactory.fromAzureOpenAIError(
           error,
@@ -406,8 +464,23 @@ export class AzureResponsesClient implements AsyncDisposable {
         'createResponseStream'
       );
     } finally {
+      if (removeAbortListener) {
+        removeAbortListener();
+      }
       if (streamResource) {
         this.activeStreams.delete(streamResource);
+        if (aborted && !streamResource.disposed) {
+          try {
+            await streamResource[Symbol.asyncDispose]();
+          } catch (disposeError) {
+            logger.warn('Failed to dispose aborted Azure stream resource', '', {
+              error:
+                disposeError instanceof Error
+                  ? disposeError.message
+                  : 'Unknown error',
+            });
+          }
+        }
       }
     }
   }
@@ -935,6 +1008,10 @@ export class AzureResponsesClient implements AsyncDisposable {
    */
   private handleApiError(error: unknown, operation: string): Error {
     const correlationId = uuidv4();
+
+    if (isAbortError(error)) {
+      return createAbortError(error);
+    }
 
     // Handle direct Error instances first (including our validation errors)
     if (error instanceof Error) {
