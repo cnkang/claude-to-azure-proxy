@@ -11,12 +11,15 @@
  * @since 1.0.0
  */
 
+import { PassThrough } from 'stream';
+
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AWSBedrockClient } from '../../src/clients/aws-bedrock-client';
 import type {
   AWSBedrockConfig,
   ResponsesCreateParams,
 } from '../../src/types/index';
+import * as abortUtils from '../../src/utils/abort-utils';
 
 describe('AWSBedrockClient', () => {
   let validConfig: AWSBedrockConfig;
@@ -164,6 +167,149 @@ describe('AWSBedrockClient', () => {
       await expect(client.createResponse(invalidParams)).rejects.toThrow(
         'Invalid top_p: must be a number between 0 and 1'
       );
+    });
+  });
+
+  describe('abort handling', () => {
+    let client: AWSBedrockClient;
+    let validParams: ResponsesCreateParams;
+
+    beforeEach(() => {
+      client = new AWSBedrockClient(validConfig);
+      validParams = {
+        model: 'qwen.qwen3-coder-480b-a35b-v1:0',
+        input: [{ role: 'user', content: 'Abort test' }],
+        max_output_tokens: 256,
+      };
+    });
+
+    it('should not execute request when signal already aborted', async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      const postSpy = vi.spyOn(
+        (client as unknown as {
+          client: { post: typeof client['client']['post'] };
+        }).client,
+        'post'
+      );
+
+      await expect(
+        client.createResponse(validParams, controller.signal)
+      ).rejects.toMatchObject({ name: 'AbortError' });
+
+      expect(postSpy).not.toHaveBeenCalled();
+
+      const stats = client.getResourceStats();
+      expect(stats.activeConnections).toBe(0);
+      expect(stats.activeStreams).toBe(0);
+
+      postSpy.mockRestore();
+    });
+
+    it('should not start streaming when signal already aborted', async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      const postSpy = vi.spyOn(
+        (client as unknown as {
+          client: { post: typeof client['client']['post'] };
+        }).client,
+        'post'
+      );
+
+      const stream = client.createResponseStream(
+        { ...validParams, stream: true },
+        controller.signal
+      );
+
+      const iterate = async (): Promise<void> => {
+        for await (const _ of stream) {
+          // no-op
+        }
+      };
+
+      await expect(iterate()).rejects.toMatchObject({ name: 'AbortError' });
+
+      expect(postSpy).not.toHaveBeenCalled();
+
+      const stats = client.getResourceStats();
+      expect(stats.activeConnections).toBe(0);
+      expect(stats.activeStreams).toBe(0);
+
+      postSpy.mockRestore();
+    });
+
+    it('should abort streaming mid-stream and release resources', async () => {
+      const controller = new AbortController();
+      const registerSpy = vi.spyOn(abortUtils, 'registerAbortListener');
+
+      const postSpy = vi.spyOn(
+        (client as unknown as {
+          client: { post: typeof client['client']['post'] };
+        }).client,
+        'post'
+      );
+
+      const dataStream = new PassThrough();
+      dataStream.on('error', () => {});
+      postSpy.mockResolvedValue(
+        {
+          data: dataStream,
+        } as unknown
+      );
+
+      const parseSpy = vi.spyOn(
+        client as unknown as {
+          parseEventStream: (
+            stream: unknown,
+            correlationId: string
+          ) => AsyncIterable<Record<string, unknown>>;
+        },
+        'parseEventStream'
+      );
+
+      parseSpy.mockImplementation(async function* () {
+        yield {
+          contentBlockDelta: { delta: { text: 'Chunk 1' } },
+        } as Record<string, unknown>;
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        yield {
+          metadata: {
+            usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+          },
+        } as Record<string, unknown>;
+      });
+
+      const stream = client.createResponseStream(
+        { ...validParams, stream: true },
+        controller.signal
+      );
+
+      const received: unknown[] = [];
+      const iterate = async (): Promise<void> => {
+        for await (const chunk of stream) {
+          received.push(chunk);
+          if (received.length === 1) {
+            controller.abort();
+          }
+        }
+      };
+
+      await expect(iterate()).rejects.toMatchObject({ name: 'AbortError' });
+
+      expect(received.length).toBe(1);
+      expect(controller.signal.aborted).toBe(true);
+
+      const stats = client.getResourceStats();
+      expect(stats.activeConnections).toBe(0);
+      expect(stats.activeStreams).toBe(0);
+      expect(dataStream.destroyed).toBe(true);
+      expect(registerSpy).toHaveBeenCalled();
+
+      postSpy.mockRestore();
+      parseSpy.mockRestore();
+      registerSpy.mockRestore();
     });
   });
 

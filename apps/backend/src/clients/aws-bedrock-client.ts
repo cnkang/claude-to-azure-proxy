@@ -53,6 +53,12 @@ import {
   type StreamResource,
 } from '../runtime/resource-manager';
 import { memoryManager } from '../utils/memory-manager';
+import {
+  createAbortError,
+  isAbortError,
+  throwIfAborted,
+  registerAbortListener,
+} from '../utils/abort-utils';
 
 /**
  * AWS Bedrock Converse API client with validation shared with the Azure client.
@@ -103,10 +109,24 @@ export class AWSBedrockClient implements AsyncDisposable {
    * Creates a non-streaming response using the Converse API with enhanced resource management.
    */
   public async createResponse(
-    params: ResponsesCreateParams
+    params: ResponsesCreateParams,
+    signal?: AbortSignal
   ): Promise<ResponsesResponse> {
     this.ensureNotDisposed();
     validateResponsesCreateParams(params);
+
+    // Check for abort before creating resources
+    throwIfAborted(signal);
+
+    let aborted = false;
+    const removeAbortListener = registerAbortListener(signal, () => {
+      aborted = true;
+    });
+
+    if (signal?.aborted) {
+      removeAbortListener();
+      throw createAbortError(signal.reason);
+    }
 
     // Create connection resource for tracking
     const connectionResource = createHTTPConnectionResource(
@@ -116,6 +136,9 @@ export class AWSBedrockClient implements AsyncDisposable {
     );
     this.activeConnections.add(connectionResource);
 
+    // Check for abort again after resource creation to catch aborts during setup
+    throwIfAborted(signal);
+
     try {
       const modelId = this.getBedrockModelId(params.model);
       const request = this.buildBedrockRequest(params);
@@ -123,7 +146,9 @@ export class AWSBedrockClient implements AsyncDisposable {
       // Make the API call with enhanced monitoring
       const startTime = performance.now();
       const response: AxiosResponse<BedrockConverseResponse> =
-        await this.client.post(`/model/${modelId}/converse`, request);
+        await this.client.post(`/model/${modelId}/converse`, request, {
+          signal,
+        });
       const duration = performance.now() - startTime;
 
       // Log performance metrics
@@ -144,9 +169,26 @@ export class AWSBedrockClient implements AsyncDisposable {
 
       return assertValidResponsesResponse(normalized);
     } catch (error) {
+      if (isAbortError(error)) {
+        aborted = true;
+        throw error;
+      }
       throw this.handleApiError(error, 'createResponse');
     } finally {
+      removeAbortListener();
       this.activeConnections.delete(connectionResource);
+      if (aborted && !connectionResource.disposed) {
+        try {
+          await connectionResource[Symbol.asyncDispose]();
+        } catch (disposeError) {
+          logger.warn('Failed to dispose aborted Bedrock connection', '', {
+            error:
+              disposeError instanceof Error
+                ? disposeError.message
+                : 'Unknown error',
+          });
+        }
+      }
     }
   }
 
@@ -154,16 +196,20 @@ export class AWSBedrockClient implements AsyncDisposable {
    * Creates a streaming response using the Converse API with optimized streaming handling.
    */
   public async *createResponseStream(
-    params: ResponsesCreateParams
+    params: ResponsesCreateParams,
+    signal?: AbortSignal
   ): AsyncIterable<ResponsesStreamChunk> {
     this.ensureNotDisposed();
     validateResponsesCreateParams(params);
+    throwIfAborted(signal);
 
     const correlationId = uuidv4();
 
     // Create stream resource for tracking and automatic cleanup
     // Note: We'll create the resource after we have the actual stream
     let streamResource: StreamResource | undefined;
+    let aborted = false;
+    let removeAbortListener: (() => void) | undefined;
 
     try {
       const modelId = this.getBedrockModelId(params.model);
@@ -177,6 +223,7 @@ export class AWSBedrockClient implements AsyncDisposable {
           headers: {
             Accept: 'application/vnd.amazon.eventstream',
           },
+          signal,
         }
       );
 
@@ -187,9 +234,16 @@ export class AWSBedrockClient implements AsyncDisposable {
       );
       this.activeStreams.add(streamResource);
 
+      removeAbortListener = registerAbortListener(signal, () => {
+        aborted = true;
+        if (typeof response.data.destroy === 'function') {
+          response.data.destroy(createAbortError(signal?.reason));
+        }
+      });
+
       let responseId = correlationId;
       let createdAt = Math.floor(Date.now() / 1000);
-      const model = params.model;
+      const {model} = params;
       let chunkCount = 0;
       const startTime = performance.now();
 
@@ -197,6 +251,7 @@ export class AWSBedrockClient implements AsyncDisposable {
         response.data,
         correlationId
       )) {
+        throwIfAborted(signal);
         // Check memory pressure periodically during streaming
         if (chunkCount % 10 === 0) {
           const memoryMetrics = memoryManager.getMemoryMetrics();
@@ -226,7 +281,7 @@ export class AWSBedrockClient implements AsyncDisposable {
             model
           );
           chunkCount++;
-          yield assertValidResponsesStreamChunk(chunk, correlationId);
+          yield assertValidResponsesStreamChunk(chunk);
           continue;
         }
 
@@ -238,7 +293,7 @@ export class AWSBedrockClient implements AsyncDisposable {
             model
           );
           chunkCount++;
-          yield assertValidResponsesStreamChunk(chunk, correlationId);
+          yield assertValidResponsesStreamChunk(chunk);
           continue;
         }
 
@@ -250,7 +305,7 @@ export class AWSBedrockClient implements AsyncDisposable {
             model
           );
           chunkCount++;
-          yield assertValidResponsesStreamChunk(chunk, correlationId);
+          yield assertValidResponsesStreamChunk(chunk);
           continue;
         }
 
@@ -274,7 +329,7 @@ export class AWSBedrockClient implements AsyncDisposable {
             responseId,
           });
 
-          yield assertValidResponsesStreamChunk(chunk, correlationId);
+          yield assertValidResponsesStreamChunk(chunk);
           continue;
         }
 
@@ -289,7 +344,7 @@ export class AWSBedrockClient implements AsyncDisposable {
               output: outputs,
             };
             chunkCount++;
-            yield assertValidResponsesStreamChunk(chunk, correlationId);
+              yield assertValidResponsesStreamChunk(chunk);
           }
           continue;
         }
@@ -299,10 +354,29 @@ export class AWSBedrockClient implements AsyncDisposable {
         });
       }
     } catch (error) {
+      if (isAbortError(error)) {
+        aborted = true;
+        throw error;
+      }
       throw this.handleApiError(error, 'createResponseStream');
     } finally {
+      if (removeAbortListener) {
+        removeAbortListener();
+      }
       if (streamResource) {
         this.activeStreams.delete(streamResource);
+        if (aborted && !streamResource.disposed) {
+          try {
+            await streamResource[Symbol.asyncDispose]();
+          } catch (disposeError) {
+            logger.warn('Failed to dispose aborted Bedrock stream resource', '', {
+              error:
+                disposeError instanceof Error
+                  ? disposeError.message
+                  : 'Unknown error',
+            });
+          }
+        }
       }
     }
   }
@@ -783,7 +857,7 @@ export class AWSBedrockClient implements AsyncDisposable {
     if (this.isAxiosError(error)) {
       const status = error.response?.status ?? 500;
       const rawData = error.response?.data;
-      let message = error.message;
+      let {message} = error;
 
       if (
         rawData !== undefined &&
@@ -927,10 +1001,8 @@ export class AWSBedrockClient implements AsyncDisposable {
 
   private shouldRetry(error: AxiosError): boolean {
     const status = error.response?.status;
-    if (status !== undefined) {
-      if (status >= 500 || status === 429) {
-        return true;
-      }
+    if (status !== undefined && (status >= 500 || status === 429)) {
+          return true;
     }
 
     const code = error.code ?? '';

@@ -5,6 +5,11 @@
 
 import { performance } from 'node:perf_hooks';
 import { TimeoutError } from '../errors/index';
+import {
+  abortableDelay,
+  createAbortError,
+  isAbortError,
+} from '../utils/abort-utils';
 
 export interface RetryConfig {
   readonly maxAttempts: number;
@@ -97,7 +102,8 @@ export class RetryStrategy {
   public async execute<T>(
     operation: () => Promise<T>,
     correlationId: string,
-    operationName?: string
+    operationName?: string,
+    signal?: AbortSignal
   ): Promise<RetryResult<T>> {
     const startTime = performance.now();
     const attempts: RetryAttempt[] = [];
@@ -106,7 +112,15 @@ export class RetryStrategy {
 
     for (let attempt = 1; attempt <= this.config.maxAttempts; attempt++) {
       if (attempt > 1 && delayBeforeAttempt > 0) {
-        await this.delay(delayBeforeAttempt);
+        try {
+          await this.delay(delayBeforeAttempt, signal);
+        } catch (delayError) {
+          lastError = delayError as Error;
+          if (isAbortError(lastError)) {
+            break;
+          }
+          throw delayError;
+        }
       }
 
       const attemptStartTime = performance.now();
@@ -124,7 +138,8 @@ export class RetryStrategy {
                 operationPromise,
                 this.config.timeoutMs,
                 correlationId,
-                operationName
+                operationName,
+                signal
               )
             : await operationPromise;
 
@@ -162,6 +177,10 @@ export class RetryStrategy {
             new Date(performance.timeOrigin + attemptStartTime),
         });
 
+        if (isAbortError(lastError)) {
+          break;
+        }
+
         // Check if error is retryable
         if (
           !this.isRetryableError(lastError) ||
@@ -176,6 +195,16 @@ export class RetryStrategy {
 
     // All attempts failed
     const totalDurationMs = performance.now() - startTime;
+
+    if (lastError !== undefined && isAbortError(lastError)) {
+      return {
+        success: false,
+        error: lastError,
+        attempts,
+        totalDurationMs,
+      };
+    }
+
     this.updateMetrics(false, attempts.length, totalDurationMs);
 
     return {
@@ -223,10 +252,14 @@ export class RetryStrategy {
   }
 
   /**
-   * Delay execution for specified milliseconds
+   * Delay execution for specified milliseconds with abort support
    */
-  private async delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+  private delay(ms: number, signal?: AbortSignal): Promise<void> {
+    if (ms <= 0) {
+      return Promise.resolve();
+    }
+
+    return abortableDelay(ms, signal);
   }
 
   /**
@@ -236,22 +269,57 @@ export class RetryStrategy {
     promise: Promise<T>,
     timeoutMs: number,
     correlationId: string,
-    operationName?: string
+    operationName?: string,
+    signal?: AbortSignal
   ): Promise<T> {
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => {
-        reject(
-          new TimeoutError(
-            `Operation timed out after ${timeoutMs}ms`,
-            correlationId,
-            timeoutMs,
-            operationName
-          )
-        );
-      }, timeoutMs);
-    });
+    if (timeoutMs <= 0) {
+      return promise;
+    }
 
-    return Promise.race([promise, timeoutPromise]);
+    const timeoutSignal = AbortSignal.timeout(timeoutMs);
+    const combinedSignal =
+      signal !== undefined
+        ? AbortSignal.any([signal, timeoutSignal])
+        : timeoutSignal;
+
+    return new Promise<T>((resolve, reject) => {
+      const cleanup = (): void => {
+        combinedSignal.removeEventListener('abort', onAbort);
+      };
+
+      const onAbort = (): void => {
+        cleanup();
+        if (timeoutSignal.aborted && !(signal?.aborted ?? false)) {
+          reject(
+            new TimeoutError(
+              `Operation timed out after ${timeoutMs}ms`,
+              correlationId,
+              timeoutMs,
+              operationName
+            )
+          );
+        } else {
+          reject(createAbortError(signal?.reason));
+        }
+      };
+
+      if (combinedSignal.aborted) {
+        onAbort();
+        return;
+      }
+
+      combinedSignal.addEventListener('abort', onAbort, { once: true });
+
+      promise
+        .then((value) => {
+          cleanup();
+          resolve(value);
+        })
+        .catch((error: unknown) => {
+          cleanup();
+          reject(error instanceof Error ? error : new Error(String(error)));
+        });
+    });
   }
 
   /**
@@ -355,7 +423,7 @@ export class RetryManager {
       return result.data as T;
     }
 
-    const error =
+    const error: Error =
       result.error ??
       new Error(
         'Retry operation failed after all attempts without error details'
@@ -463,13 +531,14 @@ export function withRetry<T>(
   operation: () => Promise<T>,
   correlationId: string,
   config?: Partial<RetryConfig>,
-  operationName?: string
+  operationName?: string,
+  signal?: AbortSignal
 ): Promise<T> {
   const strategy = new RetryStrategy('default', config);
 
   const wrappedPromise = new Promise<T>((resolve, reject) => {
     strategy
-      .execute(operation, correlationId, operationName)
+      .execute(operation, correlationId, operationName, signal)
       .then((result) => {
         if (result.success && result.data !== undefined) {
           resolve(result.data);

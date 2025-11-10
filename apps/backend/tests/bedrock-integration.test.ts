@@ -499,26 +499,27 @@ describe('Bedrock Integration Tests', () => {
       });
 
       // Verify request transformation to Bedrock format
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
-        expect.stringContaining(
-          '/model/qwen.qwen3-coder-480b-a35b-v1:0/converse'
-        ),
-        expect.objectContaining({
-          messages: [
-            {
-              role: 'user',
-              content: [{ text: 'Write a hello world function in Python' }],
-            },
-          ],
-          system: [{ text: 'You are a helpful coding assistant' }],
-          inferenceConfig: {
-            maxTokens: 200,
-            temperature: 0.7,
-            topP: 0.9,
-            stopSequences: ['END'],
+      const postCall = mockAxiosInstance.post.mock.calls[0];
+      expect(postCall[0]).toContain('/model/qwen.qwen3-coder-480b-a35b-v1:0/converse');
+      expect(postCall[1]).toMatchObject({
+        messages: [
+          {
+            role: 'user',
+            content: [{ text: 'Write a hello world function in Python' }],
           },
-        })
-      );
+        ],
+        system: [{ text: 'You are a helpful coding assistant' }],
+        inferenceConfig: {
+          maxTokens: 200,
+          temperature: 0.7,
+          topP: 0.9,
+          stopSequences: ['END'],
+        },
+      });
+      // Third parameter (config with signal) is optional
+      if (postCall[2]) {
+        expect(postCall[2]).toHaveProperty('signal');
+      }
     });
 
     it('should handle tool use in end-to-end flow', async () => {
@@ -596,28 +597,30 @@ describe('Bedrock Integration Tests', () => {
       ]);
 
       // Verify tool configuration was properly transformed
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({
-          toolConfig: {
-            tools: [
-              {
-                toolSpec: {
-                  name: 'get_weather',
-                  description: 'Get current weather for a location',
-                  inputSchema: {
-                    json: expect.objectContaining({
-                      type: 'object',
-                      properties: expect.any(Object),
-                    }),
-                  },
+      const postCall = mockAxiosInstance.post.mock.calls[0];
+      expect(postCall[0]).toBeTruthy();
+      expect(postCall[1]).toHaveProperty('toolConfig');
+      expect(postCall[1].toolConfig).toMatchObject({
+        tools: [
+          {
+            toolSpec: {
+              name: 'get_weather',
+              description: 'Get current weather for a location',
+              inputSchema: {
+                json: {
+                  type: 'object',
+                  properties: expect.any(Object),
                 },
               },
-            ],
-            toolChoice: { auto: {} },
+            },
           },
-        })
-      );
+        ],
+        toolChoice: { auto: {} },
+      });
+      // Third parameter (config with signal) is optional
+      if (postCall[2]) {
+        expect(postCall[2]).toHaveProperty('signal');
+      }
     });
   });
 });
