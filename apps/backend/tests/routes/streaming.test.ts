@@ -70,12 +70,11 @@ describe('Streaming Functionality', () => {
       azureOpenAI: {
         baseURL: 'https://test-resource.openai.azure.com/openai/v1/',
         apiKey: 'test-api-key',
-        apiVersion: '2025-04-01-preview',
         deployment: 'gpt-5-codex',
         timeout: 30000,
         maxRetries: 3,
       },
-    };
+    } as ServerConfig;
 
     mockResponsesClient = {
       createResponse: vi.fn(),
@@ -104,8 +103,7 @@ describe('Streaming Functionality', () => {
       (req as any).correlationId = 'test-correlation-id';
       next();
     });
-
-    app.post('/v1/completions', completionsHandler(mockConfig));
+    app.post('/v1/completions', completionsHandler(mockConfig) as any);
   });
 
   afterEach(() => {
