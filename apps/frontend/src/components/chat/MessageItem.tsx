@@ -11,29 +11,99 @@ import type { JSX } from 'react';
 import Prism from 'prismjs';
 import 'prismjs/themes/prism.css';
 import 'prismjs/themes/prism-dark.css';
-import 'prismjs/components/prism-javascript';
-import 'prismjs/components/prism-typescript';
-import 'prismjs/components/prism-python';
-import 'prismjs/components/prism-java';
-import 'prismjs/components/prism-cpp';
-import 'prismjs/components/prism-csharp';
-import 'prismjs/components/prism-go';
-import 'prismjs/components/prism-rust';
-import 'prismjs/components/prism-php';
-import 'prismjs/components/prism-ruby';
-import 'prismjs/components/prism-swift';
-import 'prismjs/components/prism-kotlin';
-import 'prismjs/components/prism-scala';
-import 'prismjs/components/prism-json';
-import 'prismjs/components/prism-yaml';
-import 'prismjs/components/prism-markdown';
-import 'prismjs/components/prism-bash';
-import 'prismjs/components/prism-sql';
 import { useI18n } from '../../contexts/I18nContext.js';
 import { useTheme } from '../../contexts/ThemeContext.js';
 import type { Message, CodeBlock } from '../../types/index.js';
 import { frontendLogger } from '../../utils/logger.js';
 import './MessageItem.css';
+
+// Dynamically load Prism language components to avoid initialization errors
+const loadedLanguages = new Set<string>();
+
+async function loadPrismLanguage(language: string): Promise<void> {
+  if (loadedLanguages.has(language)) {
+    return;
+  }
+
+  try {
+    switch (language) {
+      case 'javascript':
+      case 'js':
+        await import('prismjs/components/prism-javascript');
+        break;
+      case 'typescript':
+      case 'ts':
+        await import('prismjs/components/prism-typescript');
+        break;
+      case 'python':
+      case 'py':
+        await import('prismjs/components/prism-python');
+        break;
+      case 'java':
+        await import('prismjs/components/prism-java');
+        break;
+      case 'cpp':
+      case 'c++':
+        await import('prismjs/components/prism-c');
+        await import('prismjs/components/prism-cpp');
+        break;
+      case 'csharp':
+      case 'cs':
+        await import('prismjs/components/prism-csharp');
+        break;
+      case 'go':
+        await import('prismjs/components/prism-go');
+        break;
+      case 'rust':
+      case 'rs':
+        await import('prismjs/components/prism-rust');
+        break;
+      case 'php':
+        await import('prismjs/components/prism-php');
+        break;
+      case 'ruby':
+      case 'rb':
+        await import('prismjs/components/prism-ruby');
+        break;
+      case 'swift':
+        await import('prismjs/components/prism-swift');
+        break;
+      case 'kotlin':
+      case 'kt':
+        await import('prismjs/components/prism-kotlin');
+        break;
+      case 'scala':
+        await import('prismjs/components/prism-scala');
+        break;
+      case 'json':
+        await import('prismjs/components/prism-json');
+        break;
+      case 'yaml':
+      case 'yml':
+        await import('prismjs/components/prism-yaml');
+        break;
+      case 'markdown':
+      case 'md':
+        await import('prismjs/components/prism-markdown');
+        break;
+      case 'bash':
+      case 'sh':
+        await import('prismjs/components/prism-bash');
+        break;
+      case 'sql':
+        await import('prismjs/components/prism-sql');
+        break;
+      default:
+        // Language not supported, will use plain text
+        break;
+    }
+    loadedLanguages.add(language);
+  } catch (error) {
+    frontendLogger.warn('Failed to load Prism language', {
+      metadata: { language, error: error instanceof Error ? error.message : String(error) },
+    });
+  }
+}
 
 interface MessageItemProps {
   readonly message: Message;
@@ -303,9 +373,18 @@ const CodeBlockView = memo<CodeBlockViewProps>(
     );
 
     useEffect(() => {
-      if (codeRef.current) {
-        Prism.highlightElement(codeRef.current);
-      }
+      const highlightCode = async (): Promise<void> => {
+        if (codeRef.current && resolvedLanguage) {
+          await loadPrismLanguage(resolvedLanguage);
+          Prism.highlightElement(codeRef.current);
+        }
+      };
+
+      highlightCode().catch((error) => {
+        frontendLogger.warn('Failed to highlight code', {
+          metadata: { language: resolvedLanguage, error: error instanceof Error ? error.message : String(error) },
+        });
+      });
     }, [code, resolvedLanguage, theme]);
 
     const handleCopyClick = useCallback((): void => {
@@ -514,7 +593,7 @@ const MessageItemComponent = ({
 
           {isStreaming ? (
             <div className="streaming-indicator" aria-live="polite">
-              <span className="streaming-cursor">▋</span>
+              <span className="streaming-cursor" aria-label="Streaming">▋</span>
             </div>
           ) : null}
         </div>

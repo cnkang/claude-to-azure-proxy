@@ -13,6 +13,7 @@ import { List } from 'react-window';
 import { MessageItem } from './MessageItem.js';
 import { TypingIndicator } from './TypingIndicator.js';
 import { StreamingMessage } from './StreamingMessage.js';
+import { WelcomeMessage } from './WelcomeMessage.js';
 import type { Message } from '../../types/index.js';
 import './MessageList.css';
 
@@ -26,6 +27,9 @@ export interface MessageListProps {
   readonly itemHeight?: number;
   readonly autoScrollEnabled?: boolean;
   readonly containerRefCallback?: (element: HTMLDivElement | null) => void;
+  readonly modelName?: string;
+  readonly suggestions?: readonly string[];
+  readonly onSuggestionClick?: (suggestion: string) => void;
 }
 
 export interface MessageListHandle {
@@ -86,12 +90,16 @@ const MessageListComponent = forwardRef<MessageListHandle, MessageListProps>(
       itemHeight = 128,
       autoScrollEnabled = true,
       containerRefCallback,
+      modelName,
+      suggestions = [],
+      onSuggestionClick,
     }: MessageListProps,
     ref
   ): JSX.Element => {
     const containerRef = useRef<HTMLDivElement>(null);
     const listRef = useRef<List>(null);
     const [autoScroll, setAutoScroll] = useState(true);
+    const [showScrollButton, setShowScrollButton] = useState(false);
 
     const shouldUseVirtualScrolling =
       enableVirtualScrolling && messages.length > VIRTUAL_SCROLL_THRESHOLD;
@@ -107,6 +115,8 @@ const MessageListComponent = forwardRef<MessageListHandle, MessageListProps>(
       const isNearBottom = distanceFromBottom < 80;
 
       setAutoScroll(isNearBottom);
+      // Show scroll button when user has scrolled up more than 100px from bottom
+      setShowScrollButton(distanceFromBottom > 100);
     }, []);
 
     const handleVirtualScroll = useCallback(
@@ -135,17 +145,11 @@ const MessageListComponent = forwardRef<MessageListHandle, MessageListProps>(
           totalHeight - (scrollOffset + viewportHeight);
 
         setAutoScroll(distanceFromBottom < itemHeight * 2);
+        // Show scroll button when user has scrolled up more than 100px from bottom
+        setShowScrollButton(distanceFromBottom > 100);
       },
       [itemHeight, messages.length]
     );
-
-    const scrollToBottomVirtual = useCallback((): void => {
-      if (!listRef.current || messages.length === 0) {
-        return;
-      }
-
-      listRef.current.scrollToItem(messages.length - 1, 'end');
-    }, [messages.length]);
 
     const scrollToBottomRegular = useCallback((): void => {
       const container = containerRef.current;
@@ -153,8 +157,30 @@ const MessageListComponent = forwardRef<MessageListHandle, MessageListProps>(
         return;
       }
 
-      container.scrollTop = container.scrollHeight;
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: 'smooth',
+      });
     }, []);
+
+    const scrollToBottomVirtual = useCallback((): void => {
+      if (!listRef.current || messages.length === 0) {
+        return;
+      }
+
+      listRef.current.scrollToItem(messages.length - 1, 'end');
+      setShowScrollButton(false);
+    }, [messages.length]);
+
+    const handleScrollButtonClick = useCallback((): void => {
+      setAutoScroll(true);
+      if (shouldUseVirtualScrolling) {
+        scrollToBottomVirtual();
+      } else {
+        scrollToBottomRegular();
+      }
+      setShowScrollButton(false);
+    }, [shouldUseVirtualScrolling, scrollToBottomVirtual, scrollToBottomRegular]);
 
     useEffect(() => {
       if (!autoScrollEnabled || !autoScroll) {
@@ -210,41 +236,71 @@ const MessageListComponent = forwardRef<MessageListHandle, MessageListProps>(
       [scrollToBottomRegular, scrollToBottomVirtual, shouldUseVirtualScrolling]
     );
 
+    // Debug logging
+    console.log('🟢 [MessageList] Rendering:', {
+      messageCount: messages.length,
+      hasStreaming: !!streamingMessage,
+      isLoading,
+      shouldUseVirtualScrolling,
+    });
+
+    // Task 15.3: Conditional rendering logic
+    // Show welcome message when conversation is empty (no messages) and not loading
+    // Note: We ignore streamingMessage here because SSE START events can create
+    // a streaming message placeholder before any user message is sent
+    const shouldShowWelcome = messages.length === 0 && !isLoading;
+    // Only show streaming message if there are existing messages in the conversation
+    // This ensures streaming only appears after user has sent at least one message
+    const shouldShowStreaming = streamingMessage && messages.length > 0;
+
     return (
       <div
         className="message-list-container"
         ref={containerRef}
         onScroll={shouldUseVirtualScrolling ? undefined : handleScroll}
       >
-        {shouldUseVirtualScrolling ? (
-          <List
-            ref={listRef}
-            height={
-              containerRef.current?.clientHeight ??
-              itemHeight * Math.min(messages.length, 10)
-            }
-            itemCount={messages.length}
-            itemSize={itemHeight}
-            width="100%"
-            itemData={virtualizedData}
-            onScroll={handleVirtualScroll}
-          >
-            {VirtualizedRow}
-          </List>
-        ) : (
-          <div className="message-list">
-            {messages.map((message) => (
-              <MessageItem
-                key={message.id}
-                message={message}
-                onCopyCode={onCopyCode}
-                onRetryMessage={onRetryMessage}
-              />
-            ))}
-          </div>
-        )}
+        {/* Task 15.4: Show welcome message for empty conversations */}
+        {shouldShowWelcome ? (
+          <WelcomeMessage
+            modelName={modelName}
+            suggestions={suggestions}
+            onSuggestionClick={onSuggestionClick}
+          />
+        ) : null}
 
-        {streamingMessage ? (
+        {/* Only show message list if there are messages */}
+        {messages.length > 0 ? (
+          shouldUseVirtualScrolling ? (
+            <List
+              ref={listRef}
+              height={
+                containerRef.current?.clientHeight ??
+                itemHeight * Math.min(messages.length, 10)
+              }
+              itemCount={messages.length}
+              itemSize={itemHeight}
+              width="100%"
+              itemData={virtualizedData}
+              onScroll={handleVirtualScroll}
+            >
+              {VirtualizedRow}
+            </List>
+          ) : (
+            <div className="message-list">
+              {messages.map((message) => (
+                <MessageItem
+                  key={message.id}
+                  message={message}
+                  onCopyCode={onCopyCode}
+                  onRetryMessage={onRetryMessage}
+                />
+              ))}
+            </div>
+          )
+        ) : null}
+
+        {/* Task 15.3: Only show streaming message if appropriate */}
+        {shouldShowStreaming ? (
           <StreamingMessage
             message={streamingMessage}
             onCopyCode={onCopyCode}
@@ -252,6 +308,18 @@ const MessageListComponent = forwardRef<MessageListHandle, MessageListProps>(
         ) : null}
 
         {isLoading ? <TypingIndicator /> : null}
+
+        {showScrollButton ? (
+          <button
+            className="scroll-to-bottom"
+            onClick={handleScrollButtonClick}
+            type="button"
+            aria-label="Scroll to bottom"
+          >
+            <span className="scroll-icon">↓</span>
+            <span className="scroll-text">回到底部</span>
+          </button>
+        ) : null}
       </div>
     );
   }

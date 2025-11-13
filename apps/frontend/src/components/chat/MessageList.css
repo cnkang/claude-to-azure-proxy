@@ -5,16 +5,37 @@
  * empty states, and scroll controls.
  */
 
+/* OptimizedMessageList wrapper - must constrain height for proper scrolling */
+.optimized-message-list {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+
 .message-list-container {
   position: relative;
   flex: 1;
   min-height: 0;
-  background-color: var(--background-primary);
+  max-height: 100%;
+  /* height: 100%; - REMOVED: This was causing the container to expand to content height instead of being constrained by parent flex properties */
+  /* max-height: 100%; - ADDED: Constrains the container to parent height while allowing flex to work */
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 24px 28px;
+  background-color: transparent;
+  scroll-behavior: smooth;
+  display: flex;
+  flex-direction: column;
 }
 
 .message-list {
-  height: 100%;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
 }
 
 .message-list.virtual-list {
@@ -47,7 +68,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
   height: 100%;
+  min-height: 300px;
   padding: 40px 20px;
 }
 
@@ -57,21 +80,21 @@
 }
 
 .empty-icon {
-  font-size: 48px;
+  font-size: 64px;
   margin-bottom: 16px;
-  opacity: 0.6;
+  opacity: 0.4;
 }
 
 .empty-title {
   font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-foreground-tertiary);
   margin: 0 0 8px 0;
 }
 
 .empty-description {
   font-size: 16px;
-  color: var(--text-secondary);
+  color: var(--color-foreground-muted);
   margin: 0;
   line-height: 1.5;
 }
@@ -94,15 +117,15 @@
 
 /* Scroll to Bottom Button */
 .scroll-to-bottom {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
+  position: fixed !important; /* Use fixed positioning to stay visible during scroll - Override global button position: relative from themes.css */
+  bottom: 180px; /* Position well above input area to avoid overlap */
+  right: 40px; /* Offset from right edge */
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 12px 16px;
-  background-color: var(--primary-color);
-  color: var(--primary-text-color);
+  background-color: var(--color-accent, #667eea); /* Use theme accent color with fallback */
+  color: white;
   border: none;
   border-radius: 24px;
   font-size: 14px;
@@ -110,12 +133,12 @@
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   transition: all 0.2s ease;
-  z-index: 10;
+  z-index: 1000; /* Very high z-index to stay above all content including input area */
   animation: fadeInUp 0.3s ease-out;
 }
 
 .scroll-to-bottom:hover {
-  background-color: var(--primary-hover);
+  background-color: var(--color-accent-hover, #5568d3); /* Use theme accent hover color with fallback */
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
 }
@@ -134,27 +157,37 @@
 }
 
 /* Scrollbar Styling */
-.message-list ::-webkit-scrollbar {
-  width: 8px;
+.message-list-container::-webkit-scrollbar {
+  width: 10px;
 }
 
-.message-list ::-webkit-scrollbar-track {
-  background: var(--background-secondary);
+.message-list-container::-webkit-scrollbar-track {
+  background: var(--color-background-secondary);
+  border-radius: 10px;
+  margin: 8px 0;
 }
 
-.message-list ::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 4px;
+.message-list-container::-webkit-scrollbar-thumb {
+  background: var(--color-accent-gradient);
+  border-radius: 10px;
+  border: 2px solid var(--color-background);
+  transition: all 0.3s ease;
 }
 
-.message-list ::-webkit-scrollbar-thumb:hover {
-  background: var(--border-hover);
+.message-list-container::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent-hover);
+  border-color: var(--color-border);
+  box-shadow: 0 0 8px var(--color-accent);
+}
+
+.message-list-container::-webkit-scrollbar-button {
+  display: none;
 }
 
 /* Firefox Scrollbar */
-.message-list {
+.message-list-container {
   scrollbar-width: thin;
-  scrollbar-color: var(--border-color) var(--background-secondary);
+  scrollbar-color: var(--color-accent) var(--color-background-secondary);
 }
 
 /* Animations */

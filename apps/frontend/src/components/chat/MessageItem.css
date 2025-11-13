@@ -1,125 +1,245 @@
 /**
- * Message Item Styles
+ * Message Item Styles - Premium Edition 💎
  * 
- * Styles for individual message display with role-based styling,
- * syntax highlighting, and responsive design.
+ * 极致优化的聊天气泡设计
+ * - 流畅的动画和微交互
+ * - 精致的视觉层次
+ * - 现代化的渐变和阴影
+ * - 完美的响应式设计
  */
 
 .message-item {
   display: flex;
-  gap: 16px;
-  padding: 20px;
-  margin: 12px 0;
-  background: var(--color-background-elevated);
-  border-radius: 16px;
-  border: 1px solid var(--color-border);
-  animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: var(--color-shadow-sm);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  gap: 12px;
+  padding: 0;
+  margin: 0;
+  animation: messageSlideIn 0.3s ease-out;
   position: relative;
-  overflow: hidden;
+  width: 100%;
+  transform-origin: top;
 }
 
-.message-item::before {
+/* 🎨 用户消息 - 右对齐，渐变蓝色背景 */
+.message-item.user {
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+}
+
+.message-item.user .message-body {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 18px 18px 4px 18px;
+  box-shadow: 
+    0 2px 8px rgba(102, 126, 234, 0.2),
+    0 1px 3px rgba(102, 126, 234, 0.1);
+  max-width: 70%;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+/* 用户消息悬停效果 */
+.message-item.user .message-body:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 8px 20px rgba(102, 126, 234, 0.3),
+    0 4px 8px rgba(102, 126, 234, 0.2);
+}
+
+/* 用户消息光泽效果 */
+.message-item.user .message-body::after {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
-  width: 4px;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, transparent 100%);
+  pointer-events: none;
+  border-radius: 20px 20px 0 0;
+}
+
+.message-item.user .message-content {
+  color: white;
+  position: relative;
+  z-index: 1;
+}
+
+.message-item.user .message-role,
+.message-item.user .message-model,
+.message-item.user .message-timestamp {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* 🤖 AI消息 - 左对齐，优雅的灰色背景 */
+.message-item.assistant {
+  flex-direction: row;
+  justify-content: flex-start;
+}
+
+.message-item.assistant .message-body {
+  background: #ffffff;
+  color: #1e293b;
+  border-radius: 18px 18px 18px 4px;
+  box-shadow: 
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e2e8f0;
+  max-width: 70%;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+/* AI消息悬停效果 */
+.message-item.assistant .message-body:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.08),
+    0 2px 6px rgba(0, 0, 0, 0.06);
+  border-color: rgba(203, 213, 225, 1);
+}
+
+/* AI消息微妙的渐变边框 */
+.message-item.assistant .message-body::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
   height: 100%;
-  background: var(--color-accent-gradient);
+  background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
   opacity: 0;
   transition: opacity 0.3s ease;
+  border-radius: 20px 0 0 4px;
 }
 
-.message-item:hover {
-  box-shadow: var(--color-shadow-md);
-  transform: translateY(-2px);
-  border-color: var(--color-border-focus);
+.message-item.assistant .message-body:hover::before {
+  opacity: 0.6;
 }
 
-.message-item:hover::before {
-  opacity: 1;
-}
-
-.message-item:last-child {
-  margin-bottom: 0;
-}
-
+/* ✨ 流式传输动画 - 更加生动 */
 .message-item.streaming {
-  animation: slideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  border-color: var(--color-accent);
-  box-shadow: var(--color-shadow-md);
+  animation: messageSlideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.message-item.streaming::before {
+.message-item.streaming .message-body {
+  border-color: rgba(102, 126, 234, 0.4);
+  box-shadow: 
+    0 4px 16px rgba(102, 126, 234, 0.15),
+    0 2px 8px rgba(102, 126, 234, 0.1),
+    0 0 0 1px rgba(102, 126, 234, 0.1);
+  position: relative;
+}
+
+.message-item.streaming .message-body::before {
   opacity: 1;
-  animation: pulse 2s ease-in-out infinite;
+  animation: streamingPulse 2s ease-in-out infinite;
 }
 
-@keyframes pulse {
+/* 流式传输脉冲动画 */
+@keyframes streamingPulse {
   0%, 100% {
     opacity: 1;
+    box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.4);
   }
   50% {
-    opacity: 0.5;
+    opacity: 0.6;
+    box-shadow: 0 0 8px 2px rgba(102, 126, 234, 0.2);
   }
 }
 
-/* Message Avatar with modern design */
+/* 👤 头像 - 精致的圆形设计 */
 .message-avatar {
   flex-shrink: 0;
+  align-self: flex-end;
+  margin-bottom: 4px;
 }
 
 .avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 18px;
-  font-weight: 600;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: var(--color-shadow-sm);
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.1),
+    0 1px 3px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   position: relative;
 }
 
-.avatar::after {
+/* 头像悬停效果 - 弹跳动画 */
+.message-item:hover .avatar {
+  transform: scale(1.1) rotate(-5deg);
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.15),
+    0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* 用户头像 - 渐变背景 */
+.avatar.user {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+/* 用户头像光环效果 */
+.avatar.user::before {
   content: '';
   position: absolute;
-  inset: -2px;
-  border-radius: 14px;
-  background: var(--color-accent-gradient);
+  inset: -3px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   opacity: 0;
   transition: opacity 0.3s ease;
   z-index: -1;
+  filter: blur(8px);
 }
 
-.message-item:hover .avatar {
-  transform: scale(1.1) rotate(5deg);
-  box-shadow: var(--color-shadow-md);
+.message-item:hover .avatar.user::before {
+  opacity: 0.4;
 }
 
-.message-item:hover .avatar::after {
-  opacity: 0.3;
-}
-
-.avatar.user {
-  background: var(--color-accent-gradient);
-  color: var(--color-accent-text);
-}
-
+/* AI头像 - 优雅的边框 */
 .avatar.assistant {
-  background-color: var(--color-background-tertiary);
-  color: var(--color-foreground);
-  border: 2px solid var(--color-border);
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  color: #667eea;
+  border: 2px solid #e2e8f0;
+  box-shadow: 
+    0 2px 8px rgba(102, 126, 234, 0.1),
+    0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-/* Message Body */
+/* AI头像悬停光环 */
+.avatar.assistant::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+  filter: blur(8px);
+}
+
+.message-item:hover .avatar.assistant::before {
+  opacity: 0.2;
+}
+
+/* 💬 消息主体 - 精致的内边距和排版 */
 .message-body {
   flex: 1;
   min-width: 0;
+  padding: 14px 18px;
+  border-radius: inherit;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .message-header {
@@ -127,36 +247,59 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 8px;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .message-role {
-  font-weight: 600;
-  color: var(--color-foreground);
+  font-weight: 700;
+  font-size: 12px;
+  opacity: 0.95;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
 }
 
 .message-model {
-  padding: 2px 6px;
-  background-color: var(--color-background-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  font-size: 12px;
-  color: var(--color-foreground-secondary);
+  padding: 3px 8px;
+  background-color: rgba(0, 0, 0, 0.08);
+  border-radius: 6px;
+  font-size: 11px;
   font-family:
     'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New',
     monospace;
+  opacity: 0.85;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.message-model:hover {
+  opacity: 1;
+  background-color: rgba(0, 0, 0, 0.12);
 }
 
 .message-timestamp {
-  color: var(--color-foreground-tertiary);
-  font-size: 12px;
+  font-size: 11px;
   margin-left: auto;
+  opacity: 0.75;
+  font-weight: 500;
+  transition: opacity 0.2s ease;
 }
 
-/* Message Content */
+.message-item:hover .message-timestamp {
+  opacity: 0.95;
+}
+
+/* 📝 消息内容 - 优化的行高和字体 */
 .message-content {
-  color: var(--color-foreground);
   line-height: 1.6;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+  text-align: left;
+  direction: ltr;
+}
+
+/* 用户消息内容 - 更好的对比度 */
+.message-item.user .message-content {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .message-files {
@@ -192,6 +335,7 @@
 .message-text {
   word-wrap: break-word;
   overflow-wrap: break-word;
+  text-align: left;
 }
 
 /* Inline Elements */
@@ -207,18 +351,22 @@
   color: var(--color-foreground);
 }
 
-/* Code Blocks with modern design */
+/* 💻 代码块 - 专业级设计 */
 .code-block {
   margin: 16px 0;
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 14px;
   overflow: hidden;
-  background-color: var(--color-code-background);
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
   position: relative;
-  box-shadow: var(--color-shadow-md);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 
+    0 4px 16px rgba(0, 0, 0, 0.12),
+    0 2px 8px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* 代码块顶部渐变条 */
 .code-block::before {
   content: '';
   position: absolute;
@@ -226,13 +374,41 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: var(--color-accent-gradient);
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  background-size: 200% 100%;
+  animation: gradientShift 3s ease infinite;
 }
 
+/* 渐变移动动画 */
+@keyframes gradientShift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* 代码块悬停效果 */
 .code-block:hover {
-  box-shadow: var(--color-shadow-lg);
-  transform: translateY(-2px);
-  border-color: var(--color-accent);
+  box-shadow: 
+    0 8px 24px rgba(0, 0, 0, 0.16),
+    0 4px 12px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transform: translateY(-3px);
+  border-color: rgba(102, 126, 234, 0.4);
+}
+
+/* 代码块光泽效果 */
+.code-block::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, transparent 100%);
+  pointer-events: none;
 }
 
 .code-header {
@@ -326,54 +502,85 @@
   white-space: nowrap;
 }
 
+/* 📋 复制按钮 - 精致的微交互 */
 .copy-button {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
-  background: var(--color-background-elevated);
-  border: 1px solid var(--color-border);
+  padding: 7px 14px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
-  color: var(--color-foreground-secondary);
+  color: rgba(255, 255, 255, 0.9);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: var(--color-shadow-sm);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
   position: relative;
   overflow: hidden;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
+/* 复制按钮光泽效果 */
 .copy-button::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: var(--color-accent-gradient);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, transparent 100%);
   opacity: 0;
   transition: opacity 0.3s ease;
 }
 
+/* 复制按钮悬停效果 */
 .copy-button:hover {
-  background-color: var(--color-hover);
-  border-color: var(--color-accent);
-  color: var(--color-foreground);
-  transform: translateY(-2px);
-  box-shadow: var(--color-shadow-md);
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.3) 0%, rgba(118, 75, 162, 0.3) 100%);
+  border-color: rgba(102, 126, 234, 0.5);
+  color: white;
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 
+    0 4px 16px rgba(102, 126, 234, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .copy-button:hover::before {
-  opacity: 0.1;
+  opacity: 1;
 }
 
+/* 复制按钮激活效果 */
+.copy-button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* 已复制状态 - 成功动画 */
 .copy-button.copied {
-  background: linear-gradient(135deg, var(--color-success) 0%, var(--color-success) 100%);
-  border-color: var(--color-success);
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-color: #10b981;
   color: white;
-  box-shadow: var(--color-shadow-md);
+  box-shadow: 
+    0 4px 16px rgba(16, 185, 129, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  animation: copySuccess 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .copy-button.copied::before {
   opacity: 0;
+}
+
+/* 复制成功动画 */
+@keyframes copySuccess {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .copy-icon {
@@ -471,17 +678,78 @@
   background-color: var(--syntax-background-dark);
 }
 
-/* Streaming Indicator */
+/* ⚡ 流式传输指示器 - 动感十足 */
 .streaming-indicator {
   display: inline-flex;
   align-items: center;
-  margin-left: 4px;
+  margin-left: 6px;
+  gap: 6px;
+  animation: streamingBounce 1.5s ease-in-out infinite;
 }
 
 .streaming-cursor {
-  color: var(--color-accent);
-  animation: blink 1s infinite;
+  color: #667eea;
+  animation: cursorBlink 0.8s ease-in-out infinite;
   font-weight: bold;
+  font-size: 20px;
+  line-height: 1;
+  text-shadow: 0 0 8px rgba(102, 126, 234, 0.5);
+  transform-origin: center;
+}
+
+/* 用户消息的流式光标 - 白色发光 */
+.message-item.user .streaming-cursor {
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.6);
+}
+
+.streaming-text {
+  font-size: 12px;
+  color: #667eea;
+  font-style: italic;
+  opacity: 0.85;
+  font-weight: 500;
+  animation: streamingTextPulse 2s ease-in-out infinite;
+}
+
+.message-item.user .streaming-text {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* 光标闪烁动画 - 更流畅 */
+@keyframes cursorBlink {
+  0%, 45% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50%, 95% {
+    opacity: 0.3;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 流式文本脉冲 */
+@keyframes streamingTextPulse {
+  0%, 100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* 流式弹跳效果 */
+@keyframes streamingBounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
 }
 
 /* Message Footer */
@@ -508,7 +776,21 @@
   /* Assistant messages can have different styling if needed */
 }
 
-/* Animations */
+/* 🎬 动画效果 - 流畅自然 */
+
+/* 消息滑入动画 - 简洁效果 */
+@keyframes messageSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 淡入动画 - 备用 */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -520,10 +802,11 @@
   }
 }
 
+/* 侧滑动画 */
 @keyframes slideIn {
   from {
     opacity: 0;
-    transform: translateX(-10px);
+    transform: translateX(-15px);
   }
   to {
     opacity: 1;
@@ -531,53 +814,85 @@
   }
 }
 
+/* 闪烁动画 - 备用 */
 @keyframes blink {
-  0%,
-  50% {
+  0%, 50% {
     opacity: 1;
   }
-  51%,
-  100% {
+  51%, 100% {
     opacity: 0;
   }
 }
 
-/* Responsive Design */
+/* 📱 响应式设计 - 移动端优化 */
 @media (max-width: 768px) {
   .message-item {
-    gap: 8px;
-    padding: 12px 0;
+    gap: 10px;
+    margin-bottom: 16px;
   }
 
+  /* 移动端消息宽度优化 */
+  .message-item.user .message-body,
+  .message-item.assistant .message-body {
+    max-width: 88%;
+  }
+
+  .message-body {
+    padding: 12px 16px;
+  }
+
+  /* 移动端头像 */
   .avatar {
-    width: 28px;
-    height: 28px;
-    font-size: 14px;
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
   }
 
   .message-header {
     flex-wrap: wrap;
     gap: 6px;
+    font-size: 12px;
+  }
+
+  .message-content {
+    font-size: 14px;
+    line-height: 1.55;
   }
 
   .message-timestamp {
     order: 3;
     flex-basis: 100%;
     margin-left: 0;
-    margin-top: 2px;
+    margin-top: 4px;
   }
 
+  /* 移动端代码块 */
   .code-header {
-    padding: 6px 8px;
+    padding: 8px 12px;
+    flex-wrap: wrap;
   }
 
   .code-content {
-    padding: 8px;
+    padding: 10px;
     font-size: 13px;
   }
 
   .copy-button {
-    padding: 3px 6px;
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+
+  /* 移动端流式指示器 */
+  .streaming-cursor {
+    font-size: 18px;
+  }
+}
+
+/* 平板设备优化 */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .message-item.user .message-body,
+  .message-item.assistant .message-body {
+    max-width: 80%;
   }
 }
 

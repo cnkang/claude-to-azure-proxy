@@ -1,78 +1,121 @@
 /**
- * Chat Interface Styles
+ * Chat Interface Styles - Premium Edition 💎
  * 
- * Main chat interface layout with header, messages, and input areas.
+ * 极致优化的聊天界面设计
+ * - 三段式布局：固定头部、可滚动消息区、固定输入框
+ * - 流畅的动画和微交互
+ * - 现代化的渐变和玻璃态效果
+ * - 完美的响应式设计
  */
 
 .chat-interface {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: linear-gradient(135deg, var(--color-background) 0%, var(--color-background-secondary) 100%);
+  max-height: 100%;
+  background: var(--color-background);
   position: relative;
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
 }
 
-.chat-interface::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: 
-    radial-gradient(circle at 20% 50%, var(--color-accent-light) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, var(--color-info-light) 0%, transparent 50%);
-  opacity: 0.3;
-  pointer-events: none;
+/* Task 12.1: Main content wrapper */
+.chat-interface-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: 100%;
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 0;
 }
 
-/* Connection Error Banner */
+/* ⚠️ 连接错误横幅 - 醒目的警告设计 */
 .connection-error {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  background-color: var(--error-background);
-  border-bottom: 1px solid var(--error-border);
-  color: var(--error-text);
+  gap: 14px;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  border-bottom: 1px solid rgba(220, 38, 38, 0.5);
+  color: white;
   font-size: 14px;
-  animation: slideDown 0.3s ease-out;
+  font-weight: 600;
+  animation: errorSlideDown 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 
+    0 4px 12px rgba(239, 68, 68, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .connection-error .error-icon {
-  font-size: 16px;
+  font-size: 20px;
   flex-shrink: 0;
+  animation: errorPulse 2s ease-in-out infinite;
 }
 
 .connection-error .error-message {
   flex: 1;
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
 .retry-button {
-  padding: 6px 12px;
-  background-color: var(--error-text);
-  color: var(--error-background);
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #dc2626;
   border: none;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 600;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
-  transition: opacity 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .retry-button:hover {
-  opacity: 0.8;
+  background: white;
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-/* Chat Header with glassmorphism */
+.retry-button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* 错误图标脉冲动画 */
+@keyframes errorPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+/* 错误横幅滑入动画 */
+@keyframes errorSlideDown {
+  0% {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(5px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 🎯 聊天头部 */
 .chat-header {
   flex-shrink: 0;
-  padding: 20px 24px;
-  background: var(--glass-background);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border-bottom: 1px solid var(--glass-border);
+  padding: 16px 24px;
+  background: var(--color-background-elevated);
+  border-bottom: 1px solid var(--color-border);
   box-shadow: var(--color-shadow-sm);
   position: relative;
   z-index: 10;
@@ -81,13 +124,13 @@
 .conversation-info {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .conversation-title {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-foreground);
   margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -101,46 +144,61 @@
   flex-wrap: wrap;
 }
 
+/* 模型徽章 */
 .model-badge {
-  padding: 6px 12px;
-  background: var(--color-accent-gradient);
+  padding: 4px 10px;
+  background: #667eea;
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   font-size: 12px;
   font-weight: 600;
   font-family: var(--font-mono);
-  box-shadow: var(--color-shadow-sm);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.model-badge:hover {
-  transform: scale(1.05);
-  box-shadow: var(--color-shadow-md);
 }
 
 .message-count {
   font-size: 14px;
-  color: var(--text-secondary);
+  font-weight: 600;
+  color: var(--color-foreground-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.message-count::before {
+  content: '💬';
+  font-size: 16px;
 }
 
 .context-usage {
-  padding: 2px 6px;
-  background-color: var(--background-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: 3px;
+  padding: 4px 10px;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  border-radius: 8px;
   font-size: 11px;
-  font-weight: 500;
-  color: var(--text-secondary);
+  font-weight: 600;
+  color: #667eea;
   font-family: var(--font-mono);
+  transition: all 0.2s ease;
 }
 
-/* Chat Messages */
+.context-usage:hover {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+  border-color: rgba(102, 126, 234, 0.3);
+}
+
+/* 💬 消息区域 - 可滚动的核心区域 */
 .chat-messages {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 1;
 }
+
+
 
 /* Chat Loading */
 .chat-loading {
@@ -150,13 +208,18 @@
   background-color: var(--background-secondary);
 }
 
-/* Chat Input */
+/* ⌨️ 输入区域 - 固定在底部 */
 .chat-input {
   flex-shrink: 0;
-  background-color: var(--background-primary);
+  padding: 16px 24px;
+  background: var(--color-background-elevated);
+  border-top: 1px solid var(--color-border);
+  box-shadow: 0 -1px 3px var(--color-shadow);
+  position: relative;
+  z-index: 10;
 }
 
-/* Responsive Design */
+/* Task 12.5: Responsive Design - Mobile optimizations */
 @media (max-width: 768px) {
   .chat-header {
     padding: 12px 16px;
@@ -194,6 +257,17 @@
   }
 
   .chat-loading {
+    padding: 12px 16px;
+  }
+
+  /* Task 12.1: Mobile message area adjustments */
+  .chat-messages {
+    padding: 12px 16px;
+    gap: 12px;
+  }
+
+  /* Task 12.1: Mobile input area adjustments */
+  .chat-input {
     padding: 12px 16px;
   }
 }
