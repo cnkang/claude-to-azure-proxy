@@ -18,6 +18,7 @@ import {
   type ContextMessage,
   type ContextCompressionOptions,
 } from '../services/context-management-service.js';
+import { isValidConversationId } from '../utils/validation.js';
 import { getModelRoutingService } from '../services/model-routing-service.js';
 import { getConversationContextService } from '../services/conversation-context-service.js';
 
@@ -67,7 +68,7 @@ const conversationService = getConversationContextService();
 export const getContextUsageHandler = [
   // Input validation
   param('conversationId')
-    .isUUID()
+    .custom(isValidConversationId)
     .withMessage('Invalid conversation ID format'),
 
   async (req: Request, res: Response): Promise<void> => {
@@ -168,7 +169,7 @@ export const getContextUsageHandler = [
 export const extendContextHandler = [
   // Input validation
   param('conversationId')
-    .isUUID()
+    .custom(isValidConversationId)
     .withMessage('Invalid conversation ID format'),
   body('targetModel').isString().isLength({ min: 1, max: 100 }),
   body('reason').optional().isString().isLength({ min: 1, max: 500 }),
@@ -267,7 +268,7 @@ export const extendContextHandler = [
 export const compressContextHandler = [
   // Input validation
   param('conversationId')
-    .isUUID()
+    .custom(isValidConversationId)
     .withMessage('Invalid conversation ID format'),
   body('method').isIn(['ai-summary', 'selective-removal', 'hierarchical']),
   body('targetTokens').optional().isInt({ min: 100, max: 1000000 }),
@@ -439,12 +440,12 @@ export const compressContextHandler = [
 export const createCompressedConversationHandler = [
   // Input validation
   param('conversationId')
-    .isUUID()
+    .custom(isValidConversationId)
     .withMessage('Invalid conversation ID format'),
   body('title').optional().isString().isLength({ min: 1, max: 200 }),
   body('compressedContext').isString().isLength({ min: 1, max: 100000 }),
   body('originalConversationId')
-    .isUUID()
+    .custom(isValidConversationId)
     .withMessage('Invalid original conversation ID'),
 
   async (req: Request, res: Response): Promise<void> => {

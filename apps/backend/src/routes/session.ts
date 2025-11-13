@@ -14,6 +14,7 @@ import { body, param, validationResult } from 'express-validator';
 import { ValidationError } from '../errors/index.js';
 import { logger } from '../middleware/logging.js';
 import type { RequestWithCorrelationId } from '../types/index.js';
+import { isValidSessionId } from '../utils/validation.js';
 
 // Session storage (in-memory for now, could be Redis in production)
 interface SessionData {
@@ -226,8 +227,10 @@ export const createSessionHandler = [
  * GET /api/session/:sessionId
  */
 export const getSessionHandler = [
-  // Input validation
-  param('sessionId').isUUID().withMessage('Invalid session ID format'),
+  // Input validation - accept both UUID and session_* format
+  param('sessionId')
+    .custom(isValidSessionId)
+    .withMessage('Invalid session ID format'),
 
   async (req: Request, res: Response): Promise<void> => {
     const correlationId = (req as RequestWithCorrelationId).correlationId;
@@ -338,12 +341,8 @@ export const validateSessionMiddleware = async (
     return;
   }
 
-  // Validate UUID format
-  if (
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-      sessionId
-    )
-  ) {
+  // Validate session ID format
+  if (!isValidSessionId(sessionId)) {
     res.status(400).json({
       error: {
         type: 'invalid_session_format',
@@ -357,18 +356,24 @@ export const validateSessionMiddleware = async (
   // Generate fingerprint for validation
   const fingerprint = generateBrowserFingerprint(req);
 
-  // Validate session access
-  const session = validateSessionAccess(sessionId, fingerprint, correlationId);
+  // Validate session access or create new session if not exists
+  let session = validateSessionAccess(sessionId, fingerprint, correlationId);
 
   if (!session) {
-    res.status(401).json({
-      error: {
-        type: 'invalid_session',
-        message: 'Invalid or expired session',
-        correlationId,
-      },
+    // Auto-create session if it doesn't exist (for frontend-generated session IDs)
+    logger.info('Auto-creating session for frontend-generated session ID', correlationId, {
+      sessionId,
     });
-    return;
+    
+    const newSession: SessionData = {
+      id: sessionId,
+      fingerprint,
+      createdAt: new Date(),
+      lastAccessed: new Date(),
+    };
+    
+    sessions.set(sessionId, newSession);
+    session = newSession;
   }
 
   // Update last accessed time
