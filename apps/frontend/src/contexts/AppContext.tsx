@@ -258,11 +258,29 @@ function appReducer(state: AppState, action: AppAction): AppState {
       const existingConversation = updatedConversations.get(action.payload.id);
 
       if (existingConversation) {
-        updatedConversations.set(action.payload.id, {
+        const updatedConversation = {
           ...existingConversation,
           ...action.payload.updates,
           updatedAt: new Date(),
-        });
+        };
+        
+        // Task 11.2: Enforce message history limit to prevent unbounded memory growth
+        // Keep only the last 100 messages to prevent memory leaks in long conversations
+        const MAX_MESSAGES_PER_CONVERSATION = 100;
+        if (updatedConversation.messages && updatedConversation.messages.length > MAX_MESSAGES_PER_CONVERSATION) {
+          // Keep the most recent messages
+          updatedConversation.messages = updatedConversation.messages.slice(-MAX_MESSAGES_PER_CONVERSATION);
+          
+          // Log when messages are trimmed for monitoring
+          console.info('[Memory Optimization] Trimmed message history', {
+            conversationId: action.payload.id,
+            originalCount: (action.payload.updates.messages?.length ?? 0),
+            trimmedCount: updatedConversation.messages.length,
+            maxMessages: MAX_MESSAGES_PER_CONVERSATION,
+          });
+        }
+        
+        updatedConversations.set(action.payload.id, updatedConversation);
       }
 
       return {
@@ -335,6 +353,44 @@ export function AppProvider({ children }: AppProviderProps): React.JSX.Element {
     }
   }, [session]);
 
+  // Load conversations from storage on mount
+  useEffect(() => {
+    const loadConversations = async (): Promise<void> => {
+      try {
+        const { ConversationStorage } = await import('../services/storage.js');
+        const storage = ConversationStorage.getInstance();
+        
+        // Initialize storage
+        await storage.initialize();
+        
+        // Load all conversations
+        const conversations = await storage.getAllConversations();
+        
+        if (conversations.length > 0) {
+          // Convert array to Map
+          const conversationsMap = new Map(
+            conversations.map((conv) => [conv.id, conv])
+          );
+          
+          dispatch({
+            type: 'SET_CONVERSATIONS',
+            payload: conversationsMap,
+          });
+          
+          // Set the most recent conversation as active
+          dispatch({
+            type: 'SET_ACTIVE_CONVERSATION',
+            payload: conversations[0].id,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load conversations from storage', error);
+      }
+    };
+
+    void loadConversations();
+  }, []);
+
   // Computed values
   const activeConversationId = state.conversations.activeConversationId;
   const activeConversation =
@@ -377,6 +433,14 @@ export function AppProvider({ children }: AppProviderProps): React.JSX.Element {
     conversation: import('../types/index.js').Conversation
   ): void => {
     dispatch({ type: 'ADD_CONVERSATION', payload: conversation });
+    
+    // Persist to storage
+    import('../services/storage.js').then(({ ConversationStorage }) => {
+      const storage = ConversationStorage.getInstance();
+      storage.storeConversation(conversation).catch((error) => {
+        console.error('Failed to store conversation', error);
+      });
+    }).catch(() => undefined);
   };
 
   const updateConversation = (
@@ -384,10 +448,35 @@ export function AppProvider({ children }: AppProviderProps): React.JSX.Element {
     updates: Partial<import('../types/index.js').Conversation>
   ): void => {
     dispatch({ type: 'UPDATE_CONVERSATION', payload: { id, updates } });
+    
+    // Persist to storage
+    const conversation = state.conversations.conversations.get(id);
+    if (conversation) {
+      const updatedConversation = {
+        ...conversation,
+        ...updates,
+        updatedAt: new Date(),
+      };
+      
+      import('../services/storage.js').then(({ ConversationStorage }) => {
+        const storage = ConversationStorage.getInstance();
+        storage.storeConversation(updatedConversation).catch((error) => {
+          console.error('Failed to update conversation in storage', error);
+        });
+      }).catch(() => undefined);
+    }
   };
 
   const deleteConversation = (id: string): void => {
     dispatch({ type: 'DELETE_CONVERSATION', payload: id });
+    
+    // Delete from storage
+    import('../services/storage.js').then(({ ConversationStorage }) => {
+      const storage = ConversationStorage.getInstance();
+      storage.deleteConversation(id).catch((error) => {
+        console.error('Failed to delete conversation from storage', error);
+      });
+    }).catch(() => undefined);
   };
 
   const resetState = (): void => {

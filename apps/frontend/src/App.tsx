@@ -24,6 +24,7 @@ import {
 import { indexedDBOptimizer } from './services/indexeddb-optimization';
 import { reportAnalyticsException } from './utils/analytics';
 import { frontendLogger } from './utils/logger';
+import { startMemoryMonitoring } from './utils/memoryManager';
 import './App.css';
 
 /**
@@ -44,9 +45,10 @@ function App(): React.JSX.Element {
   // Register performance metrics globally
   usePerformanceRegistration('App', performanceMetrics);
 
-  // Initialize IndexedDB optimization on app start
+  // Initialize IndexedDB optimization and memory monitoring on app start
   useEffect(() => {
     let cleanupInterval: ReturnType<typeof setInterval> | undefined;
+    let stopMemoryMonitoring: (() => void) | undefined;
 
     const initializeOptimizations = async (): Promise<void> => {
       try {
@@ -66,6 +68,14 @@ function App(): React.JSX.Element {
           },
           24 * 60 * 60 * 1000
         );
+        
+        // Task 11.4: Start memory monitoring (every 30 seconds)
+        stopMemoryMonitoring = startMemoryMonitoring(30000);
+        frontendLogger.info('Memory monitoring started', {
+          metadata: {
+            interval: '30 seconds',
+          },
+        });
       } catch (error) {
         frontendLogger.error('Failed to initialize IndexedDB optimization', {
           error: error instanceof Error ? error : new Error(String(error)),
@@ -78,6 +88,11 @@ function App(): React.JSX.Element {
     return (): void => {
       if (cleanupInterval !== undefined) {
         clearInterval(cleanupInterval);
+      }
+      
+      // Task 11.4: Stop memory monitoring on unmount
+      if (stopMemoryMonitoring) {
+        stopMemoryMonitoring();
       }
     };
   }, []);
