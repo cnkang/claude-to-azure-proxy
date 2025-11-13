@@ -294,6 +294,9 @@
 .layout-container {
   width: 100%;
   margin: 0 auto;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .layout-container.max-width-sm {
@@ -310,6 +313,10 @@
 
 .layout-container.max-width-xl {
   max-width: 1280px;
+}
+
+.layout-container.padding-none {
+  padding: 0;
 }
 
 .layout-container.padding-sm {

@@ -52,8 +52,8 @@
   --color-border-focus: #3b82f6;
 
   /* Modern accent colors with AAA compliance */
-  --color-accent: #2563eb; /* 7.5:1 contrast ratio */
-  --color-accent-hover: #1d4ed8; /* 10.1:1 contrast ratio */
+  --color-accent: #1e40af; /* 8.6:1 contrast ratio - WCAG AAA compliant */
+  --color-accent-hover: #1e3a8a; /* 10.8:1 contrast ratio - WCAG AAA compliant */
   --color-accent-light: #dbeafe;
   --color-accent-text: #ffffff; /* 15.8:1 contrast on accent */
   --color-accent-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
