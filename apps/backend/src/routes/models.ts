@@ -85,10 +85,10 @@ const MODEL_CONFIGURATIONS: readonly ModelInfo[] = [
   {
     id: 'gpt-4o',
     name: 'GPT-4o',
-    description: 'Most capable model for complex reasoning and analysis',
+    description: 'OpenAI\'s flagship multimodal model with omnichannel capabilities. Processes text, images, and audio with 128K context window. Excels at real-time interactions, multimodal reasoning, and complex problem-solving. Average response time of 320ms for audio. Ideal for customer support, content creation, and interactive applications.',
     provider: 'azure',
     contextLength: 128000,
-    capabilities: ['text', 'images', 'code', 'reasoning', 'function_calling'],
+    capabilities: ['text', 'images', 'audio', 'code', 'reasoning', 'function_calling', 'real-time', 'multimodal'],
     category: 'general',
     isAvailable: true,
     healthStatus: 'healthy',
@@ -107,10 +107,10 @@ const MODEL_CONFIGURATIONS: readonly ModelInfo[] = [
   {
     id: 'gpt-4o-mini',
     name: 'GPT-4o Mini',
-    description: 'Fast and efficient model for everyday tasks',
+    description: 'Cost-efficient small model that outperforms GPT-3.5 Turbo. 60% cheaper with 128K context window. Scores 82% on MMLU benchmark. Ideal for high-volume API calls, customer support, receipt processing, and email responses. Balances intelligence with speed and affordability.',
     provider: 'azure',
     contextLength: 128000,
-    capabilities: ['text', 'images', 'code'],
+    capabilities: ['text', 'images', 'code', 'vision'],
     category: 'general',
     isAvailable: true,
     healthStatus: 'healthy',
@@ -127,12 +127,100 @@ const MODEL_CONFIGURATIONS: readonly ModelInfo[] = [
     },
   },
   {
+    id: 'gpt-4.1',
+    name: 'GPT-4.1',
+    description: 'Latest GPT-4 series with major improvements in coding and instruction following. Scores 54.6% on SWE-bench Verified (21.4% improvement over GPT-4o). 88% on Aider polyglot coding. 1M token context window with improved long-context comprehension. 10.5% better instruction following. Ideal for complex coding tasks, repository analysis, and agentic workflows.',
+    provider: 'azure',
+    contextLength: 1000000,
+    capabilities: ['text', 'images', 'code', 'reasoning', 'function_calling', 'long-context'],
+    category: 'coding',
+    isAvailable: true,
+    healthStatus: 'healthy',
+    lastHealthCheck: new Date().toISOString(),
+    pricing: {
+      inputTokens: 2.0,
+      outputTokens: 8.0,
+    },
+    features: {
+      streaming: true,
+      functionCalling: true,
+      imageInput: true,
+      contextExtension: true,
+    },
+  },
+  {
+    id: 'gpt-5',
+    name: 'GPT-5',
+    description: 'OpenAI\'s most advanced model for coding and agentic tasks. State-of-the-art: 74.9% on SWE-bench Verified, 88% on Aider polyglot. Excels at frontend development (70% preferred over o3), bug fixing, and complex codebase analysis. 400K context length with 128K max output. Supports hybrid reasoning modes (minimal/low/medium/high) and verbosity control. Ideal for production coding, autonomous agents, and complex problem-solving.',
+    provider: 'azure',
+    contextLength: 400000,
+    capabilities: ['text', 'images', 'code', 'reasoning', 'function_calling', 'agentic', 'frontend', 'long-context'],
+    category: 'coding',
+    isAvailable: true,
+    healthStatus: 'healthy',
+    lastHealthCheck: new Date().toISOString(),
+    pricing: {
+      inputTokens: 1.25,
+      outputTokens: 10.0,
+    },
+    features: {
+      streaming: true,
+      functionCalling: true,
+      imageInput: true,
+      contextExtension: true,
+    },
+  },
+  {
+    id: 'gpt-5-codex',
+    name: 'GPT-5 Codex',
+    description: 'Specialized coding variant of GPT-5 optimized for software development. Enhanced code generation, debugging, and repository-scale analysis. Supports custom tools with plaintext input (no JSON escaping required). Ideal for IDE integrations, code review, and automated refactoring.',
+    provider: 'azure',
+    contextLength: 400000,
+    capabilities: ['text', 'code', 'reasoning', 'function_calling', 'agentic', 'custom-tools'],
+    category: 'coding',
+    isAvailable: true,
+    healthStatus: 'healthy',
+    lastHealthCheck: new Date().toISOString(),
+    pricing: {
+      inputTokens: 1.25,
+      outputTokens: 10.0,
+    },
+    features: {
+      streaming: true,
+      functionCalling: true,
+      imageInput: false,
+      contextExtension: true,
+    },
+  },
+  {
+    id: 'gpt-5-pro',
+    name: 'GPT-5 Pro',
+    description: 'Premium GPT-5 variant with enhanced reasoning and factuality. 80% fewer factual errors than o3. Excels at health questions, legal analysis, and decision-making. Supports advanced agentic workflows with multi-step tool calling. Ideal for enterprise applications requiring highest accuracy and reliability.',
+    provider: 'azure',
+    contextLength: 400000,
+    capabilities: ['text', 'images', 'code', 'reasoning', 'function_calling', 'agentic', 'factuality', 'health'],
+    category: 'reasoning',
+    isAvailable: true,
+    healthStatus: 'healthy',
+    lastHealthCheck: new Date().toISOString(),
+    pricing: {
+      inputTokens: 2.5,
+      outputTokens: 15.0,
+    },
+    features: {
+      streaming: true,
+      functionCalling: true,
+      imageInput: true,
+      contextExtension: true,
+    },
+  },
+  {
     id: 'gpt-4-turbo',
     name: 'GPT-4 Turbo',
-    description: 'Advanced model with large context window',
+    description: 'Advanced GPT-4 model with 128K context window and enhanced vision capabilities. Includes Dall-E 3 integration for image generation. Supports comprehensive multimodal processing. Knowledge cutoff: December 2023.',
     provider: 'azure',
     contextLength: 128000,
-    capabilities: ['text', 'images', 'code', 'reasoning'],
+    capabilities: ['text', 'images', 'code', 'reasoning', 'image-generation'],
     category: 'general',
     isAvailable: true,
     healthStatus: 'healthy',
@@ -194,47 +282,24 @@ const MODEL_CONFIGURATIONS: readonly ModelInfo[] = [
   },
   // AWS Bedrock Models (conditionally available)
   {
-    id: 'qwen-3-coder',
-    name: 'Qwen 3 Coder',
-    description: 'Specialized coding model with extended context support',
-    provider: 'bedrock',
-    contextLength: 256000,
-    extendedContextLength: 1000000,
-    capabilities: ['text', 'code', 'reasoning'],
-    category: 'coding',
-    isAvailable: false, // Will be updated based on configuration
-    healthStatus: 'unavailable',
-    lastHealthCheck: new Date().toISOString(),
-    pricing: {
-      inputTokens: 1.0,
-      outputTokens: 3.0,
-    },
-    features: {
-      streaming: true,
-      functionCalling: false,
-      imageInput: false,
-      contextExtension: true,
-    },
-  },
-  {
     id: 'qwen.qwen3-coder-480b-a35b-v1:0',
-    name: 'Qwen 3 Coder (Full ID)',
-    description: 'Direct access to Qwen 3 Coder model via full model ID',
+    name: 'Qwen3-Coder-480B-A35B',
+    description: 'Alibaba\'s flagship MoE coding model with 480B total parameters and 35B active. Optimized for agentic coding, browser use, and tool orchestration. Native 256K context (extensible to 1M tokens) enables repository-scale analysis. Excels at code generation, debugging, and multi-step workflows across Python, JavaScript, Java, C++, Go, and Rust. Supports advanced function calling and tool integration. Ideal for autonomous coding agents and complex software engineering tasks.',
     provider: 'bedrock',
     contextLength: 256000,
     extendedContextLength: 1000000,
-    capabilities: ['text', 'code', 'reasoning'],
+    capabilities: ['text', 'code', 'reasoning', 'agentic', 'tool-calling', 'multilingual', 'long-context'],
     category: 'coding',
     isAvailable: false, // Will be updated based on configuration
     healthStatus: 'unavailable',
     lastHealthCheck: new Date().toISOString(),
     pricing: {
-      inputTokens: 1.0,
-      outputTokens: 3.0,
+      inputTokens: 1.5,
+      outputTokens: 7.5,
     },
     features: {
       streaming: true,
-      functionCalling: false,
+      functionCalling: true,
       imageInput: false,
       contextExtension: true,
     },
@@ -309,28 +374,120 @@ async function checkModelHealth(
 }
 
 /**
+ * Parse configured model IDs from environment variables
+ */
+function getConfiguredModelIds(): {
+  azureModels: string[];
+  bedrockModels: string[];
+} {
+  const azureModels: string[] = [];
+  const bedrockModels: string[] = [];
+
+  // Parse Azure OpenAI models from AZURE_OPENAI_MODEL
+  if (config.AZURE_OPENAI_MODEL?.trim()) {
+    const models = config.AZURE_OPENAI_MODEL.split(',')
+      .map((m) => m.trim())
+      .filter((m) => m.length > 0);
+    azureModels.push(...models);
+  }
+
+  // Parse AWS Bedrock models from AWS_BEDROCK_MODELS
+  if (config.AWS_BEDROCK_MODELS?.trim()) {
+    const models = config.AWS_BEDROCK_MODELS.split(',')
+      .map((m) => m.trim())
+      .filter((m) => m.length > 0);
+    bedrockModels.push(...models);
+  }
+
+  return { azureModels, bedrockModels };
+}
+
+/**
+ * Create a default ModelInfo for models not in MODEL_CONFIGURATIONS
+ */
+function createDefaultModelInfo(
+  modelId: string,
+  provider: ModelProvider
+): ModelInfo {
+  return {
+    id: modelId,
+    name: modelId
+      .split('-')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' '),
+    description: `${provider === 'azure' ? 'Azure OpenAI' : 'AWS Bedrock'} model`,
+    provider,
+    contextLength: 128000, // Default context length
+    capabilities: ['text', 'code'],
+    category: 'general',
+    isAvailable: true,
+    healthStatus: 'healthy',
+    lastHealthCheck: new Date().toISOString(),
+    pricing: {
+      inputTokens: 2.5,
+      outputTokens: 10.0,
+    },
+    features: {
+      streaming: true,
+      functionCalling: false,
+      imageInput: false,
+      contextExtension: false,
+    },
+  };
+}
+
+/**
  * Gets available models with current health status and configuration
  */
 async function getAvailableModels(): Promise<readonly ModelInfo[]> {
   const models: ModelInfo[] = [];
+  const { azureModels, bedrockModels } = getConfiguredModelIds();
 
+  // Create a map of predefined models for quick lookup
+  const predefinedModels = new Map<string, ModelInfo>();
   for (const model of MODEL_CONFIGURATIONS) {
-    // Check if model should be available based on configuration
-    let isAvailable = model.isAvailable;
+    predefinedModels.set(model.id, model);
+  }
 
-    if (model.provider === 'bedrock') {
-      isAvailable = isAWSBedrockConfigured(config);
-    } else if (model.provider === 'azure') {
-      isAvailable = !!(
-        config.AZURE_OPENAI_ENDPOINT && config.AZURE_OPENAI_API_KEY
-      );
-    }
+  // Process Azure OpenAI models
+  for (const modelId of azureModels) {
+    // Use predefined config if available, otherwise create default
+    const baseModel =
+      predefinedModels.get(modelId) ?? createDefaultModelInfo(modelId, 'azure');
+
+    // Check if model should be available based on provider configuration
+    const isAvailable = !!(
+      config.AZURE_OPENAI_ENDPOINT && config.AZURE_OPENAI_API_KEY
+    );
 
     // Perform health check
-    const healthResult = await checkModelHealth(model.id, model.provider);
+    const healthResult = await checkModelHealth(modelId, 'azure');
 
     models.push({
-      ...model,
+      ...baseModel,
+      id: modelId, // Ensure we use the configured ID
+      isAvailable,
+      healthStatus: healthResult.status,
+      lastHealthCheck: new Date().toISOString(),
+    });
+  }
+
+  // Process AWS Bedrock models
+  for (const modelId of bedrockModels) {
+    // Use predefined config if available, otherwise create default
+    const baseModel =
+      predefinedModels.get(modelId) ??
+      createDefaultModelInfo(modelId, 'bedrock');
+
+    // Check if model should be available based on provider configuration
+    const isAvailable = isAWSBedrockConfigured(config);
+
+    // Perform health check
+    const healthResult = await checkModelHealth(modelId, 'bedrock');
+
+    models.push({
+      ...baseModel,
+      id: modelId, // Ensure we use the configured ID
       isAvailable,
       healthStatus: healthResult.status,
       lastHealthCheck: new Date().toISOString(),
@@ -345,36 +502,31 @@ async function getAvailableModels(): Promise<readonly ModelInfo[]> {
  * Includes Azure OpenAI models and conditionally includes Bedrock models
  */
 function createModelsResponse(): ClaudeModelsResponse {
-  const models: ClaudeModel[] = [
-    // Azure OpenAI model (always included)
-    {
-      id: 'gpt-5-codex',
+  const models: ClaudeModel[] = [];
+  const { azureModels, bedrockModels } = getConfiguredModelIds();
+
+  // Add configured Azure OpenAI models
+  for (const modelId of azureModels) {
+    models.push({
+      id: modelId,
       object: 'model',
       created: 1640995200, // Unix timestamp
       owned_by: 'openai',
       provider: 'azure',
-    },
-  ];
+    });
+  }
 
-  // Add Bedrock models if configured (Requirements 5.1, 5.4)
+  // Add configured Bedrock models if Bedrock is configured
   if (isAWSBedrockConfigured(config)) {
-    // User-friendly model name (Requirement 5.2)
-    models.push({
-      id: 'qwen-3-coder',
-      object: 'model',
-      created: 1640995200,
-      owned_by: 'alibaba',
-      provider: 'bedrock',
-    });
-
-    // Full model ID for direct specification (Requirement 5.2)
-    models.push({
-      id: 'qwen.qwen3-coder-480b-a35b-v1:0',
-      object: 'model',
-      created: 1640995200,
-      owned_by: 'alibaba',
-      provider: 'bedrock',
-    });
+    for (const modelId of bedrockModels) {
+      models.push({
+        id: modelId,
+        object: 'model',
+        created: 1640995200,
+        owned_by: 'alibaba',
+        provider: 'bedrock',
+      });
+    }
   }
 
   return {
