@@ -169,7 +169,7 @@ export function useDynamicImport<T>(
 
     const loadComponent = async (): Promise<void> => {
       try {
-        setState((prev) => ({ ...prev, loading: true, _error: null }));
+        setState((prev) => ({ ...prev, loading: true, error: null }));
         const module = await importFn();
 
         if (!cancelled) {

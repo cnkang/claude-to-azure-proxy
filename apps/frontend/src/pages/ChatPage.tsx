@@ -18,7 +18,7 @@ import type { ClientConfig } from '../types/index';
 /**
  * Chat page component
  */
-export function ChatPage(): React.JSX.Element {
+function ChatPage(): React.JSX.Element {
   const { activeConversation, conversations, createConversation } =
     useConversations();
   const { t } = useI18n();
@@ -119,3 +119,5 @@ export function ChatPage(): React.JSX.Element {
     </LayoutContainer>
   );
 }
+
+export default ChatPage;

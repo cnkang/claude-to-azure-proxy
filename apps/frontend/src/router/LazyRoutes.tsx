@@ -7,43 +7,18 @@
  * Requirements: 5.4
  */
 
-import { lazy, type ComponentType } from 'react';
+import { lazy } from 'react';
 import {
   withLazyLoading,
   LazyComponentRegistry,
 } from '../components/common/LazyComponent';
 import { sendAnalyticsEvent } from '../utils/analytics';
 
-const createLazyLoader = (
-  componentName: string,
-  importer: () => Promise<unknown>,
-  exportName: string
-): (() => Promise<{ default: ComponentType<unknown> }>) => {
-  return async () => {
-    await LazyComponentRegistry.preload(componentName, importer);
-    const module = await importer();
-    const moduleRecord = module as Record<string, unknown>;
-    const component =
-      (moduleRecord.default as ComponentType<unknown> | undefined) ??
-      (moduleRecord[exportName] as ComponentType<unknown> | undefined);
-
-    if (!component) {
-      throw new Error(
-        `Component "${componentName}" is missing export "${exportName}"`
-      );
-    }
-
-    return { default: component };
-  };
-};
-
 /**
  * Lazy-loaded page components
  */
 export const LazyChatPage = withLazyLoading(
-  lazy(
-    createLazyLoader('ChatPage', () => import('../pages/ChatPage'), 'ChatPage')
-  ),
+  lazy(() => import('../pages/ChatPage')),
   {
     loadingMessage: 'Loading chat interface...',
     className: 'chat-page-loading',
@@ -52,13 +27,7 @@ export const LazyChatPage = withLazyLoading(
 );
 
 export const LazySettingsPage = withLazyLoading(
-  lazy(
-    createLazyLoader(
-      'SettingsPage',
-      () => import('../pages/SettingsPage'),
-      'SettingsPage'
-    )
-  ),
+  lazy(() => import('../pages/SettingsPage')),
   {
     loadingMessage: 'Loading settings...',
     className: 'settings-page-loading',
@@ -70,13 +39,7 @@ export const LazySettingsPage = withLazyLoading(
  * Lazy-loaded component chunks
  */
 export const LazyConversationManager = withLazyLoading(
-  lazy(
-    createLazyLoader(
-      'ConversationManager',
-      () => import('../components/conversation/ConversationManager'),
-      'default'
-    )
-  ),
+  lazy(() => import('../components/conversation/ConversationManager')),
   {
     loadingMessage: 'Loading conversations...',
     className: 'conversation-manager-loading',
@@ -84,13 +47,7 @@ export const LazyConversationManager = withLazyLoading(
 );
 
 export const LazyOptimizedConversationList = withLazyLoading(
-  lazy(
-    createLazyLoader(
-      'OptimizedConversationList',
-      () => import('../components/conversation/OptimizedConversationList'),
-      'OptimizedConversationList'
-    )
-  ),
+  lazy(() => import('../components/conversation/OptimizedConversationList')),
   {
     loadingMessage: 'Loading conversation list...',
     className: 'conversation-list-loading',
@@ -98,13 +55,7 @@ export const LazyOptimizedConversationList = withLazyLoading(
 );
 
 export const LazyOptimizedMessageList = withLazyLoading(
-  lazy(
-    createLazyLoader(
-      'OptimizedMessageList',
-      () => import('../components/chat/OptimizedMessageList'),
-      'OptimizedMessageList'
-    )
-  ),
+  lazy(() => import('../components/chat/OptimizedMessageList')),
   {
     loadingMessage: 'Loading messages...',
     className: 'message-list-loading',
@@ -112,13 +63,7 @@ export const LazyOptimizedMessageList = withLazyLoading(
 );
 
 export const LazyContextManager = withLazyLoading(
-  lazy(
-    createLazyLoader(
-      'ContextManager',
-      () => import('../components/chat/ContextManager'),
-      'ContextManager'
-    )
-  ),
+  lazy(() => import('../components/chat/ContextManager')),
   {
     loadingMessage: 'Loading context manager...',
     className: 'context-manager-loading',
@@ -126,13 +71,7 @@ export const LazyContextManager = withLazyLoading(
 );
 
 export const LazyFileUpload = withLazyLoading(
-  lazy(
-    createLazyLoader(
-      'FileUpload',
-      () => import('../components/chat/FileUpload'),
-      'FileUpload'
-    )
-  ),
+  lazy(() => import('../components/chat/FileUpload')),
   {
     loadingMessage: 'Loading file upload...',
     className: 'file-upload-loading',
@@ -140,13 +79,7 @@ export const LazyFileUpload = withLazyLoading(
 );
 
 export const LazyModelSelector = withLazyLoading(
-  lazy(
-    createLazyLoader(
-      'ModelSelector',
-      () => import('../components/common/ModelSelector'),
-      'default'
-    )
-  ),
+  lazy(() => import('../components/common/ModelSelector')),
   {
     loadingMessage: 'Loading model selector...',
     className: 'model-selector-loading',
@@ -157,13 +90,7 @@ export const LazyModelSelector = withLazyLoading(
  * Lazy-loaded demo components (for development/testing)
  */
 export const LazyModelDemo = withLazyLoading(
-  lazy(
-    createLazyLoader(
-      'ModelDemo',
-      () => import('../components/common/ModelDemo'),
-      'default'
-    )
-  ),
+  lazy(() => import('../components/common/ModelDemo')),
   {
     loadingMessage: 'Loading model demo...',
     className: 'model-demo-loading',
@@ -171,13 +98,7 @@ export const LazyModelDemo = withLazyLoading(
 );
 
 export const LazyThemeDemo = withLazyLoading(
-  lazy(
-    createLazyLoader(
-      'ThemeDemo',
-      () => import('../components/common/ThemeDemo'),
-      'default'
-    )
-  ),
+  lazy(() => import('../components/common/ThemeDemo')),
   {
     loadingMessage: 'Loading theme demo...',
     className: 'theme-demo-loading',
@@ -185,13 +106,7 @@ export const LazyThemeDemo = withLazyLoading(
 );
 
 export const LazyConversationDemo = withLazyLoading(
-  lazy(
-    createLazyLoader(
-      'ConversationDemo',
-      () => import('../components/conversation/ConversationDemo'),
-      'default'
-    )
-  ),
+  lazy(() => import('../components/conversation/ConversationDemo')),
   {
     loadingMessage: 'Loading conversation demo...',
     className: 'conversation-demo-loading',
