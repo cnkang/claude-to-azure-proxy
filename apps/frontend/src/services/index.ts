@@ -9,3 +9,4 @@ export * from './storage';
 export * from './models';
 export * from './chat';
 export * from './context';
+export * from './conversations';
