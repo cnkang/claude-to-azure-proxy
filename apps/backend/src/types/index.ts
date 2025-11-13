@@ -306,6 +306,12 @@ export interface HealthCheckResult {
     readonly status: 'connected' | 'disconnected';
     readonly responseTime?: number;
   };
+  readonly sse?: {
+    readonly activeConnections: number;
+    readonly totalConnections: number;
+    readonly errorRate: number;
+    readonly averageConnectionDuration: number;
+  };
 }
 
 export interface RequestWithCorrelationId extends Request {

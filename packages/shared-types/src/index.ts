@@ -85,7 +85,7 @@ export interface FileInfo {
 
 // Streaming types
 export interface StreamChunk {
-  readonly type: 'start' | 'chunk' | 'end' | 'error';
+  readonly type: 'start' | 'chunk' | 'end' | 'error' | 'heartbeat';
   readonly content?: string;
   readonly messageId?: string;
   readonly correlationId: string;
