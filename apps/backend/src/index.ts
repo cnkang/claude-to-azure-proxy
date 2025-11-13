@@ -72,7 +72,9 @@ import {
   getConnectionsHandler,
   closeConnectionHandler,
   getSSEStatsHandler,
+  getChatStatsHandler,
 } from './routes/chat-stream';
+import { simpleChatHandler } from './routes/chat-simple.js';
 import {
   getContextUsageHandler,
   extendContextHandler,
@@ -529,6 +531,13 @@ export class ProxyServer {
       sendChatMessageHandler as unknown as express.RequestHandler[]
     );
 
+    // Simple chat endpoint (without SSE) for testing
+    this.app.post(
+      '/api/chat/simple',
+      validateSessionMiddleware as unknown as express.RequestHandler,
+      simpleChatHandler as unknown as express.RequestHandler[]
+    );
+
     this.app.get(
       '/api/chat/connections',
       validateSessionMiddleware as unknown as express.RequestHandler,
@@ -541,9 +550,10 @@ export class ProxyServer {
       closeConnectionHandler as unknown as express.RequestHandler[]
     );
 
+    // Task 7.2: Comprehensive chat statistics endpoint
     this.app.get(
       '/api/chat-stats',
-      getSSEStatsHandler as unknown as express.RequestHandler
+      getChatStatsHandler as unknown as express.RequestHandler
     );
 
     // Context management endpoints (require session validation)
