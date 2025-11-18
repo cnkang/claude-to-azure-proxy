@@ -252,26 +252,28 @@ vi.mock('i18next-browser-_languagedetector', () => ({
     unobserve(): void {}
   };
 
-// Mock matchMedia
-Object.defineProperty(window, 'matchMedia', {
-  writable: true,
-  value: (query: string): MediaQueryList => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: (): void => {},
-    removeListener: (): void => {},
-    addEventListener: (): void => {},
-    removeEventListener: (): void => {},
-    dispatchEvent: (): boolean => false,
-  }),
-});
+// Mock matchMedia (guard for non-browser environments)
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: (query: string): MediaQueryList => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: (): void => {},
+      removeListener: (): void => {},
+      addEventListener: (): void => {},
+      removeEventListener: (): void => {},
+      dispatchEvent: (): boolean => false,
+    }),
+  });
 
-// Mock scrollTo
-Object.defineProperty(window, 'scrollTo', {
-  writable: true,
-  value: (): void => {},
-});
+  // Mock scrollTo
+  Object.defineProperty(window, 'scrollTo', {
+    writable: true,
+    value: (): void => {},
+  });
+}
 
 // Mock crypto API with Web Crypto API support
 Object.defineProperty(globalThis, 'crypto', {
@@ -420,37 +422,39 @@ const localStorageMock = {
   store: {} as Record<string, string>,
 };
 
-Object.defineProperty(window, 'localStorage', {
-  value: localStorageMock,
-});
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, 'localStorage', {
+    value: localStorageMock,
+  });
 
-// Mock sessionStorage
-const sessionStorageMock = {
-  getItem: (key: string): string | null => {
-    return sessionStorageMock.store[key] ?? null;
-  },
-  setItem: (key: string, value: string): void => {
-    sessionStorageMock.store[key] = value;
-  },
-  removeItem: (key: string): void => {
-    delete sessionStorageMock.store[key];
-  },
-  clear: (): void => {
-    sessionStorageMock.store = {};
-  },
-  key: (index: number): string | null => {
-    const keys = Object.keys(sessionStorageMock.store);
-    return keys[index] ?? null;
-  },
-  get length(): number {
-    return Object.keys(sessionStorageMock.store).length;
-  },
-  store: {} as Record<string, string>,
-};
+  // Mock sessionStorage
+  const sessionStorageMock = {
+    getItem: (key: string): string | null => {
+      return sessionStorageMock.store[key] ?? null;
+    },
+    setItem: (key: string, value: string): void => {
+      sessionStorageMock.store[key] = value;
+    },
+    removeItem: (key: string): void => {
+      delete sessionStorageMock.store[key];
+    },
+    clear: (): void => {
+      sessionStorageMock.store = {};
+    },
+    key: (index: number): string | null => {
+      const keys = Object.keys(sessionStorageMock.store);
+      return keys[index] ?? null;
+    },
+    get length(): number {
+      return Object.keys(sessionStorageMock.store).length;
+    },
+    store: {} as Record<string, string>,
+  };
 
-Object.defineProperty(window, 'sessionStorage', {
-  value: sessionStorageMock,
-});
+  Object.defineProperty(window, 'sessionStorage', {
+    value: sessionStorageMock,
+  });
+}
 
 // Mock CompressionStream and DecompressionStream for Node.js environment
 if (typeof CompressionStream === 'undefined') {
