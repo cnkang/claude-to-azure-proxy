@@ -23,8 +23,13 @@ export default defineConfig({
         singleThread: false,
         isolate: true,
         useAtomics: true,
+        // Limit worker count to prevent excessive heap usage during heavy suites
+        maxThreads: 2,
+        minThreads: 1,
       },
     },
+    // Run specs sequentially per worker to avoid concurrent heap spikes
+    fileParallelism: false,
     nodeOptions: ['--expose-gc'],
     // Enhanced test timeout for Node.js 24 performance testing
     testTimeout: 30000,
