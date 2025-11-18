@@ -25,6 +25,7 @@ export default defineConfig({
         useAtomics: true,
       },
     },
+    nodeOptions: ['--expose-gc'],
     // Enhanced test timeout for Node.js 24 performance testing
     testTimeout: 30000,
     hookTimeout: 10000,
