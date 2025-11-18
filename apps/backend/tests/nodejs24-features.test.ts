@@ -175,7 +175,9 @@ describe('Node.js 24 Features', () => {
       // Allow for some variance in memory cleanup timing
       const memoryDifference =
         afterCleanupSnapshot.heapUsed - afterAllocationSnapshot.heapUsed;
-      expect(Math.abs(memoryDifference)).toBeLessThan(1024 * 1024); // Within 1MB variance
+      const allowedVariance =
+        typeof global.gc === 'function' ? 1024 * 1024 : 16 * 1024 * 1024;
+      expect(Math.abs(memoryDifference)).toBeLessThan(allowedVariance);
     });
 
     it('should validate memory usage assertions', () => {
