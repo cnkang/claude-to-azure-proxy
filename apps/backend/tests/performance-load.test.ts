@@ -17,9 +17,6 @@ import {
   afterEach,
   vi,
 } from 'vitest';
-import request from 'supertest';
-import express from 'express';
-import { json } from 'express';
 import { performance } from 'perf_hooks';
 import { UniversalRequestProcessor } from '../src/utils/universal-request-processor';
 import { createConversationManager } from '../src/utils/conversation-manager';
@@ -307,13 +304,143 @@ class PerformanceResponseFactory {
 }
 
 describe('Performance and Load Testing', () => {
-  let app: express.Application;
   let universalProcessor: UniversalRequestProcessor;
   let conversationManager: ReturnType<typeof createConversationManager>;
   let performanceMetrics: PerformanceMetrics;
 
-  beforeAll(async () => {
-    // Initialize components
+  type EndpointPath = '/v1/messages' | '/v1/chat/completions';
+  type OperationType = 'claude_request' | 'openai_request';
+
+  interface RequestOptions {
+    headers?: Record<string, string>;
+  }
+
+  const defaultUserAgent = 'performance-load-test';
+
+  const normalizeHeaders = (headers?: Record<string, string>): Record<string, string> => ({
+    'User-Agent': defaultUserAgent,
+    ...(headers ?? {}),
+  });
+
+  const toClaudeResponse = (responsesResponse: ResponsesResponse) => ({
+    id: responsesResponse.id,
+    type: 'message',
+    role: 'assistant',
+    content: responsesResponse.output
+      .filter((output) => output.type === 'text')
+      .map((output) => ({
+        type: 'text',
+        text: output.text,
+      })),
+    model: 'claude-3-5-sonnet-20241022',
+    stop_reason: 'end_turn',
+    usage: {
+      input_tokens: responsesResponse.usage.prompt_tokens,
+      output_tokens: responsesResponse.usage.completion_tokens,
+    },
+  });
+
+  const toOpenAIResponse = (responsesResponse: ResponsesResponse) => ({
+    id: responsesResponse.id,
+    object: 'chat.completion',
+    created: responsesResponse.created,
+    model: responsesResponse.model,
+    choices: [
+      {
+        index: 0,
+        message: {
+          role: 'assistant',
+          content: responsesResponse.output
+            .filter((output) => output.type === 'text')
+            .map((output) => output.text)
+            .join(''),
+        },
+        finish_reason: 'stop',
+      },
+    ],
+    usage: {
+      prompt_tokens: responsesResponse.usage.prompt_tokens,
+      completion_tokens: responsesResponse.usage.completion_tokens,
+      total_tokens: responsesResponse.usage.total_tokens,
+    },
+  });
+
+  const recordGeneralMetric = (method: string, path: string, duration: number): void => {
+    performanceMetrics.recordMetric(`${method} ${path}`, duration);
+  };
+
+  const extractTokenUsage = (responsesResponse: ResponsesResponse) => ({
+    promptTokens: responsesResponse.usage.prompt_tokens,
+    completionTokens: responsesResponse.usage.completion_tokens,
+    reasoningTokens: responsesResponse.usage.reasoning_tokens,
+    totalTokens: responsesResponse.usage.total_tokens,
+  });
+
+  const executeRequest = async (
+    body: ClaudeRequest,
+    path: EndpointPath,
+    operation: OperationType,
+    options?: RequestOptions
+  ): Promise<{ status: number; body: unknown }> => {
+    const method = 'POST';
+    const headers = normalizeHeaders(options?.headers);
+    const userAgent = headers['User-Agent'] ?? headers['user-agent'] ?? defaultUserAgent;
+
+    const startTime = performance.now();
+
+    try {
+      const result = await universalProcessor.processRequest({
+        headers,
+        body,
+        path,
+        userAgent,
+      });
+
+      const responsesResponse = await mockAzureClient.createResponse(
+        result.responsesParams
+      );
+
+      const duration = performance.now() - startTime;
+      recordGeneralMetric(method, path, duration);
+      performanceMetrics.recordMetric(operation, duration, extractTokenUsage(responsesResponse));
+
+      return {
+        status: 200,
+        body:
+          path === '/v1/messages'
+            ? toClaudeResponse(responsesResponse)
+            : toOpenAIResponse(responsesResponse),
+      };
+    } catch (error) {
+      const duration = performance.now() - startTime;
+      recordGeneralMetric(method, path, duration);
+
+      return {
+        status: 500,
+        body: {
+          type: 'error',
+          error: {
+            type: 'api_error',
+            message: error instanceof Error ? error.message : 'Unknown error',
+          },
+        },
+      };
+    }
+  };
+
+  const sendClaudeRequest = (
+    body: ClaudeRequest,
+    options?: RequestOptions
+  ): Promise<{ status: number; body: unknown }> =>
+    executeRequest(body, '/v1/messages', 'claude_request', options);
+
+  const sendOpenAIRequest = (
+    body: ClaudeRequest,
+    options?: RequestOptions
+  ): Promise<{ status: number; body: unknown }> =>
+    executeRequest(body, '/v1/chat/completions', 'openai_request', options);
+
+  beforeAll(() => {
     universalProcessor = new UniversalRequestProcessor({
       enableInputValidation: true,
       enableContentSecurityValidation: true,
@@ -349,141 +476,6 @@ describe('Performance and Load Testing', () => {
     });
 
     performanceMetrics = new PerformanceMetrics();
-
-    // Create Express app with performance monitoring
-    app = express();
-    app.use(json({ limit: '10mb' }));
-
-    // Add performance monitoring middleware
-    app.use((req, res, next) => {
-      const startTime = performance.now();
-
-      res.on('finish', () => {
-        const duration = performance.now() - startTime;
-        performanceMetrics.recordMetric(`${req.method} ${req.path}`, duration);
-      });
-
-      next();
-    });
-
-    // Add test routes
-    app.post('/v1/messages', async (req, res) => {
-      const startTime = performance.now();
-
-      try {
-        const result = await universalProcessor.processRequest({
-          headers: req.headers as Record<string, string>,
-          body: req.body,
-          path: req.path,
-          userAgent: req.get('User-Agent'),
-        });
-
-        const responsesResponse = await mockAzureClient.createResponse(
-          result.responsesParams
-        );
-
-        const duration = performance.now() - startTime;
-        performanceMetrics.recordMetric('claude_request', duration, {
-          promptTokens: responsesResponse.usage.prompt_tokens,
-          completionTokens: responsesResponse.usage.completion_tokens,
-          reasoningTokens: responsesResponse.usage.reasoning_tokens,
-          totalTokens: responsesResponse.usage.total_tokens,
-        });
-
-        // Transform back to Claude format
-        const claudeResponse = {
-          id: responsesResponse.id,
-          type: 'message',
-          role: 'assistant',
-          content: responsesResponse.output
-            .filter((output) => output.type === 'text')
-            .map((output) => ({
-              type: 'text',
-              text: output.text,
-            })),
-          model: 'claude-3-5-sonnet-20241022',
-          stop_reason: 'end_turn',
-          usage: {
-            input_tokens: responsesResponse.usage.prompt_tokens,
-            output_tokens: responsesResponse.usage.completion_tokens,
-          },
-        };
-
-        res.json(claudeResponse);
-      } catch (error) {
-        res.status(500).json({
-          type: 'error',
-          error: {
-            type: 'api_error',
-            message: error instanceof Error ? error.message : 'Unknown error',
-          },
-        });
-      }
-    });
-
-    app.post('/v1/chat/completions', async (req, res) => {
-      const startTime = performance.now();
-
-      try {
-        const result = await universalProcessor.processRequest({
-          headers: req.headers as Record<string, string>,
-          body: req.body,
-          path: req.path,
-          userAgent: req.get('User-Agent'),
-        });
-
-        const responsesResponse = await mockAzureClient.createResponse(
-          result.responsesParams
-        );
-
-        const duration = performance.now() - startTime;
-        performanceMetrics.recordMetric('openai_request', duration, {
-          promptTokens: responsesResponse.usage.prompt_tokens,
-          completionTokens: responsesResponse.usage.completion_tokens,
-          reasoningTokens: responsesResponse.usage.reasoning_tokens,
-          totalTokens: responsesResponse.usage.total_tokens,
-        });
-
-        // Transform back to OpenAI format
-        const openaiResponse = {
-          id: responsesResponse.id,
-          object: 'chat.completion',
-          created: responsesResponse.created,
-          model: responsesResponse.model,
-          choices: [
-            {
-              index: 0,
-              message: {
-                role: 'assistant',
-                content: responsesResponse.output
-                  .filter((output) => output.type === 'text')
-                  .map((output) => output.text)
-                  .join(''),
-              },
-              finish_reason: 'stop',
-            },
-          ],
-          usage: {
-            prompt_tokens: responsesResponse.usage.prompt_tokens,
-            completion_tokens: responsesResponse.usage.completion_tokens,
-            total_tokens: responsesResponse.usage.total_tokens,
-          },
-        };
-
-        res.json(openaiResponse);
-      } catch (error) {
-        res.status(500).json({
-          type: 'error',
-          error: {
-            type: 'api_error',
-            message: error instanceof Error ? error.message : 'Unknown error',
-          },
-        });
-      }
-    });
-
-    // Start server (not used in tests)
-    app.listen(0);
   });
 
   beforeEach(() => {
@@ -510,7 +502,7 @@ describe('Performance and Load Testing', () => {
       const startTime = performance.now();
 
       const promises = concurrentRequests.map((claudeRequest) =>
-        request(app).post('/v1/messages').send(claudeRequest)
+        sendClaudeRequest(claudeRequest)
       );
 
       const responses = await Promise.all(promises);
@@ -543,7 +535,7 @@ describe('Performance and Load Testing', () => {
       const startTime = performance.now();
 
       const promises = concurrentRequests.map((claudeRequest) =>
-        request(app).post('/v1/messages').send(claudeRequest)
+        sendClaudeRequest(claudeRequest)
       );
 
       const responses = await Promise.all(promises);
@@ -591,11 +583,11 @@ describe('Performance and Load Testing', () => {
       const startTime = performance.now();
 
       const claudePromises = claudeRequests.map((req) =>
-        request(app).post('/v1/messages').send(req)
+        sendClaudeRequest(req)
       );
 
       const openaiPromises = openaiRequests.map((req) =>
-        request(app).post('/v1/chat/completions').send(req)
+        sendOpenAIRequest(req)
       );
 
       const [claudeResponses, openaiResponses] = await Promise.all([
@@ -640,7 +632,7 @@ describe('Performance and Load Testing', () => {
         const batchStartTime = performance.now();
 
         const promises = requests.map((claudeRequest) =>
-          request(app).post('/v1/messages').send(claudeRequest)
+          sendClaudeRequest(claudeRequest)
         );
 
         const responses = await Promise.all(promises);
@@ -696,7 +688,7 @@ describe('Performance and Load Testing', () => {
         );
 
         const promises = requests.map((claudeRequest) =>
-          request(app).post('/v1/messages').send(claudeRequest)
+          sendClaudeRequest(claudeRequest)
         );
 
         const responses = await Promise.all(promises);
@@ -741,7 +733,7 @@ describe('Performance and Load Testing', () => {
       );
 
       const promises = architecturalRequests.map((claudeRequest) =>
-        request(app).post('/v1/messages').send(claudeRequest)
+        sendClaudeRequest(claudeRequest)
       );
 
       const responses = await Promise.all(promises);
@@ -799,7 +791,7 @@ describe('Performance and Load Testing', () => {
       );
 
       const promises = simpleRequests.map((claudeRequest) =>
-        request(app).post('/v1/messages').send(claudeRequest)
+        sendClaudeRequest(claudeRequest)
       );
 
       const responses = await Promise.all(promises);
@@ -830,7 +822,7 @@ describe('Performance and Load Testing', () => {
         const requests = LoadTestScenario.generateMemoryIntensiveRequests(10);
 
         const promises = requests.map((claudeRequest) =>
-          request(app).post('/v1/messages').send(claudeRequest)
+          sendClaudeRequest(claudeRequest)
         );
 
         await Promise.all(promises);
@@ -886,10 +878,11 @@ describe('Performance and Load Testing', () => {
       for (const conversationId of conversationIds) {
         const claudeRequest = ClaudeRequestFactory.create({ size: 'medium' });
 
-        await request(app)
-          .post('/v1/messages')
-          .set('X-Conversation-ID', conversationId)
-          .send(claudeRequest);
+        await sendClaudeRequest(claudeRequest, {
+          headers: {
+            'X-Conversation-ID': conversationId,
+          },
+        });
       }
 
       const beforeCleanupMemory = process.memoryUsage();
@@ -931,7 +924,7 @@ describe('Performance and Load Testing', () => {
       const initialMemory = process.memoryUsage();
 
       const promises = largeRequests.map((claudeRequest) =>
-        request(app).post('/v1/messages').send(claudeRequest)
+        sendClaudeRequest(claudeRequest)
       );
 
       const responses = await Promise.all(promises);
@@ -967,7 +960,7 @@ describe('Performance and Load Testing', () => {
       );
 
       const promises = simpleRequests.map((claudeRequest) =>
-        request(app).post('/v1/messages').send(claudeRequest)
+        sendClaudeRequest(claudeRequest)
       );
 
       const responses = await Promise.all(promises);
@@ -1009,7 +1002,7 @@ describe('Performance and Load Testing', () => {
       );
 
       const promises = complexRequests.map((claudeRequest) =>
-        request(app).post('/v1/messages').send(claudeRequest)
+        sendClaudeRequest(claudeRequest)
       );
 
       const responses = await Promise.all(promises);
@@ -1051,7 +1044,7 @@ describe('Performance and Load Testing', () => {
       );
 
       const promises = requests.map((claudeRequest) =>
-        request(app).post('/v1/messages').send(claudeRequest)
+        sendClaudeRequest(claudeRequest)
       );
 
       const responses = await Promise.all(promises);
@@ -1096,7 +1089,7 @@ describe('Performance and Load Testing', () => {
       });
 
       const promises = requests.map((claudeRequest) =>
-        request(app).post('/v1/messages').send(claudeRequest)
+        sendClaudeRequest(claudeRequest)
       );
 
       const responses = await Promise.all(promises);
