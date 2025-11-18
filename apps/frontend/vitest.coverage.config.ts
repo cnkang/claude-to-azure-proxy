@@ -15,7 +15,7 @@ export default mergeConfig(
         forks: {
           singleFork: true,  // Single fork prevents worker timeout
           isolate: true,
-          execArgv: ['--max-old-space-size=16384', '--expose-gc'],
+          execArgv: ['--max-old-space-size=24576', '--expose-gc'],
           maxForks: 1,
           minForks: 1,
         },
