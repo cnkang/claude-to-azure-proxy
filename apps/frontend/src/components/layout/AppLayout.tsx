@@ -99,7 +99,7 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
 
   return (
     <AccessibilityProvider wcagLevel="AAA">
-      <div className={layoutClasses} dir={isRTL ? 'rtl' : 'ltr'}>
+      <div className={layoutClasses} dir={isRTL ? 'rtl' : 'ltr'} data-testid="app-container">
         {/* Skip to main content link for accessibility */}
         <SkipLink
           targetId="main-content"
@@ -137,7 +137,7 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
 
         {/* Loading overlay */}
         {state.ui.isLoading && (
-          <div className="loading-overlay" role="status" aria-live="polite">
+          <div className="loading-overlay" role="status" aria-live="polite" data-testid="loading-spinner">
             <div className="loading-spinner">
               <div className="spinner" />
               <span className="loading-text">{t('loading.default')}</span>
@@ -151,6 +151,7 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
             className="error-notification"
             role="alert"
             aria-live="assertive"
+            data-testid="error-message"
           >
             <div className="error-content">
               <span className="error-icon">⚠️</span>

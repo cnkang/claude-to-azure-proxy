@@ -25,6 +25,7 @@ import { indexedDBOptimizer } from './services/indexeddb-optimization';
 import { reportAnalyticsException } from './utils/analytics';
 import { frontendLogger } from './utils/logger';
 import { startMemoryMonitoring } from './utils/memoryManager';
+import { IntegrityCheckInitializer } from './components/common/IntegrityCheckInitializer';
 import './App.css';
 
 /**
@@ -144,6 +145,9 @@ function App(): React.JSX.Element {
           <ThemeProvider>
             <I18nProvider>
               <NotificationProvider maxNotifications={5} defaultDuration={5000}>
+                {/* Data Integrity Check on Startup */}
+                <IntegrityCheckInitializer />
+                
                 <AppRouter />
 
                 {/* Performance Dashboard (development only) */}

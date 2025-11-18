@@ -154,14 +154,17 @@ describe('Configuration Module', () => {
       expect(exitSpy).toHaveBeenCalledWith(1);
     });
 
-    it('should exit when AZURE_OPENAI_MODEL is missing', async () => {
+    it('should allow AZURE_OPENAI_MODEL to be empty (for Bedrock-only setup)', async () => {
       process.env.PROXY_API_KEY = 'a'.repeat(32);
       process.env.AZURE_OPENAI_ENDPOINT = 'https://test.openai.azure.com';
       process.env.AZURE_OPENAI_API_KEY = 'b'.repeat(32);
+      delete process.env.AZURE_OPENAI_MODEL; // Allow it to be missing
 
-      await import('../src/config/index.js?t=' + Date.now());
+      const configModule = await import('../src/config/index.js?t=' + Date.now());
 
-      expect(exitSpy).toHaveBeenCalledWith(1);
+      // Should not exit - empty model is allowed
+      expect(exitSpy).not.toHaveBeenCalled();
+      expect(configModule.default.AZURE_OPENAI_MODEL).toBe('');
     });
 
     it('should exit when AZURE_OPENAI_MODEL has invalid characters', async () => {

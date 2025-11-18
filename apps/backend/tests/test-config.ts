@@ -13,7 +13,7 @@ export const testConfig: Config = {
   PROXY_API_KEY: 'test-api-key-12345678901234567890123456789012',
   AZURE_OPENAI_ENDPOINT: 'https://test.openai.azure.com',
   AZURE_OPENAI_API_KEY: 'test-azure-key-12345678901234567890123456789012',
-  AZURE_OPENAI_MODEL: 'gpt-4-test-deployment',
+  AZURE_OPENAI_MODEL: 'gpt-5-codex',
 
   AZURE_OPENAI_TIMEOUT: 60000,
   AZURE_OPENAI_MAX_RETRIES: 3,

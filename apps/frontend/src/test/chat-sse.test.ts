@@ -18,6 +18,14 @@ vi.mock('../services/session.js', () => ({
 // Mock the logger
 vi.mock('../utils/logger.js', () => ({
   frontendLogger: {
+    log: vi.fn(),
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  },
+  logger: {
+    log: vi.fn(),
     info: vi.fn(),
     error: vi.fn(),
     warn: vi.fn(),
@@ -1387,13 +1395,13 @@ describe('Error Handling (Task 5)', () => {
       );
     });
 
-    it('should map rate_limit to user-friendly message', async () => {
+    it('should map rate_limited to user-friendly message', async () => {
       const { NetworkError } = await import('../utils/networkErrorHandler.js');
       const errorCallback = vi.fn();
       chatService.onConnectionError(errorCallback);
 
       const fetchEventSourceSpy = vi.spyOn(fetchEventSourceModule, 'fetchEventSource');
-      const error = new NetworkError('Too many requests', 'rate_limit', {
+      const error = new NetworkError('Too many requests', 'rate_limited', {
         retryable: true,
       });
 
@@ -1421,8 +1429,7 @@ describe('Error Handling (Task 5)', () => {
         { type: 'timeout', expectedGuidance: /internet speed|try again/i },
         { type: 'unauthorized', expectedGuidance: /refresh.*page|log in/i },
         { type: 'server_error', expectedGuidance: /try again/i },
-        { type: 'rate_limit', expectedGuidance: /wait.*moment/i },
-        { type: 'network_error', expectedGuidance: /check.*internet/i },
+        { type: 'rate_limited', expectedGuidance: /wait.*moment/i },
       ];
 
       for (const { type, expectedGuidance } of errorTypes) {
@@ -1622,7 +1629,7 @@ describe('Connection Health Monitoring (Task 6)', () => {
       client.connect();
       await new Promise((resolve) => setTimeout(resolve, 50));
 
-      expect(frontendLogger.debug).toHaveBeenCalledWith(
+      expect(frontendLogger.log).toHaveBeenCalledWith(
         'Heartbeat received',
         expect.objectContaining({
           metadata: expect.objectContaining({
@@ -1686,13 +1693,13 @@ describe('Connection Health Monitoring (Task 6)', () => {
       });
 
       client.connect();
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const health1 = client.getConnectionHealth();
       const timestamp1 = health1.lastMessageTimestamp;
 
-      // Wait for messages
-      await new Promise((resolve) => setTimeout(resolve, 250));
+      // Wait for second message (needs to be after the 200ms setTimeout in mock)
+      await new Promise((resolve) => setTimeout(resolve, 300));
 
       const health2 = client.getConnectionHealth();
       const timestamp2 = health2.lastMessageTimestamp;

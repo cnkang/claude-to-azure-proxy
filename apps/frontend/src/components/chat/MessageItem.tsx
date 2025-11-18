@@ -110,6 +110,7 @@ interface MessageItemProps {
   readonly isStreaming?: boolean;
   readonly onCopyCode?: (code: string) => void;
   readonly onRetryMessage?: (messageId: string) => void;
+  readonly highlightKeywords?: string[]; // Task 6.4: Keywords to highlight (Requirement 8.4)
 }
 
 type MessageSegment =
@@ -339,7 +340,50 @@ function resolveLanguage(languageHint?: string, filename?: string): string {
   return 'text';
 }
 
-function renderTextContent(text: string): React.ReactNode {
+/**
+ * Task 6.4: Highlight keywords in text
+ * Requirement 8.4: Highlights all keyword occurrences in conversation
+ */
+function highlightKeywordsInText(
+  text: string,
+  keywords?: string[]
+): React.ReactNode {
+  if (!keywords || keywords.length === 0 || text.length === 0) {
+    return text;
+  }
+
+  // Create a regex pattern that matches any of the keywords (case-insensitive)
+  // Note: Keywords are escaped to prevent regex injection
+  const pattern = keywords
+    .map((keyword) => keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) // Escape special regex chars
+    .join('|');
+  
+  // eslint-disable-next-line security/detect-non-literal-regexp -- Pattern is sanitized above
+  const regex = new RegExp(`(${pattern})`, 'gi');
+  const parts = text.split(regex);
+
+  return parts.map((part, index) => {
+    // Check if this part matches any keyword (case-insensitive)
+    const isKeyword = keywords.some(
+      (keyword) => part.toLowerCase() === keyword.toLowerCase()
+    );
+
+    if (isKeyword) {
+      return (
+        <mark key={`highlight-${index}`} className="keyword-highlight">
+          {part}
+        </mark>
+      );
+    }
+
+    return <Fragment key={`text-${index}`}>{part}</Fragment>;
+  });
+}
+
+function renderTextContent(
+  text: string,
+  highlightKeywords?: string[]
+): React.ReactNode {
   if (text.length === 0) {
     return null;
   }
@@ -348,7 +392,7 @@ function renderTextContent(text: string): React.ReactNode {
 
   return lines.map((line, index) => (
     <Fragment key={`line-${index}`}>
-      {line}
+      {highlightKeywordsInText(line, highlightKeywords)}
       {index < lines.length - 1 ? <br /> : null}
     </Fragment>
   ));
@@ -441,6 +485,7 @@ const MessageItemComponent = ({
   isStreaming = false,
   onCopyCode,
   onRetryMessage,
+  highlightKeywords,
 }: MessageItemProps): JSX.Element => {
   const { t, formatRelativeTime, formatDateTime, formatFileSize } = useI18n();
   const { resolvedTheme } = useTheme();
@@ -564,7 +609,7 @@ const MessageItemComponent = ({
 
           {segments.map((segment) => {
             if (segment.type === 'text') {
-              const rendered = renderTextContent(segment.text);
+              const rendered = renderTextContent(segment.text, highlightKeywords);
               if (rendered === null) {
                 return null;
               }

@@ -73,29 +73,8 @@ describe('ConversationStorage local fallback', () => {
       get: () => Object.keys(localStorageInstance.store).length,
     });
 
-    (
-      storage as unknown as {
-        encryptData: (data: string) => Promise<{
-          data: string;
-          iv: string;
-          compressed: boolean;
-          timestamp: number;
-        }>;
-        decryptData: (payload: { data: string }) => Promise<string>;
-      }
-    ).encryptData = vi.fn(async (data: string) => ({
-      data,
-      iv: 'iv',
-      compressed: false,
-      timestamp: Date.now(),
-    }));
-
-    (
-      storage as unknown as {
-        encryptData: (data: string) => Promise<unknown>;
-        decryptData: (payload: { data: string }) => Promise<string>;
-      }
-    ).decryptData = vi.fn(async (payload: { data: string }) => payload.data);
+    // Don't mock encryption/decryption - let it use the crypto.subtle mock from setup.ts
+    // This ensures the encryption/decryption logic works correctly in tests
   });
 
   afterEach(() => {
@@ -347,14 +326,262 @@ describe('ConversationStorage local fallback', () => {
   });
 
   it('deletes conversation keys that may not exist without throwing', async () => {
-    await expect(
-      storage.deleteConversation('missing-id')
-    ).resolves.toBeUndefined();
+    const result = await storage.deleteConversation('missing-id');
+    expect(result).toBeDefined();
+    expect(result.success).toBe(false);
+    expect(result.conversationRemoved).toBe(false);
   });
 
   it('returns cleanup success when no conversations are stored', async () => {
     const cleanup = await storage.performCleanup();
     expect(cleanup.success).toBe(true);
     expect(cleanup.conversationsRemoved).toBe(0);
+  });
+
+  describe('updateConversationTitle', () => {
+    it('updates conversation title atomically with validation', async () => {
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: {
+            getSessionId: () => string;
+            getSessionStoragePrefix: () => string;
+          };
+        }
+      ).sessionManager;
+      const sessionId = sessionManager.getSessionId();
+      const conversation = createConversation('conv-title-update', sessionId);
+      
+      await storage.storeConversation(conversation);
+      
+      const newTitle = 'Updated Title';
+      await storage.updateConversationTitle('conv-title-update', newTitle);
+      
+      const updated = await storage.getConversation('conv-title-update');
+      expect(updated).not.toBeNull();
+      expect(updated?.title).toBe(newTitle);
+      expect(updated?.updatedAt.getTime()).toBeGreaterThan(conversation.updatedAt.getTime());
+    });
+
+    it('validates title length - rejects empty title', async () => {
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: {
+            getSessionId: () => string;
+          };
+        }
+      ).sessionManager;
+      const sessionId = sessionManager.getSessionId();
+      const conversation = createConversation('conv-empty-title', sessionId);
+      
+      await storage.storeConversation(conversation);
+      
+      await expect(
+        storage.updateConversationTitle('conv-empty-title', '')
+      ).rejects.toThrow('Title must be between 1 and 200 characters');
+    });
+
+    it('validates title length - rejects title over 200 characters', async () => {
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: {
+            getSessionId: () => string;
+          };
+        }
+      ).sessionManager;
+      const sessionId = sessionManager.getSessionId();
+      const conversation = createConversation('conv-long-title', sessionId);
+      
+      await storage.storeConversation(conversation);
+      
+      const longTitle = 'a'.repeat(201);
+      await expect(
+        storage.updateConversationTitle('conv-long-title', longTitle)
+      ).rejects.toThrow('Title must be between 1 and 200 characters');
+    });
+
+    it('sanitizes title to prevent XSS attacks', async () => {
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: {
+            getSessionId: () => string;
+          };
+        }
+      ).sessionManager;
+      const sessionId = sessionManager.getSessionId();
+      const conversation = createConversation('conv-xss-title', sessionId);
+      
+      await storage.storeConversation(conversation);
+      
+      const maliciousTitle = '<script>alert("XSS")</script>Safe Title';
+      await storage.updateConversationTitle('conv-xss-title', maliciousTitle);
+      
+      const updated = await storage.getConversation('conv-xss-title');
+      expect(updated).not.toBeNull();
+      expect(updated?.title).toBe('Safe Title');
+      expect(updated?.title).not.toContain('<script>');
+      expect(updated?.title).not.toContain('alert');
+    });
+
+    it('sanitizes title - removes javascript: protocol', async () => {
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: {
+            getSessionId: () => string;
+          };
+        }
+      ).sessionManager;
+      const sessionId = sessionManager.getSessionId();
+      const conversation = createConversation('conv-js-protocol', sessionId);
+      
+      await storage.storeConversation(conversation);
+      
+      const maliciousTitle = 'javascript:void(0) Safe Title';
+      await storage.updateConversationTitle('conv-js-protocol', maliciousTitle);
+      
+      const updated = await storage.getConversation('conv-js-protocol');
+      expect(updated).not.toBeNull();
+      expect(updated?.title).not.toContain('javascript:');
+    });
+
+    it('sanitizes title - removes event handlers', async () => {
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: {
+            getSessionId: () => string;
+          };
+        }
+      ).sessionManager;
+      const sessionId = sessionManager.getSessionId();
+      const conversation = createConversation('conv-event-handler', sessionId);
+      
+      await storage.storeConversation(conversation);
+      
+      const maliciousTitle = 'onclick=alert(1) Safe Title';
+      await storage.updateConversationTitle('conv-event-handler', maliciousTitle);
+      
+      const updated = await storage.getConversation('conv-event-handler');
+      expect(updated).not.toBeNull();
+      expect(updated?.title).not.toContain('onclick=');
+    });
+
+    it('trims whitespace and normalizes spaces', async () => {
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: {
+            getSessionId: () => string;
+          };
+        }
+      ).sessionManager;
+      const sessionId = sessionManager.getSessionId();
+      const conversation = createConversation('conv-whitespace', sessionId);
+      
+      await storage.storeConversation(conversation);
+      
+      const titleWithSpaces = '  Multiple   Spaces   Title  ';
+      await storage.updateConversationTitle('conv-whitespace', titleWithSpaces);
+      
+      const updated = await storage.getConversation('conv-whitespace');
+      expect(updated).not.toBeNull();
+      expect(updated?.title).toBe('Multiple Spaces Title');
+    });
+
+    it('throws error when conversation not found', async () => {
+      await expect(
+        storage.updateConversationTitle('non-existent', 'New Title')
+      ).rejects.toThrow('Failed to update conversation title');
+    });
+
+    it('logs successful title update', async () => {
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: {
+            getSessionId: () => string;
+          };
+        }
+      ).sessionManager;
+      const sessionId = sessionManager.getSessionId();
+      const conversation = createConversation('conv-log-success', sessionId);
+      
+      await storage.storeConversation(conversation);
+      
+      const loggerSpy = vi.spyOn(frontendLogger, 'info');
+      
+      await storage.updateConversationTitle('conv-log-success', 'New Title');
+      
+      // Check for the completion log message
+      expect(loggerSpy).toHaveBeenCalledWith(
+        'Title update completed successfully',
+        expect.objectContaining({
+          metadata: expect.objectContaining({
+            conversationId: 'conv-log-success',
+            sanitizedTitleLength: 9,
+          }),
+        })
+      );
+      
+      loggerSpy.mockRestore();
+    });
+
+    it('logs error when title update fails', async () => {
+      const loggerSpy = vi.spyOn(frontendLogger, 'error');
+      
+      await expect(
+        storage.updateConversationTitle('non-existent', 'New Title')
+      ).rejects.toThrow();
+      
+      expect(loggerSpy).toHaveBeenCalledWith(
+        'Failed to update conversation title in localStorage',
+        expect.objectContaining({
+          metadata: expect.objectContaining({
+            conversationId: 'non-existent',
+          }),
+          error: expect.any(Error),
+        })
+      );
+      
+      loggerSpy.mockRestore();
+    });
+
+    it('accepts title at minimum length (1 character)', async () => {
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: {
+            getSessionId: () => string;
+          };
+        }
+      ).sessionManager;
+      const sessionId = sessionManager.getSessionId();
+      const conversation = createConversation('conv-min-length', sessionId);
+      
+      await storage.storeConversation(conversation);
+      
+      await storage.updateConversationTitle('conv-min-length', 'A');
+      
+      const updated = await storage.getConversation('conv-min-length');
+      expect(updated).not.toBeNull();
+      expect(updated?.title).toBe('A');
+    });
+
+    it('accepts title at maximum length (200 characters)', async () => {
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: {
+            getSessionId: () => string;
+          };
+        }
+      ).sessionManager;
+      const sessionId = sessionManager.getSessionId();
+      const conversation = createConversation('conv-max-length', sessionId);
+      
+      await storage.storeConversation(conversation);
+      
+      const maxTitle = 'a'.repeat(200);
+      await storage.updateConversationTitle('conv-max-length', maxTitle);
+      
+      const updated = await storage.getConversation('conv-max-length');
+      expect(updated).not.toBeNull();
+      expect(updated?.title).toBe(maxTitle);
+      expect(updated?.title.length).toBe(200);
+    });
   });
 });

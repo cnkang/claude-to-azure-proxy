@@ -17,6 +17,7 @@ import { createConversation } from '../../services/conversations.js';
 import type { Conversation } from '../../types/index.js';
 import { DropdownMenu } from '../common/DropdownMenu.js';
 import { ConfirmDialog } from '../common/ConfirmDialog.js';
+import { ConversationSearch } from '../search/ConversationSearch.js';
 import './Sidebar.css';
 
 /**
@@ -326,6 +327,7 @@ export function Sidebar({
       aria-label={t('sidebar.navigation')}
       aria-hidden={!isOpen}
       tabIndex={-1}
+      data-testid="sidebar"
     >
       <div className="sidebar-content">
         {/* Sidebar header */}
@@ -337,6 +339,7 @@ export function Sidebar({
             disabled={isCreatingConversation}
             aria-label={t('sidebar.newConversation')}
             aria-busy={isCreatingConversation}
+            data-testid="new-conversation-button"
           >
             <span className="new-conversation-icon">
               {isCreatingConversation ? '⏳' : '+'}
@@ -360,6 +363,20 @@ export function Sidebar({
           )}
         </div>
 
+        {/* Search conversations */}
+        {conversationsList.length > 0 && (
+          <div className="conversations-search-section">
+            <ConversationSearch
+              onResultSelect={(conversationId) => {
+                setActiveConversation(conversationId);
+                if (isMobile) {
+                  onClose();
+                }
+              }}
+            />
+          </div>
+        )}
+
         {/* Conversations list */}
         <div className="conversations-section">
           <h2 className="conversations-title">{t('sidebar.conversations')}</h2>
@@ -373,12 +390,16 @@ export function Sidebar({
               </p>
             </div>
           ) : (
-            <ul className="conversations-list">
+            <ul className="conversations-list" data-testid="conversations-list">
               {conversationsList.map((conversation: Conversation) => {
                 const isActive = activeConversation?.id === conversation.id;
 
                 return (
-                  <li key={conversation.id} className="conversation-item">
+                  <li 
+                    key={conversation.id} 
+                    className="conversation-item"
+                    data-testid={`conversation-item-${conversation.id}`}
+                  >
                     <button
                       type="button"
                       className={[
@@ -392,6 +413,7 @@ export function Sidebar({
                         title: conversation.title,
                       })}
                       aria-current={isActive ? 'page' : undefined}
+                      data-testid={`conversation-button-${conversation.id}`}
                     >
                       <div className="conversation-content">
                         {renamingId === conversation.id ? (
@@ -408,9 +430,13 @@ export function Sidebar({
                             onClick={(e) => e.stopPropagation()}
                             maxLength={100}
                             aria-label={t('sidebar.renameConversation')}
+                            data-testid="conversation-title-input"
                           />
                         ) : (
-                          <div className="conversation-title">
+                          <div 
+                            className="conversation-title"
+                            data-testid={`conversation-title-${conversation.id}`}
+                          >
                             {conversation.title}
                           </div>
                         )}
@@ -458,6 +484,7 @@ export function Sidebar({
                         aria-label={t('sidebar.conversationOptions')}
                         aria-expanded={menuOpen === conversation.id}
                         aria-haspopup="menu"
+                        data-testid={`conversation-options-${conversation.id}`}
                       >
                         <span className="action-icon">⋯</span>
                       </div>

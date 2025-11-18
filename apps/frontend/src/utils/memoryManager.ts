@@ -38,11 +38,20 @@ export interface MemoryStats {
  * Note: performance.memory is only available in Chrome/Edge
  */
 export function getMemoryStats(): MemoryStats | null {
-  if (!performance.memory) {
+  // Type assertion for Chrome-specific performance.memory API
+  const perfWithMemory = performance as Performance & {
+    memory?: {
+      usedJSHeapSize: number;
+      totalJSHeapSize: number;
+      jsHeapSizeLimit: number;
+    };
+  };
+  
+  if (!perfWithMemory.memory) {
     return null;
   }
 
-  const memory = performance.memory;
+  const memory = perfWithMemory.memory;
   const percentUsed = (memory.usedJSHeapSize / memory.jsHeapSizeLimit) * 100;
 
   let status: 'healthy' | 'warning' | 'critical' = 'healthy';

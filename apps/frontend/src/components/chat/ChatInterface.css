@@ -355,3 +355,178 @@
     transform: translateY(0);
   }
 }
+
+/* Task 6.4: Keyword Navigation Controls (Requirement 8.5) */
+.keyword-navigation {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  background: var(--color-background-elevated);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: 0 1px 3px var(--color-shadow);
+  z-index: 9;
+}
+
+.occurrence-counter {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-foreground-secondary);
+  font-family: var(--font-mono);
+  padding: 4px 10px;
+  background: rgba(102, 126, 234, 0.1);
+  border-radius: 6px;
+}
+
+.nav-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-foreground);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-button:hover:not(:disabled) {
+  background: var(--color-background-hover);
+  border-color: #667eea;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+}
+
+.nav-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.nav-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.nav-button:focus-visible {
+  outline: 3px solid #667eea;
+  outline-offset: 2px;
+}
+
+/* Task 6.4: Keyword Highlighting Styles (Requirement 8.4) */
+.keyword-highlight {
+  background: #fef08a;
+  color: #854d0e;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-weight: 600;
+  box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.3);
+  transition: all 0.2s ease;
+}
+
+.keyword-highlight-active {
+  background: #fbbf24;
+  color: #78350f;
+  box-shadow: 
+    0 0 0 2px rgba(251, 191, 36, 0.5),
+    0 0 12px rgba(251, 191, 36, 0.4);
+  animation: highlightPulse 0.5s ease-in-out;
+}
+
+@keyframes highlightPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+/* Dark mode keyword highlighting */
+@media (prefers-color-scheme: dark) {
+  .keyword-highlight {
+    background: #854d0e;
+    color: #fef08a;
+    box-shadow: 0 0 0 1px rgba(254, 240, 138, 0.3);
+  }
+
+  .keyword-highlight-active {
+    background: #a16207;
+    color: #fef3c7;
+    box-shadow: 
+      0 0 0 2px rgba(254, 243, 199, 0.5),
+      0 0 12px rgba(254, 243, 199, 0.4);
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .keyword-highlight {
+    background: #ffff00;
+    color: #000000;
+    border: 2px solid #000000;
+    font-weight: 700;
+  }
+
+  .keyword-highlight-active {
+    background: #ff9900;
+    color: #000000;
+    border: 3px solid #000000;
+  }
+
+  .nav-button {
+    border-width: 2px;
+  }
+
+  .nav-button:focus-visible {
+    outline-width: 4px;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .keyword-highlight,
+  .keyword-highlight-active,
+  .nav-button {
+    transition: none;
+    animation: none;
+  }
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .keyword-navigation {
+    padding: 8px 16px;
+    gap: 8px;
+  }
+
+  .occurrence-counter {
+    font-size: 12px;
+    padding: 3px 8px;
+  }
+
+  .nav-button {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+  }
+}
+
+/* Print styles */
+@media print {
+  .keyword-navigation {
+    display: none;
+  }
+
+  .keyword-highlight {
+    background: transparent;
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-style: wavy;
+    text-decoration-color: #000000;
+  }
+}

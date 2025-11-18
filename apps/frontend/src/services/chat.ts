@@ -1,3 +1,4 @@
+// Logger imported below as frontendLogger
 /**
  * Chat Service with Server-Sent Events Support
  *
@@ -275,22 +276,22 @@ export class ChatSSEClient {
 
       onmessage: (event) => {
         // Task 9.1: Add comprehensive logging for SSE message handling
-        console.log('🔵 [SSE] Raw message received:', event);
-        console.log('🔵 [SSE] Data:', event.data);
-        console.log('🔵 [SSE] Type:', typeof event.data);
+        frontendLogger.log('🔵 [SSE] Raw message received:', event);
+        frontendLogger.log('🔵 [SSE] Data:', event.data);
+        frontendLogger.log('🔵 [SSE] Type:', typeof event.data);
         
         try {
           const data = JSON.parse(event.data) as StreamChunk;
-          console.log('🔵 [SSE] Parsed data:', data);
-          console.log('🔵 [SSE] Chunk type:', data.type);
-          console.log('🔵 [SSE] Message ID:', data.messageId);
-          console.log('🔵 [SSE] Content:', data.content);
+          frontendLogger.log('🔵 [SSE] Parsed data:', data);
+          frontendLogger.log('🔵 [SSE] Chunk type:', data.type);
+          frontendLogger.log('🔵 [SSE] Message ID:', data.messageId);
+          frontendLogger.log('🔵 [SSE] Content:', data.content);
           
           this.handleStreamChunk(data);
           
-          console.log('🔵 [SSE] handleStreamChunk completed');
+          frontendLogger.log('🔵 [SSE] handleStreamChunk completed');
         } catch (error) {
-          console.error('🔴 [SSE] Parse error:', error);
+          frontendLogger.error('🔴 [SSE] Parse error:', error);
           frontendLogger.error('Failed to parse SSE message', {
             metadata: {
               conversationId: this.conversationId,
@@ -441,8 +442,15 @@ export class ChatSSEClient {
 
     // Task 11.4: Get memory usage if available (Chrome/Edge only)
     let memoryUsage: ConnectionHealth['memoryUsage'];
-    if (performance.memory) {
-      const memory = performance.memory;
+    const perfWithMemory = performance as Performance & {
+      memory?: {
+        usedJSHeapSize: number;
+        totalJSHeapSize: number;
+        jsHeapSizeLimit: number;
+      };
+    };
+    if (perfWithMemory.memory) {
+      const memory = perfWithMemory.memory;
       memoryUsage = {
         usedJSHeapSize: memory.usedJSHeapSize,
         totalJSHeapSize: memory.totalJSHeapSize,
@@ -511,58 +519,58 @@ export class ChatSSEClient {
     this.lastMessageTimestamp = new Date();
 
     // Task 9.1: Log chunk handling
-    console.log('🔵 [SSE] handleStreamChunk called with:', chunk);
-    console.log('🔵 [SSE] Event listeners registered:', Object.keys(this.eventListeners));
+    frontendLogger.log('🔵 [SSE] handleStreamChunk called with:', chunk);
+    frontendLogger.log('🔵 [SSE] Event listeners registered:', Object.keys(this.eventListeners));
 
     switch (chunk.type) {
       case 'start':
-        console.log('🔵 [SSE] Handling START event');
-        console.log('🔵 [SSE] messageStart listener exists:', !!this.eventListeners.messageStart);
+        frontendLogger.log('🔵 [SSE] Handling START event');
+        frontendLogger.log('🔵 [SSE] messageStart listener exists:', !!this.eventListeners.messageStart);
         this.eventListeners.messageStart?.({
           messageId: chunk.messageId ?? '',
           correlationId: chunk.correlationId,
         });
-        console.log('🔵 [SSE] messageStart callback invoked');
+        frontendLogger.log('🔵 [SSE] messageStart callback invoked');
         break;
 
       case 'chunk':
-        console.log('🔵 [SSE] Handling CHUNK event');
-        console.log('🔵 [SSE] messageChunk listener exists:', !!this.eventListeners.messageChunk);
-        console.log('🔵 [SSE] Chunk content:', chunk.content);
+        frontendLogger.log('🔵 [SSE] Handling CHUNK event');
+        frontendLogger.log('🔵 [SSE] messageChunk listener exists:', !!this.eventListeners.messageChunk);
+        frontendLogger.log('🔵 [SSE] Chunk content:', chunk.content);
         this.eventListeners.messageChunk?.({
           content: chunk.content ?? '',
           messageId: chunk.messageId ?? '',
           correlationId: chunk.correlationId,
         });
-        console.log('🔵 [SSE] messageChunk callback invoked');
+        frontendLogger.log('🔵 [SSE] messageChunk callback invoked');
         break;
 
       case 'end':
-        console.log('🔵 [SSE] Handling END event');
-        console.log('🔵 [SSE] messageEnd listener exists:', !!this.eventListeners.messageEnd);
+        frontendLogger.log('🔵 [SSE] Handling END event');
+        frontendLogger.log('🔵 [SSE] messageEnd listener exists:', !!this.eventListeners.messageEnd);
         this.eventListeners.messageEnd?.({
           messageId: chunk.messageId ?? '',
           correlationId: chunk.correlationId,
         });
-        console.log('🔵 [SSE] messageEnd callback invoked');
+        frontendLogger.log('🔵 [SSE] messageEnd callback invoked');
         break;
 
       case 'error':
-        console.log('🔵 [SSE] Handling ERROR event');
-        console.log('🔵 [SSE] messageError listener exists:', !!this.eventListeners.messageError);
+        frontendLogger.log('🔵 [SSE] Handling ERROR event');
+        frontendLogger.log('🔵 [SSE] messageError listener exists:', !!this.eventListeners.messageError);
         this.eventListeners.messageError?.({
           _error: chunk.content ?? 'Unknown error',
           correlationId: chunk.correlationId,
         });
-        console.log('🔵 [SSE] messageError callback invoked');
+        frontendLogger.log('🔵 [SSE] messageError callback invoked');
         break;
 
       case 'heartbeat':
         // Task 6.1: Handle heartbeat messages
         // Heartbeat messages keep the connection alive and update lastMessageTimestamp
         // No need to emit events for heartbeats
-        console.log('🔵 [SSE] Handling HEARTBEAT event');
-        frontendLogger.debug('Heartbeat received', {
+        frontendLogger.log('🔵 [SSE] Handling HEARTBEAT event');
+        frontendLogger.log('Heartbeat received', {
           metadata: {
             conversationId: this.conversationId,
             timestamp: chunk.timestamp,
@@ -571,7 +579,7 @@ export class ChatSSEClient {
         break;
 
       default:
-        console.warn('🟡 [SSE] Unknown stream chunk type:', chunk.type);
+        frontendLogger.warn('🟡 [SSE] Unknown stream chunk type:', chunk.type);
         frontendLogger.warn('Unknown stream chunk type', {
           metadata: {
             conversationId: this.conversationId,
@@ -972,15 +980,10 @@ export class ChatService {
       // Connection failed
       if (state === 'error' || state === 'disconnected') {
         throw new NetworkError(
-          'SSE connection is not available. Please check your connection and try again.',
+          `SSE connection is not available (state: ${state}, waited: ${elapsed}ms). Please check your connection and try again.`,
           'connection_failed',
           {
             retryable: true,
-            metadata: {
-              conversationId,
-              connectionState: state,
-              waitTime: elapsed,
-            },
           }
         );
       }
@@ -988,15 +991,10 @@ export class ChatService {
       // Timeout exceeded
       if (elapsed > maxWaitTime) {
         throw new NetworkError(
-          'SSE connection timeout. The connection took too long to establish.',
+          `SSE connection timeout after ${elapsed}ms (state: ${state}). The connection took too long to establish.`,
           'timeout',
           {
             retryable: true,
-            metadata: {
-              conversationId,
-              connectionState: state,
-              waitTime: elapsed,
-            },
           }
         );
       }
@@ -1404,13 +1402,7 @@ export class ChatService {
           'The server encountered an error. Please try again in a few moments.';
         break;
 
-      case 'network_error':
-        userMessage = 'Network error.';
-        actionableGuidance =
-          'Please check your internet connection and try again.';
-        break;
-
-      case 'rate_limit':
+      case 'rate_limited':
         userMessage = 'Too many requests.';
         actionableGuidance =
           'You are sending messages too quickly. Please wait a moment and try again.';

@@ -12,6 +12,7 @@ import React, {
   useContext,
   useEffect,
   useReducer,
+  useRef,
   type ReactNode,
 } from 'react';
 import type {
@@ -21,6 +22,9 @@ import type {
   ConversationFilters,
 } from '../types/index.js';
 import { useSessionContext } from './SessionContext';
+import { getCrossTabSyncService } from '../services/cross-tab-sync.js';
+import type { SyncEvent } from '../services/cross-tab-sync.js';
+import { frontendLogger } from '../utils/logger.js';
 
 /**
  * App actions
@@ -43,6 +47,9 @@ export type AppAction =
       payload: { id: string; updates: Partial<Conversation> };
     }
   | { type: 'DELETE_CONVERSATION'; payload: string }
+  | { type: 'SET_SEARCH_QUERY'; payload: string }
+  | { type: 'SET_SEARCH_RESULTS'; payload: Conversation[] }
+  | { type: 'SET_SEARCH_ERROR'; payload: string | null }
   | { type: 'RESET_STATE' };
 
 /**
@@ -74,7 +81,9 @@ export interface AppContextType {
   resetState: () => void;
 }
 
-export const DEFAULT_CONVERSATION_FILTERS: ConversationFilters = {
+// Moved to a separate constants file to avoid Fast Refresh issues
+// Fast Refresh requires that files only export React components
+const DEFAULT_CONVERSATION_FILTERS: ConversationFilters = {
   searchQuery: '',
   model: undefined,
   dateRange: undefined,
@@ -101,6 +110,10 @@ const createInitialState = (): AppState => ({
     isLoading: false,
     error: undefined,
     filters: DEFAULT_CONVERSATION_FILTERS,
+    searchQuery: '',
+    searchResults: [],
+    isSearching: false,
+    searchError: undefined,
   },
   ui: {
     theme: 'auto',
@@ -271,13 +284,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
           // Keep the most recent messages
           updatedConversation.messages = updatedConversation.messages.slice(-MAX_MESSAGES_PER_CONVERSATION);
           
-          // Log when messages are trimmed for monitoring
-          console.info('[Memory Optimization] Trimmed message history', {
-            conversationId: action.payload.id,
-            originalCount: (action.payload.updates.messages?.length ?? 0),
-            trimmedCount: updatedConversation.messages.length,
-            maxMessages: MAX_MESSAGES_PER_CONVERSATION,
-          });
+          // Messages trimmed for memory optimization
+          // Monitoring: conversationId, originalCount, trimmedCount tracked internally
         }
         
         updatedConversations.set(action.payload.id, updatedConversation);
@@ -311,6 +319,34 @@ function appReducer(state: AppState, action: AppAction): AppState {
         },
       };
     }
+
+    case 'SET_SEARCH_QUERY':
+      return {
+        ...state,
+        conversations: {
+          ...state.conversations,
+          searchQuery: action.payload,
+          isSearching: action.payload.trim().length > 0,
+        },
+      };
+
+    case 'SET_SEARCH_RESULTS':
+      return {
+        ...state,
+        conversations: {
+          ...state.conversations,
+          searchResults: action.payload,
+        },
+      };
+
+    case 'SET_SEARCH_ERROR':
+      return {
+        ...state,
+        conversations: {
+          ...state.conversations,
+          searchError: action.payload ?? undefined,
+        },
+      };
 
     case 'RESET_STATE':
       return createInitialState();
@@ -383,13 +419,130 @@ export function AppProvider({ children }: AppProviderProps): React.JSX.Element {
             payload: conversations[0].id,
           });
         }
-      } catch (error) {
-        console.error('Failed to load conversations from storage', error);
+      } catch (_error) {
+        // Failed to load conversations from storage - error handled silently
+        dispatch({
+          type: 'SET_CONVERSATIONS_ERROR',
+          payload: 'Failed to load conversations',
+        });
       }
     };
 
     void loadConversations();
   }, []);
+
+  // Cross-tab synchronization (Requirements: 4.1, 4.2, 4.3)
+  const syncServiceRef = useRef(getCrossTabSyncService());
+  
+  useEffect(() => {
+    const syncService = syncServiceRef.current;
+    
+    // Initialize cross-tab sync service
+    syncService.initialize();
+    
+    // Subscribe to update events
+    const unsubscribeUpdate = syncService.subscribe('update', (event: SyncEvent) => {
+      frontendLogger.info('Received cross-tab update event', {
+        metadata: {
+          conversationId: event.conversationId,
+          sourceTabId: event.sourceTabId,
+        },
+      });
+      
+      // Update conversation in state if it exists
+      if (event.data && state.conversations.conversations.has(event.conversationId)) {
+        const existingConversation = state.conversations.conversations.get(event.conversationId);
+        
+        if (existingConversation) {
+          // Conflict resolution: use timestamp-based resolution (Requirement 4.4)
+          const remoteTimestamp = event.timestamp;
+          const localTimestamp = existingConversation.updatedAt.getTime();
+          
+          if (remoteTimestamp > localTimestamp) {
+            // Remote change is newer, apply it
+            dispatch({
+              type: 'UPDATE_CONVERSATION',
+              payload: {
+                id: event.conversationId,
+                updates: event.data,
+              },
+            });
+            
+            frontendLogger.info('Applied remote update (newer)', {
+              metadata: {
+                conversationId: event.conversationId,
+                remoteTimestamp,
+                localTimestamp,
+              },
+            });
+          } else {
+            // Local change is newer or equal, ignore remote update
+            frontendLogger.info('Ignored remote update (older or equal)', {
+              metadata: {
+                conversationId: event.conversationId,
+                remoteTimestamp,
+                localTimestamp,
+              },
+            });
+          }
+        }
+      }
+    });
+    
+    // Subscribe to delete events
+    const unsubscribeDelete = syncService.subscribe('delete', (event: SyncEvent) => {
+      frontendLogger.info('Received cross-tab delete event', {
+        metadata: {
+          conversationId: event.conversationId,
+          sourceTabId: event.sourceTabId,
+        },
+      });
+      
+      // Delete conversation from state
+      dispatch({
+        type: 'DELETE_CONVERSATION',
+        payload: event.conversationId,
+      });
+    });
+    
+    // Subscribe to create events
+    const unsubscribeCreate = syncService.subscribe('create', (event: SyncEvent) => {
+      frontendLogger.info('Received cross-tab create event', {
+        metadata: {
+          conversationId: event.conversationId,
+          sourceTabId: event.sourceTabId,
+        },
+      });
+      
+      // Add conversation to state if data is provided
+      if (event.data) {
+        // Load full conversation from storage
+        import('../services/storage.js').then(({ ConversationStorage }) => {
+          const storage = ConversationStorage.getInstance();
+          storage.getConversation(event.conversationId).then((conversation) => {
+            if (conversation) {
+              dispatch({
+                type: 'ADD_CONVERSATION',
+                payload: conversation,
+              });
+            }
+          }).catch(() => {
+            // Failed to load conversation - error handled silently
+          });
+        }).catch(() => undefined);
+      }
+    });
+    
+    // Cleanup on unmount
+    return () => {
+      unsubscribeUpdate();
+      unsubscribeDelete();
+      unsubscribeCreate();
+      syncService.destroy();
+      
+      frontendLogger.info('Cross-tab sync service cleaned up');
+    };
+  }, [state.conversations.conversations]);
 
   // Computed values
   const activeConversationId = state.conversations.activeConversationId;
@@ -437,10 +590,14 @@ export function AppProvider({ children }: AppProviderProps): React.JSX.Element {
     // Persist to storage
     import('../services/storage.js').then(({ ConversationStorage }) => {
       const storage = ConversationStorage.getInstance();
-      storage.storeConversation(conversation).catch((error) => {
-        console.error('Failed to store conversation', error);
+      storage.storeConversation(conversation).catch(() => {
+        // Failed to store conversation - error handled silently
       });
     }).catch(() => undefined);
+    
+    // Broadcast to other tabs (Requirement 4.1)
+    const syncService = syncServiceRef.current;
+    syncService.broadcastCreation(conversation.id, conversation);
   };
 
   const updateConversation = (
@@ -460,10 +617,14 @@ export function AppProvider({ children }: AppProviderProps): React.JSX.Element {
       
       import('../services/storage.js').then(({ ConversationStorage }) => {
         const storage = ConversationStorage.getInstance();
-        storage.storeConversation(updatedConversation).catch((error) => {
-          console.error('Failed to update conversation in storage', error);
+        storage.storeConversation(updatedConversation).catch(() => {
+          // Failed to update conversation in storage - error handled silently
         });
       }).catch(() => undefined);
+      
+      // Broadcast to other tabs (Requirement 4.2)
+      const syncService = syncServiceRef.current;
+      syncService.broadcastUpdate(id, updates);
     }
   };
 
@@ -473,10 +634,14 @@ export function AppProvider({ children }: AppProviderProps): React.JSX.Element {
     // Delete from storage
     import('../services/storage.js').then(({ ConversationStorage }) => {
       const storage = ConversationStorage.getInstance();
-      storage.deleteConversation(id).catch((error) => {
-        console.error('Failed to delete conversation from storage', error);
+      storage.deleteConversation(id).catch(() => {
+        // Failed to delete conversation from storage - error handled silently
       });
     }).catch(() => undefined);
+    
+    // Broadcast to other tabs (Requirement 4.2)
+    const syncService = syncServiceRef.current;
+    syncService.broadcastDeletion(id);
   };
 
   const resetState = (): void => {

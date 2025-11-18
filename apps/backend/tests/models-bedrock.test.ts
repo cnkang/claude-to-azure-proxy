@@ -1,18 +1,30 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
 let app: express.Application;
-let restoreBedrockFlag: (() => void) | undefined;
+let restoreConfig: (() => void) | undefined;
 
 beforeAll(async () => {
-  const configModule = await import('../src/config/index.js');
-  const originalCheck = configModule.isAWSBedrockConfigured;
-  configModule.isAWSBedrockConfigured = () => true;
-  restoreBedrockFlag = () => {
-    configModule.isAWSBedrockConfigured = originalCheck;
+  // Mock the config module to include Bedrock models
+  vi.doMock('../src/config/index.js', async () => {
+    const actual = await vi.importActual<typeof import('../src/config/index.js')>('../src/config/index.js');
+    return {
+      ...actual,
+      default: {
+        ...actual.default,
+        AWS_BEDROCK_MODELS: 'qwen-3-coder,qwen.qwen3-coder-480b-a35b-v1:0',
+        AWS_REGION: 'us-east-1',
+      },
+      isAWSBedrockConfigured: () => true,
+    };
+  });
+
+  restoreConfig = () => {
+    vi.doUnmock('../src/config/index.js');
   };
 
+  // Import routes after mocking config
   const { modelsHandler } = await import('../src/routes/models.js');
   const { secureAuthenticationMiddleware } = await import(
     '../src/middleware/authentication.js'
@@ -27,7 +39,8 @@ beforeAll(async () => {
 });
 
 afterAll(() => {
-  restoreBedrockFlag?.();
+  restoreConfig?.();
+  vi.resetModules();
 });
 
 describe('Models endpoint with Bedrock enabled', () => {

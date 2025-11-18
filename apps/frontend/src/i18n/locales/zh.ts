@@ -105,6 +105,12 @@ export default {
     retryingConnection: '正在重试连接',
     currentModel: '当前模型：{{model}}',
     messageHistory: '消息历史',
+    keywordNavigation: '关键词导航',
+    occurrenceCounter: '第 {{current}} 个，共 {{total}} 个',
+    previousOccurrence: '上一个匹配',
+    nextOccurrence: '下一个匹配',
+    navigatedToOccurrence: '已导航到第 {{current}} 个匹配，共 {{total}} 个',
+    scrolledToMatch: '已滚动到搜索匹配',
   },
   fileUpload: {
     dropZoneLabel: '文件上传区域',

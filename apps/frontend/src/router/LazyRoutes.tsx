@@ -47,7 +47,7 @@ export const LazyConversationManager = withLazyLoading(
 );
 
 export const LazyOptimizedConversationList = withLazyLoading(
-  lazy(() => import('../components/conversation/OptimizedConversationList')),
+  lazy(() => import('../components/conversation/OptimizedConversationList').then(m => ({ default: m.OptimizedConversationList }))),
   {
     loadingMessage: 'Loading conversation list...',
     className: 'conversation-list-loading',
@@ -55,7 +55,7 @@ export const LazyOptimizedConversationList = withLazyLoading(
 );
 
 export const LazyOptimizedMessageList = withLazyLoading(
-  lazy(() => import('../components/chat/OptimizedMessageList')),
+  lazy(() => import('../components/chat/OptimizedMessageList').then(m => ({ default: m.OptimizedMessageList }))),
   {
     loadingMessage: 'Loading messages...',
     className: 'message-list-loading',
@@ -63,7 +63,7 @@ export const LazyOptimizedMessageList = withLazyLoading(
 );
 
 export const LazyContextManager = withLazyLoading(
-  lazy(() => import('../components/chat/ContextManager')),
+  lazy(() => import('../components/chat/ContextManager').then(m => ({ default: m.ContextManager }))),
   {
     loadingMessage: 'Loading context manager...',
     className: 'context-manager-loading',
@@ -71,7 +71,7 @@ export const LazyContextManager = withLazyLoading(
 );
 
 export const LazyFileUpload = withLazyLoading(
-  lazy(() => import('../components/chat/FileUpload')),
+  lazy(() => import('../components/chat/FileUpload').then(m => ({ default: m.FileUpload }))),
   {
     loadingMessage: 'Loading file upload...',
     className: 'file-upload-loading',
@@ -265,29 +265,5 @@ export const lazyLoadingMetrics = {
   },
 };
 
-/**
- * Bundle analysis helper
- */
-export const bundleAnalysis = {
-  /**
-   * Get loaded component statistics
-   */
-  getLoadedComponents: () => LazyComponentRegistry.getLoadedComponents(),
-
-  /**
-   * Estimate bundle size impact
-   */
-  estimateBundleSize: () => {
-    const loadedComponents = LazyComponentRegistry.getLoadedComponents();
-    return {
-      loadedCount: loadedComponents.length,
-      estimatedSizeKB: loadedComponents.length * 50, // Rough estimate
-      loadedComponents,
-    };
-  },
-
-  /**
-   * Clear component registry (for testing)
-   */
-  clearRegistry: () => LazyComponentRegistry.clear(),
-};
+// Bundle analysis moved to separate file to avoid Fast Refresh issues
+// Import from '../utils/bundleAnalysis' instead

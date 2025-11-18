@@ -9,7 +9,7 @@
  * - /api/health endpoint with SSE metrics (Task 7.3)
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import type { Express } from 'express';
 import { ProxyServer } from '../../src/index.js';

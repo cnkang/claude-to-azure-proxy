@@ -325,18 +325,20 @@ pnpm quality:complexity
 ### Testing
 
 ```bash
-# Run all tests
+# Run all tests (single run - recommended)
+pnpm test --run
+
+# Watch mode for active development (keeps running)
 pnpm test
 
-# Watch mode for development
-pnpm test:watch
-
 # Coverage report
-pnpm test:coverage
+pnpm test:coverage --run
 
-# Integration tests only
-pnpm test tests/integration.test.ts
+# Specific test file
+pnpm test --run tests/integration.test.ts
 ```
+
+**Note**: Use `pnpm test --run` for single test execution to avoid watch mode that keeps running indefinitely. Use `pnpm test` (watch mode) only during active development when you want continuous test feedback.
 
 ### Code Quality
 
@@ -356,6 +358,17 @@ The project maintains high code quality standards:
 - **[OpenAPI Specification](docs/api-specification.yaml)** - Complete API documentation with
   Responses API integration
 - **[Interactive API Docs](http://localhost:8080/docs)** - Swagger UI (when running locally)
+
+### Developer Guides
+
+- **[Testing Guide](docs/developer-guide/TESTING.md)** - Comprehensive testing patterns and best practices
+- **[Performance Monitoring](docs/developer-guide/PERFORMANCE.md)** - Performance metrics and optimization
+- **[Accessibility Guide](docs/developer-guide/ACCESSIBILITY.md)** - WCAG 2.2 AAA compliance and patterns
+
+### Architecture
+
+- **[Conversation Persistence ADR](docs/architecture/decisions/001-conversation-persistence.md)** - Architecture decision record for persistence system
+- **[Monorepo Structure](docs/architecture/monorepo-structure.md)** - Project organization and structure
 
 ### Configuration & Setup
 

@@ -3,8 +3,22 @@ import { cleanup } from '@testing-library/react';
 import { afterEach } from 'vitest';
 
 // Cleanup after each test
-afterEach(() => {
+afterEach(async () => {
   cleanup();
+  
+  // Ensure all timers are restored to prevent hanging
+  vi.useRealTimers();
+  
+  // Clear all mocks
+  vi.clearAllMocks();
+  
+  // Wait for any pending microtasks
+  await new Promise(resolve => setImmediate(resolve));
+  
+  // Force garbage collection if available (requires --expose-gc flag)
+  if (global.gc) {
+    global.gc();
+  }
 });
 
 // Extend expect with custom matchers
@@ -259,8 +273,7 @@ Object.defineProperty(window, 'scrollTo', {
   value: (): void => {},
 });
 
-// Mock crypto API
-
+// Mock crypto API with Web Crypto API support
 Object.defineProperty(globalThis, 'crypto', {
   value: {
     randomUUID: (): string =>
@@ -270,6 +283,115 @@ Object.defineProperty(globalThis, 'crypto', {
         array[i] = Math.floor(Math.random() * 256);
       }
       return array;
+    },
+    subtle: {
+      generateKey: async (
+        algorithm: unknown,
+        extractable: boolean,
+        keyUsages: string[]
+      ): Promise<CryptoKey> => {
+        return {
+          type: 'secret',
+          extractable,
+          algorithm: algorithm as Algorithm,
+          usages: keyUsages as KeyUsage[],
+        } as CryptoKey;
+      },
+      encrypt: async (
+        algorithm: unknown,
+        key: CryptoKey,
+        data: BufferSource
+      ): Promise<ArrayBuffer> => {
+        // Mock encryption: XOR with a simple key for deterministic testing
+        // This provides a reversible transformation that simulates encryption
+        let buffer: ArrayBuffer;
+        if (data instanceof ArrayBuffer) {
+          buffer = data;
+        } else if (data instanceof Uint8Array) {
+          buffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+        } else {
+          // DataView or other BufferSource
+          const view = data as DataView;
+          buffer = view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength);
+        }
+        
+        // Simple XOR transformation for testing (deterministic and reversible)
+        const input = new Uint8Array(buffer);
+        const output = new Uint8Array(input.length);
+        const xorKey = 0x42; // Simple XOR key for testing
+        
+        for (let i = 0; i < input.length; i++) {
+          output[i] = input[i] ^ xorKey;
+        }
+        
+        return output.buffer;
+      },
+      decrypt: async (
+        algorithm: unknown,
+        key: CryptoKey,
+        data: BufferSource
+      ): Promise<ArrayBuffer> => {
+        // Mock decryption: XOR with the same key (XOR is its own inverse)
+        let buffer: ArrayBuffer;
+        if (data instanceof ArrayBuffer) {
+          buffer = data;
+        } else if (data instanceof Uint8Array) {
+          buffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+        } else {
+          // DataView or other BufferSource
+          const view = data as DataView;
+          buffer = view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength);
+        }
+        
+        // Same XOR transformation (XOR is reversible)
+        const input = new Uint8Array(buffer);
+        const output = new Uint8Array(input.length);
+        const xorKey = 0x42; // Same XOR key for testing
+        
+        for (let i = 0; i < input.length; i++) {
+          output[i] = input[i] ^ xorKey;
+        }
+        
+        return output.buffer;
+      },
+      importKey: async (
+        format: string,
+        keyData: BufferSource,
+        algorithm: unknown,
+        extractable: boolean,
+        keyUsages: string[]
+      ): Promise<CryptoKey> => {
+        return {
+          type: 'secret',
+          extractable,
+          algorithm: algorithm as Algorithm,
+          usages: keyUsages as KeyUsage[],
+        } as CryptoKey;
+      },
+      exportKey: async (format: string, key: CryptoKey): Promise<ArrayBuffer> => {
+        return new ArrayBuffer(32); // Mock 256-bit key
+      },
+      deriveBits: async (
+        algorithm: unknown,
+        baseKey: CryptoKey,
+        length: number
+      ): Promise<ArrayBuffer> => {
+        return new ArrayBuffer(length / 8);
+      },
+      deriveKey: async (
+        algorithm: unknown,
+        baseKey: CryptoKey,
+        derivedKeyAlgorithm: unknown,
+        extractable: boolean,
+        keyUsages: string[]
+      ): Promise<CryptoKey> => {
+        return {
+          type: 'secret',
+          extractable,
+          algorithm: derivedKeyAlgorithm as Algorithm,
+          usages: keyUsages as KeyUsage[],
+        } as CryptoKey;
+      },
     },
   },
 });
@@ -287,6 +409,13 @@ const localStorageMock = {
   },
   clear: (): void => {
     localStorageMock.store = {};
+  },
+  key: (index: number): string | null => {
+    const keys = Object.keys(localStorageMock.store);
+    return keys[index] ?? null;
+  },
+  get length(): number {
+    return Object.keys(localStorageMock.store).length;
   },
   store: {} as Record<string, string>,
 };
@@ -308,6 +437,13 @@ const sessionStorageMock = {
   },
   clear: (): void => {
     sessionStorageMock.store = {};
+  },
+  key: (index: number): string | null => {
+    const keys = Object.keys(sessionStorageMock.store);
+    return keys[index] ?? null;
+  },
+  get length(): number {
+    return Object.keys(sessionStorageMock.store).length;
   },
   store: {} as Record<string, string>,
 };

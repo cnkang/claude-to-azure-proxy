@@ -71,7 +71,6 @@ import {
   sendChatMessageHandler,
   getConnectionsHandler,
   closeConnectionHandler,
-  getSSEStatsHandler,
   getChatStatsHandler,
 } from './routes/chat-stream';
 import { simpleChatHandler } from './routes/chat-simple.js';

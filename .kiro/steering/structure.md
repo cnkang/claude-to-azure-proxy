@@ -95,6 +95,12 @@ import { validateRequest } from '../utils/index.js';
 - Include unit, integration, and security test cases
 - Maintain >90% code coverage
 
+**Running Tests**:
+- **Single run**: `pnpm test --run` (recommended for CI/CD and quick checks)
+- **Watch mode**: `pnpm test` (for active development, keeps running until stopped)
+- **Coverage**: `pnpm test:coverage --run` (generate coverage report)
+- **Specific file**: `pnpm test --run path/to/test.ts` (run single test file)
+
 ### Configuration Files
 
 - Environment variables in `.env.example` with documentation

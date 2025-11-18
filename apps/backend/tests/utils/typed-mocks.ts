@@ -198,7 +198,7 @@ export const mockResponses = {
     id: 'test-response-id',
     object: 'responses.response',
     created: Date.now(),
-    model: 'gpt-4-test-deployment',
+    model: 'gpt-5-codex',
     output: [
       {
         type: 'text',
@@ -226,7 +226,7 @@ export const mockResponses = {
     estimatedComplexity: 'medium',
     reasoningEffort: 'medium',
     responsesParams: {
-      model: 'gpt-4-test-deployment',
+      model: 'gpt-5-codex',
       input: 'Test input message',
       reasoning: {
         effort: 'medium',
@@ -234,13 +234,13 @@ export const mockResponses = {
     },
     routingDecision: {
       provider: 'azure',
-      requestedModel: 'gpt-4-test-deployment',
-      backendModel: 'gpt-4-test-deployment',
+      requestedModel: 'gpt-5-codex',
+      backendModel: 'gpt-5-codex',
       isSupported: true,
     },
     normalizedRequest: {
       messages: [{ role: 'user', content: 'Test input message' }],
-      model: 'gpt-4-test-deployment',
+      model: 'gpt-5-codex',
     },
   }),
 } as const;

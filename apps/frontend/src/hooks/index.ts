@@ -10,3 +10,7 @@ export * from './useConversations.js';
 export * from './useModelSelection.js';
 export * from './useContextManagement.js';
 export * from './useErrorHandling.js';
+export * from './useSearchWithPrefetch.js';
+export * from './useDebouncedTitle.js';
+export * from './usePerformanceMonitoring.js';
+export * from './useAppNavigation.js';

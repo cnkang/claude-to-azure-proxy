@@ -83,6 +83,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
         aria-describedby="confirm-dialog-message"
+        data-testid="confirm-dialog"
       >
         <div className="confirm-dialog-header">
           <h2 id="confirm-dialog-title" className="confirm-dialog-title">
@@ -102,6 +103,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             className="confirm-dialog-button cancel"
             onClick={onCancel}
             aria-label={cancelLabel}
+            data-testid="cancel-button"
           >
             {cancelLabel}
           </button>
@@ -111,6 +113,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             className={`confirm-dialog-button confirm ${variant}`}
             onClick={onConfirm}
             aria-label={confirmLabel}
+            data-testid="confirm-button"
           >
             {confirmLabel}
           </button>

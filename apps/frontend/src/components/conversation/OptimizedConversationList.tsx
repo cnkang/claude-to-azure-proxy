@@ -483,6 +483,7 @@ export function OptimizedConversationList({
         style={{ height: `${listHeight}px` }}
         onKeyDown={handleKeyboardNavigation}
         role="listbox"
+        tabIndex={0}
         aria-label={t('conversation.conversationList', 'Conversation list')}
         aria-multiselectable="false"
         aria-activedescendant={

@@ -15,8 +15,20 @@ const storageMock = {
     .fn<(conversation: Conversation) => Promise<void>>()
     .mockResolvedValue(undefined),
   deleteConversation: vi
-    .fn<(conversationId: string) => Promise<void>>()
+    .fn<(conversationId: string) => Promise<{ success: boolean; conversationRemoved: boolean; messagesRemoved: number; metadataRemoved: boolean; bytesFreed: number; error?: string }>>()
+    .mockResolvedValue({
+      success: true,
+      conversationRemoved: true,
+      messagesRemoved: 0,
+      metadataRemoved: true,
+      bytesFreed: 0,
+    }),
+  updateConversationTitle: vi
+    .fn<(conversationId: string, newTitle: string) => Promise<void>>()
     .mockResolvedValue(undefined),
+  getConversation: vi
+    .fn<(conversationId: string) => Promise<Conversation | null>>()
+    .mockResolvedValue(null),
 };
 
 const sessionManagerMock = {
@@ -172,11 +184,9 @@ describe('useConversations', () => {
       await result.current.renameConversation(createdId, 'Planning sync');
     });
 
-    expect(storageMock.storeConversation).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        id: createdId,
-        title: 'Planning sync',
-      })
+    expect(storageMock.updateConversationTitle).toHaveBeenCalledWith(
+      createdId,
+      'Planning sync'
     );
 
     await act(async () => {

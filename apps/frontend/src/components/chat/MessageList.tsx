@@ -1,3 +1,4 @@
+import { logger } from '../../utils/logger.js';
 import React, {
   forwardRef,
   memo,
@@ -30,6 +31,7 @@ export interface MessageListProps {
   readonly modelName?: string;
   readonly suggestions?: readonly string[];
   readonly onSuggestionClick?: (suggestion: string) => void;
+  readonly highlightKeywords?: string[]; // Task 6.4: Keywords to highlight (Requirement 8.4)
 }
 
 export interface MessageListHandle {
@@ -43,6 +45,7 @@ interface VirtualizedRowProps {
     readonly messages: Message[];
     readonly onCopyCode?: (code: string) => void;
     readonly onRetryMessage?: (messageId: string) => void;
+    readonly highlightKeywords?: string[]; // Task 6.4
   };
 }
 
@@ -70,6 +73,7 @@ const VirtualizedRow = memo<VirtualizedRowProps>(({ index, style, data }) => {
           message={message}
           onCopyCode={data.onCopyCode}
           onRetryMessage={data.onRetryMessage}
+          highlightKeywords={data.highlightKeywords}
         />
       </div>
     </div>
@@ -93,6 +97,7 @@ const MessageListComponent = forwardRef<MessageListHandle, MessageListProps>(
       modelName,
       suggestions = [],
       onSuggestionClick,
+      highlightKeywords,
     }: MessageListProps,
     ref
   ): JSX.Element => {
@@ -207,8 +212,9 @@ const MessageListComponent = forwardRef<MessageListHandle, MessageListProps>(
         messages,
         onCopyCode,
         onRetryMessage,
+        highlightKeywords,
       }),
-      [messages, onCopyCode, onRetryMessage]
+      [messages, onCopyCode, onRetryMessage, highlightKeywords]
     );
 
     useEffect(() => {
@@ -237,7 +243,7 @@ const MessageListComponent = forwardRef<MessageListHandle, MessageListProps>(
     );
 
     // Debug logging
-    console.log('🟢 [MessageList] Rendering:', {
+    logger.log('🟢 [MessageList] Rendering:', {
       messageCount: messages.length,
       hasStreaming: !!streamingMessage,
       isLoading,
@@ -293,6 +299,7 @@ const MessageListComponent = forwardRef<MessageListHandle, MessageListProps>(
                   message={message}
                   onCopyCode={onCopyCode}
                   onRetryMessage={onRetryMessage}
+                  highlightKeywords={highlightKeywords}
                 />
               ))}
             </div>
