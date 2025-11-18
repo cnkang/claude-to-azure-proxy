@@ -272,7 +272,7 @@ describe('Performance Alert System', () => {
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       const metrics = alertSystem.getCurrentMetrics();
-      expect(metrics?.gcMetrics.eventCount).toBeGreaterThanOrEqual(0);
+      expect(metrics?.gcMetrics?.eventCount ?? 0).toBeGreaterThanOrEqual(0);
     });
   });
 
