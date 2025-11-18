@@ -28,7 +28,7 @@ export default defineConfig({
         singleFork: true,
         isolate: true,
         execArgv: [
-          '--max-old-space-size=4096',  // 4GB heap
+          '--max-old-space-size=8192',  // 8GB heap to avoid OOM in happy-dom runs
           '--expose-gc',
         ],
       },

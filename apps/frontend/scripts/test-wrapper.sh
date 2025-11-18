@@ -6,7 +6,7 @@
 set +e  # Don't exit on error
 
 # Run vitest and capture output
-OUTPUT=$(NODE_OPTIONS='--max-old-space-size=4096 --expose-gc' vitest --no-coverage --run 2>&1)
+OUTPUT=$(NODE_OPTIONS='--max-old-space-size=8192 --expose-gc' vitest --no-coverage --run 2>&1)
 EXIT_CODE=$?
 
 # Print the output
