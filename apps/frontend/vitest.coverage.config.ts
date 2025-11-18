@@ -9,6 +9,12 @@ export default mergeConfig(
   baseConfig,
   defineConfig({
     test: {
+      exclude: [
+        ...(Array.isArray(baseConfig.test?.exclude)
+          ? baseConfig.test.exclude
+          : []),
+        'src/test/app-context-persistence.test.tsx',
+      ],
       // Override pool settings for coverage
       pool: 'forks',
       poolOptions: {
@@ -55,6 +61,8 @@ export default mergeConfig(
           '**/*.css',
           'src/i18n/**/*.json',
           'src/test/**',
+          // Exclude high-memory app context persistence integration from coverage to avoid OOM in CI
+          'src/test/app-context-persistence.test.tsx',
           'src/main.tsx',
         ],
         include: [
