@@ -647,10 +647,6 @@ describe('Compatibility Validation Tests', () => {
     );
   });
 
-  afterAll(() => {
-    server.close();
-  });
-
   describe('Backward Compatibility with Existing Claude Format Integrations', () => {
     it('should maintain compatibility with Claude Code CLI requests', async () => {
       const legacyClaudeRequest: ClaudeRequest = {
