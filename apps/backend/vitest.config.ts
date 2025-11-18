@@ -20,11 +20,11 @@ export default defineConfig({
     pool: 'threads',
     poolOptions: {
       threads: {
-        singleThread: false,
+        singleThread: true,
         isolate: true,
         useAtomics: true,
         // Limit worker count to prevent excessive heap usage during heavy suites
-        maxThreads: 2,
+        maxThreads: 1,
         minThreads: 1,
       },
     },
@@ -34,6 +34,7 @@ export default defineConfig({
     // Enhanced test timeout for Node.js 24 performance testing
     testTimeout: 30000,
     hookTimeout: 10000,
+    teardownTimeout: 20000,
     // Memory leak detection configuration
     logHeapUsage: true,
     // Performance testing configuration
