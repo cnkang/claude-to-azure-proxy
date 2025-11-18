@@ -15,17 +15,25 @@ export default mergeConfig(
         forks: {
           singleFork: true,  // Single fork prevents worker timeout
           isolate: true,
-          execArgv: ['--max-old-space-size=4096'],
+          execArgv: ['--max-old-space-size=16384', '--expose-gc'],
+          maxForks: 1,
+          minForks: 1,
         },
       },
       
-      // Disable file parallelism for coverage
+      // Disable all parallelism for coverage
       fileParallelism: false,
+      maxConcurrency: 1,
+      maxWorkers: 1,
+      minWorkers: 1,
       
       // Increase timeouts for coverage collection
-      testTimeout: 30000,
-      hookTimeout: 30000,
-      teardownTimeout: 60000,
+      testTimeout: 120000,
+      hookTimeout: 120000,
+      teardownTimeout: 180000,
+      
+      // Disable watch mode
+      watch: false,
       
       // Enable coverage
       coverage: {

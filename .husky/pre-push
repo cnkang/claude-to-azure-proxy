@@ -11,7 +11,7 @@ fi
 
 # Run comprehensive tests with coverage
 echo "🧪 Running comprehensive test suite..."
-pnpm run test:coverage
+NODE_OPTIONS='--max-old-space-size=16384 --expose-gc' pnpm run test:coverage
 if [ $? -ne 0 ]; then
   echo "❌ Tests failed. Please fix failing tests before pushing."
   exit 1
