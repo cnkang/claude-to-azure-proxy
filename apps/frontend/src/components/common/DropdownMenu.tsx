@@ -1,4 +1,10 @@
-import React, { useEffect, useRef, useCallback, useState, useLayoutEffect } from 'react';
+import React, {
+  useEffect,
+  useRef,
+  useCallback,
+  useState,
+  useLayoutEffect,
+} from 'react';
 import './DropdownMenu.css';
 
 export interface DropdownMenuItem {
@@ -27,7 +33,9 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const [focusedIndex, setFocusedIndex] = React.useState<number>(0);
-  const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({ display: 'none' });
+  const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({
+    display: 'none',
+  });
 
   // Calculate menu position based on anchor element
   const calculatePosition = useCallback((): void => {
@@ -89,7 +97,9 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
 
   // Handle click outside to close menu
   useEffect(() => {
-    if (!isOpen) {return;}
+    if (!isOpen) {
+      return;
+    }
 
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -110,7 +120,9 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
 
   // Handle keyboard navigation
   useEffect(() => {
-    if (!isOpen) {return;}
+    if (!isOpen) {
+      return;
+    }
 
     const handleKeyDown = (event: KeyboardEvent) => {
       switch (event.key) {
@@ -187,6 +199,7 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
           className={`dropdown-menu-item ${item.variant === 'danger' ? 'danger' : ''} ${
             index === focusedIndex ? 'focused' : ''
           } ${item.disabled ? 'disabled' : ''}`}
+          data-testid={`dropdown-item-${item.id}`}
           onClick={() => {
             if (!item.disabled) {
               item.onClick();
@@ -203,7 +216,9 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
           onMouseEnter={() => setFocusedIndex(index)}
           aria-disabled={item.disabled}
         >
-          {item.icon && <span className="dropdown-menu-item-icon">{item.icon}</span>}
+          {item.icon && (
+            <span className="dropdown-menu-item-icon">{item.icon}</span>
+          )}
           <span className="dropdown-menu-item-label">{item.label}</span>
         </div>
       ))}

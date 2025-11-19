@@ -5,16 +5,16 @@ import { afterEach } from 'vitest';
 // Cleanup after each test
 afterEach(async () => {
   cleanup();
-  
+
   // Ensure all timers are restored to prevent hanging
   vi.useRealTimers();
-  
+
   // Clear all mocks
   vi.clearAllMocks();
-  
+
   // Wait for any pending microtasks
-  await new Promise(resolve => setImmediate(resolve));
-  
+  await new Promise((resolve) => setImmediate(resolve));
+
   // Force garbage collection if available (requires --expose-gc flag)
   if (global.gc) {
     global.gc();
@@ -310,22 +310,28 @@ Object.defineProperty(globalThis, 'crypto', {
         if (data instanceof ArrayBuffer) {
           buffer = data;
         } else if (data instanceof Uint8Array) {
-          buffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+          buffer = data.buffer.slice(
+            data.byteOffset,
+            data.byteOffset + data.byteLength
+          );
         } else {
           // DataView or other BufferSource
           const view = data as DataView;
-          buffer = view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength);
+          buffer = view.buffer.slice(
+            view.byteOffset,
+            view.byteOffset + view.byteLength
+          );
         }
-        
+
         // Simple XOR transformation for testing (deterministic and reversible)
         const input = new Uint8Array(buffer);
         const output = new Uint8Array(input.length);
         const xorKey = 0x42; // Simple XOR key for testing
-        
+
         for (let i = 0; i < input.length; i++) {
           output[i] = input[i] ^ xorKey;
         }
-        
+
         return output.buffer;
       },
       decrypt: async (
@@ -338,22 +344,28 @@ Object.defineProperty(globalThis, 'crypto', {
         if (data instanceof ArrayBuffer) {
           buffer = data;
         } else if (data instanceof Uint8Array) {
-          buffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+          buffer = data.buffer.slice(
+            data.byteOffset,
+            data.byteOffset + data.byteLength
+          );
         } else {
           // DataView or other BufferSource
           const view = data as DataView;
-          buffer = view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength);
+          buffer = view.buffer.slice(
+            view.byteOffset,
+            view.byteOffset + view.byteLength
+          );
         }
-        
+
         // Same XOR transformation (XOR is reversible)
         const input = new Uint8Array(buffer);
         const output = new Uint8Array(input.length);
         const xorKey = 0x42; // Same XOR key for testing
-        
+
         for (let i = 0; i < input.length; i++) {
           output[i] = input[i] ^ xorKey;
         }
-        
+
         return output.buffer;
       },
       importKey: async (
@@ -370,7 +382,10 @@ Object.defineProperty(globalThis, 'crypto', {
           usages: keyUsages as KeyUsage[],
         } as CryptoKey;
       },
-      exportKey: async (format: string, key: CryptoKey): Promise<ArrayBuffer> => {
+      exportKey: async (
+        format: string,
+        key: CryptoKey
+      ): Promise<ArrayBuffer> => {
         return new ArrayBuffer(32); // Mock 256-bit key
       },
       deriveBits: async (

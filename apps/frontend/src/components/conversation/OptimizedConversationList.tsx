@@ -322,7 +322,10 @@ export function OptimizedConversationList({
       switch (event.key) {
         case 'ArrowDown': {
           event.preventDefault();
-          const nextIndex = Math.min(currentIndex + 1, conversations.length - 1);
+          const nextIndex = Math.min(
+            currentIndex + 1,
+            conversations.length - 1
+          );
           setFocusedIndex(nextIndex);
           // Focus the next item
           const nextItem = containerRef.current?.querySelector(
@@ -383,7 +386,13 @@ export function OptimizedConversationList({
           break;
       }
     },
-    [conversations, activeConversation?.id, editingId, focusedIndex, handleSelect]
+    [
+      conversations,
+      activeConversation?.id,
+      editingId,
+      focusedIndex,
+      handleSelect,
+    ]
   );
 
   const renderItem = useCallback(

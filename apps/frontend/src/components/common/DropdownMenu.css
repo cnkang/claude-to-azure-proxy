@@ -18,7 +18,9 @@
   padding: 8px 12px;
   border-radius: 4px;
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
   color: var(--color-foreground);
   font-size: 14px;
   line-height: 1.5;
@@ -84,7 +86,7 @@
   .dropdown-menu {
     border-width: 2px;
   }
-  
+
   .dropdown-menu-item:hover:not(.disabled),
   .dropdown-menu-item.focused:not(.disabled) {
     outline: 2px solid currentColor;
@@ -97,7 +99,7 @@
   .dropdown-menu {
     animation: none;
   }
-  
+
   .dropdown-menu-item {
     transition: none;
   }

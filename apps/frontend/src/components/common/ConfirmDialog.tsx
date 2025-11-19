@@ -34,7 +34,9 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 
   // Handle keyboard events
   useEffect(() => {
-    if (!isOpen) {return;}
+    if (!isOpen) {
+      return;
+    }
 
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') {
@@ -51,10 +53,15 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 
   // Handle click outside to close
   useEffect(() => {
-    if (!isOpen) {return;}
+    if (!isOpen) {
+      return;
+    }
 
     const handleClickOutside = (event: MouseEvent): void => {
-      if (dialogRef.current && !dialogRef.current.contains(event.target as Node)) {
+      if (
+        dialogRef.current &&
+        !dialogRef.current.contains(event.target as Node)
+      ) {
         onCancel();
       }
     };

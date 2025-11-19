@@ -99,7 +99,11 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
 
   return (
     <AccessibilityProvider wcagLevel="AAA">
-      <div className={layoutClasses} dir={isRTL ? 'rtl' : 'ltr'} data-testid="app-container">
+      <div
+        className={layoutClasses}
+        dir={isRTL ? 'rtl' : 'ltr'}
+        data-testid="app-container"
+      >
         {/* Skip to main content link for accessibility */}
         <SkipLink
           targetId="main-content"
@@ -137,7 +141,12 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
 
         {/* Loading overlay */}
         {state.ui.isLoading && (
-          <div className="loading-overlay" role="status" aria-live="polite" data-testid="loading-spinner">
+          <div
+            className="loading-overlay"
+            role="status"
+            aria-live="polite"
+            data-testid="loading-spinner"
+          >
             <div className="loading-spinner">
               <div className="spinner" />
               <span className="loading-text">{t('loading.default')}</span>

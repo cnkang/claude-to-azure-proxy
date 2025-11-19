@@ -10,10 +10,7 @@
 import type { Conversation, Message } from '../types/index.js';
 import { getSessionManager } from './session.js';
 import { frontendLogger } from '../utils/logger.js';
-import {
-  measureAsync,
-  OperationType,
-} from '../utils/performance-metrics.js';
+import { measureAsync, OperationType } from '../utils/performance-metrics.js';
 
 // Storage configuration
 const DB_NAME = 'claude-proxy-storage';
@@ -129,6 +126,16 @@ export class ConversationStorage {
   }
 
   /**
+   * Close the database connection
+   */
+  public close(): void {
+    if (this.db) {
+      this.db.close();
+      this.db = null;
+    }
+  }
+
+  /**
    * Initialize the storage system
    */
   public async initialize(): Promise<void> {
@@ -182,8 +189,13 @@ export class ConversationStorage {
 
       this.keyId = `key_${sessionId}`;
 
-      // Try to load existing key from sessionStorage
-      const storedKey = sessionStorage.getItem(`encryption_key_${this.keyId}`);
+      const sessionStorageKey = `encryption_key_${this.keyId}`;
+      const sharedStorageKey = `shared_encryption_key_${this.keyId}`;
+
+      // Try to load existing key from sessionStorage or shared localStorage
+      const storedKey =
+        sessionStorage.getItem(sessionStorageKey) ??
+        localStorage.getItem(sharedStorageKey);
 
       if (storedKey !== null) {
         // Import existing key
@@ -197,6 +209,11 @@ export class ConversationStorage {
           { name: ENCRYPTION_ALGORITHM },
           false,
           ['encrypt', 'decrypt']
+        );
+        // Ensure sessionStorage has the key for this tab
+        sessionStorage.setItem(
+          sessionStorageKey,
+          JSON.stringify(Array.from(new Uint8Array(keyData as number[])))
         );
       } else {
         // Generate new key
@@ -214,8 +231,12 @@ export class ConversationStorage {
           'raw',
           this.encryptionKey
         );
-        sessionStorage.setItem(
-          `encryption_key_${this.keyId}`,
+        const serializedKey = JSON.stringify(
+          Array.from(new Uint8Array(exportedKey))
+        );
+        sessionStorage.setItem(sessionStorageKey, serializedKey);
+        localStorage.setItem(
+          sharedStorageKey,
           JSON.stringify(Array.from(new Uint8Array(exportedKey)))
         );
       }
@@ -240,6 +261,13 @@ export class ConversationStorage {
 
       request.onsuccess = (): void => {
         this.db = request.result;
+
+        // Handle version change (e.g. when another tab tries to upgrade or delete the DB)
+        this.db.onversionchange = (): void => {
+          this.db?.close();
+          this.db = null;
+        };
+
         resolve();
       };
 
@@ -800,7 +828,9 @@ export class ConversationStorage {
       }
 
       // Decrypt conversation data
-      const encryptedData = this.deserializeEncryptedData(storedData.encryptedData);
+      const encryptedData = this.deserializeEncryptedData(
+        storedData.encryptedData
+      );
       const conversationData = JSON.parse(
         await this.decryptData(encryptedData)
       );
@@ -809,10 +839,12 @@ export class ConversationStorage {
         ...conversationData,
         createdAt: new Date(conversationData.createdAt),
         updatedAt: new Date(conversationData.updatedAt),
-        messages: conversationData.messages.map((msg: Omit<Message, 'timestamp'> & { timestamp: string | Date }) => ({
-          ...msg,
-          timestamp: new Date(msg.timestamp),
-        })),
+        messages: conversationData.messages.map(
+          (msg: Omit<Message, 'timestamp'> & { timestamp: string | Date }) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp),
+          })
+        ),
       };
     } catch (error) {
       frontendLogger.error('Failed to get conversation from localStorage', {
@@ -906,7 +938,9 @@ export class ConversationStorage {
           if (stored) {
             try {
               const storedData = JSON.parse(stored);
-              const encryptedData = this.deserializeEncryptedData(storedData.encryptedData);
+              const encryptedData = this.deserializeEncryptedData(
+                storedData.encryptedData
+              );
               const conversationData = JSON.parse(
                 await this.decryptData(encryptedData)
               );
@@ -915,10 +949,16 @@ export class ConversationStorage {
                 ...conversationData,
                 createdAt: new Date(conversationData.createdAt),
                 updatedAt: new Date(conversationData.updatedAt),
-                messages: conversationData.messages.map((msg: Omit<Message, 'timestamp'> & { timestamp: string | Date }) => ({
-                  ...msg,
-                  timestamp: new Date(msg.timestamp),
-                })),
+                messages: conversationData.messages.map(
+                  (
+                    msg: Omit<Message, 'timestamp'> & {
+                      timestamp: string | Date;
+                    }
+                  ) => ({
+                    ...msg,
+                    timestamp: new Date(msg.timestamp),
+                  })
+                ),
               });
             } catch (error) {
               frontendLogger.error('Failed to decrypt conversation from key', {
@@ -949,14 +989,14 @@ export class ConversationStorage {
 
   /**
    * Update conversation title atomically with validation
-   * 
+   *
    * Requirements: 1.1, 1.3, 1.5
    * - Validates title length (1-200 characters)
    * - Sanitizes input to prevent XSS attacks
    * - Uses IndexedDB transaction for atomicity
    * - Handles both IndexedDB and localStorage backends
    * - Leverages existing encryption before storage
-   * 
+   *
    * @param conversationId - ID of the conversation to update
    * @param newTitle - New title for the conversation
    * @throws {Error} If validation fails or storage operation fails
@@ -966,7 +1006,7 @@ export class ConversationStorage {
     newTitle: string
   ): Promise<void> {
     const correlationId = crypto.randomUUID();
-    
+
     // Log operation start
     frontendLogger.info('Starting title update', {
       metadata: {
@@ -990,9 +1030,17 @@ export class ConversationStorage {
         const sanitizedTitle = this.sanitizeTitle(newTitle);
 
         if (this.isIndexedDBAvailable && this.db) {
-          await this.updateConversationTitleIndexedDB(conversationId, sanitizedTitle, correlationId);
+          await this.updateConversationTitleIndexedDB(
+            conversationId,
+            sanitizedTitle,
+            correlationId
+          );
         } else {
-          await this.updateConversationTitleLocalStorage(conversationId, sanitizedTitle, correlationId);
+          await this.updateConversationTitleLocalStorage(
+            conversationId,
+            sanitizedTitle,
+            correlationId
+          );
         }
 
         // Log success
@@ -1011,36 +1059,42 @@ export class ConversationStorage {
   /**
    * Sanitize title to prevent XSS attacks
    * Removes HTML tags and dangerous characters
-   * 
+   *
    * @param title - Title to sanitize
    * @returns Sanitized title
    */
   private sanitizeTitle(title: string): string {
     // Remove script tags and their content
-    let sanitized = title.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-    
+    let sanitized = title.replace(
+      /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+      ''
+    );
+
     // Remove style tags and their content
-    sanitized = sanitized.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
-    
+    sanitized = sanitized.replace(
+      /<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi,
+      ''
+    );
+
     // Remove all remaining HTML tags
     sanitized = sanitized.replace(/<[^>]*>/g, '');
-    
+
     // Remove script-related content
     sanitized = sanitized.replace(/javascript:/gi, '');
     sanitized = sanitized.replace(/on\w+\s*=/gi, '');
-    
+
     // Trim whitespace
     sanitized = sanitized.trim();
-    
+
     // Replace multiple spaces with single space
     sanitized = sanitized.replace(/\s+/g, ' ');
-    
+
     return sanitized;
   }
 
   /**
    * Update conversation title in IndexedDB using atomic transaction
-   * 
+   *
    * @param conversationId - ID of the conversation to update
    * @param sanitizedTitle - Sanitized title
    * @param correlationId - Correlation ID for logging
@@ -1073,7 +1127,9 @@ export class ConversationStorage {
 
       // Validate session access
       if (
-        !this.sessionManager.validateConversationAccess(existingRecord.sessionId)
+        !this.sessionManager.validateConversationAccess(
+          existingRecord.sessionId
+        )
       ) {
         throw new Error('Invalid session access to conversation');
       }
@@ -1124,7 +1180,7 @@ export class ConversationStorage {
 
   /**
    * Update conversation title in localStorage
-   * 
+   *
    * @param conversationId - ID of the conversation to update
    * @param sanitizedTitle - Sanitized title
    * @param correlationId - Correlation ID for logging
@@ -1153,7 +1209,9 @@ export class ConversationStorage {
       }
 
       // Decrypt existing conversation data
-      const decryptedEncryptedData = this.deserializeEncryptedData(storedData.encryptedData);
+      const decryptedEncryptedData = this.deserializeEncryptedData(
+        storedData.encryptedData
+      );
       const conversationData = JSON.parse(
         await this.decryptData(decryptedEncryptedData)
       );
@@ -1187,30 +1245,35 @@ export class ConversationStorage {
         },
       });
     } catch (error) {
-      frontendLogger.error('Failed to update conversation title in localStorage', {
-        metadata: { correlationId, conversationId },
-        error: error instanceof Error ? error : new Error(String(error)),
-      });
+      frontendLogger.error(
+        'Failed to update conversation title in localStorage',
+        {
+          metadata: { correlationId, conversationId },
+          error: error instanceof Error ? error : new Error(String(error)),
+        }
+      );
       throw new Error('Failed to update conversation title');
     }
   }
 
   /**
    * Delete conversation from storage with complete cleanup tracking
-   * 
+   *
    * Requirements: 2.1, 2.2, 2.3, 2.4
    * - Removes conversation record from storage within 500ms
    * - Removes all associated message data
    * - Removes all associated metadata
    * - Returns detailed statistics (messagesRemoved, bytesFreed)
    * - Logs deletion operations with conversation ID and timestamp
-   * 
+   *
    * @param conversationId - ID of the conversation to delete
    * @returns DeleteResult with detailed cleanup statistics
    */
-  public async deleteConversation(conversationId: string): Promise<DeleteResult> {
+  public async deleteConversation(
+    conversationId: string
+  ): Promise<DeleteResult> {
     const correlationId = crypto.randomUUID();
-    
+
     // Log operation start
     frontendLogger.info('Starting conversation deletion', {
       metadata: {
@@ -1224,9 +1287,16 @@ export class ConversationStorage {
     return await measureAsync(
       OperationType.DELETION,
       async () => {
-        const result = this.isIndexedDBAvailable && this.db
-          ? await this.deleteConversationIndexedDB(conversationId, correlationId)
-          : await this.deleteConversationLocalStorage(conversationId, correlationId);
+        const result =
+          this.isIndexedDBAvailable && this.db
+            ? await this.deleteConversationIndexedDB(
+                conversationId,
+                correlationId
+              )
+            : await this.deleteConversationLocalStorage(
+                conversationId,
+                correlationId
+              );
 
         // Log result
         if (result.success) {
@@ -1256,9 +1326,9 @@ export class ConversationStorage {
 
   /**
    * Delete conversation from IndexedDB with complete cleanup tracking
-   * 
+   *
    * Requirements: 2.1, 2.2, 2.3, 2.4
-   * 
+   *
    * @param conversationId - ID of the conversation to delete
    * @param correlationId - Correlation ID for logging
    * @returns DeleteResult with detailed cleanup statistics
@@ -1287,7 +1357,7 @@ export class ConversationStorage {
     try {
       // Get conversation data before deletion to calculate size (Requirement 2.4)
       const conversation = await this.getConversationIndexedDB(conversationId);
-      
+
       if (!conversation) {
         // Conversation doesn't exist
         return {
@@ -1350,8 +1420,9 @@ export class ConversationStorage {
         bytesFreed,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+
       // Log deletion failure (Requirement 2.5)
       frontendLogger.error('Failed to delete conversation from IndexedDB', {
         metadata: {
@@ -1375,9 +1446,9 @@ export class ConversationStorage {
 
   /**
    * Delete conversation from localStorage with complete cleanup tracking
-   * 
+   *
    * Requirements: 2.1, 2.2, 2.3, 2.4
-   * 
+   *
    * @param conversationId - ID of the conversation to delete
    * @returns DeleteResult with detailed cleanup statistics
    */
@@ -1396,8 +1467,9 @@ export class ConversationStorage {
       const key = `${sessionPrefix}_conversation_${conversationId}`;
 
       // Get conversation data before deletion to calculate size and message count (Requirement 2.4)
-      const conversation = await this.getConversationLocalStorage(conversationId);
-      
+      const conversation =
+        await this.getConversationLocalStorage(conversationId);
+
       if (!conversation) {
         // Conversation doesn't exist
         return {
@@ -1439,8 +1511,9 @@ export class ConversationStorage {
         bytesFreed,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+
       // Log deletion failure (Requirement 2.5)
       frontendLogger.error('Failed to delete conversation from localStorage', {
         metadata: {
@@ -1663,9 +1736,15 @@ export class ConversationStorage {
             messagesRemoved += deleteResult.messagesRemoved;
             bytesFreed += deleteResult.bytesFreed;
           } else {
-            frontendLogger.error('Failed to delete conversation during cleanup', {
-              metadata: { conversationId: conversation.id, error: deleteResult.error },
-            });
+            frontendLogger.error(
+              'Failed to delete conversation during cleanup',
+              {
+                metadata: {
+                  conversationId: conversation.id,
+                  error: deleteResult.error,
+                },
+              }
+            );
           }
         } catch (error) {
           frontendLogger.error('Failed to delete conversation during cleanup', {

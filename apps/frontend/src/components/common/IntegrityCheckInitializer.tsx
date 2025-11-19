@@ -52,7 +52,9 @@ function IntegrityCheckDialog({
         <h2 id="integrity-dialog-title">Data Integrity Check</h2>
         <div id="integrity-dialog-description">
           <p>
-            Found {report.orphanedMessages + report.corruptedConversations +
+            Found{' '}
+            {report.orphanedMessages +
+              report.corruptedConversations +
               report.missingReferences}{' '}
             issues in your conversation data:
           </p>
@@ -247,4 +249,3 @@ export function IntegrityCheckInitializer(): React.JSX.Element | null {
     />
   );
 }
-

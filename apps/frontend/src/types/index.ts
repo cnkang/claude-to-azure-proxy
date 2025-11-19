@@ -35,7 +35,7 @@ export interface ConversationState {
   isLoading: boolean;
   error?: string;
   filters: ConversationFilters;
-  
+
   // Search state (Requirement 8.1)
   searchQuery: string;
   searchResults: Conversation[];
@@ -57,7 +57,7 @@ export interface Conversation {
   contextUsage?: ContextUsage;
   parentConversationId?: string;
   compressionHistory?: CompressionEvent[];
-  
+
   // Persistence tracking fields (Requirements: 1.1, 2.1)
   lastSyncedAt?: Date;
   syncVersion?: number;

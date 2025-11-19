@@ -8,19 +8,19 @@ export default defineConfig({
     globals: true,
     environment: 'happy-dom',
     setupFiles: ['./src/test/setup.ts'],
-    
+
     // Test timeout settings for async operations
     testTimeout: 10000,
     hookTimeout: 10000,
-    teardownTimeout: 300000,  // 5 minutes for cleanup - allow worker to finish
-    
+    teardownTimeout: 300000, // 5 minutes for cleanup - allow worker to finish
+
     // Ensure proper cleanup between tests
     clearMocks: true,
     restoreMocks: true,
-    
+
     // Retry flaky tests once
     retry: 1,
-    
+
     // Use forks pool with aggressive memory settings
     pool: 'forks',
     poolOptions: {
@@ -28,30 +28,30 @@ export default defineConfig({
         singleFork: true,
         isolate: true,
         execArgv: [
-          '--max-old-space-size=8192',  // 8GB heap to avoid OOM in happy-dom runs
+          '--max-old-space-size=8192', // 8GB heap to avoid OOM in happy-dom runs
           '--expose-gc',
         ],
       },
     },
-    
+
     // Keep isolation enabled
     isolate: true,
-    
+
     // Sequence tests to reduce memory pressure
     sequence: {
       shuffle: false,
       concurrent: false,
     },
-    
+
     // Disable file parallelism
     fileParallelism: false,
-    
+
     // Don't bail on worker errors if tests passed
     bail: 0,
-    
+
     // Pass with no tests to handle edge cases
     passWithNoTests: true,
-    
+
     typecheck: {
       enabled: false,
     },
@@ -63,7 +63,7 @@ export default defineConfig({
       '**/*.playwright.test.ts', // Exclude Playwright tests from vitest
     ],
     coverage: {
-      enabled: false,  // Disabled by default, enable with --coverage flag
+      enabled: false, // Disabled by default, enable with --coverage flag
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
       reportsDirectory: './coverage',
@@ -83,9 +83,7 @@ export default defineConfig({
         'src/test/**',
         'src/main.tsx',
       ],
-      include: [
-        'src/**/*.{ts,tsx}',
-      ],
+      include: ['src/**/*.{ts,tsx}'],
       all: true,
       thresholds: {
         global: {

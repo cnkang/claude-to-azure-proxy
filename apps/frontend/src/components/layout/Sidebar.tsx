@@ -14,6 +14,7 @@ import { useI18n } from '../../contexts/I18nContext.js';
 import { useSessionContext } from '../../contexts/SessionContext.js';
 import { frontendLogger } from '../../utils/logger.js';
 import { createConversation } from '../../services/conversations.js';
+import { getSessionManager } from '../../services/session.js';
 import type { Conversation } from '../../types/index.js';
 import { DropdownMenu } from '../common/DropdownMenu.js';
 import { ConfirmDialog } from '../common/ConfirmDialog.js';
@@ -47,6 +48,7 @@ export function Sidebar({
   } = useConversations();
   const { t, formatRelativeTime } = useI18n();
   const { session } = useSessionContext();
+  const sessionManagerRef = useRef(getSessionManager());
   const sidebarRef = useRef<HTMLElement>(null);
   const sessionId = session?.sessionId ?? '';
 
@@ -61,7 +63,9 @@ export function Sidebar({
 
   // State for delete confirmation
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [conversationToDelete, setConversationToDelete] = useState<string | null>(null);
+  const [conversationToDelete, setConversationToDelete] = useState<
+    string | null
+  >(null);
 
   // Focus management for accessibility
   useEffect(() => {
@@ -204,7 +208,9 @@ export function Sidebar({
   };
 
   const handleDeleteConfirm = (): void => {
-    if (!conversationToDelete) {return;}
+    if (!conversationToDelete) {
+      return;
+    }
 
     try {
       // Delete the conversation (AppContext will handle storage sync)
@@ -259,6 +265,17 @@ export function Sidebar({
         },
       });
 
+      const activeSessionId =
+        session?.sessionId ?? sessionManagerRef.current.getSessionId();
+
+      if (!activeSessionId) {
+        frontendLogger.error(
+          'Cannot create conversation without active session'
+        );
+        setIsCreatingConversation(false);
+        return;
+      }
+
       // Get default model from session preferences
       const defaultModel = session?.preferences.selectedModel || 'gpt-4o-mini';
 
@@ -276,13 +293,13 @@ export function Sidebar({
         selectedModel: response.model,
         createdAt: new Date(response.createdAt),
         updatedAt: new Date(response.updatedAt),
-        sessionId: sessionId,
+        sessionId: activeSessionId,
         isStreaming: false,
         modelHistory: [],
       };
 
-      // Add conversation to state
-      addConversation(newConversation);
+      // Add conversation to state and storage
+      await addConversation(newConversation);
 
       // Set as active conversation (this will trigger navigation)
       setActiveConversation(response.id);
@@ -393,10 +410,11 @@ export function Sidebar({
             <ul className="conversations-list" data-testid="conversations-list">
               {conversationsList.map((conversation: Conversation) => {
                 const isActive = activeConversation?.id === conversation.id;
+                const isMenuOpen = menuOpen === conversation.id;
 
                 return (
-                  <li 
-                    key={conversation.id} 
+                  <li
+                    key={conversation.id}
                     className="conversation-item"
                     data-testid={`conversation-item-${conversation.id}`}
                   >
@@ -423,7 +441,9 @@ export function Sidebar({
                             className="conversation-title-input"
                             value={renameValue}
                             onChange={(e) => setRenameValue(e.target.value)}
-                            onBlur={() => void handleRenameSave(conversation.id)}
+                            onBlur={() =>
+                              void handleRenameSave(conversation.id)
+                            }
                             onKeyDown={(e) =>
                               handleRenameKeyDown(e, conversation.id)
                             }
@@ -433,7 +453,7 @@ export function Sidebar({
                             data-testid="conversation-title-input"
                           />
                         ) : (
-                          <div 
+                          <div
                             className="conversation-title"
                             data-testid={`conversation-title-${conversation.id}`}
                           >
@@ -461,36 +481,28 @@ export function Sidebar({
                           </div>
                         )}
                       </div>
-
                     </button>
 
                     {/* Conversation actions - moved outside button to fix HTML nesting */}
-                    <div className="conversation-actions">
-                      <div
-                        role="button"
-                        tabIndex={0}
+                    <div
+                      className={`conversation-actions ${isMenuOpen ? 'open' : ''}`}
+                    >
+                      <button
+                        type="button"
                         className="conversation-action"
-                        onClick={(event) => handleOptionsClick(event, conversation.id)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            handleOptionsClick(
-                              event as unknown as React.MouseEvent,
-                              conversation.id
-                            );
-                          }
-                        }}
+                        onClick={(event) =>
+                          handleOptionsClick(event, conversation.id)
+                        }
                         aria-label={t('sidebar.conversationOptions')}
-                        aria-expanded={menuOpen === conversation.id}
+                        aria-expanded={isMenuOpen}
                         aria-haspopup="menu"
                         data-testid={`conversation-options-${conversation.id}`}
                       >
                         <span className="action-icon">⋯</span>
-                      </div>
+                      </button>
 
                       {/* Dropdown menu */}
-                      {menuOpen === conversation.id && (
+                      {isMenuOpen && (
                         <DropdownMenu
                           isOpen={true}
                           onClose={handleMenuClose}

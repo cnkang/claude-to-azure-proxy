@@ -50,7 +50,11 @@
   grid-template-columns: var(--sidebar-width) 1fr;
   grid-template-rows: var(--header-height) 1fr;
   height: 100vh;
-  background: linear-gradient(135deg, var(--color-background) 0%, var(--color-background-secondary) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-background) 0%,
+    var(--color-background-secondary) 100%
+  );
   color: var(--color-foreground);
   font-family:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -67,9 +71,17 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: 
-    radial-gradient(circle at 10% 20%, var(--color-accent-light) 0%, transparent 50%),
-    radial-gradient(circle at 90% 80%, var(--color-info-light) 0%, transparent 50%);
+  background:
+    radial-gradient(
+      circle at 10% 20%,
+      var(--color-accent-light) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 90% 80%,
+      var(--color-info-light) 0%,
+      transparent 50%
+    );
   opacity: 0.4;
   pointer-events: none;
   z-index: 0;

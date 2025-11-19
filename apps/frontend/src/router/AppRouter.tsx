@@ -113,23 +113,9 @@ export function AppRouter(): React.JSX.Element {
             {/* Default route - redirect to chat */}
             <Route path="/" element={<Navigate to="/chat" replace />} />
 
-            {/* Chat interface with preloading */}
+            {/* Chat interface with preloading - use wildcard to prevent remounting */}
             <Route
-              path="/chat"
-              element={
-                <RouteGuard>
-                  <RoutePreloader
-                    onLoad={() => routePreloadStrategy.onChatPageLoad()}
-                  >
-                    <LazyChatPage />
-                  </RoutePreloader>
-                </RouteGuard>
-              }
-            />
-
-            {/* Conversation-specific route */}
-            <Route
-              path="/chat/:conversationId"
+              path="/chat/*"
               element={
                 <RouteGuard>
                   <RoutePreloader
@@ -171,7 +157,10 @@ export function AppRouter(): React.JSX.Element {
  * Moved to ../hooks/useAppNavigation.ts to avoid Fast Refresh issues
  * Import from there instead: import { useAppNavigation } from '../hooks/useAppNavigation'
  */
-export { useAppNavigation, type AppNavigation } from '../hooks/useAppNavigation';
+export {
+  useAppNavigation,
+  type AppNavigation,
+} from '../hooks/useAppNavigation';
 
 /**
  * Hook for current route information

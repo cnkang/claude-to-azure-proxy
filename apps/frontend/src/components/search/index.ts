@@ -1,6 +1,6 @@
 /**
  * Search Components
- * 
+ *
  * Exports all search-related components for conversation search functionality.
  */
 

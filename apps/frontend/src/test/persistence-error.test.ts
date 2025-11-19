@@ -156,7 +156,9 @@ describe('PersistenceError', () => {
       const after = new Date();
 
       expect(error.timestamp).toBeInstanceOf(Date);
-      expect(error.timestamp.getTime()).toBeGreaterThanOrEqual(before.getTime());
+      expect(error.timestamp.getTime()).toBeGreaterThanOrEqual(
+        before.getTime()
+      );
       expect(error.timestamp.getTime()).toBeLessThanOrEqual(after.getTime());
     });
 
@@ -382,7 +384,11 @@ describe('PersistenceErrorFactory', () => {
   describe('createIndexedDBError', () => {
     it('should create IndexedDB error', () => {
       const originalError = new Error('DB error');
-      const error = createIndexedDBError('updateTitle', originalError, 'conv-123');
+      const error = createIndexedDBError(
+        'updateTitle',
+        originalError,
+        'conv-123'
+      );
 
       expect(error.type).toBe(PersistenceErrorType.INDEXEDDB_ERROR);
       expect(error.retryable).toBe(true);
@@ -396,7 +402,10 @@ describe('PersistenceErrorFactory', () => {
   describe('createLocalStorageError', () => {
     it('should create localStorage error', () => {
       const originalError = new Error('Storage error');
-      const error = createLocalStorageError('deleteConversation', originalError);
+      const error = createLocalStorageError(
+        'deleteConversation',
+        originalError
+      );
 
       expect(error.type).toBe(PersistenceErrorType.LOCALSTORAGE_ERROR);
       expect(error.retryable).toBe(true);
@@ -508,7 +517,9 @@ describe('PersistenceErrorFactory', () => {
 
   describe('fromError', () => {
     it('should classify quota error', () => {
-      const originalError = new Error('QuotaExceededError: Storage quota exceeded');
+      const originalError = new Error(
+        'QuotaExceededError: Storage quota exceeded'
+      );
       const error = createPersistenceError(originalError, 'updateTitle');
 
       expect(error.type).toBe(PersistenceErrorType.STORAGE_FULL);

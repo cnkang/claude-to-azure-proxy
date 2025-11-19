@@ -26,7 +26,10 @@
   position: absolute;
   top: -40px;
   left: 6px;
-  background: var(--color-accent, #2563eb);  /* ✨ FIXED: Dark blue for 7.5:1 contrast */
+  background: var(
+    --color-accent,
+    #2563eb
+  ); /* ✨ FIXED: Dark blue for 7.5:1 contrast */
   color: white;
   padding: 8px 16px;
   text-decoration: none;
@@ -46,8 +49,11 @@
 }
 
 .skip-link:hover {
-  background: var(--color-accent-hover, #1d4ed8) !important;  /* ✨ FIXED: Even darker blue for 10.1:1 contrast */
-  color: white !important;  /* ✨ FIXED: Ensure white text on hover (override generic a:hover rule) */
+  background: var(
+    --color-accent-hover,
+    #1d4ed8
+  ) !important; /* ✨ FIXED: Even darker blue for 10.1:1 contrast */
+  color: white !important; /* ✨ FIXED: Ensure white text on hover (override generic a:hover rule) */
 }
 
 /* Focus Management */

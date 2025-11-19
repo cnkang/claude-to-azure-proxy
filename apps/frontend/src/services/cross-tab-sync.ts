@@ -132,7 +132,7 @@ export class CrossTabSyncService {
   private constructor() {
     this.tabId = this.generateTabId();
     this.listeners = new Map();
-    
+
     // Initialize listener sets for each event type
     this.listeners.set('update', new Set());
     this.listeners.set('delete', new Set());
@@ -288,8 +288,13 @@ export class CrossTabSyncService {
 
       localStorage.setItem(key, value);
 
-      // Clean up immediately (storage event already fired)
-      // Use setTimeout to avoid blocking
+      // Clean up the transient key. For E2E/dev we optionally keep the key for
+      // a short window so tests can reliably observe it. Set `VITE_E2E_KEEP_SYNC_KEY_MS`
+      // in the frontend environment to a positive integer (milliseconds) to enable.
+      // Default behavior (not set or 0) removes the key immediately.
+      const keepMsRaw = import.meta.env?.VITE_E2E_KEEP_SYNC_KEY_MS;
+      const keepMs = Number(keepMsRaw ?? 0) || 0;
+
       setTimeout(() => {
         try {
           localStorage.removeItem(key);
@@ -300,7 +305,7 @@ export class CrossTabSyncService {
             metadata: { key },
           });
         }
-      }, 0);
+      }, keepMs);
     } catch (error) {
       frontendLogger.error('Failed to broadcast sync event', {
         error: error instanceof Error ? error : new Error(String(error)),
@@ -409,7 +414,7 @@ export class CrossTabSyncService {
       try {
         // Execute listener (may be async)
         const result = listener(event);
-        
+
         // Handle async listeners
         if (result instanceof Promise) {
           result.catch((error) => {
@@ -452,7 +457,11 @@ export class CrossTabSyncService {
     const remoteTimestamp = remote.updatedAt?.getTime() ?? 0;
 
     // No conflict if timestamps are the same or one is missing
-    if (localTimestamp === remoteTimestamp || localTimestamp === 0 || remoteTimestamp === 0) {
+    if (
+      localTimestamp === remoteTimestamp ||
+      localTimestamp === 0 ||
+      remoteTimestamp === 0
+    ) {
       return {
         resolved: remote,
         strategy: 'remote',

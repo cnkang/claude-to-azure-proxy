@@ -1,10 +1,12 @@
 # E2E Tests with Playwright
 
-This directory contains End-to-End (E2E) tests using Playwright for testing the frontend application in real browser environments.
+This directory contains End-to-End (E2E) tests using Playwright for testing the frontend application
+in real browser environments.
 
 ## Overview
 
 E2E tests have been migrated from Vitest to Playwright to provide:
+
 - **Real browser testing**: Tests run in actual browser contexts (Chromium, Firefox, WebKit)
 - **True cross-tab synchronization**: Multiple browser contexts can simulate real tab behavior
 - **Storage event testing**: Real localStorage and IndexedDB events work correctly
@@ -28,27 +30,32 @@ E2E tests have been migrated from Vitest to Playwright to provide:
 - **`search-functionality.test.ts`**: Search UI and interaction tests (currently skipped)
 - **`error-recovery.test.ts`**: Error handling and recovery tests (currently skipped)
 
-These tests are currently skipped in Vitest and should be converted to Playwright for proper UI testing.
+These tests are currently skipped in Vitest and should be converted to Playwright for proper UI
+testing.
 
 ## Running Tests
 
 ### Run all Playwright E2E tests
+
 ```bash
 cd apps/frontend
 pnpm test:e2e
 ```
 
 ### Run with UI mode (interactive)
+
 ```bash
 pnpm test:e2e:ui
 ```
 
 ### Run with debug mode
+
 ```bash
 pnpm test:e2e:debug
 ```
 
 ### Run specific test file
+
 ```bash
 pnpm test:e2e cross-tab-sync.playwright.test.ts
 ```
@@ -140,7 +147,9 @@ Playwright configuration is in `apps/frontend/playwright.config.ts`:
 ## Best Practices
 
 ### 1. Storage Isolation
+
 Always clear storage before each test:
+
 ```typescript
 test.beforeEach(async ({ page }) => {
   await page.evaluate(() => {
@@ -151,13 +160,17 @@ test.beforeEach(async ({ page }) => {
 ```
 
 ### 2. Wait for Network Idle
+
 Wait for page to fully load:
+
 ```typescript
 await page.waitForLoadState('networkidle');
 ```
 
 ### 3. Use page.evaluate for Storage Operations
+
 Access browser APIs through page.evaluate:
+
 ```typescript
 await page.evaluate(() => {
   const storage = (window as any).conversationStorage;
@@ -166,7 +179,9 @@ await page.evaluate(() => {
 ```
 
 ### 4. Handle Async Operations
+
 Use promises for async operations in page.evaluate:
+
 ```typescript
 const result = await page.evaluate(() => {
   return new Promise((resolve) => {
@@ -179,7 +194,9 @@ const result = await page.evaluate(() => {
 ```
 
 ### 5. Clean Up Resources
+
 Always close contexts in afterEach:
+
 ```typescript
 test.afterEach(async () => {
   await context.close();
@@ -189,21 +206,27 @@ test.afterEach(async () => {
 ## Debugging
 
 ### View Test Report
+
 After running tests, view the HTML report:
+
 ```bash
 npx playwright show-report playwright-report
 ```
 
 ### Debug Specific Test
+
 ```bash
 pnpm test:e2e:debug --grep "test name"
 ```
 
 ### Take Screenshots
+
 Screenshots are automatically taken on failure and saved to `playwright-report/`.
 
 ### View Traces
+
 Traces are captured on first retry and can be viewed with:
+
 ```bash
 npx playwright show-trace trace.zip
 ```
@@ -211,6 +234,7 @@ npx playwright show-trace trace.zip
 ## CI/CD Integration
 
 Tests are configured to run in CI with:
+
 - 2 retries for flaky tests
 - Single worker to avoid conflicts
 - JUnit XML report generation
@@ -221,22 +245,24 @@ Tests are configured to run in CI with:
 To convert a Vitest E2E test to Playwright:
 
 1. **Change imports**:
+
    ```typescript
    // Before (Vitest)
    import { describe, it, expect } from 'vitest';
    import { render, screen } from '@testing-library/react';
-   
+
    // After (Playwright)
    import { test, expect, type Page } from '@playwright/test';
    ```
 
 2. **Change test structure**:
+
    ```typescript
    // Before
    describe('Feature', () => {
      it('should work', () => {});
    });
-   
+
    // After
    test.describe('Feature', () => {
      test('should work', async () => {});
@@ -244,11 +270,12 @@ To convert a Vitest E2E test to Playwright:
    ```
 
 3. **Use page.evaluate for browser APIs**:
+
    ```typescript
    // Before
    const storage = getConversationStorage();
    await storage.storeConversation(conv);
-   
+
    // After
    await page.evaluate((conv) => {
      const storage = (window as any).conversationStorage;
@@ -257,10 +284,11 @@ To convert a Vitest E2E test to Playwright:
    ```
 
 4. **Use Playwright assertions**:
+
    ```typescript
    // Before
    expect(result).toBe(true);
-   
+
    // After (same, but in async context)
    const result = await page.evaluate(() => {
      // Get result

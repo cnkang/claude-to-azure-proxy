@@ -537,7 +537,8 @@ export default {
     label: 'Search conversations',
     ariaLabel: 'Search through conversation titles and messages',
     placeholder: 'Search conversations...',
-    instructions: 'Type to search through conversation titles and messages. Use arrow keys to navigate results, Enter to open, Escape to clear.',
+    instructions:
+      'Type to search through conversation titles and messages. Use arrow keys to navigate results, Enter to open, Escape to clear.',
     searching: 'Searching conversations...',
     resultsLabel: 'Search results',
     resultsCount: '{{count}} result',

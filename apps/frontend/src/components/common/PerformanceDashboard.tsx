@@ -127,14 +127,14 @@ MemoryChart.displayName = 'MemoryChart';
 
 /**
  * Persistence metrics display component
- * 
+ *
  * Task 9.3: Display persistence metrics (avg latency, success rate)
  * Requirements: 6.1, 6.2, 6.3, 6.4, 6.5
  */
 const PersistenceMetrics = memo(() => {
-  const [persistenceStats, setPersistenceStats] = useState<Map<OperationType, MetricStats>>(
-    new Map()
-  );
+  const [persistenceStats, setPersistenceStats] = useState<
+    Map<OperationType, MetricStats>
+  >(new Map());
 
   useEffect(() => {
     const updateStats = () => {
@@ -157,8 +157,12 @@ const PersistenceMetrics = memo(() => {
   ];
 
   const getStatusColor = (latency: number, target: number): string => {
-    if (latency <= target) {return '#4CAF50';} // Green - good
-    if (latency <= target * 1.5) {return '#FF9800';} // Orange - warning
+    if (latency <= target) {
+      return '#4CAF50';
+    } // Green - good
+    if (latency <= target * 1.5) {
+      return '#FF9800';
+    } // Orange - warning
     return '#F44336'; // Red - critical
   };
 
@@ -177,7 +181,9 @@ const PersistenceMetrics = memo(() => {
       >
         {persistenceOperations.map((opType) => {
           const stats = persistenceStats.get(opType);
-          if (!stats || stats.total === 0) {return null;}
+          if (!stats || stats.total === 0) {
+            return null;
+          }
 
           const target = {
             [OperationType.TITLE_UPDATE]: 500,
@@ -279,7 +285,9 @@ const PersistenceMetrics = memo(() => {
                   }}
                 >
                   <span>Failed:</span>
-                  <span style={{ color: stats.failed > 0 ? '#F44336' : '#4CAF50' }}>
+                  <span
+                    style={{ color: stats.failed > 0 ? '#F44336' : '#4CAF50' }}
+                  >
                     {stats.failed}
                   </span>
                 </div>

@@ -124,7 +124,10 @@
   align-items: center;
   gap: 8px;
   padding: 12px 16px;
-  background-color: var(--color-accent, #667eea); /* Use theme accent color with fallback */
+  background-color: var(
+    --color-accent,
+    #667eea
+  ); /* Use theme accent color with fallback */
   color: white;
   border: none;
   border-radius: 24px;
@@ -138,7 +141,10 @@
 }
 
 .scroll-to-bottom:hover {
-  background-color: var(--color-accent-hover, #5568d3); /* Use theme accent hover color with fallback */
+  background-color: var(
+    --color-accent-hover,
+    #5568d3
+  ); /* Use theme accent hover color with fallback */
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
 }

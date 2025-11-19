@@ -22,7 +22,10 @@ import { frontendLogger } from '../utils/logger.js';
 import type { Conversation } from '../types/index.js';
 
 // Helper to create test conversation
-const createTestConversation = (id: string, sessionId: string): Conversation => {
+const createTestConversation = (
+  id: string,
+  sessionId: string
+): Conversation => {
   const now = new Date('2024-02-10T10:00:00.000Z');
   return {
     id,
@@ -72,7 +75,9 @@ const verifyConversationNotInStorage = (conversationId: string): void => {
 
 // Helper to verify storage contains expected data
 // Note: This helper is deprecated - use getConversation() to verify storage instead
-const verifyStorageContainsData = (_expectedConversationIds: string[]): void => {
+const verifyStorageContainsData = (
+  _expectedConversationIds: string[]
+): void => {
   // Storage verification is now done through getConversation() which properly handles
   // session prefixes and encryption. This helper is kept for backward compatibility
   // but doesn't perform actual verification.
@@ -103,11 +108,16 @@ describe('Storage Persistence - Enhanced Operations', () => {
     await storage.initialize();
 
     // Ensure we operate in fallback mode
-    (storage as unknown as { isIndexedDBAvailable: boolean }).isIndexedDBAvailable = false;
+    (
+      storage as unknown as { isIndexedDBAvailable: boolean }
+    ).isIndexedDBAvailable = false;
     (storage as unknown as { db: IDBDatabase | null }).db = null;
 
     // Verify fallback mode is active
-    expect((storage as unknown as { isIndexedDBAvailable: boolean }).isIndexedDBAvailable).toBe(false);
+    expect(
+      (storage as unknown as { isIndexedDBAvailable: boolean })
+        .isIndexedDBAvailable
+    ).toBe(false);
     expect((storage as unknown as { db: IDBDatabase | null }).db).toBeNull();
 
     // Setup localStorage mock helpers
@@ -157,11 +167,13 @@ describe('Storage Persistence - Enhanced Operations', () => {
       // Verify conversation is not in storage at test start
       verifyConversationNotInStorage('conv-atomic-1');
 
-      const sessionManager = (storage as unknown as {
-        sessionManager: {
-          getSessionId: () => string;
-        };
-      }).sessionManager;
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: {
+            getSessionId: () => string;
+          };
+        }
+      ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createTestConversation('conv-atomic-1', sessionId);
 
@@ -176,13 +188,17 @@ describe('Storage Persistence - Enhanced Operations', () => {
       const updated = await storage.getConversation('conv-atomic-1');
       expect(updated).not.toBeNull();
       expect(updated?.title).toBe(newTitle);
-      expect(updated?.updatedAt.getTime()).toBeGreaterThan(conversation.updatedAt.getTime());
+      expect(updated?.updatedAt.getTime()).toBeGreaterThan(
+        conversation.updatedAt.getTime()
+      );
     });
 
     it('should validate title length - minimum 1 character', async () => {
-      const sessionManager = (storage as unknown as {
-        sessionManager: { getSessionId: () => string };
-      }).sessionManager;
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: { getSessionId: () => string };
+        }
+      ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createTestConversation('conv-min-length', sessionId);
 
@@ -194,9 +210,11 @@ describe('Storage Persistence - Enhanced Operations', () => {
     });
 
     it('should validate title length - maximum 200 characters', async () => {
-      const sessionManager = (storage as unknown as {
-        sessionManager: { getSessionId: () => string };
-      }).sessionManager;
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: { getSessionId: () => string };
+        }
+      ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createTestConversation('conv-max-length', sessionId);
 
@@ -209,9 +227,11 @@ describe('Storage Persistence - Enhanced Operations', () => {
     });
 
     it('should accept title at exactly 1 character', async () => {
-      const sessionManager = (storage as unknown as {
-        sessionManager: { getSessionId: () => string };
-      }).sessionManager;
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: { getSessionId: () => string };
+        }
+      ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createTestConversation('conv-exact-min', sessionId);
 
@@ -224,9 +244,11 @@ describe('Storage Persistence - Enhanced Operations', () => {
     });
 
     it('should accept title at exactly 200 characters', async () => {
-      const sessionManager = (storage as unknown as {
-        sessionManager: { getSessionId: () => string };
-      }).sessionManager;
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: { getSessionId: () => string };
+        }
+      ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createTestConversation('conv-exact-max', sessionId);
 
@@ -241,9 +263,11 @@ describe('Storage Persistence - Enhanced Operations', () => {
     });
 
     it('should sanitize title to prevent XSS - remove script tags', async () => {
-      const sessionManager = (storage as unknown as {
-        sessionManager: { getSessionId: () => string };
-      }).sessionManager;
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: { getSessionId: () => string };
+        }
+      ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createTestConversation('conv-xss-script', sessionId);
 
@@ -259,9 +283,11 @@ describe('Storage Persistence - Enhanced Operations', () => {
     });
 
     it('should sanitize title to prevent XSS - remove style tags', async () => {
-      const sessionManager = (storage as unknown as {
-        sessionManager: { getSessionId: () => string };
-      }).sessionManager;
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: { getSessionId: () => string };
+        }
+      ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createTestConversation('conv-xss-style', sessionId);
 
@@ -276,9 +302,11 @@ describe('Storage Persistence - Enhanced Operations', () => {
     });
 
     it('should sanitize title to prevent XSS - remove HTML tags', async () => {
-      const sessionManager = (storage as unknown as {
-        sessionManager: { getSessionId: () => string };
-      }).sessionManager;
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: { getSessionId: () => string };
+        }
+      ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createTestConversation('conv-xss-html', sessionId);
 
@@ -294,9 +322,11 @@ describe('Storage Persistence - Enhanced Operations', () => {
     });
 
     it('should sanitize title to prevent XSS - remove javascript: protocol', async () => {
-      const sessionManager = (storage as unknown as {
-        sessionManager: { getSessionId: () => string };
-      }).sessionManager;
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: { getSessionId: () => string };
+        }
+      ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createTestConversation('conv-xss-js', sessionId);
 
@@ -310,9 +340,11 @@ describe('Storage Persistence - Enhanced Operations', () => {
     });
 
     it('should sanitize title to prevent XSS - remove event handlers', async () => {
-      const sessionManager = (storage as unknown as {
-        sessionManager: { getSessionId: () => string };
-      }).sessionManager;
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: { getSessionId: () => string };
+        }
+      ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createTestConversation('conv-xss-event', sessionId);
 
@@ -327,9 +359,11 @@ describe('Storage Persistence - Enhanced Operations', () => {
     });
 
     it('should trim whitespace from title', async () => {
-      const sessionManager = (storage as unknown as {
-        sessionManager: { getSessionId: () => string };
-      }).sessionManager;
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: { getSessionId: () => string };
+        }
+      ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createTestConversation('conv-whitespace', sessionId);
 
@@ -343,9 +377,11 @@ describe('Storage Persistence - Enhanced Operations', () => {
     });
 
     it('should normalize multiple spaces to single space', async () => {
-      const sessionManager = (storage as unknown as {
-        sessionManager: { getSessionId: () => string };
-      }).sessionManager;
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: { getSessionId: () => string };
+        }
+      ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createTestConversation('conv-spaces', sessionId);
 
@@ -365,9 +401,11 @@ describe('Storage Persistence - Enhanced Operations', () => {
     });
 
     it('should log successful title update', async () => {
-      const sessionManager = (storage as unknown as {
-        sessionManager: { getSessionId: () => string };
-      }).sessionManager;
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: { getSessionId: () => string };
+        }
+      ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createTestConversation('conv-log', sessionId);
 
@@ -417,9 +455,11 @@ describe('Storage Persistence - Enhanced Operations', () => {
       // Verify conversation is not in storage at test start
       verifyConversationNotInStorage('conv-delete-1');
 
-      const sessionManager = (storage as unknown as {
-        sessionManager: { getSessionId: () => string };
-      }).sessionManager;
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: { getSessionId: () => string };
+        }
+      ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createTestConversation('conv-delete-1', sessionId);
 
@@ -428,7 +468,8 @@ describe('Storage Persistence - Enhanced Operations', () => {
       // Verify storage contains the conversation
       verifyStorageContainsData(['conv-delete-1']);
 
-      const result: DeleteResult = await storage.deleteConversation('conv-delete-1');
+      const result: DeleteResult =
+        await storage.deleteConversation('conv-delete-1');
 
       expect(result.success).toBe(true);
       expect(result.conversationRemoved).toBe(true);
@@ -442,9 +483,11 @@ describe('Storage Persistence - Enhanced Operations', () => {
     });
 
     it('should remove conversation from storage after deletion', async () => {
-      const sessionManager = (storage as unknown as {
-        sessionManager: { getSessionId: () => string };
-      }).sessionManager;
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: { getSessionId: () => string };
+        }
+      ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createTestConversation('conv-delete-2', sessionId);
 
@@ -457,9 +500,11 @@ describe('Storage Persistence - Enhanced Operations', () => {
     });
 
     it('should remove all associated messages', async () => {
-      const sessionManager = (storage as unknown as {
-        sessionManager: { getSessionId: () => string };
-      }).sessionManager;
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: { getSessionId: () => string };
+        }
+      ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createTestConversation('conv-delete-3', sessionId);
 
@@ -471,9 +516,11 @@ describe('Storage Persistence - Enhanced Operations', () => {
     });
 
     it('should calculate bytes freed accurately', async () => {
-      const sessionManager = (storage as unknown as {
-        sessionManager: { getSessionId: () => string };
-      }).sessionManager;
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: { getSessionId: () => string };
+        }
+      ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createTestConversation('conv-delete-4', sessionId);
 
@@ -496,9 +543,11 @@ describe('Storage Persistence - Enhanced Operations', () => {
     });
 
     it('should log deletion operation with conversation ID and timestamp', async () => {
-      const sessionManager = (storage as unknown as {
-        sessionManager: { getSessionId: () => string };
-      }).sessionManager;
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: { getSessionId: () => string };
+        }
+      ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createTestConversation('conv-delete-log', sessionId);
 
@@ -535,11 +584,16 @@ describe('Storage Persistence - Enhanced Operations', () => {
     });
 
     it('should complete deletion within 500ms', async () => {
-      const sessionManager = (storage as unknown as {
-        sessionManager: { getSessionId: () => string };
-      }).sessionManager;
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: { getSessionId: () => string };
+        }
+      ).sessionManager;
       const sessionId = sessionManager.getSessionId();
-      const conversation = createTestConversation('conv-delete-perf', sessionId);
+      const conversation = createTestConversation(
+        'conv-delete-perf',
+        sessionId
+      );
 
       await storage.storeConversation(conversation);
 
@@ -551,11 +605,16 @@ describe('Storage Persistence - Enhanced Operations', () => {
     });
 
     it('should handle deletion of conversation with many messages', async () => {
-      const sessionManager = (storage as unknown as {
-        sessionManager: { getSessionId: () => string };
-      }).sessionManager;
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: { getSessionId: () => string };
+        }
+      ).sessionManager;
       const sessionId = sessionManager.getSessionId();
-      const conversation = createTestConversation('conv-delete-many', sessionId);
+      const conversation = createTestConversation(
+        'conv-delete-many',
+        sessionId
+      );
 
       // Add more messages
       for (let i = 3; i <= 10; i++) {
@@ -636,9 +695,11 @@ describe('Storage Persistence - Enhanced Operations', () => {
     });
 
     it('should integrate retry logic with storage operations', async () => {
-      const sessionManager = (storage as unknown as {
-        sessionManager: { getSessionId: () => string };
-      }).sessionManager;
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: { getSessionId: () => string };
+        }
+      ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createTestConversation('conv-retry', sessionId);
 
@@ -663,10 +724,10 @@ describe('Storage Persistence - Enhanced Operations', () => {
       try {
         // Create the promise - RetryManager has comprehensive internal error handling
         const promise = retryManager.execute(mockOperation);
-        
+
         // Advance all timers to trigger retries and allow promises to settle
         await vi.runAllTimersAsync();
-        
+
         // Wait for the promise to resolve - it should succeed after retries
         const result = await promise;
 
@@ -681,7 +742,9 @@ describe('Storage Persistence - Enhanced Operations', () => {
 
     it('should stop retrying after max attempts', async () => {
       const retryManager = new RetryManager();
-      const operation = vi.fn().mockRejectedValue(new Error('persistent failure'));
+      const operation = vi
+        .fn()
+        .mockRejectedValue(new Error('persistent failure'));
 
       vi.useFakeTimers();
 
@@ -705,10 +768,13 @@ describe('Storage Persistence - Enhanced Operations', () => {
 
   describe('Error Classification and Recovery (Requirement 7.2)', () => {
     it('should classify storage full error as non-retryable', () => {
-      const error = PersistenceErrorFactory.createStorageFullError('updateTitle', {
-        used: 1000,
-        available: 100,
-      });
+      const error = PersistenceErrorFactory.createStorageFullError(
+        'updateTitle',
+        {
+          used: 1000,
+          available: 100,
+        }
+      );
 
       expect(error.retryable).toBe(false);
       expect(error.type).toBe(PersistenceErrorType.STORAGE_FULL);
@@ -738,7 +804,10 @@ describe('Storage Persistence - Enhanced Operations', () => {
     });
 
     it('should classify timeout error as retryable', () => {
-      const error = PersistenceErrorFactory.createTimeoutError('updateTitle', 5000);
+      const error = PersistenceErrorFactory.createTimeoutError(
+        'updateTitle',
+        5000
+      );
 
       expect(error.retryable).toBe(true);
       expect(error.type).toBe(PersistenceErrorType.TIMEOUT);
@@ -766,10 +835,13 @@ describe('Storage Persistence - Enhanced Operations', () => {
     });
 
     it('should provide user-friendly error messages', () => {
-      const error = PersistenceErrorFactory.createStorageFullError('updateTitle', {
-        used: 1000,
-        available: 100,
-      });
+      const error = PersistenceErrorFactory.createStorageFullError(
+        'updateTitle',
+        {
+          used: 1000,
+          available: 100,
+        }
+      );
 
       const userMessage = error.getUserMessage();
       expect(userMessage).toContain('Storage is full');
@@ -812,7 +884,9 @@ describe('Storage Persistence - Enhanced Operations', () => {
     });
 
     it('should classify errors from generic Error objects', () => {
-      const quotaError = new Error('QuotaExceededError: Storage quota exceeded');
+      const quotaError = new Error(
+        'QuotaExceededError: Storage quota exceeded'
+      );
       const persistenceError = PersistenceErrorFactory.fromError(
         quotaError,
         'updateTitle'
@@ -840,16 +914,20 @@ describe('Storage Persistence - Enhanced Operations', () => {
         'storeConversation'
       );
 
-      expect(persistenceError.type).toBe(PersistenceErrorType.LOCALSTORAGE_ERROR);
+      expect(persistenceError.type).toBe(
+        PersistenceErrorType.LOCALSTORAGE_ERROR
+      );
       expect(persistenceError.retryable).toBe(true);
     });
   });
 
   describe('Integration Tests', () => {
     it('should handle complete workflow: store, update, delete', async () => {
-      const sessionManager = (storage as unknown as {
-        sessionManager: { getSessionId: () => string };
-      }).sessionManager;
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: { getSessionId: () => string };
+        }
+      ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createTestConversation('conv-workflow', sessionId);
 
@@ -872,9 +950,11 @@ describe('Storage Persistence - Enhanced Operations', () => {
     });
 
     it('should handle multiple concurrent title updates', async () => {
-      const sessionManager = (storage as unknown as {
-        sessionManager: { getSessionId: () => string };
-      }).sessionManager;
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: { getSessionId: () => string };
+        }
+      ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createTestConversation('conv-concurrent', sessionId);
 
@@ -896,9 +976,11 @@ describe('Storage Persistence - Enhanced Operations', () => {
     });
 
     it('should maintain data integrity across operations', async () => {
-      const sessionManager = (storage as unknown as {
-        sessionManager: { getSessionId: () => string };
-      }).sessionManager;
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: { getSessionId: () => string };
+        }
+      ).sessionManager;
       const sessionId = sessionManager.getSessionId();
 
       // Create multiple conversations
@@ -932,11 +1014,16 @@ describe('Storage Persistence - Enhanced Operations', () => {
 
   describe('Performance Tests', () => {
     it('should complete title update within 500ms', async () => {
-      const sessionManager = (storage as unknown as {
-        sessionManager: { getSessionId: () => string };
-      }).sessionManager;
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: { getSessionId: () => string };
+        }
+      ).sessionManager;
       const sessionId = sessionManager.getSessionId();
-      const conversation = createTestConversation('conv-perf-update', sessionId);
+      const conversation = createTestConversation(
+        'conv-perf-update',
+        sessionId
+      );
 
       await storage.storeConversation(conversation);
 
@@ -948,9 +1035,11 @@ describe('Storage Persistence - Enhanced Operations', () => {
     });
 
     it('should handle batch operations efficiently', async () => {
-      const sessionManager = (storage as unknown as {
-        sessionManager: { getSessionId: () => string };
-      }).sessionManager;
+      const sessionManager = (
+        storage as unknown as {
+          sessionManager: { getSessionId: () => string };
+        }
+      ).sessionManager;
       const sessionId = sessionManager.getSessionId();
 
       const conversations = Array.from({ length: 10 }, (_, i) =>

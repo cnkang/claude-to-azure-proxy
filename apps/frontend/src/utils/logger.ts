@@ -12,28 +12,28 @@ export const logger = {
       console.log('[DEBUG]', ...args);
     }
   },
-  
+
   log: (...args: unknown[]): void => {
     if (isDevelopment) {
       // eslint-disable-next-line no-console
       console.log(...args);
     }
   },
-  
+
   info: (...args: unknown[]): void => {
     if (isDevelopment) {
       // eslint-disable-next-line no-console
       console.info(...args);
     }
   },
-  
+
   warn: (...args: unknown[]): void => {
     if (isDevelopment) {
       // eslint-disable-next-line no-console
       console.warn(...args);
     }
   },
-  
+
   error: (...args: unknown[]): void => {
     if (isDevelopment) {
       // eslint-disable-next-line no-console

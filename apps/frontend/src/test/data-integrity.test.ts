@@ -62,7 +62,8 @@ const createTestConversation = (
   // Corrupt the conversation if requested
   if (options.corrupted) {
     // Make createdAt invalid
-    (conversation as { createdAt: unknown }).createdAt = 'invalid-date' as unknown as Date;
+    (conversation as { createdAt: unknown }).createdAt =
+      'invalid-date' as unknown as Date;
   }
 
   return conversation;
@@ -477,4 +478,3 @@ describe('DataIntegrityService', () => {
     });
   });
 });
-

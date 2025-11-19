@@ -34,7 +34,9 @@ export interface RetryOptions {
 /**
  * Default retry options
  */
-const DEFAULT_RETRY_OPTIONS: Required<Omit<RetryOptions, 'onRetry' | 'onFailure' | 'isRetryable'>> = {
+const DEFAULT_RETRY_OPTIONS: Required<
+  Omit<RetryOptions, 'onRetry' | 'onFailure' | 'isRetryable'>
+> = {
   maxAttempts: 3,
   baseDelay: 500,
   maxDelay: 5000,
@@ -80,7 +82,7 @@ export class RetryManager {
     return new Promise<T>((resolve, reject) => {
       // Track if promise has been settled to prevent multiple settlements
       let settled = false;
-      
+
       // Safe resolve that prevents multiple settlements
       const safeResolve = (value: T): void => {
         if (!settled) {
@@ -88,7 +90,7 @@ export class RetryManager {
           resolve(value);
         }
       };
-      
+
       // Safe reject that prevents multiple settlements
       const safeReject = (error: Error): void => {
         if (!settled) {
@@ -100,7 +102,11 @@ export class RetryManager {
       // Execute the retry logic in an async IIFE with global error handling
       (async (): Promise<void> => {
         try {
-          const mergedOptions = { ...DEFAULT_RETRY_OPTIONS, ...this.defaultOptions, ...options };
+          const mergedOptions = {
+            ...DEFAULT_RETRY_OPTIONS,
+            ...this.defaultOptions,
+            ...options,
+          };
           const {
             maxAttempts,
             baseDelay,
@@ -128,13 +134,16 @@ export class RetryManager {
                 .then(() => this.executeWithTimeout(operation, timeout))
                 .catch((error) => {
                   // Ensure error is properly caught and re-thrown
-                  throw error instanceof Error ? error : new Error(String(error));
+                  throw error instanceof Error
+                    ? error
+                    : new Error(String(error));
                 });
-              
+
               safeResolve(result);
               return;
             } catch (error) {
-              lastError = error instanceof Error ? error : new Error(String(error));
+              lastError =
+                error instanceof Error ? error : new Error(String(error));
 
               // Check if error is retryable
               const retryable = isRetryable
@@ -192,16 +201,20 @@ export class RetryManager {
               console.warn('Error in final onFailure callback:', callbackError);
             }
           }
-          safeReject(lastError ?? new Error('Operation failed after all retry attempts'));
+          safeReject(
+            lastError ?? new Error('Operation failed after all retry attempts')
+          );
         } catch (error) {
           // Catch any unexpected errors in the retry logic itself
-          const finalError = error instanceof Error ? error : new Error(String(error));
+          const finalError =
+            error instanceof Error ? error : new Error(String(error));
           console.error('Unexpected error in retry logic:', finalError);
           safeReject(finalError);
         }
       })().catch((error) => {
         // Final safety net: catch any unhandled promise rejections from the IIFE
-        const finalError = error instanceof Error ? error : new Error(String(error));
+        const finalError =
+          error instanceof Error ? error : new Error(String(error));
         console.error('Unhandled error in execute method:', finalError);
         safeReject(finalError);
       });
@@ -288,7 +301,10 @@ export class RetryManager {
         return this.executeSafe(operation, options).catch((error) => {
           // This should never happen since executeSafe doesn't throw,
           // but add a safety net just in case
-          console.error(`Unexpected error in executeAll for operation ${index}:`, error);
+          console.error(
+            `Unexpected error in executeAll for operation ${index}:`,
+            error
+          );
           return {
             success: false,
             error: error instanceof Error ? error : new Error(String(error)),
@@ -336,7 +352,7 @@ export class RetryManager {
     return new Promise<T>((resolve, reject) => {
       let timeoutId: ReturnType<typeof setTimeout> | null = null;
       let settled = false;
-      
+
       // Safe resolve that prevents multiple settlements
       const safeResolve = (value: T): void => {
         if (!settled) {
@@ -348,7 +364,7 @@ export class RetryManager {
           resolve(value);
         }
       };
-      
+
       // Safe reject that prevents multiple settlements
       const safeReject = (error: Error): void => {
         if (!settled) {
@@ -360,7 +376,7 @@ export class RetryManager {
           reject(error);
         }
       };
-      
+
       // Set up timeout with error handling
       try {
         timeoutId = setTimeout(() => {
@@ -371,14 +387,17 @@ export class RetryManager {
         safeReject(new Error('Failed to set timeout: ' + String(error)));
         return;
       }
-      
+
       // Execute operation with comprehensive error handling
       // Immediately attach catch handler to prevent unhandled rejection warnings
       Promise.resolve()
         .then(() => operation())
         .then(
           (result) => safeResolve(result),
-          (error) => safeReject(error instanceof Error ? error : new Error(String(error)))
+          (error) =>
+            safeReject(
+              error instanceof Error ? error : new Error(String(error))
+            )
         )
         .catch((error) => {
           // Final safety net for any unhandled errors
@@ -405,7 +424,8 @@ export class RetryManager {
     useJitter: boolean
   ): number {
     // Exponential backoff: baseDelay * (backoffMultiplier ^ (attempt - 1))
-    const exponentialDelay = baseDelay * Math.pow(backoffMultiplier, attempt - 1);
+    const exponentialDelay =
+      baseDelay * Math.pow(backoffMultiplier, attempt - 1);
 
     // Add jitter (0-100% random variation) to prevent thundering herd
     let delay = exponentialDelay;
@@ -456,7 +476,13 @@ export class RetryManager {
     }
 
     // Retryable errors
-    const retryablePatterns = ['network', 'timeout', 'connection', 'unavailable', 'temporary'];
+    const retryablePatterns = [
+      'network',
+      'timeout',
+      'connection',
+      'unavailable',
+      'temporary',
+    ];
 
     for (const pattern of retryablePatterns) {
       if (message.includes(pattern)) {

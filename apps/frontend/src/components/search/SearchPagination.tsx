@@ -1,9 +1,9 @@
 /**
  * SearchPagination Component
- * 
+ *
  * Accessible pagination controls for search results.
  * Fully keyboard navigable with proper ARIA attributes.
- * 
+ *
  * Requirements:
  * - 8.9: Implements pagination with 20 results per page
  * - WCAG 2.2 AAA: Full accessibility compliance
@@ -28,7 +28,7 @@ export function SearchPagination({
   hasNextPage,
   hasPreviousPage,
   onPageChange,
-  maxPageButtons = 5
+  maxPageButtons = 5,
 }: SearchPaginationProps): React.ReactElement {
   const { t } = useTranslation();
 
@@ -36,7 +36,7 @@ export function SearchPagination({
   const getPageNumbers = (): number[] => {
     const pages: number[] = [];
     const halfMax = Math.floor(maxPageButtons / 2);
-    
+
     let startPage = Math.max(0, currentPage - halfMax);
     let endPage = Math.min(totalPages - 1, currentPage + halfMax);
 
@@ -65,7 +65,7 @@ export function SearchPagination({
   };
 
   return (
-    <nav 
+    <nav
       className="search-pagination"
       role="navigation"
       aria-label={t('search.paginationLabel')}

@@ -1,9 +1,9 @@
 /**
  * ConversationSearch Component
- * 
+ *
  * Main search interface for conversations with full WCAG 2.2 AAA compliance.
  * Provides debounced search input, results display, and keyboard navigation.
- * 
+ *
  * Requirements:
  * - 8.1: Searches within 500ms with debouncing
  * - 8.8: Shows "No results found" with suggestions
@@ -30,16 +30,18 @@ interface ConversationSearchProps {
 export function ConversationSearch({
   onResultSelect,
   onConversationChange,
-  className = ''
+  className = '',
 }: ConversationSearchProps): React.ReactElement {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
-  const [searchResponse, setSearchResponse] = useState<SearchResponse | null>(null);
+  const [searchResponse, setSearchResponse] = useState<SearchResponse | null>(
+    null
+  );
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [focusedResultIndex, setFocusedResultIndex] = useState(-1);
-  
+
   const searchServiceRef = useRef<ConversationSearchService | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const debounceTimerRef = useRef<number | null>(null);
@@ -55,7 +57,7 @@ export function ConversationSearch({
         searchServiceRef.current = service;
       } catch (err) {
         frontendLogger.error('Failed to initialize search service', {
-          error: err instanceof Error ? err : new Error(String(err))
+          error: err instanceof Error ? err : new Error(String(err)),
         });
         setError(t('search.initializationError'));
       }
@@ -71,19 +73,12 @@ export function ConversationSearch({
   }, [t]);
 
   // Initialize prefetch hook (Requirement 8.10, 6.1)
-  const {
-    searchWithPrefetch,
-    clearCache,
-    isCached,
-    prefetchStatus
-  } = useSearchWithPrefetch(
-    searchServiceRef.current!,
-    {
+  const { searchWithPrefetch, clearCache, isCached, prefetchStatus } =
+    useSearchWithPrefetch(searchServiceRef.current!, {
       initialPages: 3, // Prefetch first 3 pages (Requirement 8.10)
       maxCacheSize: 100,
-      debug: false
-    }
-  );
+      debug: false,
+    });
 
   // Clear cache when conversations change (Requirement: cache invalidation)
   useEffect(() => {
@@ -93,43 +88,46 @@ export function ConversationSearch({
   }, [onConversationChange, clearCache]);
 
   // Debounced search function with prefetching (300ms debounce - Requirement 8.1)
-  const performSearch = useCallback(async (searchQuery: string, page: number = 0) => {
-    if (!searchServiceRef.current) {
-      return;
-    }
+  const performSearch = useCallback(
+    async (searchQuery: string, page: number = 0) => {
+      if (!searchServiceRef.current) {
+        return;
+      }
 
-    if (searchQuery.trim().length === 0) {
-      setSearchResponse(null);
+      if (searchQuery.trim().length === 0) {
+        setSearchResponse(null);
+        setError(null);
+        return;
+      }
+
+      // Check if result is cached (Requirement 6.1: instant results for cache hits)
+      const cached = isCached(searchQuery, page);
+
+      // Show loading indicator only for cache misses or during prefetch
+      if (!cached) {
+        setIsSearching(true);
+      }
+
       setError(null);
-      return;
-    }
 
-    // Check if result is cached (Requirement 6.1: instant results for cache hits)
-    const cached = isCached(searchQuery, page);
-    
-    // Show loading indicator only for cache misses or during prefetch
-    if (!cached) {
-      setIsSearching(true);
-    }
-    
-    setError(null);
+      try {
+        // Use prefetch-enabled search (Requirement 8.10)
+        const response = await searchWithPrefetch(searchQuery, page);
 
-    try {
-      // Use prefetch-enabled search (Requirement 8.10)
-      const response = await searchWithPrefetch(searchQuery, page);
-      
-      setSearchResponse(response);
-      setFocusedResultIndex(-1);
-    } catch (err) {
-      frontendLogger.error('Search failed', {
-        error: err instanceof Error ? err : new Error(String(err))
-      });
-      setError(t('search.searchError'));
-      setSearchResponse(null);
-    } finally {
-      setIsSearching(false);
-    }
-  }, [t, searchWithPrefetch, isCached]);
+        setSearchResponse(response);
+        setFocusedResultIndex(-1);
+      } catch (err) {
+        frontendLogger.error('Search failed', {
+          error: err instanceof Error ? err : new Error(String(err)),
+        });
+        setError(t('search.searchError'));
+        setSearchResponse(null);
+      } finally {
+        setIsSearching(false);
+      }
+    },
+    [t, searchWithPrefetch, isCached]
+  );
 
   // Handle search input change with debouncing
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -148,11 +146,19 @@ export function ConversationSearch({
     }, 300);
   };
 
+  const handleClearSearch = () => {
+    setQuery('');
+    setSearchResponse(null);
+    setError(null);
+    setFocusedResultIndex(-1);
+    searchInputRef.current?.focus();
+  };
+
   // Handle page change
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
     performSearch(query, newPage);
-    
+
     // Scroll to top of results
     if (resultsContainerRef.current) {
       resultsContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
@@ -179,7 +185,7 @@ export function ConversationSearch({
           setFocusedResultIndex(focusedResultIndex + 1);
         }
         break;
-      
+
       case 'ArrowUp':
         e.preventDefault();
         if (focusedResultIndex > 0) {
@@ -189,7 +195,7 @@ export function ConversationSearch({
           searchInputRef.current?.focus();
         }
         break;
-      
+
       case 'Enter':
         if (focusedResultIndex >= 0) {
           const result = searchResponse.results[focusedResultIndex];
@@ -200,7 +206,7 @@ export function ConversationSearch({
           );
         }
         break;
-      
+
       case 'Escape':
         e.preventDefault();
         setQuery('');
@@ -209,12 +215,12 @@ export function ConversationSearch({
         setFocusedResultIndex(-1);
         searchInputRef.current?.focus();
         break;
-      
+
       case 'Home':
         e.preventDefault();
         setFocusedResultIndex(0);
         break;
-      
+
       case 'End':
         e.preventDefault();
         setFocusedResultIndex(searchResponse.results.length - 1);
@@ -223,13 +229,22 @@ export function ConversationSearch({
   };
 
   const hasResults = searchResponse && searchResponse.results.length > 0;
-  const showNoResults = !isSearching && query.trim().length > 0 && searchResponse?.results.length === 0;
+  const showNoResults =
+    !isSearching &&
+    query.trim().length > 0 &&
+    searchResponse?.results.length === 0;
+  const statusText = isSearching
+    ? t('search.searching')
+    : hasResults
+      ? t('search.resultsCount', {
+          count: searchResponse?.pagination.totalResults,
+        })
+      : showNoResults
+        ? t('search.noResults', { query })
+        : '';
 
   return (
-    <div 
-      className={`conversation-search ${className}`}
-      role="search"
-    >
+    <div className={`conversation-search ${className}`} role="search">
       {/* Search input */}
       <div className="search-header">
         <label htmlFor="search-input" className="sr-only">
@@ -248,7 +263,7 @@ export function ConversationSearch({
           aria-describedby="search-instructions"
           aria-controls="search-results"
           aria-activedescendant={
-            focusedResultIndex >= 0 
+            focusedResultIndex >= 0
               ? `result-${searchResponse?.results[focusedResultIndex]?.conversationId}`
               : undefined
           }
@@ -256,7 +271,18 @@ export function ConversationSearch({
           onKeyDown={handleKeyDown}
           data-testid="search-input"
         />
-        
+        {query.trim().length > 0 && (
+          <button
+            type="button"
+            className="search-clear-btn"
+            onClick={handleClearSearch}
+            aria-label={t('common.clear')}
+            data-testid="search-clear-btn"
+          >
+            {t('common.clear')}
+          </button>
+        )}
+
         {/* Screen reader instructions */}
         <div id="search-instructions" className="sr-only">
           {t('search.instructions')}
@@ -266,11 +292,11 @@ export function ConversationSearch({
         {hasResults && (
           <div className="search-stats" aria-live="polite" aria-atomic="true">
             <span className="stats-count">
-              {t('search.resultsCount', { count: searchResponse.pagination.totalResults })}
+              {t('search.resultsCount', {
+                count: searchResponse.pagination.totalResults,
+              })}
             </span>
-            <span className="stats-time">
-              ({searchResponse.searchTime}ms)
-            </span>
+            <span className="stats-time">({searchResponse.searchTime}ms)</span>
             {/* Show cache indicator for instant results (Requirement 6.1) */}
             {isCached(query, currentPage) && (
               <span className="stats-cached" title={t('search.cachedResult')}>
@@ -281,11 +307,22 @@ export function ConversationSearch({
         )}
       </div>
 
+      {statusText && (
+        <div
+          className="conversation-search-status"
+          role="status"
+          aria-live="polite"
+          data-testid="conversation-search-status"
+        >
+          {statusText}
+        </div>
+      )}
+
       {/* Loading indicator - shows for initial search (cache miss) */}
       {isSearching && (
-        <div 
-          className="search-loading" 
-          role="status" 
+        <div
+          className="search-loading"
+          role="status"
           aria-label={t('search.searching')}
           aria-live="polite"
         >
@@ -296,9 +333,9 @@ export function ConversationSearch({
 
       {/* Prefetch progress indicator (Requirement 8.10) */}
       {prefetchStatus.isPrefetching && !isSearching && (
-        <div 
-          className="search-prefetching" 
-          role="status" 
+        <div
+          className="search-prefetching"
+          role="status"
           aria-label={t('search.prefetching')}
           aria-live="polite"
         >
@@ -306,14 +343,14 @@ export function ConversationSearch({
             <span className="prefetch-text">
               {t('search.prefetchingPages', {
                 current: prefetchStatus.prefetchedPages,
-                total: prefetchStatus.totalPages
+                total: prefetchStatus.totalPages,
               })}
             </span>
             <div className="prefetch-progress">
-              <div 
+              <div
                 className="prefetch-progress-bar"
                 style={{
-                  width: `${(prefetchStatus.prefetchedPages / prefetchStatus.totalPages) * 100}%`
+                  width: `${(prefetchStatus.prefetchedPages / prefetchStatus.totalPages) * 100}%`,
                 }}
                 aria-hidden="true"
               />
@@ -324,11 +361,7 @@ export function ConversationSearch({
 
       {/* Error message */}
       {error && (
-        <div 
-          className="search-error" 
-          role="alert" 
-          aria-live="assertive"
-        >
+        <div className="search-error" role="alert" aria-live="assertive">
           <p>{error}</p>
         </div>
       )}
@@ -372,9 +405,9 @@ export function ConversationSearch({
 
       {/* No results message (Requirement 8.8) */}
       {showNoResults && (
-        <div 
-          className="no-results" 
-          role="status" 
+        <div
+          className="no-results"
+          role="status"
           aria-live="polite"
           aria-atomic="true"
           data-testid="search-no-results"

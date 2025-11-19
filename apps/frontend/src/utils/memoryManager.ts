@@ -1,6 +1,6 @@
 /**
  * Memory Management Utilities
- * 
+ *
  * Task 11.2: Frontend memory optimization utilities
  * - Monitor memory usage
  * - Trigger cleanup when memory is high
@@ -34,7 +34,7 @@ export interface MemoryStats {
 
 /**
  * Get current memory usage statistics
- * 
+ *
  * Note: performance.memory is only available in Chrome/Edge
  */
 export function getMemoryStats(): MemoryStats | null {
@@ -46,7 +46,7 @@ export function getMemoryStats(): MemoryStats | null {
       jsHeapSizeLimit: number;
     };
   };
-  
+
   if (!perfWithMemory.memory) {
     return null;
   }
@@ -87,13 +87,13 @@ export function isMemoryHigh(): boolean {
 
 /**
  * Trigger garbage collection hint
- * 
+ *
  * Note: This doesn't actually trigger GC (browser controls that),
  * but we can help by nullifying references and suggesting cleanup
  */
 export function suggestGarbageCollection(): void {
   const stats = getMemoryStats();
-  
+
   if (stats) {
     frontendLogger.info('Suggesting garbage collection', {
       metadata: {
@@ -117,13 +117,13 @@ export function suggestGarbageCollection(): void {
 
 /**
  * Monitor memory usage and log warnings
- * 
+ *
  * Task 11.2: Periodic memory monitoring
  */
 export function startMemoryMonitoring(intervalMs: number = 30000): () => void {
   const intervalId = setInterval(() => {
     const stats = getMemoryStats();
-    
+
     if (!stats) {
       return;
     }
@@ -137,7 +137,7 @@ export function startMemoryMonitoring(intervalMs: number = 30000): () => void {
           status: stats.status,
         },
       });
-      
+
       // Suggest garbage collection
       suggestGarbageCollection();
     } else if (stats.status === 'warning') {
@@ -163,7 +163,7 @@ export function startMemoryMonitoring(intervalMs: number = 30000): () => void {
  */
 export function formatMemorySize(bytes: number): string {
   const mb = bytes / 1024 / 1024;
-  
+
   if (mb < 1) {
     return `${(bytes / 1024).toFixed(2)} KB`;
   } else if (mb < 1024) {
@@ -178,7 +178,7 @@ export function formatMemorySize(bytes: number): string {
  */
 export function getMemorySummary(): string {
   const stats = getMemoryStats();
-  
+
   if (!stats) {
     return 'Memory stats not available (Chrome/Edge only)';
   }

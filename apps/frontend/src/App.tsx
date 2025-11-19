@@ -69,7 +69,7 @@ function App(): React.JSX.Element {
           },
           24 * 60 * 60 * 1000
         );
-        
+
         // Task 11.4: Start memory monitoring (every 30 seconds)
         stopMemoryMonitoring = startMemoryMonitoring(30000);
         frontendLogger.info('Memory monitoring started', {
@@ -90,7 +90,7 @@ function App(): React.JSX.Element {
       if (cleanupInterval !== undefined) {
         clearInterval(cleanupInterval);
       }
-      
+
       // Task 11.4: Stop memory monitoring on unmount
       if (stopMemoryMonitoring) {
         stopMemoryMonitoring();
@@ -147,7 +147,7 @@ function App(): React.JSX.Element {
               <NotificationProvider maxNotifications={5} defaultDuration={5000}>
                 {/* Data Integrity Check on Startup */}
                 <IntegrityCheckInitializer />
-                
+
                 <AppRouter />
 
                 {/* Performance Dashboard (development only) */}

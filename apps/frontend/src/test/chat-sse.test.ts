@@ -39,7 +39,12 @@ vi.mock('../utils/networkErrorHandler.js', () => ({
     constructor(
       message: string,
       public type: string,
-      public options?: { retryable?: boolean; statusCode?: number; originalError?: Error; metadata?: unknown }
+      public options?: {
+        retryable?: boolean;
+        statusCode?: number;
+        originalError?: Error;
+        metadata?: unknown;
+      }
     ) {
       super(message);
       this.type = type;
@@ -50,7 +55,7 @@ vi.mock('../utils/networkErrorHandler.js', () => ({
     retryable: boolean;
     statusCode?: number;
     originalError?: Error;
-    
+
     private isRetryableByDefault(type: string): boolean {
       const retryableTypes = [
         'connection_failed',
@@ -325,7 +330,7 @@ describe('ChatSSEClient', () => {
       // Import the mocked logger
       const loggerModule = await import('../utils/logger.js');
       const { frontendLogger } = loggerModule;
-      
+
       client.connect();
       client.connect(); // This should be debounced
 
@@ -460,7 +465,7 @@ describe('ChatSSEClient', () => {
 
     it('should register event handlers before connection establishment', async () => {
       const events: string[] = [];
-      
+
       client.on('connectionStateChange', (state) => {
         events.push(`state:${state}`);
       });
@@ -494,12 +499,12 @@ describe('ChatSSEClient', () => {
       expect(events).toContain('state:connecting');
       expect(events).toContain('state:connected');
       expect(events).toContain('messageStart');
-      
+
       // State changes should happen before message
       const connectingIndex = events.indexOf('state:connecting');
       const connectedIndex = events.indexOf('state:connected');
       const messageIndex = events.indexOf('messageStart');
-      
+
       expect(connectingIndex).toBeLessThan(connectedIndex);
       expect(connectedIndex).toBeLessThan(messageIndex);
     });
@@ -531,11 +536,13 @@ describe('ChatSSEClient', () => {
 
 /**
  * ChatService Tests (Task 2)
- * 
+ *
  * Tests for connection readiness check, connection pooling, and error propagation
  */
 describe('ChatService', () => {
-  let chatService: ReturnType<typeof import('../services/chat.js').getChatService>;
+  let chatService: ReturnType<
+    typeof import('../services/chat.js').getChatService
+  >;
   let fetchEventSourceSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
@@ -726,14 +733,19 @@ describe('ChatService', () => {
     });
 
     it('should create new connection if existing is in error state', async () => {
-      const NetworkErrorClass = (await import('../utils/networkErrorHandler.js'))
-        .NetworkError;
-      
+      const NetworkErrorClass = (
+        await import('../utils/networkErrorHandler.js')
+      ).NetworkError;
+
       // Mock failed connection with retryable error
       fetchEventSourceSpy.mockImplementation(async (_url, options) => {
-        const error = new NetworkErrorClass('Connection failed', 'connection_failed', {
-          retryable: true,
-        });
+        const error = new NetworkErrorClass(
+          'Connection failed',
+          'connection_failed',
+          {
+            retryable: true,
+          }
+        );
         options.onerror?.(error);
         throw error;
       });
@@ -781,14 +793,19 @@ describe('ChatService', () => {
     });
 
     it('should reuse connection in reconnecting state', async () => {
-      const NetworkErrorClass = (await import('../utils/networkErrorHandler.js'))
-        .NetworkError;
-      
+      const NetworkErrorClass = (
+        await import('../utils/networkErrorHandler.js')
+      ).NetworkError;
+
       // Mock failed connection that will reconnect (retryable error)
       fetchEventSourceSpy.mockImplementation(async (_url, options) => {
-        const error = new NetworkErrorClass('Connection failed', 'connection_failed', {
-          retryable: true,
-        });
+        const error = new NetworkErrorClass(
+          'Connection failed',
+          'connection_failed',
+          {
+            retryable: true,
+          }
+        );
         options.onerror?.(error);
         throw error;
       });
@@ -844,14 +861,19 @@ describe('ChatService', () => {
       const errorCallback = vi.fn();
       const unsubscribe = chatService.onConnectionError(errorCallback);
 
-      const NetworkErrorClass = (await import('../utils/networkErrorHandler.js'))
-        .NetworkError;
-      
+      const NetworkErrorClass = (
+        await import('../utils/networkErrorHandler.js')
+      ).NetworkError;
+
       // Mock failed connection with retryable error
       fetchEventSourceSpy.mockImplementation(async (_url, options) => {
-        const error = new NetworkErrorClass('Connection failed', 'connection_failed', {
-          retryable: true,
-        });
+        const error = new NetworkErrorClass(
+          'Connection failed',
+          'connection_failed',
+          {
+            retryable: true,
+          }
+        );
         options.onerror?.(error);
         throw error;
       });
@@ -876,8 +898,9 @@ describe('ChatService', () => {
       chatService.onConnectionError(errorCallback);
 
       // Mock network error
-      const NetworkErrorClass = (await import('../utils/networkErrorHandler.js'))
-        .NetworkError;
+      const NetworkErrorClass = (
+        await import('../utils/networkErrorHandler.js')
+      ).NetworkError;
       const networkError = new NetworkErrorClass(
         'Network error',
         'connection_failed',
@@ -954,8 +977,9 @@ describe('ChatService', () => {
       const errorCallback = vi.fn();
       chatService.onConnectionError(errorCallback);
 
-      const NetworkErrorClass = (await import('../utils/networkErrorHandler.js'))
-        .NetworkError;
+      const NetworkErrorClass = (
+        await import('../utils/networkErrorHandler.js')
+      ).NetworkError;
 
       // Test timeout error
       const timeoutError = new NetworkErrorClass('Timeout', 'timeout', {
@@ -1009,14 +1033,14 @@ describe('ChatService', () => {
 
 /**
  * Task 5.4: Error Handling Tests
- * 
+ *
  * Tests for error classification, exponential backoff, and error message mapping
  */
 describe('Error Handling (Task 5)', () => {
   describe('Error Classification (Task 5.1)', () => {
     it('should classify network errors as retryable', async () => {
       const { NetworkError } = await import('../utils/networkErrorHandler.js');
-      
+
       const networkError = new NetworkError(
         'Network connection failed',
         'connection_failed',
@@ -1029,7 +1053,7 @@ describe('Error Handling (Task 5)', () => {
 
     it('should classify authentication errors as non-retryable', async () => {
       const { NetworkError } = await import('../utils/networkErrorHandler.js');
-      
+
       const authError = new NetworkError(
         'Authentication required',
         'unauthorized',
@@ -1042,7 +1066,7 @@ describe('Error Handling (Task 5)', () => {
 
     it('should classify 5xx server errors as retryable', async () => {
       const { NetworkError } = await import('../utils/networkErrorHandler.js');
-      
+
       const serverError = new NetworkError(
         'Server error: 500',
         'server_error',
@@ -1056,7 +1080,7 @@ describe('Error Handling (Task 5)', () => {
 
     it('should classify 4xx client errors as non-retryable', async () => {
       const { NetworkError } = await import('../utils/networkErrorHandler.js');
-      
+
       const clientError = new NetworkError(
         'Invalid request data',
         'validation_error',
@@ -1070,12 +1094,10 @@ describe('Error Handling (Task 5)', () => {
 
     it('should classify timeout errors as retryable', async () => {
       const { NetworkError } = await import('../utils/networkErrorHandler.js');
-      
-      const timeoutError = new NetworkError(
-        'Request timed out',
-        'timeout',
-        { retryable: true }
-      );
+
+      const timeoutError = new NetworkError('Request timed out', 'timeout', {
+        retryable: true,
+      });
 
       expect(timeoutError.retryable).toBe(true);
       expect(timeoutError.type).toBe('timeout');
@@ -1083,7 +1105,7 @@ describe('Error Handling (Task 5)', () => {
 
     it('should classify rate limit errors as retryable', async () => {
       const { NetworkError } = await import('../utils/networkErrorHandler.js');
-      
+
       const rateLimitError = new NetworkError(
         'Too many requests',
         'rate_limited',
@@ -1097,7 +1119,7 @@ describe('Error Handling (Task 5)', () => {
 
     it('should use default retryable value based on error type', async () => {
       const { NetworkError } = await import('../utils/networkErrorHandler.js');
-      
+
       // Test default retryable for connection_failed (should be true)
       const error1 = new NetworkError('Connection failed', 'connection_failed');
       expect(error1.retryable).toBe(true);
@@ -1117,7 +1139,10 @@ describe('Error Handling (Task 5)', () => {
     let fetchEventSourceSpy: ReturnType<typeof vi.spyOn>;
 
     beforeEach(() => {
-      fetchEventSourceSpy = vi.spyOn(fetchEventSourceModule, 'fetchEventSource');
+      fetchEventSourceSpy = vi.spyOn(
+        fetchEventSourceModule,
+        'fetchEventSource'
+      );
       client = new ChatSSEClient('test-conversation-id');
     });
 
@@ -1132,9 +1157,13 @@ describe('Error Handling (Task 5)', () => {
 
       // Mock failed connection that triggers reconnection
       fetchEventSourceSpy.mockImplementation(async (_url, options) => {
-        const error = new NetworkError('Connection failed', 'connection_failed', {
-          retryable: true,
-        });
+        const error = new NetworkError(
+          'Connection failed',
+          'connection_failed',
+          {
+            retryable: true,
+          }
+        );
         options.onerror?.(error);
         throw error;
       });
@@ -1170,9 +1199,13 @@ describe('Error Handling (Task 5)', () => {
 
       // Mock failed connection
       fetchEventSourceSpy.mockImplementation(async (_url, options) => {
-        const error = new NetworkError('Connection failed', 'connection_failed', {
-          retryable: true,
-        });
+        const error = new NetworkError(
+          'Connection failed',
+          'connection_failed',
+          {
+            retryable: true,
+          }
+        );
         options.onerror?.(error);
         throw error;
       });
@@ -1202,12 +1235,16 @@ describe('Error Handling (Task 5)', () => {
       // Mock connection that fails first, then succeeds
       fetchEventSourceSpy.mockImplementation(async (_url, options) => {
         connectionAttempts++;
-        
+
         if (connectionAttempts === 1) {
           // First attempt fails
-          const error = new NetworkError('Connection failed', 'connection_failed', {
-            retryable: true,
-          });
+          const error = new NetworkError(
+            'Connection failed',
+            'connection_failed',
+            {
+              retryable: true,
+            }
+          );
           options.onerror?.(error);
           throw error;
         } else {
@@ -1222,7 +1259,7 @@ describe('Error Handling (Task 5)', () => {
 
       // Trigger connection
       client.connect();
-      
+
       // Wait for failure and reconnection
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
@@ -1240,9 +1277,13 @@ describe('Error Handling (Task 5)', () => {
 
       // Mock failed connection
       fetchEventSourceSpy.mockImplementation(async (_url, options) => {
-        const error = new NetworkError('Connection failed', 'connection_failed', {
-          retryable: true,
-        });
+        const error = new NetworkError(
+          'Connection failed',
+          'connection_failed',
+          {
+            retryable: true,
+          }
+        );
         options.onerror?.(error);
         throw error;
       });
@@ -1265,10 +1306,10 @@ describe('Error Handling (Task 5)', () => {
         for (let i = 1; i < reconnectDelays.length; i++) {
           const expectedDelay = reconnectDelays[i - 1] * 2;
           const actualDelay = reconnectDelays[i];
-          
+
           // Should not be exactly 2x due to jitter
           expect(actualDelay).not.toBe(expectedDelay);
-          
+
           // But should be within reasonable range (1.5x to 3x)
           expect(actualDelay).toBeGreaterThan(expectedDelay * 0.75);
           expect(actualDelay).toBeLessThan(expectedDelay * 1.5);
@@ -1278,7 +1319,9 @@ describe('Error Handling (Task 5)', () => {
   });
 
   describe('User-Friendly Error Messages (Task 5.3)', () => {
-    let chatService: ReturnType<typeof import('../services/chat.js').getChatService>;
+    let chatService: ReturnType<
+      typeof import('../services/chat.js').getChatService
+    >;
 
     beforeEach(async () => {
       const chatModule = await import('../services/chat.js');
@@ -1294,7 +1337,10 @@ describe('Error Handling (Task 5)', () => {
       const errorCallback = vi.fn();
       chatService.onConnectionError(errorCallback);
 
-      const fetchEventSourceSpy = vi.spyOn(fetchEventSourceModule, 'fetchEventSource');
+      const fetchEventSourceSpy = vi.spyOn(
+        fetchEventSourceModule,
+        'fetchEventSource'
+      );
       const error = new NetworkError('Connection failed', 'connection_failed', {
         retryable: true,
       });
@@ -1311,7 +1357,9 @@ describe('Error Handling (Task 5)', () => {
       expect(errorCallback).toHaveBeenCalledWith(
         'test-conv-id',
         expect.objectContaining({
-          message: expect.stringMatching(/unable to establish connection|check your internet connection/i),
+          message: expect.stringMatching(
+            /unable to establish connection|check your internet connection/i
+          ),
         })
       );
     });
@@ -1321,7 +1369,10 @@ describe('Error Handling (Task 5)', () => {
       const errorCallback = vi.fn();
       chatService.onConnectionError(errorCallback);
 
-      const fetchEventSourceSpy = vi.spyOn(fetchEventSourceModule, 'fetchEventSource');
+      const fetchEventSourceSpy = vi.spyOn(
+        fetchEventSourceModule,
+        'fetchEventSource'
+      );
       const error = new NetworkError('Timeout', 'timeout', { retryable: true });
 
       fetchEventSourceSpy.mockImplementation(async (_url, options) => {
@@ -1346,7 +1397,10 @@ describe('Error Handling (Task 5)', () => {
       const errorCallback = vi.fn();
       chatService.onConnectionError(errorCallback);
 
-      const fetchEventSourceSpy = vi.spyOn(fetchEventSourceModule, 'fetchEventSource');
+      const fetchEventSourceSpy = vi.spyOn(
+        fetchEventSourceModule,
+        'fetchEventSource'
+      );
       const error = new NetworkError('Unauthorized', 'unauthorized', {
         retryable: false,
       });
@@ -1363,7 +1417,9 @@ describe('Error Handling (Task 5)', () => {
       expect(errorCallback).toHaveBeenCalledWith(
         'test-conv-id',
         expect.objectContaining({
-          message: expect.stringMatching(/authentication|session.*expired|refresh.*page/i),
+          message: expect.stringMatching(
+            /authentication|session.*expired|refresh.*page/i
+          ),
         })
       );
     });
@@ -1373,7 +1429,10 @@ describe('Error Handling (Task 5)', () => {
       const errorCallback = vi.fn();
       chatService.onConnectionError(errorCallback);
 
-      const fetchEventSourceSpy = vi.spyOn(fetchEventSourceModule, 'fetchEventSource');
+      const fetchEventSourceSpy = vi.spyOn(
+        fetchEventSourceModule,
+        'fetchEventSource'
+      );
       const error = new NetworkError('Server error', 'server_error', {
         retryable: true,
       });
@@ -1400,7 +1459,10 @@ describe('Error Handling (Task 5)', () => {
       const errorCallback = vi.fn();
       chatService.onConnectionError(errorCallback);
 
-      const fetchEventSourceSpy = vi.spyOn(fetchEventSourceModule, 'fetchEventSource');
+      const fetchEventSourceSpy = vi.spyOn(
+        fetchEventSourceModule,
+        'fetchEventSource'
+      );
       const error = new NetworkError('Too many requests', 'rate_limited', {
         retryable: true,
       });
@@ -1436,7 +1498,10 @@ describe('Error Handling (Task 5)', () => {
         const errorCallback = vi.fn();
         chatService.onConnectionError(errorCallback);
 
-        const fetchEventSourceSpy = vi.spyOn(fetchEventSourceModule, 'fetchEventSource');
+        const fetchEventSourceSpy = vi.spyOn(
+          fetchEventSourceModule,
+          'fetchEventSource'
+        );
         const error = new NetworkError(`Test ${type}`, type as any, {
           retryable: true,
         });
@@ -1468,10 +1533,17 @@ describe('Error Handling (Task 5)', () => {
       const errorCallback = vi.fn();
       chatService.onConnectionError(errorCallback);
 
-      const fetchEventSourceSpy = vi.spyOn(fetchEventSourceModule, 'fetchEventSource');
-      const retryableError = new NetworkError('Connection failed', 'connection_failed', {
-        retryable: true,
-      });
+      const fetchEventSourceSpy = vi.spyOn(
+        fetchEventSourceModule,
+        'fetchEventSource'
+      );
+      const retryableError = new NetworkError(
+        'Connection failed',
+        'connection_failed',
+        {
+          retryable: true,
+        }
+      );
 
       fetchEventSourceSpy.mockImplementation(async (_url, options) => {
         options.onerror?.(retryableError);
@@ -1495,10 +1567,17 @@ describe('Error Handling (Task 5)', () => {
       const errorCallback = vi.fn();
       chatService.onConnectionError(errorCallback);
 
-      const fetchEventSourceSpy = vi.spyOn(fetchEventSourceModule, 'fetchEventSource');
-      const nonRetryableError = new NetworkError('Unauthorized', 'unauthorized', {
-        retryable: false,
-      });
+      const fetchEventSourceSpy = vi.spyOn(
+        fetchEventSourceModule,
+        'fetchEventSource'
+      );
+      const nonRetryableError = new NetworkError(
+        'Unauthorized',
+        'unauthorized',
+        {
+          retryable: false,
+        }
+      );
 
       fetchEventSourceSpy.mockImplementation(async (_url, options) => {
         options.onerror?.(nonRetryableError);
@@ -1521,7 +1600,7 @@ describe('Error Handling (Task 5)', () => {
 
 /**
  * Task 6: Connection Health Monitoring Tests
- * 
+ *
  * Tests for heartbeat message handling, connection health tracking, and stale connection detection
  */
 describe('Connection Health Monitoring (Task 6)', () => {

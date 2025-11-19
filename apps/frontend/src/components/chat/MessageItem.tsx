@@ -100,7 +100,10 @@ async function loadPrismLanguage(language: string): Promise<void> {
     loadedLanguages.add(language);
   } catch (error) {
     frontendLogger.warn('Failed to load Prism language', {
-      metadata: { language, error: error instanceof Error ? error.message : String(error) },
+      metadata: {
+        language,
+        error: error instanceof Error ? error.message : String(error),
+      },
     });
   }
 }
@@ -357,7 +360,7 @@ function highlightKeywordsInText(
   const pattern = keywords
     .map((keyword) => keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) // Escape special regex chars
     .join('|');
-  
+
   // eslint-disable-next-line security/detect-non-literal-regexp -- Pattern is sanitized above
   const regex = new RegExp(`(${pattern})`, 'gi');
   const parts = text.split(regex);
@@ -426,7 +429,10 @@ const CodeBlockView = memo<CodeBlockViewProps>(
 
       highlightCode().catch((error) => {
         frontendLogger.warn('Failed to highlight code', {
-          metadata: { language: resolvedLanguage, error: error instanceof Error ? error.message : String(error) },
+          metadata: {
+            language: resolvedLanguage,
+            error: error instanceof Error ? error.message : String(error),
+          },
         });
       });
     }, [code, resolvedLanguage, theme]);
@@ -609,7 +615,10 @@ const MessageItemComponent = ({
 
           {segments.map((segment) => {
             if (segment.type === 'text') {
-              const rendered = renderTextContent(segment.text, highlightKeywords);
+              const rendered = renderTextContent(
+                segment.text,
+                highlightKeywords
+              );
               if (rendered === null) {
                 return null;
               }
@@ -638,7 +647,9 @@ const MessageItemComponent = ({
 
           {isStreaming ? (
             <div className="streaming-indicator" aria-live="polite">
-              <span className="streaming-cursor" aria-label="Streaming">▋</span>
+              <span className="streaming-cursor" aria-label="Streaming">
+                ▋
+              </span>
             </div>
           ) : null}
         </div>

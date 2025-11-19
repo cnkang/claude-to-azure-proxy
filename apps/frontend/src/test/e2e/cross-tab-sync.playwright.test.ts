@@ -15,7 +15,11 @@
 import { test, expect, type Page, type BrowserContext } from '@playwright/test';
 
 // Helper function to wait for storage event
-async function waitForStorageEvent(page: Page, key: string, timeout = 2000): Promise<void> {
+async function waitForStorageEvent(
+  page: Page,
+  key: string,
+  timeout = 2000
+): Promise<void> {
   await page.waitForFunction(
     (eventKey) => {
       return new Promise((resolve) => {
@@ -97,12 +101,15 @@ test.describe('E2E: Cross-Tab Synchronization with Playwright', () => {
       return new Promise((resolve) => {
         const syncService = (window as any).crossTabSyncService;
         const unsubscribe = syncService.subscribe('update', (event: any) => {
-          if (event.conversationId === 'test-conv-1' && event.data?.title === 'Updated Title') {
+          if (
+            event.conversationId === 'test-conv-1' &&
+            event.data?.title === 'Updated Title'
+          ) {
             unsubscribe();
             resolve(true);
           }
         });
-        
+
         // Timeout after 2 seconds
         setTimeout(() => {
           unsubscribe();
@@ -115,10 +122,14 @@ test.describe('E2E: Cross-Tab Synchronization with Playwright', () => {
     await page1.evaluate(() => {
       const storage = (window as any).conversationStorage;
       const syncService = (window as any).crossTabSyncService;
-      
-      return storage.updateConversationTitle('test-conv-1', 'Updated Title').then(() => {
-        syncService.broadcastUpdate('test-conv-1', { title: 'Updated Title' });
-      });
+
+      return storage
+        .updateConversationTitle('test-conv-1', 'Updated Title')
+        .then(() => {
+          syncService.broadcastUpdate('test-conv-1', {
+            title: 'Updated Title',
+          });
+        });
     });
 
     // Wait for tab 2 to receive the update
@@ -162,7 +173,7 @@ test.describe('E2E: Cross-Tab Synchronization with Playwright', () => {
             resolve(true);
           }
         });
-        
+
         // Timeout after 2 seconds
         setTimeout(() => {
           unsubscribe();
@@ -175,7 +186,7 @@ test.describe('E2E: Cross-Tab Synchronization with Playwright', () => {
     await page2.evaluate(() => {
       const storage = (window as any).conversationStorage;
       const syncService = (window as any).crossTabSyncService;
-      
+
       return storage.deleteConversation('test-conv-2').then(() => {
         syncService.broadcastDeletion('test-conv-2');
       });
@@ -217,16 +228,24 @@ test.describe('E2E: Cross-Tab Synchronization with Playwright', () => {
       page1.evaluate(() => {
         const storage = (window as any).conversationStorage;
         const syncService = (window as any).crossTabSyncService;
-        return storage.updateConversationTitle('test-conv-3', 'Title from Tab 1').then(() => {
-          syncService.broadcastUpdate('test-conv-3', { title: 'Title from Tab 1' });
-        });
+        return storage
+          .updateConversationTitle('test-conv-3', 'Title from Tab 1')
+          .then(() => {
+            syncService.broadcastUpdate('test-conv-3', {
+              title: 'Title from Tab 1',
+            });
+          });
       }),
       page2.evaluate(() => {
         const storage = (window as any).conversationStorage;
         const syncService = (window as any).crossTabSyncService;
-        return storage.updateConversationTitle('test-conv-3', 'Title from Tab 2').then(() => {
-          syncService.broadcastUpdate('test-conv-3', { title: 'Title from Tab 2' });
-        });
+        return storage
+          .updateConversationTitle('test-conv-3', 'Title from Tab 2')
+          .then(() => {
+            syncService.broadcastUpdate('test-conv-3', {
+              title: 'Title from Tab 2',
+            });
+          });
       }),
     ]);
 
@@ -236,7 +255,9 @@ test.describe('E2E: Cross-Tab Synchronization with Playwright', () => {
     // Verify final state is consistent (one of the titles should win)
     const finalTitle = await page1.evaluate(() => {
       const storage = (window as any).conversationStorage;
-      return storage.getConversation('test-conv-3').then((conv: any) => conv?.title);
+      return storage
+        .getConversation('test-conv-3')
+        .then((conv: any) => conv?.title);
     });
 
     expect(['Title from Tab 1', 'Title from Tab 2']).toContain(finalTitle);
@@ -253,7 +274,7 @@ test.describe('E2E: Cross-Tab Synchronization with Playwright', () => {
             resolve(true);
           }
         });
-        
+
         // Timeout after 2 seconds
         setTimeout(() => {
           unsubscribe();
@@ -285,7 +306,7 @@ test.describe('E2E: Cross-Tab Synchronization with Playwright', () => {
         },
         compressionHistory: [],
       };
-      
+
       return storage.storeConversation(conversation).then(() => {
         syncService.broadcastCreation('test-conv-4', conversation);
       });
@@ -351,7 +372,9 @@ test.describe('E2E: Title Persistence', () => {
     // Verify title persisted
     const title = await page.evaluate(() => {
       const storage = (window as any).conversationStorage;
-      return storage.getConversation('persist-test-1').then((conv: any) => conv?.title);
+      return storage
+        .getConversation('persist-test-1')
+        .then((conv: any) => conv?.title);
     });
 
     expect(title).toBe('Updated Title');
@@ -359,7 +382,7 @@ test.describe('E2E: Title Persistence', () => {
 
   test('should handle very long titles correctly', async () => {
     const longTitle = 'A'.repeat(300);
-    
+
     await page.evaluate((title) => {
       const storage = (window as any).conversationStorage;
       const conversation = {
@@ -387,7 +410,9 @@ test.describe('E2E: Title Persistence', () => {
     // Verify title was truncated to 200 characters
     const storedTitle = await page.evaluate(() => {
       const storage = (window as any).conversationStorage;
-      return storage.getConversation('long-title-test').then((conv: any) => conv?.title);
+      return storage
+        .getConversation('long-title-test')
+        .then((conv: any) => conv?.title);
     });
 
     expect(storedTitle?.length).toBeLessThanOrEqual(200);

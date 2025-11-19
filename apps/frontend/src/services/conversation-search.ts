@@ -203,7 +203,9 @@ export class ConversationSearchService {
     await this.buildSearchIndex();
 
     // localStorage doesn't support native indexing, so we rely on in-memory index (Requirement 8.12)
-    frontendLogger.info('Using in-memory search index for localStorage backend');
+    frontendLogger.info(
+      'Using in-memory search index for localStorage backend'
+    );
   }
 
   /**
@@ -470,7 +472,10 @@ export class ConversationSearchService {
           conversationId: entry.conversationId,
           conversationTitle: entry.title,
           matches,
-          totalMatches: matches.reduce((sum, m) => sum + m.highlights.length, 0),
+          totalMatches: matches.reduce(
+            (sum, m) => sum + m.highlights.length,
+            0
+          ),
           relevanceScore: this.calculateRelevance(matches, keywords),
         });
       }

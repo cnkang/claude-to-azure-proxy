@@ -54,7 +54,7 @@ describe('logger', () => {
 
   it('provides frontendLogger alias for backward compatibility', async () => {
     const { logger, frontendLogger } = await import('../utils/logger.js');
-    
+
     expect(frontendLogger).toBe(logger);
   });
 });

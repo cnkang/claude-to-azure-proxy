@@ -10,7 +10,7 @@
  * - Test PersistenceError handling
  *
  * Requirements: 7.1, 7.2, 7.3, 7.4, 7.5
- * 
+ *
  * NOTE: This is an integration test, not a true E2E test as it doesn't
  * involve UI components. It tests the error recovery logic and retry mechanisms.
  */
@@ -19,7 +19,10 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { waitFor } from '@testing-library/react';
 import { getConversationStorage } from '../services/storage.js';
 import { getRetryManager } from '../utils/retry-manager.js';
-import { PersistenceError, PersistenceErrorType } from '../errors/persistence-error.js';
+import {
+  PersistenceError,
+  PersistenceErrorType,
+} from '../errors/persistence-error.js';
 import type { Conversation } from '../types/index.js';
 
 describe('Error Recovery E2E Scenarios', () => {
@@ -31,12 +34,14 @@ describe('Error Recovery E2E Scenarios', () => {
     // Clear storage before each test
     localStorage.clear();
     sessionStorage.clear();
-    
+
     // Initialize session manager first
-    const sessionManager = (await import('../services/session.js')).getSessionManager();
+    const sessionManager = (
+      await import('../services/session.js')
+    ).getSessionManager();
     sessionManager.initializeSession();
     const currentSessionId = sessionManager.getSessionId();
-    
+
     // Initialize storage and retry manager
     storage = getConversationStorage();
     await storage.initialize();
@@ -265,12 +270,18 @@ describe('Error Recovery E2E Scenarios', () => {
         expectedRetryable: true,
       },
       {
-        error: new PersistenceError(PersistenceErrorType.VALIDATION_FAILED, 'Invalid'),
+        error: new PersistenceError(
+          PersistenceErrorType.VALIDATION_FAILED,
+          'Invalid'
+        ),
         expectedAction: 'revert',
         expectedRetryable: false,
       },
       {
-        error: new PersistenceError(PersistenceErrorType.ENCRYPTION_FAILED, 'Encryption failed'),
+        error: new PersistenceError(
+          PersistenceErrorType.ENCRYPTION_FAILED,
+          'Encryption failed'
+        ),
         expectedAction: 'manual',
         expectedRetryable: false,
       },
@@ -325,9 +336,7 @@ describe('Error Recovery E2E Scenarios', () => {
 
     // Execute all operations concurrently
     const results = await Promise.allSettled(
-      operations.map((op) =>
-        retryManager.execute(op)
-      )
+      operations.map((op) => retryManager.execute(op))
     );
 
     // Verify all operations eventually succeeded
@@ -400,7 +409,10 @@ describe('Error Recovery E2E Scenarios', () => {
         );
       }
       // Succeed on second attempt
-      await storage.updateConversationTitle(testConversation.id, 'Recovered Title');
+      await storage.updateConversationTitle(
+        testConversation.id,
+        'Recovered Title'
+      );
       return 'success';
     });
 

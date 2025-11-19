@@ -1,8 +1,8 @@
 /**
  * Unit tests for useSearchWithPrefetch hook
- * 
+ *
  * Tests prefetching logic, cache behavior, and cache invalidation.
- * 
+ *
  * Requirements:
  * - Test cache behavior (hits, misses, eviction)
  * - Test prefetching logic (first 3 pages)
@@ -14,59 +14,74 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useSearchWithPrefetch } from '../hooks/useSearchWithPrefetch.js';
-import type { ConversationSearchService, SearchResponse } from '../services/conversation-search.js';
+import type {
+  ConversationSearchService,
+  SearchResponse,
+} from '../services/conversation-search.js';
 
 // Mock search service
 const createMockSearchService = (): ConversationSearchService => {
-  const mockSearch = vi.fn(async (query: string, options?: { page?: number }): Promise<SearchResponse> => {
-    const page = options?.page ?? 0;
-    const totalResults = 100;
-    const pageSize = 20;
-    const totalPages = Math.ceil(totalResults / pageSize);
+  const mockSearch = vi.fn(
+    async (
+      query: string,
+      options?: { page?: number }
+    ): Promise<SearchResponse> => {
+      const page = options?.page ?? 0;
+      const totalResults = 100;
+      const pageSize = 20;
+      const totalPages = Math.ceil(totalResults / pageSize);
 
-    return {
-      results: Array.from({ length: Math.min(pageSize, totalResults - page * pageSize) }, (_, i) => ({
-        conversationId: `conv-${page}-${i}`,
-        conversationTitle: `Conversation ${page}-${i}`,
-        matches: [{
-          messageId: `msg-${page}-${i}`,
-          messageIndex: 0,
-          content: `Message content with ${query}`,
-          context: {
-            before: 'Text before ',
-            keyword: query,
-            after: ' text after',
-            position: 12
-          },
-          highlights: [{
-            start: 12,
-            end: 12 + query.length,
-            keyword: query
-          }],
-          timestamp: new Date(),
-          role: 'user' as const
-        }],
-        totalMatches: 1,
-        relevanceScore: 1.0
-      })),
-      pagination: {
-        currentPage: page,
-        pageSize,
-        totalResults,
-        totalPages,
-        hasNextPage: page < totalPages - 1,
-        hasPreviousPage: page > 0
-      },
-      searchTime: 50
-    };
-  });
+      return {
+        results: Array.from(
+          { length: Math.min(pageSize, totalResults - page * pageSize) },
+          (_, i) => ({
+            conversationId: `conv-${page}-${i}`,
+            conversationTitle: `Conversation ${page}-${i}`,
+            matches: [
+              {
+                messageId: `msg-${page}-${i}`,
+                messageIndex: 0,
+                content: `Message content with ${query}`,
+                context: {
+                  before: 'Text before ',
+                  keyword: query,
+                  after: ' text after',
+                  position: 12,
+                },
+                highlights: [
+                  {
+                    start: 12,
+                    end: 12 + query.length,
+                    keyword: query,
+                  },
+                ],
+                timestamp: new Date(),
+                role: 'user' as const,
+              },
+            ],
+            totalMatches: 1,
+            relevanceScore: 1.0,
+          })
+        ),
+        pagination: {
+          currentPage: page,
+          pageSize,
+          totalResults,
+          totalPages,
+          hasNextPage: page < totalPages - 1,
+          hasPreviousPage: page > 0,
+        },
+        searchTime: 50,
+      };
+    }
+  );
 
   return {
     search: mockSearch,
     initialize: vi.fn(),
     buildSearchIndex: vi.fn(),
     updateIndex: vi.fn(),
-    removeFromIndex: vi.fn()
+    removeFromIndex: vi.fn(),
   } as unknown as ConversationSearchService;
 };
 
@@ -84,7 +99,9 @@ describe('useSearchWithPrefetch', () => {
 
   describe('Basic Search Functionality', () => {
     it('should perform search and return results', async () => {
-      const { result } = renderHook(() => useSearchWithPrefetch(mockSearchService));
+      const { result } = renderHook(() =>
+        useSearchWithPrefetch(mockSearchService)
+      );
 
       let response: SearchResponse | undefined;
       await act(async () => {
@@ -97,12 +114,14 @@ describe('useSearchWithPrefetch', () => {
       expect(mockSearchService.search).toHaveBeenCalledWith('test', {
         caseSensitive: false,
         page: 0,
-        pageSize: 20
+        pageSize: 20,
       });
     });
 
     it('should throw error for empty query', async () => {
-      const { result } = renderHook(() => useSearchWithPrefetch(mockSearchService));
+      const { result } = renderHook(() =>
+        useSearchWithPrefetch(mockSearchService)
+      );
 
       await expect(async () => {
         await act(async () => {
@@ -112,7 +131,9 @@ describe('useSearchWithPrefetch', () => {
     });
 
     it('should trim query before searching', async () => {
-      const { result } = renderHook(() => useSearchWithPrefetch(mockSearchService));
+      const { result } = renderHook(() =>
+        useSearchWithPrefetch(mockSearchService)
+      );
 
       await act(async () => {
         await result.current.searchWithPrefetch('  test  ', 0);
@@ -121,7 +142,7 @@ describe('useSearchWithPrefetch', () => {
       expect(mockSearchService.search).toHaveBeenCalledWith('test', {
         caseSensitive: false,
         page: 0,
-        pageSize: 20
+        pageSize: 20,
       });
     });
   });
@@ -129,7 +150,7 @@ describe('useSearchWithPrefetch', () => {
   describe('Cache Behavior', () => {
     it('should cache search results', async () => {
       // Disable prefetching for this test
-      const { result } = renderHook(() => 
+      const { result } = renderHook(() =>
         useSearchWithPrefetch(mockSearchService, { initialPages: 1 })
       );
 
@@ -150,7 +171,9 @@ describe('useSearchWithPrefetch', () => {
     });
 
     it('should check if result is cached', async () => {
-      const { result } = renderHook(() => useSearchWithPrefetch(mockSearchService));
+      const { result } = renderHook(() =>
+        useSearchWithPrefetch(mockSearchService)
+      );
 
       // Initially not cached
       expect(result.current.isCached('test', 0)).toBe(false);
@@ -166,7 +189,7 @@ describe('useSearchWithPrefetch', () => {
 
     it('should track cache statistics', async () => {
       // Disable prefetching for this test
-      const { result } = renderHook(() => 
+      const { result } = renderHook(() =>
         useSearchWithPrefetch(mockSearchService, { initialPages: 1 })
       );
 
@@ -202,8 +225,11 @@ describe('useSearchWithPrefetch', () => {
 
     it('should evict oldest entries when cache exceeds max size', async () => {
       // Disable prefetching and set small cache size
-      const { result } = renderHook(() => 
-        useSearchWithPrefetch(mockSearchService, { maxCacheSize: 3, initialPages: 1 })
+      const { result } = renderHook(() =>
+        useSearchWithPrefetch(mockSearchService, {
+          maxCacheSize: 3,
+          initialPages: 1,
+        })
       );
 
       // Add 4 entries (exceeds max size of 3)
@@ -228,7 +254,7 @@ describe('useSearchWithPrefetch', () => {
 
   describe('Prefetching Logic (Requirement 8.10)', () => {
     it('should prefetch first 3 pages automatically', async () => {
-      const { result } = renderHook(() => 
+      const { result } = renderHook(() =>
         useSearchWithPrefetch(mockSearchService, { initialPages: 3 })
       );
 
@@ -238,25 +264,28 @@ describe('useSearchWithPrefetch', () => {
       });
 
       // Wait for prefetch to complete
-      await waitFor(() => {
-        expect(mockSearchService.search).toHaveBeenCalledTimes(3);
-      }, { timeout: 2000 });
+      await waitFor(
+        () => {
+          expect(mockSearchService.search).toHaveBeenCalledTimes(3);
+        },
+        { timeout: 2000 }
+      );
 
       // Should have called search for pages 0, 1, 2
       expect(mockSearchService.search).toHaveBeenCalledWith('test', {
         caseSensitive: false,
         page: 0,
-        pageSize: 20
+        pageSize: 20,
       });
       expect(mockSearchService.search).toHaveBeenCalledWith('test', {
         caseSensitive: false,
         page: 1,
-        pageSize: 20
+        pageSize: 20,
       });
       expect(mockSearchService.search).toHaveBeenCalledWith('test', {
         caseSensitive: false,
         page: 2,
-        pageSize: 20
+        pageSize: 20,
       });
     });
 
@@ -271,12 +300,12 @@ describe('useSearchWithPrefetch', () => {
           totalResults: 5,
           totalPages: 1,
           hasNextPage: false,
-          hasPreviousPage: false
+          hasPreviousPage: false,
         },
-        searchTime: 50
+        searchTime: 50,
       });
 
-      const { result } = renderHook(() => 
+      const { result } = renderHook(() =>
         useSearchWithPrefetch(singlePageService, { initialPages: 3 })
       );
 
@@ -285,7 +314,7 @@ describe('useSearchWithPrefetch', () => {
       });
 
       // Wait a bit to ensure no prefetch happens
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Should only call search once (no prefetch)
       expect(singlePageService.search).toHaveBeenCalledTimes(1);
@@ -302,12 +331,12 @@ describe('useSearchWithPrefetch', () => {
           totalResults: 30,
           totalPages: 2,
           hasNextPage: true,
-          hasPreviousPage: false
+          hasPreviousPage: false,
         },
-        searchTime: 50
+        searchTime: 50,
       });
 
-      const { result } = renderHook(() => 
+      const { result } = renderHook(() =>
         useSearchWithPrefetch(twoPageService, { initialPages: 3 })
       );
 
@@ -316,25 +345,28 @@ describe('useSearchWithPrefetch', () => {
       });
 
       // Wait for prefetch to complete
-      await waitFor(() => {
-        expect(twoPageService.search).toHaveBeenCalledTimes(2);
-      }, { timeout: 2000 });
+      await waitFor(
+        () => {
+          expect(twoPageService.search).toHaveBeenCalledTimes(2);
+        },
+        { timeout: 2000 }
+      );
 
       // Should only prefetch page 1 (not page 2 which doesn't exist)
       expect(twoPageService.search).toHaveBeenCalledWith('test', {
         caseSensitive: false,
         page: 0,
-        pageSize: 20
+        pageSize: 20,
       });
       expect(twoPageService.search).toHaveBeenCalledWith('test', {
         caseSensitive: false,
         page: 1,
-        pageSize: 20
+        pageSize: 20,
       });
     });
 
     it('should update prefetch status during prefetching', async () => {
-      const { result } = renderHook(() => 
+      const { result } = renderHook(() =>
         useSearchWithPrefetch(mockSearchService, { initialPages: 3 })
       );
 
@@ -349,9 +381,12 @@ describe('useSearchWithPrefetch', () => {
       });
 
       // Wait for prefetch to complete
-      await waitFor(() => {
-        expect(result.current.prefetchStatus.isPrefetching).toBe(false);
-      }, { timeout: 2000 });
+      await waitFor(
+        () => {
+          expect(result.current.prefetchStatus.isPrefetching).toBe(false);
+        },
+        { timeout: 2000 }
+      );
 
       // Status should be reset after completion
       expect(result.current.prefetchStatus.isPrefetching).toBe(false);
@@ -363,7 +398,7 @@ describe('useSearchWithPrefetch', () => {
   describe('Cache Invalidation', () => {
     it('should clear all cache', async () => {
       // Disable prefetching for this test
-      const { result } = renderHook(() => 
+      const { result } = renderHook(() =>
         useSearchWithPrefetch(mockSearchService, { initialPages: 1 })
       );
 
@@ -387,7 +422,7 @@ describe('useSearchWithPrefetch', () => {
 
     it('should invalidate cache for specific query', async () => {
       // Disable prefetching for this test
-      const { result } = renderHook(() => 
+      const { result } = renderHook(() =>
         useSearchWithPrefetch(mockSearchService, { initialPages: 1 })
       );
 
@@ -414,7 +449,9 @@ describe('useSearchWithPrefetch', () => {
     });
 
     it('should handle case-insensitive query invalidation', async () => {
-      const { result } = renderHook(() => useSearchWithPrefetch(mockSearchService));
+      const { result } = renderHook(() =>
+        useSearchWithPrefetch(mockSearchService)
+      );
 
       await act(async () => {
         await result.current.searchWithPrefetch('Test', 0);
@@ -433,14 +470,16 @@ describe('useSearchWithPrefetch', () => {
 
   describe('Concurrent Prefetch Requests', () => {
     it('should handle concurrent searches for different queries', async () => {
-      const { result } = renderHook(() => useSearchWithPrefetch(mockSearchService));
+      const { result } = renderHook(() =>
+        useSearchWithPrefetch(mockSearchService)
+      );
 
       // Start multiple searches concurrently
       await act(async () => {
         await Promise.all([
           result.current.searchWithPrefetch('query1', 0),
           result.current.searchWithPrefetch('query2', 0),
-          result.current.searchWithPrefetch('query3', 0)
+          result.current.searchWithPrefetch('query3', 0),
         ]);
       });
 
@@ -451,7 +490,7 @@ describe('useSearchWithPrefetch', () => {
     });
 
     it('should not duplicate prefetch requests for same page', async () => {
-      const { result } = renderHook(() => 
+      const { result } = renderHook(() =>
         useSearchWithPrefetch(mockSearchService, { initialPages: 3 })
       );
 
@@ -461,9 +500,12 @@ describe('useSearchWithPrefetch', () => {
       });
 
       // Wait for prefetch to complete
-      await waitFor(() => {
-        expect(mockSearchService.search).toHaveBeenCalledTimes(3);
-      }, { timeout: 2000 });
+      await waitFor(
+        () => {
+          expect(mockSearchService.search).toHaveBeenCalledTimes(3);
+        },
+        { timeout: 2000 }
+      );
 
       // Search page 1 (which should already be prefetched)
       await act(async () => {
@@ -476,26 +518,28 @@ describe('useSearchWithPrefetch', () => {
 
     it('should handle prefetch failures gracefully', async () => {
       const failingService = createMockSearchService();
-      vi.mocked(failingService.search).mockImplementation(async (query, options) => {
-        const page = options?.page ?? 0;
-        if (page > 0) {
-          throw new Error('Prefetch failed');
+      vi.mocked(failingService.search).mockImplementation(
+        async (query, options) => {
+          const page = options?.page ?? 0;
+          if (page > 0) {
+            throw new Error('Prefetch failed');
+          }
+          return {
+            results: [],
+            pagination: {
+              currentPage: 0,
+              pageSize: 20,
+              totalResults: 100,
+              totalPages: 5,
+              hasNextPage: true,
+              hasPreviousPage: false,
+            },
+            searchTime: 50,
+          };
         }
-        return {
-          results: [],
-          pagination: {
-            currentPage: 0,
-            pageSize: 20,
-            totalResults: 100,
-            totalPages: 5,
-            hasNextPage: true,
-            hasPreviousPage: false
-          },
-          searchTime: 50
-        };
-      });
+      );
 
-      const { result } = renderHook(() => 
+      const { result } = renderHook(() =>
         useSearchWithPrefetch(failingService, { initialPages: 3 })
       );
 
@@ -505,7 +549,7 @@ describe('useSearchWithPrefetch', () => {
       });
 
       // Wait for prefetch attempts
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 200));
 
       // First page should be cached
       expect(result.current.isCached('test', 0)).toBe(true);
@@ -518,7 +562,7 @@ describe('useSearchWithPrefetch', () => {
   describe('Cache Cleanup on Unmount', () => {
     it('should clear cache when component unmounts', async () => {
       // Disable prefetching for this test
-      const { result, unmount } = renderHook(() => 
+      const { result, unmount } = renderHook(() =>
         useSearchWithPrefetch(mockSearchService, { initialPages: 1 })
       );
 
@@ -539,7 +583,7 @@ describe('useSearchWithPrefetch', () => {
 
   describe('Custom Configuration', () => {
     it('should respect custom initialPages setting', async () => {
-      const { result } = renderHook(() => 
+      const { result } = renderHook(() =>
         useSearchWithPrefetch(mockSearchService, { initialPages: 5 })
       );
 
@@ -548,22 +592,25 @@ describe('useSearchWithPrefetch', () => {
       });
 
       // Wait for prefetch to complete
-      await waitFor(() => {
-        expect(mockSearchService.search).toHaveBeenCalledTimes(5);
-      }, { timeout: 2000 });
+      await waitFor(
+        () => {
+          expect(mockSearchService.search).toHaveBeenCalledTimes(5);
+        },
+        { timeout: 2000 }
+      );
 
       // Should prefetch pages 1-4
       for (let page = 0; page < 5; page++) {
         expect(mockSearchService.search).toHaveBeenCalledWith('test', {
           caseSensitive: false,
           page,
-          pageSize: 20
+          pageSize: 20,
         });
       }
     });
 
     it('should respect custom maxCacheSize setting', async () => {
-      const { result } = renderHook(() => 
+      const { result } = renderHook(() =>
         useSearchWithPrefetch(mockSearchService, { maxCacheSize: 2 })
       );
 

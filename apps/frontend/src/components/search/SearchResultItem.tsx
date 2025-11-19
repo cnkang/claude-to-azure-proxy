@@ -1,9 +1,9 @@
 /**
  * SearchResultItem Component
- * 
+ *
  * Displays a single search result with highlighted keywords and context.
  * Fully accessible with keyboard navigation support.
- * 
+ *
  * Requirements:
  * - 8.2: Displays matching conversations with highlighted keywords
  * - 8.3: Opens conversation and scrolls to match on click
@@ -26,7 +26,7 @@ interface SearchResultItemProps {
 export function SearchResultItem({
   result,
   isFocused,
-  onSelect
+  onSelect,
 }: SearchResultItemProps): React.ReactElement {
   const { t } = useTranslation();
   const itemRef = useRef<HTMLDivElement>(null);
@@ -36,7 +36,7 @@ export function SearchResultItem({
     if (isFocused && itemRef.current) {
       itemRef.current.scrollIntoView({
         behavior: 'smooth',
-        block: 'nearest'
+        block: 'nearest',
       });
     }
   }, [isFocused]);
@@ -132,10 +132,7 @@ export function SearchResultItem({
       onKeyDown={handleKeyDown}
     >
       {/* Conversation Title */}
-      <h3 
-        id={`result-title-${result.conversationId}`}
-        className="result-title"
-      >
+      <h3 id={`result-title-${result.conversationId}`} className="result-title">
         {result.conversationTitle}
       </h3>
 
@@ -144,7 +141,10 @@ export function SearchResultItem({
         <span className="match-count">
           {t('search.matchCount', { count: result.totalMatches })}
         </span>
-        <span className="relevance-score" aria-label={t('search.relevanceScore')}>
+        <span
+          className="relevance-score"
+          aria-label={t('search.relevanceScore')}
+        >
           {Math.round(result.relevanceScore * 10) / 10}
         </span>
       </div>
@@ -152,10 +152,7 @@ export function SearchResultItem({
       {/* Match Previews (show first 3 matches) */}
       <div className="result-matches">
         {result.matches.slice(0, 3).map((match, index) => (
-          <div
-            key={`${match.messageId}-${index}`}
-            className="match-item"
-          >
+          <div key={`${match.messageId}-${index}`} className="match-item">
             {/* Match Context with Highlighting (Requirement 8.7) */}
             <p className="match-context">
               {match.context.before && (
@@ -172,10 +169,14 @@ export function SearchResultItem({
             {/* Match Metadata */}
             <div className="match-meta">
               <span className="match-role">
-                {match.role === 'user' ? t('search.you') : t('search.assistant')}
+                {match.role === 'user'
+                  ? t('search.you')
+                  : t('search.assistant')}
               </span>
-              <span className="match-separator" aria-hidden="true">•</span>
-              <time 
+              <span className="match-separator" aria-hidden="true">
+                •
+              </span>
+              <time
                 className="match-timestamp"
                 dateTime={match.timestamp.toISOString()}
               >
@@ -183,9 +184,13 @@ export function SearchResultItem({
               </time>
               {match.highlights.length > 1 && (
                 <>
-                  <span className="match-separator" aria-hidden="true">•</span>
+                  <span className="match-separator" aria-hidden="true">
+                    •
+                  </span>
                   <span className="match-highlight-count">
-                    {t('search.highlightCount', { count: match.highlights.length })}
+                    {t('search.highlightCount', {
+                      count: match.highlights.length,
+                    })}
                   </span>
                 </>
               )}

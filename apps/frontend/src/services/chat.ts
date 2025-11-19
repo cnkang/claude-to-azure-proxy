@@ -22,7 +22,11 @@ import {
   networkErrorHandler,
   networkUtils,
 } from '../utils/networkErrorHandler.js';
-import { isMemoryHigh, suggestGarbageCollection, getMemoryStats } from '../utils/memoryManager.js';
+import {
+  isMemoryHigh,
+  suggestGarbageCollection,
+  getMemoryStats,
+} from '../utils/memoryManager.js';
 
 // API endpoints
 const CHAT_SEND_ENDPOINT = '/api/chat/send';
@@ -41,7 +45,7 @@ export type SSEConnectionState =
 
 /**
  * Connection health status
- * 
+ *
  * Task 6.2: Enhanced with message timestamp tracking
  * Task 11.4: Added memory usage metrics
  */
@@ -87,7 +91,7 @@ export interface ChatEvents {
 
 /**
  * Chat SSE Client for real-time streaming with enhanced error handling
- * 
+ *
  * Task 11.2: Memory optimization with proper cleanup
  */
 export class ChatSSEClient {
@@ -108,15 +112,15 @@ export class ChatSSEClient {
   private isManuallyDisconnected = false;
   private onlineListener: (() => void) | null = null;
   private offlineListener: (() => void) | null = null;
-  
+
   // Task 1.6: Debounce mechanism to prevent rapid connect() calls
   private lastConnectAttempt: number = 0;
   private readonly connectDebounceMs = 1000; // 1 second debounce
-  
+
   // Task 6.2: Connection health tracking
   private lastMessageTimestamp: Date | null = null;
   private readonly staleConnectionThreshold = 5 * 60 * 1000; // 5 minutes
-  
+
   // Task 11.2: Track if instance has been destroyed for cleanup
   private isDestroyed = false;
 
@@ -144,7 +148,7 @@ export class ChatSSEClient {
 
   /**
    * Connect to SSE stream with enhanced error handling
-   * 
+   *
    * Subtask 1.1: Connection state validation
    * Subtask 1.2: AbortController lifecycle management
    * Subtask 1.3: Event handler registration timing
@@ -159,11 +163,11 @@ export class ChatSSEClient {
       });
       return;
     }
-    
+
     // Task 1.6: Debounce rapid connect() calls
     const now = Date.now();
     const timeSinceLastAttempt = now - this.lastConnectAttempt;
-    
+
     if (timeSinceLastAttempt < this.connectDebounceMs) {
       frontendLogger.warn('Connect() called too soon, debouncing', {
         metadata: {
@@ -174,7 +178,7 @@ export class ChatSSEClient {
       });
       return;
     }
-    
+
     this.lastConnectAttempt = now;
 
     // Subtask 1.1: Check if connection is already 'connected' or 'connecting'
@@ -218,15 +222,19 @@ export class ChatSSEClient {
 
     const sessionId = this.sessionManager.getSessionId();
     if (!sessionId) {
-      const networkError = new NetworkError('No active session', 'unauthorized', {
-        retryable: false,
-      });
+      const networkError = new NetworkError(
+        'No active session',
+        'unauthorized',
+        {
+          retryable: false,
+        }
+      );
       this.handleConnectionError(networkError);
       return;
     }
 
     const url = `${CHAT_STREAM_ENDPOINT}/${this.conversationId}`;
-    
+
     // Subtask 1.2: Create fresh AbortController for each connection attempt
     this.abortController = new AbortController();
 
@@ -236,7 +244,7 @@ export class ChatSSEClient {
         'x-session-id': sessionId,
       },
       signal: this.abortController.signal,
-      
+
       onopen: async (response) => {
         if (response.ok) {
           frontendLogger.info('SSE connection established', {
@@ -255,7 +263,7 @@ export class ChatSSEClient {
           // Handle non-OK responses
           const errorText = await response.text();
           let errorMessage = 'SSE connection failed';
-          
+
           try {
             const errorData = JSON.parse(errorText);
             errorMessage = errorData.error?.message || errorMessage;
@@ -279,16 +287,16 @@ export class ChatSSEClient {
         frontendLogger.log('🔵 [SSE] Raw message received:', event);
         frontendLogger.log('🔵 [SSE] Data:', event.data);
         frontendLogger.log('🔵 [SSE] Type:', typeof event.data);
-        
+
         try {
           const data = JSON.parse(event.data) as StreamChunk;
           frontendLogger.log('🔵 [SSE] Parsed data:', data);
           frontendLogger.log('🔵 [SSE] Chunk type:', data.type);
           frontendLogger.log('🔵 [SSE] Message ID:', data.messageId);
           frontendLogger.log('🔵 [SSE] Content:', data.content);
-          
+
           this.handleStreamChunk(data);
-          
+
           frontendLogger.log('🔵 [SSE] handleStreamChunk completed');
         } catch (error) {
           frontendLogger.error('🔴 [SSE] Parse error:', error);
@@ -314,7 +322,7 @@ export class ChatSSEClient {
         });
 
         this.handleConnectionError(networkError);
-        
+
         // Throw to stop the connection
         throw networkError;
       },
@@ -340,7 +348,7 @@ export class ChatSSEClient {
 
   /**
    * Disconnect from SSE stream
-   * 
+   *
    * Subtask 1.2: Properly clean up AbortController
    * Task 1.6: Reset debounce timer on disconnect
    * Task 11.2: Enhanced cleanup to prevent memory leaks
@@ -359,14 +367,14 @@ export class ChatSSEClient {
 
     this.setConnectionState('disconnected');
     this.reconnectAttempts = 0;
-    
+
     // Task 1.6: Reset debounce timer to allow immediate reconnection
     this.lastConnectAttempt = 0;
   }
-  
+
   /**
    * Destroy the client and release all resources
-   * 
+   *
    * Task 11.2: Complete cleanup to prevent memory leaks
    * - Remove all event listeners
    * - Clear all timers
@@ -377,41 +385,43 @@ export class ChatSSEClient {
     if (this.isDestroyed) {
       return;
     }
-    
+
     frontendLogger.info('Destroying ChatSSEClient', {
       metadata: { conversationId: this.conversationId },
     });
-    
+
     // Disconnect if still connected
     this.disconnect();
-    
+
     // Remove all event listeners to break closure references
     this.removeAllListeners();
-    
+
     // Mark as destroyed
     this.isDestroyed = true;
-    
+
     // Nullify references to help garbage collection
     this.lastConnected = null;
     this.lastMessageTimestamp = null;
   }
-  
+
   /**
    * Remove all event listeners
-   * 
+   *
    * Task 11.2: Cleanup method to remove all registered listeners
    */
   private removeAllListeners(): void {
     // Clear all event listeners
-    const eventKeys = Object.keys(this.eventListeners) as Array<keyof ChatEvents>;
+    const eventKeys = Object.keys(this.eventListeners) as Array<
+      keyof ChatEvents
+    >;
     for (const key of eventKeys) {
       delete this.eventListeners[key];
     }
   }
-  
+
   /**
    * Check if client has been destroyed
-   * 
+   *
    * Task 11.2: Prevent operations on destroyed instances
    */
   public isClientDestroyed(): boolean {
@@ -427,7 +437,7 @@ export class ChatSSEClient {
 
   /**
    * Get connection health information
-   * 
+   *
    * Task 6.2: Expose connection health with message timestamp tracking
    * Task 11.4: Include memory usage metrics
    */
@@ -436,9 +446,10 @@ export class ChatSSEClient {
     const timeSinceLastMessage = this.lastMessageTimestamp
       ? now - this.lastMessageTimestamp.getTime()
       : null;
-    
-    const isStale = timeSinceLastMessage !== null && 
-                    timeSinceLastMessage > this.staleConnectionThreshold;
+
+    const isStale =
+      timeSinceLastMessage !== null &&
+      timeSinceLastMessage > this.staleConnectionThreshold;
 
     // Task 11.4: Get memory usage if available (Chrome/Edge only)
     let memoryUsage: ConnectionHealth['memoryUsage'];
@@ -457,7 +468,7 @@ export class ChatSSEClient {
         jsHeapSizeLimit: memory.jsHeapSizeLimit,
         percentUsed: (memory.usedJSHeapSize / memory.jsHeapSizeLimit) * 100,
       };
-      
+
       // Task 11.4: Log warning if memory usage is high
       if (memoryUsage.percentUsed > 80) {
         frontendLogger.warn('High memory usage detected', {
@@ -505,11 +516,9 @@ export class ChatSSEClient {
     }, 100);
   }
 
-
-
   /**
    * Handle incoming stream chunks
-   * 
+   *
    * Task 6.1: Handle heartbeat messages
    * Task 6.2: Update lastMessageTimestamp on every message
    * Task 9.1: Add comprehensive logging for message flow
@@ -520,12 +529,18 @@ export class ChatSSEClient {
 
     // Task 9.1: Log chunk handling
     frontendLogger.log('🔵 [SSE] handleStreamChunk called with:', chunk);
-    frontendLogger.log('🔵 [SSE] Event listeners registered:', Object.keys(this.eventListeners));
+    frontendLogger.log(
+      '🔵 [SSE] Event listeners registered:',
+      Object.keys(this.eventListeners)
+    );
 
     switch (chunk.type) {
       case 'start':
         frontendLogger.log('🔵 [SSE] Handling START event');
-        frontendLogger.log('🔵 [SSE] messageStart listener exists:', !!this.eventListeners.messageStart);
+        frontendLogger.log(
+          '🔵 [SSE] messageStart listener exists:',
+          !!this.eventListeners.messageStart
+        );
         this.eventListeners.messageStart?.({
           messageId: chunk.messageId ?? '',
           correlationId: chunk.correlationId,
@@ -535,7 +550,10 @@ export class ChatSSEClient {
 
       case 'chunk':
         frontendLogger.log('🔵 [SSE] Handling CHUNK event');
-        frontendLogger.log('🔵 [SSE] messageChunk listener exists:', !!this.eventListeners.messageChunk);
+        frontendLogger.log(
+          '🔵 [SSE] messageChunk listener exists:',
+          !!this.eventListeners.messageChunk
+        );
         frontendLogger.log('🔵 [SSE] Chunk content:', chunk.content);
         this.eventListeners.messageChunk?.({
           content: chunk.content ?? '',
@@ -547,7 +565,10 @@ export class ChatSSEClient {
 
       case 'end':
         frontendLogger.log('🔵 [SSE] Handling END event');
-        frontendLogger.log('🔵 [SSE] messageEnd listener exists:', !!this.eventListeners.messageEnd);
+        frontendLogger.log(
+          '🔵 [SSE] messageEnd listener exists:',
+          !!this.eventListeners.messageEnd
+        );
         this.eventListeners.messageEnd?.({
           messageId: chunk.messageId ?? '',
           correlationId: chunk.correlationId,
@@ -557,7 +578,10 @@ export class ChatSSEClient {
 
       case 'error':
         frontendLogger.log('🔵 [SSE] Handling ERROR event');
-        frontendLogger.log('🔵 [SSE] messageError listener exists:', !!this.eventListeners.messageError);
+        frontendLogger.log(
+          '🔵 [SSE] messageError listener exists:',
+          !!this.eventListeners.messageError
+        );
         this.eventListeners.messageError?.({
           _error: chunk.content ?? 'Unknown error',
           correlationId: chunk.correlationId,
@@ -591,7 +615,7 @@ export class ChatSSEClient {
 
   /**
    * Handle connection errors with enhanced retry logic
-   * 
+   *
    * Subtask 1.2: Ensure AbortController cleanup on errors
    */
   private handleConnectionError(error: NetworkError): void {
@@ -763,7 +787,7 @@ export class ChatSSEClient {
 
   /**
    * Start connection health monitoring
-   * 
+   *
    * Task 6.3: Implement stale connection detection
    * - Check if no message received for 5 minutes
    * - Force reconnection if connection is stale
@@ -775,7 +799,8 @@ export class ChatSSEClient {
     this.connectionHealthTimer = window.setInterval(() => {
       // Task 6.3: Check if connection is stale based on last message timestamp
       if (this.connectionState === 'connected' && this.lastMessageTimestamp) {
-        const timeSinceLastMessage = Date.now() - this.lastMessageTimestamp.getTime();
+        const timeSinceLastMessage =
+          Date.now() - this.lastMessageTimestamp.getTime();
 
         // If no message received for more than 5 minutes, consider connection stale
         if (timeSinceLastMessage > this.staleConnectionThreshold) {
@@ -785,7 +810,9 @@ export class ChatSSEClient {
               metadata: {
                 conversationId: this.conversationId,
                 timeSinceLastMessage: Math.round(timeSinceLastMessage / 1000),
-                staleThreshold: Math.round(this.staleConnectionThreshold / 1000),
+                staleThreshold: Math.round(
+                  this.staleConnectionThreshold / 1000
+                ),
               },
             }
           );
@@ -826,17 +853,17 @@ export type ConnectionErrorCallback = (
 
 /**
  * Chat service for sending messages and managing conversations
- * 
+ *
  * Task 11.2: Memory optimization with connection pool limits
  */
 export class ChatService {
   private static instance: ChatService | null = null;
   private readonly sessionManager = getSessionManager();
   private readonly activeConnections = new Map<string, ChatSSEClient>();
-  
+
   // Subtask 2.3: Error callback for propagating errors to UI layer
   private readonly errorCallbacks: ConnectionErrorCallback[] = [];
-  
+
   // Task 11.2: Connection pool configuration
   private readonly maxActiveConnections = 10; // Limit to 10 concurrent conversations
   private readonly connectionAccessTimes = new Map<string, number>(); // Track last access for LRU
@@ -853,7 +880,7 @@ export class ChatService {
 
   /**
    * Send a chat message with enhanced error handling
-   * 
+   *
    * Subtask 2.1: Implement connection readiness check before sending messages
    */
   public async sendMessage(request: {
@@ -874,7 +901,10 @@ export class ChatService {
 
         // Subtask 2.1: Wait for SSE connection to be ready before sending message
         const sseConnection = this.getSSEConnection(request.conversationId);
-        await this.waitForConnectionReady(sseConnection, request.conversationId);
+        await this.waitForConnectionReady(
+          sseConnection,
+          request.conversationId
+        );
 
         // Upload files if provided
         let uploadedFiles: FileInfo[] | undefined;
@@ -887,10 +917,12 @@ export class ChatService {
 
         // Task 10 Fix: Transform contextMessages to only include role and content
         // Backend validation expects only these fields, but Message type has many more
-        const transformedContextMessages = request.contextMessages?.map(msg => ({
-          role: msg.role,
-          content: msg.content,
-        }));
+        const transformedContextMessages = request.contextMessages?.map(
+          (msg) => ({
+            role: msg.role,
+            content: msg.content,
+          })
+        );
 
         // Prepare chat request
         const chatRequest: ChatRequest = {
@@ -948,7 +980,7 @@ export class ChatService {
 
   /**
    * Wait for SSE connection to be ready before sending message
-   * 
+   *
    * Subtask 2.1: Connection readiness check with timeout
    * - Wait for connection state to be 'connected' before sending
    * - Add timeout (5 seconds) for connection establishment
@@ -1086,12 +1118,12 @@ export class ChatService {
 
   /**
    * Get or create SSE connection for conversation
-   * 
+   *
    * Subtask 2.2: Fix connection pooling to properly reuse existing connections
    * - Check activeConnections map before creating new instance
    * - Verify existing connection is active before returning
    * - Create new connection only if none exists or existing is inactive
-   * 
+   *
    * Task 11.2: Implement connection pool size limit with LRU eviction
    * - Limit to maxActiveConnections (10) concurrent connections
    * - Evict least recently used connection when limit reached
@@ -1100,7 +1132,7 @@ export class ChatService {
   public getSSEConnection(conversationId: string): ChatSSEClient {
     // Task 11.2: Update access time for LRU tracking
     this.connectionAccessTimes.set(conversationId, Date.now());
-    
+
     // Subtask 2.2: Check if connection already exists in the pool
     let connection = this.activeConnections.get(conversationId);
 
@@ -1116,7 +1148,7 @@ export class ChatService {
         connection = undefined;
       } else {
         const state = connection.getConnectionState();
-        
+
         // Connection is active or attempting to connect - reuse it
         if (
           state === 'connected' ||
@@ -1133,13 +1165,16 @@ export class ChatService {
         }
 
         // Connection is in error or disconnected state - clean it up
-        frontendLogger.info('Existing connection is inactive, creating new one', {
-          metadata: {
-            conversationId,
-            oldConnectionState: state,
-          },
-        });
-        
+        frontendLogger.info(
+          'Existing connection is inactive, creating new one',
+          {
+            metadata: {
+              conversationId,
+              oldConnectionState: state,
+            },
+          }
+        );
+
         // Disconnect old connection and remove from pool
         connection.disconnect();
         connection.destroy(); // Task 11.2: Properly destroy to release resources
@@ -1155,9 +1190,9 @@ export class ChatService {
       if (this.activeConnections.size >= this.maxActiveConnections) {
         this.evictLeastRecentlyUsedConnection(conversationId);
       }
-      
+
       frontendLogger.info('Creating new SSE connection', {
-        metadata: { 
+        metadata: {
           conversationId,
           currentPoolSize: this.activeConnections.size,
           maxPoolSize: this.maxActiveConnections,
@@ -1170,16 +1205,19 @@ export class ChatService {
       // Clean up connection when it's disconnected
       connection.on('connectionStateChange', (state) => {
         if (state === 'disconnected') {
-          frontendLogger.info('SSE connection disconnected, removing from pool', {
-            metadata: { conversationId },
-          });
-          
+          frontendLogger.info(
+            'SSE connection disconnected, removing from pool',
+            {
+              metadata: { conversationId },
+            }
+          );
+
           // Task 11.2: Properly destroy connection to release resources
           const conn = this.activeConnections.get(conversationId);
           if (conn) {
             conn.destroy();
           }
-          
+
           this.activeConnections.delete(conversationId);
           this.connectionAccessTimes.delete(conversationId);
         }
@@ -1193,20 +1231,22 @@ export class ChatService {
 
     return connection;
   }
-  
+
   /**
    * Evict least recently used connection to make room for new one
-   * 
+   *
    * Task 11.2: LRU eviction policy for connection pool
    * - Find connection with oldest access time
    * - Disconnect and destroy it
    * - Remove from pool
    * - Suggest garbage collection if memory is high
    */
-  private evictLeastRecentlyUsedConnection(excludeConversationId: string): void {
+  private evictLeastRecentlyUsedConnection(
+    excludeConversationId: string
+  ): void {
     let oldestConversationId: string | null = null;
     let oldestAccessTime = Infinity;
-    
+
     // Find least recently used connection (excluding the one we're about to create)
     for (const [convId, accessTime] of this.connectionAccessTimes.entries()) {
       if (convId !== excludeConversationId && accessTime < oldestAccessTime) {
@@ -1214,38 +1254,45 @@ export class ChatService {
         oldestConversationId = convId;
       }
     }
-    
+
     if (oldestConversationId) {
       const connection = this.activeConnections.get(oldestConversationId);
-      
+
       // Task 11.2: Get memory stats before eviction
       const memoryBefore = getMemoryStats();
-      
+
       frontendLogger.info('Evicting least recently used connection', {
         metadata: {
           evictedConversationId: oldestConversationId,
           lastAccessTime: new Date(oldestAccessTime).toISOString(),
           currentPoolSize: this.activeConnections.size,
           maxPoolSize: this.maxActiveConnections,
-          memoryUsage: memoryBefore ? `${memoryBefore.percentUsed.toFixed(2)}%` : 'N/A',
+          memoryUsage: memoryBefore
+            ? `${memoryBefore.percentUsed.toFixed(2)}%`
+            : 'N/A',
         },
       });
-      
+
       if (connection) {
         connection.disconnect();
         connection.destroy();
       }
-      
+
       this.activeConnections.delete(oldestConversationId);
       this.connectionAccessTimes.delete(oldestConversationId);
-      
+
       // Task 11.2: Suggest garbage collection if memory is high
       if (isMemoryHigh()) {
-        frontendLogger.info('High memory usage detected after eviction, suggesting GC', {
-          metadata: {
-            memoryUsage: memoryBefore ? `${memoryBefore.percentUsed.toFixed(2)}%` : 'N/A',
-          },
-        });
+        frontendLogger.info(
+          'High memory usage detected after eviction, suggesting GC',
+          {
+            metadata: {
+              memoryUsage: memoryBefore
+                ? `${memoryBefore.percentUsed.toFixed(2)}%`
+                : 'N/A',
+            },
+          }
+        );
         suggestGarbageCollection();
       }
     }
@@ -1253,7 +1300,7 @@ export class ChatService {
 
   /**
    * Disconnect SSE connection for conversation
-   * 
+   *
    * Task 11.2: Properly destroy connection to release resources
    */
   public disconnectSSE(conversationId: string): void {
@@ -1268,7 +1315,7 @@ export class ChatService {
 
   /**
    * Disconnect all SSE connections
-   * 
+   *
    * Task 11.2: Properly destroy all connections to release resources
    */
   public disconnectAllSSE(): void {
@@ -1279,10 +1326,10 @@ export class ChatService {
       this.connectionAccessTimes.delete(conversationId);
     }
   }
-  
+
   /**
    * Get connection pool statistics
-   * 
+   *
    * Task 11.2: Expose pool metrics for monitoring
    */
   public getConnectionPoolStats(): {
@@ -1293,26 +1340,29 @@ export class ChatService {
   } {
     const now = Date.now();
     let oldestAccessTime: number | null = null;
-    
+
     for (const accessTime of this.connectionAccessTimes.values()) {
       if (oldestAccessTime === null || accessTime < oldestAccessTime) {
         oldestAccessTime = accessTime;
       }
     }
-    
-    const oldestConnectionAge = oldestAccessTime ? now - oldestAccessTime : null;
-    
+
+    const oldestConnectionAge = oldestAccessTime
+      ? now - oldestAccessTime
+      : null;
+
     return {
       activeConnections: this.activeConnections.size,
       maxConnections: this.maxActiveConnections,
-      utilizationPercent: (this.activeConnections.size / this.maxActiveConnections) * 100,
+      utilizationPercent:
+        (this.activeConnections.size / this.maxActiveConnections) * 100,
       oldestConnectionAge,
     };
   }
 
   /**
    * Register error callback for connection errors
-   * 
+   *
    * Subtask 2.3: Allow React components to subscribe to connection errors
    */
   public onConnectionError(callback: ConnectionErrorCallback): () => void {
@@ -1329,7 +1379,7 @@ export class ChatService {
 
   /**
    * Handle connection errors and propagate to UI layer
-   * 
+   *
    * Subtask 2.3: Propagate errors from ChatSSEClient to React components
    * - Subscribe to ChatSSEClient error events in ChatService
    * - Propagate errors to React components via callbacks
@@ -1370,7 +1420,7 @@ export class ChatService {
 
   /**
    * Create user-friendly error messages from technical errors
-   * 
+   *
    * Subtask 2.3: Ensure error messages are user-friendly and actionable
    */
   private createUserFriendlyError(error: NetworkError): NetworkError {
@@ -1410,7 +1460,8 @@ export class ChatService {
 
       default:
         userMessage = 'An unexpected error occurred.';
-        actionableGuidance = 'Please try again or contact support if the issue persists.';
+        actionableGuidance =
+          'Please try again or contact support if the issue persists.';
     }
 
     // Combine message with actionable guidance

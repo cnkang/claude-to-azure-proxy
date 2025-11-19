@@ -64,7 +64,7 @@ export function useDebouncedTitle(
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
-      
+
       // Cancel pending timeout
       if (timeoutRef.current !== null) {
         clearTimeout(timeoutRef.current);

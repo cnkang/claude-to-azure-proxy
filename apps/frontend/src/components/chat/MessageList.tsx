@@ -185,7 +185,11 @@ const MessageListComponent = forwardRef<MessageListHandle, MessageListProps>(
         scrollToBottomRegular();
       }
       setShowScrollButton(false);
-    }, [shouldUseVirtualScrolling, scrollToBottomVirtual, scrollToBottomRegular]);
+    }, [
+      shouldUseVirtualScrolling,
+      scrollToBottomVirtual,
+      scrollToBottomRegular,
+    ]);
 
     useEffect(() => {
       if (!autoScrollEnabled || !autoScroll) {

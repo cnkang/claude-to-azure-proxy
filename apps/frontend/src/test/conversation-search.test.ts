@@ -167,7 +167,10 @@ describe('ConversationSearchService', () => {
         ]),
         createTestConversation('conv-2', 'Vue Composition API', [
           { role: 'user', content: 'What is Vue composition API?' },
-          { role: 'assistant', content: 'Vue composition API is similar to React hooks' },
+          {
+            role: 'assistant',
+            content: 'Vue composition API is similar to React hooks',
+          },
         ]),
       ];
       vi.mocked(mockStorage.getAllConversations).mockResolvedValue(
@@ -272,7 +275,9 @@ describe('ConversationSearchService', () => {
 
       expect(results.results.length).toBe(1);
       // Should find matches in the message (not title)
-      const messageMatch = results.results[0].matches.find(m => m.messageId !== 'title');
+      const messageMatch = results.results[0].matches.find(
+        (m) => m.messageId !== 'title'
+      );
       expect(messageMatch).toBeDefined();
       expect(messageMatch!.highlights.length).toBeGreaterThan(1); // Multiple "test" occurrences
     });
@@ -294,7 +299,9 @@ describe('ConversationSearchService', () => {
       });
 
       expect(results.results.length).toBe(1);
-      expect(results.results[0].matches[0].highlights.length).toBeGreaterThan(0);
+      expect(results.results[0].matches[0].highlights.length).toBeGreaterThan(
+        0
+      );
     });
 
     it('should handle case-sensitive highlighting', async () => {

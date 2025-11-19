@@ -63,14 +63,16 @@ export class PersistenceError extends Error {
     type: PersistenceErrorType,
     operation: string,
     userMessageOrConversationId?: string,
-    optionsOrRetryable?: {
-      conversationId?: string;
-      correlationId?: string;
-      retryable?: boolean;
-      recoveryStrategy?: RecoveryStrategy;
-      metadata?: Record<string, unknown>;
-      originalError?: Error;
-    } | boolean
+    optionsOrRetryable?:
+      | {
+          conversationId?: string;
+          correlationId?: string;
+          retryable?: boolean;
+          recoveryStrategy?: RecoveryStrategy;
+          metadata?: Record<string, unknown>;
+          originalError?: Error;
+        }
+      | boolean
   ) {
     // Handle backward compatibility with old signature:
     // new PersistenceError(type, operation, conversationId?, retryable?)
@@ -91,19 +93,24 @@ export class PersistenceError extends Error {
         conversationId: userMessageOrConversationId,
         retryable: optionsOrRetryable,
       };
-    } else if (typeof optionsOrRetryable === 'object' && optionsOrRetryable !== null) {
+    } else if (
+      typeof optionsOrRetryable === 'object' &&
+      optionsOrRetryable !== null
+    ) {
       // New signature with userMessage and options: (type, operation, userMessage, options)
-      userMessage = userMessageOrConversationId || PersistenceError.getDefaultMessage(type);
+      userMessage =
+        userMessageOrConversationId || PersistenceError.getDefaultMessage(type);
       options = optionsOrRetryable;
     } else if (typeof userMessageOrConversationId === 'string') {
       // Could be either userMessage or conversationId
       // If it looks like a UUID or short identifier, treat as conversationId
       // If it looks like a sentence/message, treat as userMessage
-      const looksLikeMessage = userMessageOrConversationId.length > 50 || 
-                               userMessageOrConversationId.includes(' ') ||
-                               userMessageOrConversationId.endsWith('.') ||
-                               userMessageOrConversationId.includes(',');
-      
+      const looksLikeMessage =
+        userMessageOrConversationId.length > 50 ||
+        userMessageOrConversationId.includes(' ') ||
+        userMessageOrConversationId.endsWith('.') ||
+        userMessageOrConversationId.includes(',');
+
       if (looksLikeMessage) {
         userMessage = userMessageOrConversationId;
         options = {};
@@ -133,7 +140,8 @@ export class PersistenceError extends Error {
     // Determine retryable and recovery strategy based on error type
     const classification = this.classifyError(type);
     this.retryable = options.retryable ?? classification.retryable;
-    this.recoveryStrategy = options.recoveryStrategy ?? classification.recoveryStrategy;
+    this.recoveryStrategy =
+      options.recoveryStrategy ?? classification.recoveryStrategy;
 
     // Maintain proper stack trace for where error was thrown (V8 only)
     if (Error.captureStackTrace) {
@@ -193,7 +201,10 @@ export class PersistenceError extends Error {
   } {
     switch (type) {
       case PersistenceErrorType.STORAGE_FULL:
-        return { retryable: false, recoveryStrategy: RecoveryStrategy.EXPORT_DATA };
+        return {
+          retryable: false,
+          recoveryStrategy: RecoveryStrategy.EXPORT_DATA,
+        };
 
       case PersistenceErrorType.ENCRYPTION_FAILED:
         // Encryption errors are not retryable - they indicate a fundamental issue
@@ -213,10 +224,16 @@ export class PersistenceError extends Error {
 
       case PersistenceErrorType.CORRUPTED_DATA:
       case PersistenceErrorType.DATA_CORRUPTION:
-        return { retryable: false, recoveryStrategy: RecoveryStrategy.CLEAR_AND_RETRY };
+        return {
+          retryable: false,
+          recoveryStrategy: RecoveryStrategy.CLEAR_AND_RETRY,
+        };
 
       case PersistenceErrorType.STORAGE_UNAVAILABLE:
-        return { retryable: false, recoveryStrategy: RecoveryStrategy.FALLBACK };
+        return {
+          retryable: false,
+          recoveryStrategy: RecoveryStrategy.FALLBACK,
+        };
 
       case PersistenceErrorType.LOCALSTORAGE_ERROR:
         return { retryable: true, recoveryStrategy: RecoveryStrategy.RETRY };
@@ -362,7 +379,7 @@ export class PersistenceError extends Error {
   private logError(): void {
     const logLevel = this.getLogLevel();
     const logMessage = this.operation;
-    
+
     // Build metadata object
     const metadata: Record<string, unknown> = {
       errorType: this.type,
@@ -461,7 +478,7 @@ export class PersistenceErrorFactory {
       {
         conversationId,
         originalError,
-        metadata: { 
+        metadata: {
           storageBackend: 'indexeddb',
           conversationId,
         },
@@ -652,9 +669,7 @@ export class PersistenceErrorFactory {
   /**
    * Create storage unavailable error
    */
-  static createStorageUnavailableError(
-    reason: string
-  ): PersistenceError {
+  static createStorageUnavailableError(reason: string): PersistenceError {
     return new PersistenceError(
       PersistenceErrorType.STORAGE_UNAVAILABLE,
       'storage_init',
@@ -704,31 +719,59 @@ export class PersistenceErrorFactory {
     }
 
     if (message.includes('indexeddb')) {
-      return PersistenceErrorFactory.createIndexedDBError(operation, error, conversationId);
+      return PersistenceErrorFactory.createIndexedDBError(
+        operation,
+        error,
+        conversationId
+      );
     }
 
     if (message.includes('localstorage')) {
-      return PersistenceErrorFactory.createLocalStorageError(operation, error, conversationId);
+      return PersistenceErrorFactory.createLocalStorageError(
+        operation,
+        error,
+        conversationId
+      );
     }
 
     if (message.includes('encrypt')) {
-      return PersistenceErrorFactory.createEncryptionError(operation, error, conversationId);
+      return PersistenceErrorFactory.createEncryptionError(
+        operation,
+        error,
+        conversationId
+      );
     }
 
     if (message.includes('decrypt')) {
-      return PersistenceErrorFactory.createDecryptionError(operation, error, conversationId);
+      return PersistenceErrorFactory.createDecryptionError(
+        operation,
+        error,
+        conversationId
+      );
     }
 
     if (message.includes('validation') || message.includes('invalid')) {
-      return PersistenceErrorFactory.createValidationError(operation, 'unknown', error.message, error.message);
+      return PersistenceErrorFactory.createValidationError(
+        operation,
+        'unknown',
+        error.message,
+        error.message
+      );
     }
 
     if (message.includes('conflict')) {
-      return PersistenceErrorFactory.createConflictError(operation, conversationId);
+      return PersistenceErrorFactory.createConflictError(
+        operation,
+        conversationId
+      );
     }
 
     if (message.includes('corrupt')) {
-      return PersistenceErrorFactory.createDataCorruptionError(operation, conversationId, error.message);
+      return PersistenceErrorFactory.createDataCorruptionError(
+        operation,
+        conversationId,
+        error.message
+      );
     }
 
     if (message.includes('network') || message.includes('connection')) {
@@ -750,11 +793,18 @@ export class PersistenceErrorFactory {
     }
 
     if (message.includes('not found')) {
-      return PersistenceErrorFactory.createNotFoundError(operation, conversationId);
+      return PersistenceErrorFactory.createNotFoundError(
+        operation,
+        conversationId
+      );
     }
 
     // Default to unknown error with retry
-    return PersistenceErrorFactory.createUnknownError(operation, error, conversationId);
+    return PersistenceErrorFactory.createUnknownError(
+      operation,
+      error,
+      conversationId
+    );
   }
 }
 
@@ -762,69 +812,110 @@ export class PersistenceErrorFactory {
 export const createStorageFullError = (
   operation: string,
   quota?: { used?: number; available?: number }
-): PersistenceError => PersistenceErrorFactory.createStorageFullError(operation, quota);
+): PersistenceError =>
+  PersistenceErrorFactory.createStorageFullError(operation, quota);
 
 export const createIndexedDBError = (
   operation: string,
   originalError: Error,
   conversationId?: string
-): PersistenceError => PersistenceErrorFactory.createIndexedDBError(operation, originalError, conversationId);
+): PersistenceError =>
+  PersistenceErrorFactory.createIndexedDBError(
+    operation,
+    originalError,
+    conversationId
+  );
 
 export const createLocalStorageError = (
   operation: string,
   originalError: Error,
   conversationId?: string
-): PersistenceError => PersistenceErrorFactory.createLocalStorageError(operation, originalError, conversationId);
+): PersistenceError =>
+  PersistenceErrorFactory.createLocalStorageError(
+    operation,
+    originalError,
+    conversationId
+  );
 
 export const createEncryptionError = (
   operation: string,
   originalError: Error,
   conversationId?: string
-): PersistenceError => PersistenceErrorFactory.createEncryptionError(operation, originalError, conversationId);
+): PersistenceError =>
+  PersistenceErrorFactory.createEncryptionError(
+    operation,
+    originalError,
+    conversationId
+  );
 
 export const createDecryptionError = (
   operation: string,
   originalError: Error,
   conversationId?: string
-): PersistenceError => PersistenceErrorFactory.createDecryptionError(operation, originalError, conversationId);
+): PersistenceError =>
+  PersistenceErrorFactory.createDecryptionError(
+    operation,
+    originalError,
+    conversationId
+  );
 
 export const createValidationError = (
   operation: string,
   field: string,
   value: unknown,
   reason: string
-): PersistenceError => PersistenceErrorFactory.createValidationError(operation, field, value, reason);
+): PersistenceError =>
+  PersistenceErrorFactory.createValidationError(
+    operation,
+    field,
+    value,
+    reason
+  );
 
 export const createDataCorruptionError = (
   operation: string,
   conversationId?: string,
   details?: string
-): PersistenceError => PersistenceErrorFactory.createDataCorruptionError(operation, conversationId, details);
+): PersistenceError =>
+  PersistenceErrorFactory.createDataCorruptionError(
+    operation,
+    conversationId,
+    details
+  );
 
 export const createNotFoundError = (
   operation: string,
   conversationId?: string
-): PersistenceError => PersistenceErrorFactory.createNotFoundError(operation, conversationId);
+): PersistenceError =>
+  PersistenceErrorFactory.createNotFoundError(operation, conversationId);
 
 export const createConflictError = (
   operation: string,
   conversationId?: string
-): PersistenceError => PersistenceErrorFactory.createConflictError(operation, conversationId);
+): PersistenceError =>
+  PersistenceErrorFactory.createConflictError(operation, conversationId);
 
 export const createTimeoutError = (
   operation: string,
   timeout?: number
-): PersistenceError => PersistenceErrorFactory.createTimeoutError(operation, timeout);
+): PersistenceError =>
+  PersistenceErrorFactory.createTimeoutError(operation, timeout);
 
 export const createStorageUnavailableError = (
   reason: string
-): PersistenceError => PersistenceErrorFactory.createStorageUnavailableError(reason);
+): PersistenceError =>
+  PersistenceErrorFactory.createStorageUnavailableError(reason);
 
 export const createUnknownError = (
   operation: string,
   originalError: Error,
   conversationId?: string
-): PersistenceError => PersistenceErrorFactory.createUnknownError(operation, originalError, conversationId);
+): PersistenceError =>
+  PersistenceErrorFactory.createUnknownError(
+    operation,
+    originalError,
+    conversationId
+  );
 
 /**
  * Create persistence error from unknown error
@@ -862,7 +953,12 @@ export function createPersistenceError(
     }
 
     if (message.includes('validation') || message.includes('invalid')) {
-      return createValidationError(operation, 'unknown', error.message, error.message);
+      return createValidationError(
+        operation,
+        'unknown',
+        error.message,
+        error.message
+      );
     }
 
     if (message.includes('conflict')) {

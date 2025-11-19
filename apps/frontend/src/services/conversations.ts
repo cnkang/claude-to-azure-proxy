@@ -7,10 +7,16 @@
  * Requirements: 9.1, 9.2, Core Functionality
  */
 
-import type { ConversationRequest, ConversationResponse } from '../types/index.js';
+import type {
+  ConversationRequest,
+  ConversationResponse,
+} from '../types/index.js';
 import { getSessionManager } from './session.js';
 import { frontendLogger } from '../utils/logger.js';
-import { NetworkError, networkErrorHandler } from '../utils/networkErrorHandler.js';
+import {
+  NetworkError,
+  networkErrorHandler,
+} from '../utils/networkErrorHandler.js';
 
 // API endpoints
 const CONVERSATIONS_ENDPOINT = '/api/conversations';
@@ -103,11 +109,13 @@ export async function createConversation(
 /**
  * Get all conversations for the current session
  */
-export async function getConversations(options: {
-  limit?: number;
-  offset?: number;
-  search?: string;
-} = {}): Promise<{
+export async function getConversations(
+  options: {
+    limit?: number;
+    offset?: number;
+    search?: string;
+  } = {}
+): Promise<{
   conversations: ConversationResponse[];
   pagination: {
     total: number;
@@ -129,9 +137,15 @@ export async function getConversations(options: {
 
       // Build query parameters
       const params = new URLSearchParams();
-      if (options.limit) {params.append('limit', options.limit.toString());}
-      if (options.offset) {params.append('offset', options.offset.toString());}
-      if (options.search) {params.append('search', options.search);}
+      if (options.limit) {
+        params.append('limit', options.limit.toString());
+      }
+      if (options.offset) {
+        params.append('offset', options.offset.toString());
+      }
+      if (options.search) {
+        params.append('search', options.search);
+      }
 
       const url = `${CONVERSATIONS_ENDPOINT}?${params.toString()}`;
 
@@ -183,7 +197,9 @@ export async function getConversations(options: {
 /**
  * Delete a conversation
  */
-export async function deleteConversation(conversationId: string): Promise<void> {
+export async function deleteConversation(
+  conversationId: string
+): Promise<void> {
   return networkErrorHandler.executeWithRetry(
     async () => {
       const sessionManager = getSessionManager();

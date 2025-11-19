@@ -81,7 +81,7 @@ describe('CrossTabSyncService', () => {
       let capturedKey: string | null = null;
       let capturedValue: string | null = null;
       const originalSetItem = localStorage.setItem;
-      localStorage.setItem = function(key: string, value: string) {
+      localStorage.setItem = function (key: string, value: string) {
         if (key.startsWith('sync_event_')) {
           capturedKey = key;
           capturedValue = value;
@@ -97,7 +97,7 @@ describe('CrossTabSyncService', () => {
       // Verify that a sync event was broadcast
       expect(capturedKey).toBeDefined();
       expect(capturedKey).toContain(conversationId);
-      
+
       if (capturedValue) {
         const event: SyncEvent = JSON.parse(capturedValue);
         expect(event.type).toBe('update');
@@ -114,7 +114,7 @@ describe('CrossTabSyncService', () => {
       // Mock localStorage.setItem to capture the broadcast
       let capturedValue: string | null = null;
       const originalSetItem = localStorage.setItem;
-      localStorage.setItem = function(key: string, value: string) {
+      localStorage.setItem = function (key: string, value: string) {
         if (key.startsWith('sync_event_')) {
           capturedValue = value;
         }
@@ -128,7 +128,7 @@ describe('CrossTabSyncService', () => {
 
       // Verify that a sync event was broadcast
       expect(capturedValue).toBeDefined();
-      
+
       if (capturedValue) {
         const event: SyncEvent = JSON.parse(capturedValue);
         expect(event.type).toBe('delete');
@@ -148,7 +148,7 @@ describe('CrossTabSyncService', () => {
       // Mock localStorage.setItem to capture the broadcast
       let capturedValue: string | null = null;
       const originalSetItem = localStorage.setItem;
-      localStorage.setItem = function(key: string, value: string) {
+      localStorage.setItem = function (key: string, value: string) {
         if (key.startsWith('sync_event_')) {
           capturedValue = value;
         }
@@ -162,7 +162,7 @@ describe('CrossTabSyncService', () => {
 
       // Verify that a sync event was broadcast
       expect(capturedValue).toBeDefined();
-      
+
       if (capturedValue) {
         const event: SyncEvent = JSON.parse(capturedValue);
         expect(event.type).toBe('create');
@@ -183,8 +183,8 @@ describe('CrossTabSyncService', () => {
 
       // Check that the sync event key was removed
       const keysAfter = Object.keys(localStorage);
-      const syncKeys = keysAfter.filter(k => k.startsWith('sync_event_'));
-      
+      const syncKeys = keysAfter.filter((k) => k.startsWith('sync_event_'));
+
       // Should be cleaned up
       expect(syncKeys.length).toBe(0);
     });

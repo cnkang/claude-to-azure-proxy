@@ -15,7 +15,16 @@ const storageMock = {
     .fn<(conversation: Conversation) => Promise<void>>()
     .mockResolvedValue(undefined),
   deleteConversation: vi
-    .fn<(conversationId: string) => Promise<{ success: boolean; conversationRemoved: boolean; messagesRemoved: number; metadataRemoved: boolean; bytesFreed: number; error?: string }>>()
+    .fn<
+      (conversationId: string) => Promise<{
+        success: boolean;
+        conversationRemoved: boolean;
+        messagesRemoved: number;
+        metadataRemoved: boolean;
+        bytesFreed: number;
+        error?: string;
+      }>
+    >()
     .mockResolvedValue({
       success: true,
       conversationRemoved: true,

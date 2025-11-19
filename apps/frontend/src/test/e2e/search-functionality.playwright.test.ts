@@ -42,7 +42,8 @@ test.describe('E2E: Search Functionality', () => {
             {
               id: 'msg-2',
               role: 'assistant',
-              content: 'React hooks are functions that let you use state and other React features.',
+              content:
+                'React hooks are functions that let you use state and other React features.',
               timestamp: new Date(),
             },
           ],
@@ -74,7 +75,8 @@ test.describe('E2E: Search Functionality', () => {
             {
               id: 'msg-4',
               role: 'assistant',
-              content: 'TypeScript best practices include using strict mode and explicit types.',
+              content:
+                'TypeScript best practices include using strict mode and explicit types.',
               timestamp: new Date(),
             },
           ],
@@ -106,7 +108,8 @@ test.describe('E2E: Search Functionality', () => {
             {
               id: 'msg-6',
               role: 'assistant',
-              content: 'Pandas is a powerful library for data manipulation and analysis in Python.',
+              content:
+                'Pandas is a powerful library for data manipulation and analysis in Python.',
               timestamp: new Date(),
             },
           ],
@@ -127,7 +130,9 @@ test.describe('E2E: Search Functionality', () => {
         },
       ];
 
-      return Promise.all(conversations.map(conv => storage.storeConversation(conv)));
+      return Promise.all(
+        conversations.map((conv) => storage.storeConversation(conv))
+      );
     });
   });
 
@@ -147,8 +152,12 @@ test.describe('E2E: Search Functionality', () => {
 
   test('should search and display results with keyword', async () => {
     // Open search (assuming there's a search button or input)
-    const searchInput = page.locator('[data-testid="search-input"], input[type="search"], input[placeholder*="Search"]').first();
-    
+    const searchInput = page
+      .locator(
+        '[data-testid="search-input"], input[type="search"], input[placeholder*="Search"]'
+      )
+      .first();
+
     if (await searchInput.isVisible()) {
       // Type search query
       await searchInput.fill('React');
@@ -167,7 +176,9 @@ test.describe('E2E: Search Functionality', () => {
       });
 
       expect(results.total).toBeGreaterThan(0);
-      expect(results.results.some((r: any) => r.conversationId === 'search-test-1')).toBe(true);
+      expect(
+        results.results.some((r: any) => r.conversationId === 'search-test-1')
+      ).toBe(true);
     }
   });
 
@@ -175,7 +186,10 @@ test.describe('E2E: Search Functionality', () => {
     const searchResults = await page.evaluate(() => {
       const searchService = (window as any).conversationSearchService;
       if (searchService) {
-        return searchService.search('NonexistentKeyword12345', { limit: 10, offset: 0 });
+        return searchService.search('NonexistentKeyword12345', {
+          limit: 10,
+          offset: 0,
+        });
       }
       return { results: [], total: 0 };
     });
@@ -252,7 +266,7 @@ test.describe('E2E: Search Functionality', () => {
     if (page1Results.total > 2) {
       expect(page1Results.results).toHaveLength(2);
       expect(page2Results.results.length).toBeGreaterThan(0);
-      
+
       // Verify different results on different pages
       const page1Ids = page1Results.results.map((r: any) => r.conversationId);
       const page2Ids = page2Results.results.map((r: any) => r.conversationId);

@@ -115,7 +115,7 @@ describe('MessageItem syntax highlighting', () => {
   it('renders code blocks and handles copy interactions', async () => {
     // Use real timers for this test to avoid Promise resolution issues
     vi.useRealTimers();
-    
+
     const onCopy = vi.fn();
     render(<MessageItem message={createMessage()} onCopyCode={onCopy} />);
 
@@ -128,7 +128,7 @@ describe('MessageItem syntax highlighting', () => {
     ).toBeDefined();
 
     const copyButton = screen.getByRole('button', { name: /copy code/i });
-    
+
     await act(async () => {
       fireEvent.click(copyButton);
     });
@@ -136,13 +136,13 @@ describe('MessageItem syntax highlighting', () => {
     expect(clipboardWrite).toHaveBeenCalledWith(
       'const answer = 42;\nconsole.log(answer);'
     );
-    
+
     expect(onCopy).toHaveBeenCalledWith(
       'const answer = 42;\nconsole.log(answer);'
     );
 
     expect(screen.getByRole('button', { name: /copied/i })).toBeDefined();
-    
+
     // Restore fake timers for other tests
     vi.useFakeTimers();
   });

@@ -25,13 +25,13 @@ describe('RetryManager', () => {
   afterEach(async () => {
     // 1. Wait for all pending promises to settle
     await vi.runAllTimersAsync();
-    
+
     // 2. Restore mocks
     vi.restoreAllMocks();
-    
+
     // 3. Restore real timers
     vi.useRealTimers();
-    
+
     // 4. Wait for microtask queue to clear
     await new Promise((resolve) => setImmediate(resolve));
   });
@@ -63,7 +63,11 @@ describe('RetryManager', () => {
     });
 
     it('should retry up to maxAttempts times', async () => {
-      const operation = vi.fn().mockImplementation(() => Promise.reject(new Error('persistent failure')));
+      const operation = vi
+        .fn()
+        .mockImplementation(() =>
+          Promise.reject(new Error('persistent failure'))
+        );
 
       const promise = manager.execute(operation, { maxAttempts: 3 });
       const rejectionPromise = promise.catch((error) => error);
@@ -76,7 +80,9 @@ describe('RetryManager', () => {
     });
 
     it('should use exponential backoff with base delay of 500ms', async () => {
-      const operation = vi.fn().mockImplementation(() => Promise.reject(new Error('failure')));
+      const operation = vi
+        .fn()
+        .mockImplementation(() => Promise.reject(new Error('failure')));
       const delays: number[] = [];
 
       const promise = manager.execute(operation, {
@@ -100,7 +106,9 @@ describe('RetryManager', () => {
     });
 
     it('should respect maxDelay cap', async () => {
-      const operation = vi.fn().mockImplementation(() => Promise.reject(new Error('failure')));
+      const operation = vi
+        .fn()
+        .mockImplementation(() => Promise.reject(new Error('failure')));
       const delays: number[] = [];
 
       const promise = manager.execute(operation, {
@@ -127,7 +135,9 @@ describe('RetryManager', () => {
     });
 
     it('should add jitter when enabled', async () => {
-      const operation = vi.fn().mockImplementation(() => Promise.reject(new Error('failure')));
+      const operation = vi
+        .fn()
+        .mockImplementation(() => Promise.reject(new Error('failure')));
       const delays: number[] = [];
 
       const promise = manager.execute(operation, {
@@ -153,7 +163,11 @@ describe('RetryManager', () => {
     });
 
     it('should not retry non-retryable errors', async () => {
-      const operation = vi.fn().mockImplementation(() => Promise.reject(new Error('validation failed')));
+      const operation = vi
+        .fn()
+        .mockImplementation(() =>
+          Promise.reject(new Error('validation failed'))
+        );
 
       const promise = manager.execute(operation, {
         maxAttempts: 3,
@@ -170,9 +184,17 @@ describe('RetryManager', () => {
 
     it('should classify errors correctly by default', async () => {
       // Non-retryable errors
-      const validationError = vi.fn().mockImplementation(() => Promise.reject(new Error('validation error')));
-      const unauthorizedError = vi.fn().mockImplementation(() => Promise.reject(new Error('unauthorized')));
-      const notFoundError = vi.fn().mockImplementation(() => Promise.reject(new Error('not found')));
+      const validationError = vi
+        .fn()
+        .mockImplementation(() =>
+          Promise.reject(new Error('validation error'))
+        );
+      const unauthorizedError = vi
+        .fn()
+        .mockImplementation(() => Promise.reject(new Error('unauthorized')));
+      const notFoundError = vi
+        .fn()
+        .mockImplementation(() => Promise.reject(new Error('not found')));
 
       const validationPromise = manager.execute(validationError);
       const validationRejection = validationPromise.catch((error) => error);
@@ -193,8 +215,12 @@ describe('RetryManager', () => {
       expect(notFoundError).toHaveBeenCalledTimes(1);
 
       // Retryable errors
-      const networkError = vi.fn().mockImplementation(() => Promise.reject(new Error('network error')));
-      const timeoutError = vi.fn().mockImplementation(() => Promise.reject(new Error('timeout')));
+      const networkError = vi
+        .fn()
+        .mockImplementation(() => Promise.reject(new Error('network error')));
+      const timeoutError = vi
+        .fn()
+        .mockImplementation(() => Promise.reject(new Error('timeout')));
 
       const networkPromise = manager.execute(networkError, { maxAttempts: 2 });
       const networkRejection = networkPromise.catch((error) => error);
@@ -225,20 +251,22 @@ describe('RetryManager', () => {
 
       // Advance timers to trigger timeout
       await vi.advanceTimersByTimeAsync(2000);
-      
+
       // Wait for the promise to settle
       const error = await rejectionPromise;
       expect(error).toBeInstanceOf(Error);
       expect((error as Error).message).toBe('Operation timed out after 1000ms');
 
       expect(operation).toHaveBeenCalledTimes(1);
-      
+
       // Ensure all timers are cleared
       await vi.runAllTimersAsync();
     });
 
     it('should call onRetry callback before each retry', async () => {
-      const operation = vi.fn().mockImplementation(() => Promise.reject(new Error('failure')));
+      const operation = vi
+        .fn()
+        .mockImplementation(() => Promise.reject(new Error('failure')));
       const onRetry = vi.fn();
 
       const promise = manager.execute(operation, {
@@ -268,7 +296,9 @@ describe('RetryManager', () => {
     });
 
     it('should call onFailure callback when all retries fail', async () => {
-      const operation = vi.fn().mockImplementation(() => Promise.reject(new Error('failure')));
+      const operation = vi
+        .fn()
+        .mockImplementation(() => Promise.reject(new Error('failure')));
       const onFailure = vi.fn();
 
       const promise = manager.execute(operation, {
@@ -287,7 +317,11 @@ describe('RetryManager', () => {
     });
 
     it('should call onFailure callback for non-retryable errors', async () => {
-      const operation = vi.fn().mockImplementation(() => Promise.reject(new Error('validation failed')));
+      const operation = vi
+        .fn()
+        .mockImplementation(() =>
+          Promise.reject(new Error('validation failed'))
+        );
       const onFailure = vi.fn();
 
       const promise = manager.execute(operation, {
@@ -340,7 +374,9 @@ describe('RetryManager', () => {
 
     it('should handle mixed success and failure', async () => {
       const op1 = vi.fn().mockResolvedValue('success');
-      const op2 = vi.fn().mockImplementation(() => Promise.reject(new Error('failure')));
+      const op2 = vi
+        .fn()
+        .mockImplementation(() => Promise.reject(new Error('failure')));
       const op3 = vi.fn().mockResolvedValue('success');
 
       const promise = manager.executeAll([op1, op2, op3], {
@@ -374,7 +410,9 @@ describe('RetryManager', () => {
     });
 
     it('should return error result without throwing', async () => {
-      const operation = vi.fn().mockImplementation(() => Promise.reject(new Error('failure')));
+      const operation = vi
+        .fn()
+        .mockImplementation(() => Promise.reject(new Error('failure')));
 
       const promise = manager.executeSafe(operation, { maxAttempts: 2 });
       await vi.runAllTimersAsync();
@@ -429,7 +467,9 @@ describe('RetryManager', () => {
         baseDelay: 1000,
       });
 
-      const operation = vi.fn().mockImplementation(() => Promise.reject(new Error('failure')));
+      const operation = vi
+        .fn()
+        .mockImplementation(() => Promise.reject(new Error('failure')));
 
       const promise = customManager.execute(operation);
       const rejectionPromise = promise.catch((error) => error);
@@ -442,7 +482,9 @@ describe('RetryManager', () => {
     });
 
     it('should merge custom options with defaults', async () => {
-      const operation = vi.fn().mockImplementation(() => Promise.reject(new Error('failure')));
+      const operation = vi
+        .fn()
+        .mockImplementation(() => Promise.reject(new Error('failure')));
 
       const promise = manager.execute(operation, {
         maxAttempts: 2, // Override default
@@ -460,7 +502,9 @@ describe('RetryManager', () => {
 
   describe('edge cases', () => {
     it('should handle operation that throws non-Error', async () => {
-      const operation = vi.fn().mockImplementation(() => Promise.reject('string error'));
+      const operation = vi
+        .fn()
+        .mockImplementation(() => Promise.reject('string error'));
 
       const promise = manager.execute(operation, { maxAttempts: 1 });
       const rejectionPromise = promise.catch((error) => error);
@@ -494,7 +538,9 @@ describe('RetryManager', () => {
     });
 
     it('should handle very large delays', async () => {
-      const operation = vi.fn().mockImplementation(() => Promise.reject(new Error('failure')));
+      const operation = vi
+        .fn()
+        .mockImplementation(() => Promise.reject(new Error('failure')));
 
       const promise = manager.execute(operation, {
         maxAttempts: 2,
@@ -514,7 +560,9 @@ describe('RetryManager', () => {
 
   describe('requirements validation', () => {
     it('should meet Requirement 7.1: retry up to 3 times with exponential backoff', async () => {
-      const operation = vi.fn().mockImplementation(() => Promise.reject(new Error('failure')));
+      const operation = vi
+        .fn()
+        .mockImplementation(() => Promise.reject(new Error('failure')));
       const delays: number[] = [];
 
       const promise = manager.execute(operation, {
@@ -542,8 +590,10 @@ describe('RetryManager', () => {
 
     it('should meet Requirement 7.2: classify errors as retryable/non-retryable', async () => {
       // Test retryable error
-      const retryableOp = vi.fn().mockImplementation(() => Promise.reject(new Error('network error')));
-      
+      const retryableOp = vi
+        .fn()
+        .mockImplementation(() => Promise.reject(new Error('network error')));
+
       const retryablePromise = manager.execute(retryableOp, { maxAttempts: 2 });
       const retryableRejection = retryablePromise.catch((error) => error);
       await vi.runAllTimersAsync();
@@ -553,8 +603,12 @@ describe('RetryManager', () => {
       expect(retryableOp).toHaveBeenCalledTimes(2); // Retried
 
       // Test non-retryable error
-      const nonRetryableOp = vi.fn().mockImplementation(() => Promise.reject(new Error('validation error')));
-      
+      const nonRetryableOp = vi
+        .fn()
+        .mockImplementation(() =>
+          Promise.reject(new Error('validation error'))
+        );
+
       const nonRetryablePromise = manager.execute(nonRetryableOp, {
         maxAttempts: 3,
       });
@@ -579,18 +633,18 @@ describe('RetryManager', () => {
         maxAttempts: 2,
       });
       const rejectionPromise = promise.catch((error) => error);
-      
+
       // Advance timers to trigger timeouts and wait for all retries
       await vi.advanceTimersByTimeAsync(10000);
-      
+
       // Wait for the promise to settle
       const error = await rejectionPromise;
       expect(error).toBeInstanceOf(Error);
       expect((error as Error).message).toMatch(/timed out/i);
-      
+
       // Should retry timeout errors
       expect(operation).toHaveBeenCalledTimes(2);
-      
+
       // Ensure all timers are cleared
       await vi.runAllTimersAsync();
     });

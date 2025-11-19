@@ -51,7 +51,8 @@ export const ChatInterface = memo<ChatInterfaceProps>(
     scrollToMessageId,
   }) => {
     const { t } = useI18n();
-    const { updateConversation: updateConversationWithPersistence } = useConversations();
+    const { updateConversation: updateConversationWithPersistence } =
+      useConversations();
     const { announce } = useScreenReaderAnnouncer();
     const [isLoading, setIsLoading] = useState(false);
     const [streamingMessage, setStreamingMessage] = useState<
@@ -59,7 +60,7 @@ export const ChatInterface = memo<ChatInterfaceProps>(
     >();
     const [connectionError, setConnectionError] = useState<string | null>(null);
     const chatService = getChatService();
-    
+
     /**
      * Task 6.4: Keyword highlighting state
      * - Track current occurrence index for navigation
@@ -68,13 +69,13 @@ export const ChatInterface = memo<ChatInterfaceProps>(
     const [currentOccurrenceIndex, setCurrentOccurrenceIndex] = useState(0);
     const [totalOccurrences, setTotalOccurrences] = useState(0);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
-    
+
     /**
      * Task 12.5: Focus management
      * - Ref to input area for returning focus after sending
      */
     const inputAreaRef = useRef<HTMLDivElement>(null);
-    
+
     /**
      * Task 1.6: Get SSE connection reference
      * - Connection is retrieved once per conversation
@@ -86,7 +87,9 @@ export const ChatInterface = memo<ChatInterfaceProps>(
 
     // Update connection ref when conversation changes
     useEffect(() => {
-      sseConnectionRef.current = getChatService().getSSEConnection(conversation.id);
+      sseConnectionRef.current = getChatService().getSSEConnection(
+        conversation.id
+      );
     }, [conversation.id]);
 
     /**
@@ -132,11 +135,12 @@ export const ChatInterface = memo<ChatInterfaceProps>(
 
           // Announce message sent to screen readers
           announce('chat.messageSent', 'polite');
-          
+
           // Task 12.5: Return focus to input after sending
           // Use setTimeout to ensure DOM updates complete first
           setTimeout(() => {
-            const inputElement = inputAreaRef.current?.querySelector('textarea, input');
+            const inputElement =
+              inputAreaRef.current?.querySelector('textarea, input');
             if (inputElement instanceof HTMLElement) {
               inputElement.focus();
             }
@@ -144,18 +148,21 @@ export const ChatInterface = memo<ChatInterfaceProps>(
 
           // Send message to backend
           logger.log('🟢 [ChatInterface] Sending message to backend');
-          
+
           // Task 10 Fix: Transform messages to match backend ContextMessage interface
           // Backend expects: { id, role, content, timestamp }
           // Frontend Message has extra fields (conversationId, correlationId, isComplete, etc.)
           // that cause validation issues when serialized
           const contextMessages: Message[] = conversation.messages
             .slice(-10) // Last 10 messages for context
-            .map(msg => ({
+            .map((msg) => ({
               ...msg,
-              timestamp: msg.timestamp instanceof Date ? msg.timestamp : new Date(msg.timestamp),
+              timestamp:
+                msg.timestamp instanceof Date
+                  ? msg.timestamp
+                  : new Date(msg.timestamp),
             }));
-          
+
           const { messageId, correlationId } = await chatService.sendMessage({
             message: content,
             model: conversation.selectedModel,
@@ -164,7 +171,10 @@ export const ChatInterface = memo<ChatInterfaceProps>(
             contextMessages, // Send only required fields with proper serialization
           });
 
-          logger.log('🟢 [ChatInterface] Message sent, received messageId:', messageId);
+          logger.log(
+            '🟢 [ChatInterface] Message sent, received messageId:',
+            messageId
+          );
           logger.log('🟢 [ChatInterface] Correlation ID:', correlationId);
 
           // Create streaming message placeholder
@@ -173,7 +183,10 @@ export const ChatInterface = memo<ChatInterfaceProps>(
             conversation.id,
             correlationId
           );
-          logger.log('🟢 [ChatInterface] Created streaming message placeholder:', streamingMsg);
+          logger.log(
+            '🟢 [ChatInterface] Created streaming message placeholder:',
+            streamingMsg
+          );
           setStreamingMessage(streamingMsg);
         } catch (error) {
           const errorMessage =
@@ -206,36 +219,42 @@ export const ChatInterface = memo<ChatInterfaceProps>(
 
     /**
      * Handle streaming message start
-     * 
+     *
      * Task 9.3: Add missing messageStart handler to initialize streaming message
      * Fix: Only create streaming message if there's a pending user message
      */
     const handleMessageStart = useCallback(
       (data: { messageId: string; correlationId: string }): void => {
         logger.log('🟢 [ChatInterface] handleMessageStart called with:', data);
-        
+
         // Check if the last message is from the user (indicating we're waiting for a response)
-        const lastMessage = conversation.messages[conversation.messages.length - 1];
+        const lastMessage =
+          conversation.messages[conversation.messages.length - 1];
         const isWaitingForResponse = lastMessage?.role === 'user';
-        
+
         if (!isWaitingForResponse) {
-          logger.log('🟡 [ChatInterface] Ignoring START event - no pending user message');
+          logger.log(
+            '🟡 [ChatInterface] Ignoring START event - no pending user message'
+          );
           return;
         }
-        
+
         // Create streaming message placeholder if it doesn't exist
         setStreamingMessage((prev) => {
           if (prev && prev.id === data.messageId) {
             logger.log('🟢 [ChatInterface] Streaming message already exists');
             return prev;
           }
-          
+
           const streamingMsg = chatUtils.createStreamingMessage(
             data.messageId,
             conversation.id,
             data.correlationId
           );
-          logger.log('🟢 [ChatInterface] Created streaming message from START event:', streamingMsg);
+          logger.log(
+            '🟢 [ChatInterface] Created streaming message from START event:',
+            streamingMsg
+          );
           return streamingMsg;
         });
       },
@@ -244,7 +263,7 @@ export const ChatInterface = memo<ChatInterfaceProps>(
 
     /**
      * Handle streaming message updates
-     * 
+     *
      * Task 9.1: Add comprehensive logging for message flow
      * Task 9.3: Fix React state update - use functional setState to avoid stale closure
      */
@@ -255,13 +274,20 @@ export const ChatInterface = memo<ChatInterfaceProps>(
         correlationId: string;
       }): void => {
         logger.log('🟢 [ChatInterface] handleMessageChunk called with:', data);
-        
+
         setStreamingMessage((prev) => {
           logger.log('🟢 [ChatInterface] setStreamingMessage - prev:', prev);
-          logger.log('🟢 [ChatInterface] Checking messageId match:', prev?.id, '===', data.messageId);
-          
+          logger.log(
+            '🟢 [ChatInterface] Checking messageId match:',
+            prev?.id,
+            '===',
+            data.messageId
+          );
+
           if (!prev || prev.id !== data.messageId) {
-            logger.log('🟡 [ChatInterface] Message ID mismatch or no prev message, skipping update');
+            logger.log(
+              '🟡 [ChatInterface] Message ID mismatch or no prev message, skipping update'
+            );
             return prev;
           }
 
@@ -269,7 +295,7 @@ export const ChatInterface = memo<ChatInterfaceProps>(
             ...prev,
             content: (prev.content ?? '') + data.content,
           };
-          
+
           logger.log('🟢 [ChatInterface] Updated streaming message:', updated);
           return updated;
         });
@@ -279,16 +305,24 @@ export const ChatInterface = memo<ChatInterfaceProps>(
 
     /**
      * Handle streaming message completion
-     * 
+     *
      * Task 9.1: Add comprehensive logging for message flow
      */
     const handleMessageEnd = useCallback(
-      async (data: { messageId: string; correlationId: string }): Promise<void> => {
+      async (data: {
+        messageId: string;
+        correlationId: string;
+      }): Promise<void> => {
         logger.log('🟢 [ChatInterface] handleMessageEnd called with:', data);
-        logger.log('🟢 [ChatInterface] Current streamingMessage:', streamingMessage);
-        
+        logger.log(
+          '🟢 [ChatInterface] Current streamingMessage:',
+          streamingMessage
+        );
+
         if (streamingMessage?.id !== data.messageId) {
-          logger.log('🟡 [ChatInterface] Message ID mismatch in handleMessageEnd, skipping');
+          logger.log(
+            '🟡 [ChatInterface] Message ID mismatch in handleMessageEnd, skipping'
+          );
           return;
         }
 
@@ -304,7 +338,10 @@ export const ChatInterface = memo<ChatInterfaceProps>(
           model: conversation.selectedModel,
         };
 
-        logger.log('🟢 [ChatInterface] Complete message created:', completeMessage);
+        logger.log(
+          '🟢 [ChatInterface] Complete message created:',
+          completeMessage
+        );
 
         // Update conversation with complete message
         const updatedConversation: Conversation = {
@@ -314,7 +351,9 @@ export const ChatInterface = memo<ChatInterfaceProps>(
           isStreaming: false,
         };
 
-        logger.log('🟢 [ChatInterface] Updating conversation with complete message');
+        logger.log(
+          '🟢 [ChatInterface] Updating conversation with complete message'
+        );
         await updateConversationWithPersistence(updatedConversation.id, {
           messages: updatedConversation.messages,
           isStreaming: updatedConversation.isStreaming,
@@ -325,7 +364,9 @@ export const ChatInterface = memo<ChatInterfaceProps>(
         announce('chat.responseReceived', 'polite');
 
         // Clear streaming message
-        logger.log('🟢 [ChatInterface] Clearing streaming message and loading state');
+        logger.log(
+          '🟢 [ChatInterface] Clearing streaming message and loading state'
+        );
         setStreamingMessage(undefined);
         setIsLoading(false);
       },
@@ -342,7 +383,10 @@ export const ChatInterface = memo<ChatInterfaceProps>(
      * Handle streaming errors
      */
     const handleMessageError = useCallback(
-      async (data: { _error: string; correlationId: string }): Promise<void> => {
+      async (data: {
+        _error: string;
+        correlationId: string;
+      }): Promise<void> => {
         setConnectionError(data._error);
         setStreamingMessage(undefined);
         setIsLoading(false);
@@ -421,12 +465,9 @@ export const ChatInterface = memo<ChatInterfaceProps>(
                 : candidate
             ),
           };
-          void updateConversationWithPersistence(
-            clearedRetryConversation.id,
-            {
-              messages: clearedRetryConversation.messages,
-            }
-          );
+          void updateConversationWithPersistence(clearedRetryConversation.id, {
+            messages: clearedRetryConversation.messages,
+          });
           onConversationUpdate?.(clearedRetryConversation);
 
           // Convert FileInfo[] back to File[] for retry (this is a limitation - we lose the actual file data)
@@ -458,7 +499,7 @@ export const ChatInterface = memo<ChatInterfaceProps>(
 
     /**
      * Setup SSE connection - only on mount and conversationId change
-     * 
+     *
      * Task 1.6: Fix frequent connect() calls from React components
      * - Removed callback dependencies to prevent re-running on every render
      * - Connection only established on mount and when conversationId changes
@@ -483,7 +524,7 @@ export const ChatInterface = memo<ChatInterfaceProps>(
 
     /**
      * Update event listeners when callbacks change
-     * 
+     *
      * Task 1.6: Separate event listener updates from connection lifecycle
      * Task 9.3: Add messageStart event listener
      * - Event listeners are updated without triggering reconnection
@@ -562,7 +603,7 @@ export const ChatInterface = memo<ChatInterfaceProps>(
         const messageElement = messagesContainerRef.current.querySelector(
           `[data-message-id="${scrollToMessageId}"]`
         );
-        
+
         if (messageElement) {
           // Scroll to message with smooth behavior
           messageElement.scrollIntoView({
@@ -580,43 +621,56 @@ export const ChatInterface = memo<ChatInterfaceProps>(
      * Task 6.4: Navigate to next/previous keyword occurrence
      * Requirement 8.5: Navigation controls to jump between occurrences
      */
-    const navigateToOccurrence = useCallback((direction: 'next' | 'previous') => {
-      if (totalOccurrences === 0 || !messagesContainerRef.current) {
-        return;
-      }
+    const navigateToOccurrence = useCallback(
+      (direction: 'next' | 'previous') => {
+        if (totalOccurrences === 0 || !messagesContainerRef.current) {
+          return;
+        }
 
-      let newIndex = currentOccurrenceIndex;
-      if (direction === 'next') {
-        newIndex = currentOccurrenceIndex < totalOccurrences ? currentOccurrenceIndex + 1 : 1;
-      } else {
-        newIndex = currentOccurrenceIndex > 1 ? currentOccurrenceIndex - 1 : totalOccurrences;
-      }
+        let newIndex = currentOccurrenceIndex;
+        if (direction === 'next') {
+          newIndex =
+            currentOccurrenceIndex < totalOccurrences
+              ? currentOccurrenceIndex + 1
+              : 1;
+        } else {
+          newIndex =
+            currentOccurrenceIndex > 1
+              ? currentOccurrenceIndex - 1
+              : totalOccurrences;
+        }
 
-      setCurrentOccurrenceIndex(newIndex);
+        setCurrentOccurrenceIndex(newIndex);
 
-      // Find and scroll to the nth occurrence
-      const allHighlights = messagesContainerRef.current.querySelectorAll('.keyword-highlight');
-      const targetHighlight = allHighlights[newIndex - 1];
-      
-      if (targetHighlight) {
-        targetHighlight.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center',
-        });
+        // Find and scroll to the nth occurrence
+        const allHighlights =
+          messagesContainerRef.current.querySelectorAll('.keyword-highlight');
+        const targetHighlight = allHighlights[newIndex - 1];
 
-        // Add temporary focus indicator
-        targetHighlight.classList.add('keyword-highlight-active');
-        setTimeout(() => {
-          targetHighlight.classList.remove('keyword-highlight-active');
-        }, 2000);
+        if (targetHighlight) {
+          targetHighlight.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+          });
 
-        // Announce to screen readers
-        announce(
-          t('chat.navigatedToOccurrence', { current: newIndex, total: totalOccurrences }),
-          'polite'
-        );
-      }
-    }, [currentOccurrenceIndex, totalOccurrences, announce, t]);
+          // Add temporary focus indicator
+          targetHighlight.classList.add('keyword-highlight-active');
+          setTimeout(() => {
+            targetHighlight.classList.remove('keyword-highlight-active');
+          }, 2000);
+
+          // Announce to screen readers
+          announce(
+            t('chat.navigatedToOccurrence', {
+              current: newIndex,
+              total: totalOccurrences,
+            }),
+            'polite'
+          );
+        }
+      },
+      [currentOccurrenceIndex, totalOccurrences, announce, t]
+    );
 
     return (
       <KeyboardNavigation
@@ -711,38 +765,40 @@ export const ChatInterface = memo<ChatInterfaceProps>(
           </header>
 
           {/* Keyword Navigation Controls (Task 6.4) */}
-          {highlightKeywords && highlightKeywords.length > 0 && totalOccurrences > 0 && (
-            <div 
-              className="keyword-navigation"
-              role="toolbar"
-              aria-label={t('chat.keywordNavigation')}
-            >
-              <span className="occurrence-counter" aria-live="polite">
-                {t('chat.occurrenceCounter', { 
-                  current: currentOccurrenceIndex, 
-                  total: totalOccurrences 
-                })}
-              </span>
-              <button
-                type="button"
-                className="nav-button nav-previous"
-                onClick={() => navigateToOccurrence('previous')}
-                aria-label={t('chat.previousOccurrence')}
-                disabled={totalOccurrences === 0}
+          {highlightKeywords &&
+            highlightKeywords.length > 0 &&
+            totalOccurrences > 0 && (
+              <div
+                className="keyword-navigation"
+                role="toolbar"
+                aria-label={t('chat.keywordNavigation')}
               >
-                ↑
-              </button>
-              <button
-                type="button"
-                className="nav-button nav-next"
-                onClick={() => navigateToOccurrence('next')}
-                aria-label={t('chat.nextOccurrence')}
-                disabled={totalOccurrences === 0}
-              >
-                ↓
-              </button>
-            </div>
-          )}
+                <span className="occurrence-counter" aria-live="polite">
+                  {t('chat.occurrenceCounter', {
+                    current: currentOccurrenceIndex,
+                    total: totalOccurrences,
+                  })}
+                </span>
+                <button
+                  type="button"
+                  className="nav-button nav-previous"
+                  onClick={() => navigateToOccurrence('previous')}
+                  aria-label={t('chat.previousOccurrence')}
+                  disabled={totalOccurrences === 0}
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  className="nav-button nav-next"
+                  onClick={() => navigateToOccurrence('next')}
+                  aria-label={t('chat.nextOccurrence')}
+                  disabled={totalOccurrences === 0}
+                >
+                  ↓
+                </button>
+              </div>
+            )}
 
           {/* Message List */}
           <section

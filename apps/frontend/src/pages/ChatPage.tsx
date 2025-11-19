@@ -13,17 +13,44 @@ import { useI18n } from '../contexts/I18nContext';
 import { LayoutContainer } from '../components/layout/AppLayout';
 import { ChatInterface } from '../components/chat/ChatInterface';
 import { getModelService } from '../services/models';
-import type { ClientConfig } from '../types/index';
+import type { ClientConfig, Conversation } from '../types/index';
 
 /**
  * Chat page component
  */
 function ChatPage(): React.JSX.Element {
-  const { activeConversation, conversations, createConversation } =
-    useConversations();
+  const {
+    activeConversation,
+    activeConversationId,
+    conversations,
+    createConversation,
+  } = useConversations();
   const { t } = useI18n();
   const [config, setConfig] = useState<ClientConfig | null>(null);
-  const hasActiveConversation = activeConversation !== null;
+
+  // Cache the active conversation to prevent flickering during updates
+  // This handles the case where activeConversation becomes null briefly during a sync update
+  // but activeConversationId is still set.
+  const [cachedConversation, setCachedConversation] =
+    useState<Conversation | null>(null);
+
+  useEffect(() => {
+    if (activeConversation) {
+      setCachedConversation(activeConversation);
+    } else if (activeConversationId === null) {
+      // Only clear cache if explicitly deselected
+      setCachedConversation(null);
+    }
+  }, [activeConversation, activeConversationId]);
+
+  // Use cached conversation if active is temporarily null but ID matches
+  const displayConversation =
+    activeConversation ||
+    (activeConversationId && cachedConversation?.id === activeConversationId
+      ? cachedConversation
+      : null);
+
+  const hasActiveConversation = displayConversation !== null;
   const hasNoConversations = conversations.length === 0;
 
   /**
@@ -86,8 +113,8 @@ function ChatPage(): React.JSX.Element {
 
   return (
     <LayoutContainer className="chat-page" maxWidth="full" padding="none">
-      {hasActiveConversation && activeConversation !== null ? (
-        <ChatInterface conversation={activeConversation} config={config} />
+      {hasActiveConversation && displayConversation !== null ? (
+        <ChatInterface conversation={displayConversation} config={config} />
       ) : hasNoConversations ? (
         <div className="welcome-screen">
           <div className="welcome-content">

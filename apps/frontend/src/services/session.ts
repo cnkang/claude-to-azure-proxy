@@ -13,6 +13,8 @@ import type { SessionState, UserPreferences } from '../types/index';
 const SESSION_STORAGE_KEY = 'claude-proxy-session';
 const SESSION_PREFERENCES_KEY = 'claude-proxy-preferences';
 const SESSION_VALIDATION_KEY = 'claude-proxy-validation';
+const SHARED_SESSION_KEY = 'claude-proxy-shared-session';
+const SHARED_SESSION_VALIDATION_KEY = 'claude-proxy-shared-validation';
 
 // Session validation interval (5 minutes)
 const SESSION_VALIDATION_INTERVAL = 5 * 60 * 1000;
@@ -130,6 +132,36 @@ export class SessionManager {
           return;
         }
       }
+
+      // Fallback: attempt to reuse a shared session for cross-tab continuity
+      const sharedSession = localStorage.getItem(SHARED_SESSION_KEY);
+      const sharedValidation = localStorage.getItem(
+        SHARED_SESSION_VALIDATION_KEY
+      );
+
+      if (sharedSession !== null && sharedValidation !== null) {
+        const sessionData = JSON.parse(sharedSession) as SessionState;
+        const validationData = JSON.parse(
+          sharedValidation
+        ) as SessionValidation;
+
+        if (this.validateSessionIntegrity(sessionData, validationData)) {
+          this.currentSession = {
+            ...sessionData,
+            createdAt: new Date(sessionData.createdAt),
+          };
+
+          sessionStorage.setItem(
+            SESSION_STORAGE_KEY,
+            JSON.stringify(this.currentSession)
+          );
+          sessionStorage.setItem(
+            SESSION_VALIDATION_KEY,
+            JSON.stringify(validationData)
+          );
+          return;
+        }
+      }
     } catch (_error) {
       // Log error in development but continue with new session
       if (import.meta.env.DEV) {
@@ -170,6 +202,10 @@ export class SessionManager {
     };
 
     sessionStorage.setItem(SESSION_VALIDATION_KEY, JSON.stringify(validation));
+    localStorage.setItem(
+      SHARED_SESSION_VALIDATION_KEY,
+      JSON.stringify(validation)
+    );
   }
 
   /**
@@ -278,6 +314,10 @@ export class SessionManager {
         SESSION_STORAGE_KEY,
         JSON.stringify(this.currentSession)
       );
+      localStorage.setItem(
+        SHARED_SESSION_KEY,
+        JSON.stringify(this.currentSession)
+      );
     } catch (_error) {
       if (import.meta.env.DEV) {
         // console.error('Failed to persist session:', error);
@@ -342,6 +382,10 @@ export class SessionManager {
         SESSION_VALIDATION_KEY,
         JSON.stringify(validationData)
       );
+      localStorage.setItem(
+        SHARED_SESSION_VALIDATION_KEY,
+        JSON.stringify(validationData)
+      );
     } catch (_error) {
       if (import.meta.env.DEV) {
         // console.error('Session validation failed:', error);
@@ -372,6 +416,8 @@ export class SessionManager {
     try {
       sessionStorage.removeItem(SESSION_STORAGE_KEY);
       sessionStorage.removeItem(SESSION_VALIDATION_KEY);
+      localStorage.removeItem(SHARED_SESSION_KEY);
+      localStorage.removeItem(SHARED_SESSION_VALIDATION_KEY);
     } catch (_error) {
       if (import.meta.env.DEV) {
         // console.error('Failed to clear session storage:', error);

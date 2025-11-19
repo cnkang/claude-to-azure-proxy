@@ -13,7 +13,10 @@ import { useConversations } from '../hooks/useConversations.js';
 import { useDebouncedTitle } from '../hooks/useDebouncedTitle.js';
 import { getConversationStorage } from '../services/storage.js';
 import { getRetryManager } from '../utils/retry-manager.js';
-import { PersistenceError, PersistenceErrorType } from '../errors/persistence-error.js';
+import {
+  PersistenceError,
+  PersistenceErrorType,
+} from '../errors/persistence-error.js';
 import type { Conversation } from '../types/index.js';
 
 // Mock dependencies
@@ -78,14 +81,17 @@ describe('Conversation Persistence', () => {
     it('should update title optimistically before persistence', async () => {
       // Test that UI updates immediately before storage operation completes
       const newTitle = 'Updated Title';
-      
+
       // Delay storage operation to verify optimistic update
       vi.mocked(mockStorage.updateConversationTitle).mockImplementation(
         () => new Promise((resolve) => setTimeout(resolve, 100))
       );
 
       // Simulate title update
-      const updatePromise = mockStorage.updateConversationTitle(mockConversation.id, newTitle);
+      const updatePromise = mockStorage.updateConversationTitle(
+        mockConversation.id,
+        newTitle
+      );
 
       // Verify storage was called
       expect(mockStorage.updateConversationTitle).toHaveBeenCalledWith(
@@ -113,11 +119,16 @@ describe('Conversation Persistence', () => {
 
       // Attempt title update
       try {
-        await mockStorage.updateConversationTitle(mockConversation.id, newTitle);
+        await mockStorage.updateConversationTitle(
+          mockConversation.id,
+          newTitle
+        );
       } catch (err) {
         // Verify error was thrown
         expect(err).toBeInstanceOf(PersistenceError);
-        expect((err as PersistenceError).type).toBe(PersistenceErrorType.WRITE_FAILED);
+        expect((err as PersistenceError).type).toBe(
+          PersistenceErrorType.WRITE_FAILED
+        );
       }
 
       // Verify storage was called
@@ -143,22 +154,31 @@ describe('Conversation Persistence', () => {
   describe('Optimistic Deletion', () => {
     it('should remove conversation from UI before persistence', async () => {
       // Test that conversation is removed from UI immediately
-      
+
       // Delay storage operation
       vi.mocked(mockStorage.deleteConversation).mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve({
-          success: true,
-          conversationRemoved: true,
-          messagesRemoved: 5,
-          metadataRemoved: true,
-          bytesFreed: 1024,
-        }), 100))
+        () =>
+          new Promise((resolve) =>
+            setTimeout(
+              () =>
+                resolve({
+                  success: true,
+                  conversationRemoved: true,
+                  messagesRemoved: 5,
+                  metadataRemoved: true,
+                  bytesFreed: 1024,
+                }),
+              100
+            )
+          )
       );
 
       const deletePromise = mockStorage.deleteConversation(mockConversation.id);
 
       // Verify storage was called
-      expect(mockStorage.deleteConversation).toHaveBeenCalledWith(mockConversation.id);
+      expect(mockStorage.deleteConversation).toHaveBeenCalledWith(
+        mockConversation.id
+      );
 
       // Wait for completion
       const result = await deletePromise;
@@ -168,7 +188,7 @@ describe('Conversation Persistence', () => {
 
     it('should restore conversation on deletion failure', async () => {
       // Test that conversation is restored when deletion fails
-      
+
       // Mock storage failure
       const error = new PersistenceError(
         PersistenceErrorType.WRITE_FAILED,
@@ -253,7 +273,7 @@ describe('Conversation Persistence', () => {
   describe('Debounced Title Updates', () => {
     it('should debounce rapid title changes', async () => {
       const onUpdate = vi.fn().mockResolvedValue(undefined);
-      
+
       const { result } = renderHook(() =>
         useDebouncedTitle('Initial Title', {
           delay: 100,
@@ -287,9 +307,11 @@ describe('Conversation Persistence', () => {
     });
 
     it('should show saving indicator during persistence', async () => {
-      const onUpdate = vi.fn().mockImplementation(
-        () => new Promise((resolve) => setTimeout(resolve, 100))
-      );
+      const onUpdate = vi
+        .fn()
+        .mockImplementation(
+          () => new Promise((resolve) => setTimeout(resolve, 100))
+        );
 
       const { result } = renderHook(() =>
         useDebouncedTitle('Initial Title', {
@@ -372,7 +394,10 @@ describe('Conversation Persistence', () => {
       vi.mocked(mockStorage.updateConversationTitle).mockRejectedValue(error);
 
       try {
-        await mockStorage.updateConversationTitle(mockConversation.id, 'Failed Title');
+        await mockStorage.updateConversationTitle(
+          mockConversation.id,
+          'Failed Title'
+        );
       } catch (err) {
         expect(err).toBeInstanceOf(PersistenceError);
       }
@@ -382,8 +407,14 @@ describe('Conversation Persistence', () => {
       // Test that syncVersion increments with each successful update
       const initialVersion = mockConversation.syncVersion ?? 0;
 
-      await mockStorage.updateConversationTitle(mockConversation.id, 'Version Test 1');
-      await mockStorage.updateConversationTitle(mockConversation.id, 'Version Test 2');
+      await mockStorage.updateConversationTitle(
+        mockConversation.id,
+        'Version Test 1'
+      );
+      await mockStorage.updateConversationTitle(
+        mockConversation.id,
+        'Version Test 2'
+      );
 
       expect(mockStorage.updateConversationTitle).toHaveBeenCalledTimes(2);
     });
@@ -393,7 +424,10 @@ describe('Conversation Persistence', () => {
     it('should display user-friendly error messages', () => {
       const errors = [
         new PersistenceError(PersistenceErrorType.STORAGE_FULL, 'Storage full'),
-        new PersistenceError(PersistenceErrorType.VALIDATION_FAILED, 'Invalid data'),
+        new PersistenceError(
+          PersistenceErrorType.VALIDATION_FAILED,
+          'Invalid data'
+        ),
         new PersistenceError(PersistenceErrorType.WRITE_FAILED, 'Write failed'),
       ];
 

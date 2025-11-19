@@ -2,7 +2,9 @@
 
 ## Overview
 
-The persistence error classification system provides comprehensive error handling for conversation persistence operations with automatic error classification, recovery strategies, and user-friendly messages.
+The persistence error classification system provides comprehensive error handling for conversation
+persistence operations with automatic error classification, recovery strategies, and user-friendly
+messages.
 
 ## Features
 
@@ -83,19 +85,10 @@ const dbError = createIndexedDBError(
   'conv-123'
 );
 
-const validationError = createValidationError(
-  'updateTitle',
-  'title',
-  '',
-  'Title cannot be empty'
-);
+const validationError = createValidationError('updateTitle', 'title', '', 'Title cannot be empty');
 
 // Create from generic Error
-const error = createPersistenceError(
-  new Error('Something went wrong'),
-  'updateTitle',
-  'conv-123'
-);
+const error = createPersistenceError(new Error('Something went wrong'), 'updateTitle', 'conv-123');
 ```
 
 ### Handling Errors
@@ -110,9 +103,7 @@ try {
   if (error instanceof PersistenceError) {
     // Check if should retry
     if (error.shouldRetry()) {
-      await retryManager.execute(() =>
-        storage.updateConversationTitle(id, title)
-      );
+      await retryManager.execute(() => storage.updateConversationTitle(id, title));
     }
 
     // Check if requires user action
@@ -196,7 +187,8 @@ pnpm test persistence-error.test.ts --run
 
 The error classification system follows these design principles:
 
-1. **Separation of Concerns**: Error classification, recovery strategies, and user messages are separate
+1. **Separation of Concerns**: Error classification, recovery strategies, and user messages are
+   separate
 2. **Extensibility**: Easy to add new error types and recovery strategies
 3. **Type Safety**: Full TypeScript support with enums and interfaces
 4. **Logging**: Automatic logging with correlation IDs

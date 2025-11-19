@@ -47,7 +47,11 @@ export const LazyConversationManager = withLazyLoading(
 );
 
 export const LazyOptimizedConversationList = withLazyLoading(
-  lazy(() => import('../components/conversation/OptimizedConversationList').then(m => ({ default: m.OptimizedConversationList }))),
+  lazy(() =>
+    import('../components/conversation/OptimizedConversationList').then(
+      (m) => ({ default: m.OptimizedConversationList })
+    )
+  ),
   {
     loadingMessage: 'Loading conversation list...',
     className: 'conversation-list-loading',
@@ -55,7 +59,11 @@ export const LazyOptimizedConversationList = withLazyLoading(
 );
 
 export const LazyOptimizedMessageList = withLazyLoading(
-  lazy(() => import('../components/chat/OptimizedMessageList').then(m => ({ default: m.OptimizedMessageList }))),
+  lazy(() =>
+    import('../components/chat/OptimizedMessageList').then((m) => ({
+      default: m.OptimizedMessageList,
+    }))
+  ),
   {
     loadingMessage: 'Loading messages...',
     className: 'message-list-loading',
@@ -63,7 +71,11 @@ export const LazyOptimizedMessageList = withLazyLoading(
 );
 
 export const LazyContextManager = withLazyLoading(
-  lazy(() => import('../components/chat/ContextManager').then(m => ({ default: m.ContextManager }))),
+  lazy(() =>
+    import('../components/chat/ContextManager').then((m) => ({
+      default: m.ContextManager,
+    }))
+  ),
   {
     loadingMessage: 'Loading context manager...',
     className: 'context-manager-loading',
@@ -71,7 +83,11 @@ export const LazyContextManager = withLazyLoading(
 );
 
 export const LazyFileUpload = withLazyLoading(
-  lazy(() => import('../components/chat/FileUpload').then(m => ({ default: m.FileUpload }))),
+  lazy(() =>
+    import('../components/chat/FileUpload').then((m) => ({
+      default: m.FileUpload,
+    }))
+  ),
   {
     loadingMessage: 'Loading file upload...',
     className: 'file-upload-loading',

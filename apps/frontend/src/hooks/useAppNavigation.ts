@@ -3,6 +3,8 @@
  * Moved from AppRouter to avoid Fast Refresh issues
  */
 
+import { useNavigate } from 'react-router-dom';
+
 export interface AppNavigation {
   readonly navigate: (path: string) => void;
   readonly navigateToChat: (conversationId?: string) => void;
@@ -12,8 +14,10 @@ export interface AppNavigation {
 }
 
 export function useAppNavigation(): AppNavigation {
-  const navigate = (path: string): void => {
-    window.location.href = path;
+  const navigate = useNavigate();
+
+  const navigateToPath = (path: string): void => {
+    navigate(path);
   };
 
   const navigateToChat = (conversationId?: string): void => {
@@ -29,15 +33,15 @@ export function useAppNavigation(): AppNavigation {
   };
 
   const goBack = (): void => {
-    window.history.back();
+    navigate(-1);
   };
 
   const goForward = (): void => {
-    window.history.forward();
+    navigate(1);
   };
 
   return {
-    navigate,
+    navigate: navigateToPath,
     navigateToChat,
     navigateToSettings,
     goBack,

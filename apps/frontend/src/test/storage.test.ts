@@ -350,16 +350,18 @@ describe('ConversationStorage local fallback', () => {
       ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createConversation('conv-title-update', sessionId);
-      
+
       await storage.storeConversation(conversation);
-      
+
       const newTitle = 'Updated Title';
       await storage.updateConversationTitle('conv-title-update', newTitle);
-      
+
       const updated = await storage.getConversation('conv-title-update');
       expect(updated).not.toBeNull();
       expect(updated?.title).toBe(newTitle);
-      expect(updated?.updatedAt.getTime()).toBeGreaterThan(conversation.updatedAt.getTime());
+      expect(updated?.updatedAt.getTime()).toBeGreaterThan(
+        conversation.updatedAt.getTime()
+      );
     });
 
     it('validates title length - rejects empty title', async () => {
@@ -372,9 +374,9 @@ describe('ConversationStorage local fallback', () => {
       ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createConversation('conv-empty-title', sessionId);
-      
+
       await storage.storeConversation(conversation);
-      
+
       await expect(
         storage.updateConversationTitle('conv-empty-title', '')
       ).rejects.toThrow('Title must be between 1 and 200 characters');
@@ -390,9 +392,9 @@ describe('ConversationStorage local fallback', () => {
       ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createConversation('conv-long-title', sessionId);
-      
+
       await storage.storeConversation(conversation);
-      
+
       const longTitle = 'a'.repeat(201);
       await expect(
         storage.updateConversationTitle('conv-long-title', longTitle)
@@ -409,12 +411,12 @@ describe('ConversationStorage local fallback', () => {
       ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createConversation('conv-xss-title', sessionId);
-      
+
       await storage.storeConversation(conversation);
-      
+
       const maliciousTitle = '<script>alert("XSS")</script>Safe Title';
       await storage.updateConversationTitle('conv-xss-title', maliciousTitle);
-      
+
       const updated = await storage.getConversation('conv-xss-title');
       expect(updated).not.toBeNull();
       expect(updated?.title).toBe('Safe Title');
@@ -432,12 +434,12 @@ describe('ConversationStorage local fallback', () => {
       ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createConversation('conv-js-protocol', sessionId);
-      
+
       await storage.storeConversation(conversation);
-      
+
       const maliciousTitle = 'javascript:void(0) Safe Title';
       await storage.updateConversationTitle('conv-js-protocol', maliciousTitle);
-      
+
       const updated = await storage.getConversation('conv-js-protocol');
       expect(updated).not.toBeNull();
       expect(updated?.title).not.toContain('javascript:');
@@ -453,12 +455,15 @@ describe('ConversationStorage local fallback', () => {
       ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createConversation('conv-event-handler', sessionId);
-      
+
       await storage.storeConversation(conversation);
-      
+
       const maliciousTitle = 'onclick=alert(1) Safe Title';
-      await storage.updateConversationTitle('conv-event-handler', maliciousTitle);
-      
+      await storage.updateConversationTitle(
+        'conv-event-handler',
+        maliciousTitle
+      );
+
       const updated = await storage.getConversation('conv-event-handler');
       expect(updated).not.toBeNull();
       expect(updated?.title).not.toContain('onclick=');
@@ -474,12 +479,12 @@ describe('ConversationStorage local fallback', () => {
       ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createConversation('conv-whitespace', sessionId);
-      
+
       await storage.storeConversation(conversation);
-      
+
       const titleWithSpaces = '  Multiple   Spaces   Title  ';
       await storage.updateConversationTitle('conv-whitespace', titleWithSpaces);
-      
+
       const updated = await storage.getConversation('conv-whitespace');
       expect(updated).not.toBeNull();
       expect(updated?.title).toBe('Multiple Spaces Title');
@@ -501,13 +506,13 @@ describe('ConversationStorage local fallback', () => {
       ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createConversation('conv-log-success', sessionId);
-      
+
       await storage.storeConversation(conversation);
-      
+
       const loggerSpy = vi.spyOn(frontendLogger, 'info');
-      
+
       await storage.updateConversationTitle('conv-log-success', 'New Title');
-      
+
       // Check for the completion log message
       expect(loggerSpy).toHaveBeenCalledWith(
         'Title update completed successfully',
@@ -518,17 +523,17 @@ describe('ConversationStorage local fallback', () => {
           }),
         })
       );
-      
+
       loggerSpy.mockRestore();
     });
 
     it('logs error when title update fails', async () => {
       const loggerSpy = vi.spyOn(frontendLogger, 'error');
-      
+
       await expect(
         storage.updateConversationTitle('non-existent', 'New Title')
       ).rejects.toThrow();
-      
+
       expect(loggerSpy).toHaveBeenCalledWith(
         'Failed to update conversation title in localStorage',
         expect.objectContaining({
@@ -538,7 +543,7 @@ describe('ConversationStorage local fallback', () => {
           error: expect.any(Error),
         })
       );
-      
+
       loggerSpy.mockRestore();
     });
 
@@ -552,11 +557,11 @@ describe('ConversationStorage local fallback', () => {
       ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createConversation('conv-min-length', sessionId);
-      
+
       await storage.storeConversation(conversation);
-      
+
       await storage.updateConversationTitle('conv-min-length', 'A');
-      
+
       const updated = await storage.getConversation('conv-min-length');
       expect(updated).not.toBeNull();
       expect(updated?.title).toBe('A');
@@ -572,12 +577,12 @@ describe('ConversationStorage local fallback', () => {
       ).sessionManager;
       const sessionId = sessionManager.getSessionId();
       const conversation = createConversation('conv-max-length', sessionId);
-      
+
       await storage.storeConversation(conversation);
-      
+
       const maxTitle = 'a'.repeat(200);
       await storage.updateConversationTitle('conv-max-length', maxTitle);
-      
+
       const updated = await storage.getConversation('conv-max-length');
       expect(updated).not.toBeNull();
       expect(updated?.title).toBe(maxTitle);
