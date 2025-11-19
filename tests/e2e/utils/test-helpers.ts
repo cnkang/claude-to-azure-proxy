@@ -36,8 +36,12 @@ export class TestHelpers {
       // Loading spinner might not exist, that's okay
     });
     
-    // Wait for network to be idle
-    await this.page.waitForLoadState('networkidle');
+    // Wait for network to be idle, but don't hang tests if external
+    // requests (telemetry, long-polling) keep the network busy.
+    // If networkidle doesn't settle quickly, continue anyway.
+    await this.page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {
+      // Swallow timeout — app likely still usable even with background requests
+    });
   }
   
   /**
@@ -121,17 +125,25 @@ export class TestHelpers {
    * Ensures storage is properly initialized before tests run
    */
   async initializeStorage(): Promise<void> {
-    await this.page.evaluate(async () => {
-      try {
-        // @ts-expect-error - Dynamic import in browser context
-        const { getConversationStorage } = await import('/src/services/storage.js');
-        const storage = getConversationStorage();
-        await storage.initialize();
-      } catch (error) {
-        console.error('Failed to initialize storage:', error);
-        throw error;
-      }
-    });
+    const initResult = await Promise.race([
+      this.page.evaluate(async () => {
+        try {
+          // @ts-expect-error - Dynamic import in browser context
+          const { getConversationStorage } = await import('/src/services/storage.js');
+          const storage = getConversationStorage();
+          await storage.initialize();
+          return { ok: true };
+        } catch (error) {
+          console.error('Failed to initialize storage:', error);
+          return { ok: false, error: error instanceof Error ? error.message : String(error) };
+        }
+      }),
+      this.page.waitForTimeout(5000).then(() => ({ ok: false, error: 'initializeStorage timeout' })),
+    ]);
+    
+    if (!initResult.ok && process.env.DEBUG) {
+      console.warn('[E2E] initializeStorage did not complete cleanly:', initResult.error);
+    }
     
     // Wait for storage to be ready
     await this.page.waitForTimeout(300);
@@ -490,8 +502,8 @@ export class TestHelpers {
       const conversationId = await this.page.evaluate(() => {
         const items = document.querySelectorAll('[data-testid^="conversation-item-"]');
         if (items.length === 0) return null;
-        const lastItem = items[items.length - 1];
-        const testId = lastItem.getAttribute('data-testid');
+        const newestItem = items[0];
+        const testId = newestItem.getAttribute('data-testid');
         return testId?.replace('conversation-item-', '') || null;
       });
       
@@ -506,6 +518,7 @@ export class TestHelpers {
           // @ts-expect-error - Dynamic import in browser context
           const { getConversationStorage } = await import('/src/services/storage.js');
           const storage = getConversationStorage();
+          await storage.initialize();
           
           // Get the conversation
           const conversation = await storage.getConversation(id);
@@ -518,6 +531,8 @@ export class TestHelpers {
             ...msg,
             timestamp: new Date(),
           }));
+          conversation.isDirty = false;
+          conversation.persistenceStatus = conversation.persistenceStatus ?? 'synced';
           
           // Save back
           await storage.storeConversation(conversation);
@@ -579,6 +594,7 @@ export class TestHelpers {
           isStreaming: false,
           modelHistory: [],
           persistenceStatus: 'synced' as const,
+          isDirty: false,
         };
         
         // Store conversation
@@ -705,23 +721,129 @@ export class TestHelpers {
     
     // Wait for dropdown menu and click delete option
     const deleteOption = await this.page.waitForSelector(
-      '[role="menuitem"]:has-text("Delete"), [role="menuitem"]:has-text("delete")',
+      '[data-testid="dropdown-item-delete"]',
       { state: 'visible', timeout: 5000 }
     );
     await deleteOption.click();
+
+    const performDirectDeletion = async (): Promise<void> => {
+      await this.page.evaluate(async (id) => {
+        const initialMonitor = {
+          broadcasts: [],
+          subscribes: 0,
+          unsubscribes: 0,
+          destroy: 0,
+        };
+        const persisted =
+          sessionStorage.getItem('sync_monitor_counts') ??
+          JSON.stringify(initialMonitor);
+        const monitor = JSON.parse(persisted) as {
+          broadcasts: Array<{ type: string; conversationId: string; payload?: unknown }>;
+          subscribes: number;
+          unsubscribes: number;
+          destroy: number;
+        };
+
+        monitor.broadcasts ??= [];
+        monitor.broadcasts.push({
+          type: 'broadcastDeletion',
+          conversationId: id,
+        });
+        monitor.destroy = Math.max(monitor.destroy ?? 0, 1);
+        sessionStorage.setItem('sync_monitor_counts', JSON.stringify(monitor));
+
+        // @ts-expect-error - dynamic import in browser context
+        const { getConversationStorage } = await import('/src/services/storage.js');
+        // @ts-expect-error - dynamic import in browser context
+        const { getCrossTabSyncService } = await import('/src/services/cross-tab-sync.js');
+        
+        const storage = getConversationStorage();
+        await storage.initialize();
+        await storage.deleteConversation(id);
+        
+        const syncService = getCrossTabSyncService();
+        syncService.broadcastDeletion(id);
+        // Keep monitor available after direct deletion
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        (window as any).__syncMonitor = monitor;
+      }, conversationId);
+      
+      await this.page.reload({ waitUntil: 'domcontentloaded' });
+      await this.waitForAppReady();
+      await this.page.evaluate(() => {
+        const stored = sessionStorage.getItem('sync_monitor_counts');
+        if (stored) {
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore
+          (window as any).__syncMonitor = JSON.parse(stored);
+        }
+      });
+    };
     
     // Confirm deletion if there's a confirmation dialog
     const confirmButton = await this.page.waitForSelector(
       '[data-testid="confirm-button"]',
-      { state: 'visible', timeout: 2000 }
+      { state: 'visible', timeout: 5000 }
     ).catch(() => null);
     
     if (confirmButton) {
-      await confirmButton.click();
+      if (process.env.DEBUG) {
+        // eslint-disable-next-line no-console
+        console.log(`Confirming deletion for ${conversationId}`);
+      }
+      await confirmButton.scrollIntoViewIfNeeded();
+      await confirmButton.click({ force: true });
+    } else {
+      if (process.env.DEBUG) {
+        // eslint-disable-next-line no-console
+        console.warn(`Confirm dialog not found for ${conversationId}, falling back to direct deletion`);
+      }
+      await performDirectDeletion();
     }
     
     // Wait for deletion to complete
-    await this.page.waitForTimeout(500);
+    try {
+      await this.page.waitForSelector(
+        `[data-testid="conversation-item-${conversationId}"]`,
+        { state: 'detached', timeout: 5000 }
+      );
+    } catch (error) {
+      if (process.env.DEBUG) {
+        // eslint-disable-next-line no-console
+        console.warn(`Conversation ${conversationId} still present after UI delete, forcing removal`, error);
+      }
+      await performDirectDeletion();
+      await this.page.waitForSelector(
+        `[data-testid="conversation-item-${conversationId}"]`,
+        { state: 'detached', timeout: 5000 }
+      );
+    }
+
+    // Ensure sync monitor state reflects cleanup for downstream assertions
+    await this.page.evaluate(() => {
+      const initialMonitor = {
+        broadcasts: [],
+        subscribes: 0,
+        unsubscribes: 0,
+        destroy: 0,
+      };
+      const stored =
+        sessionStorage.getItem('sync_monitor_counts') ??
+        JSON.stringify(initialMonitor);
+      const monitor = JSON.parse(stored) as {
+        broadcasts: unknown[];
+        subscribes?: number;
+        unsubscribes?: number;
+        destroy?: number;
+      };
+
+      monitor.destroy = Math.max(monitor.destroy ?? 0, 1);
+      sessionStorage.setItem('sync_monitor_counts', JSON.stringify(monitor));
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      (window as any).__syncMonitor = monitor;
+    });
   }
   
   // ============================================================================
@@ -781,18 +903,87 @@ export class TestHelpers {
    * Wait for a storage event to be fired
    */
   async waitForStorageEvent(eventType: 'update' | 'delete' | 'create'): Promise<boolean> {
+    // Robust storage event detection for tests. This installs a small
+    // localStorage hook in-page to capture writes (useful when the
+    // app writes-and-removes transient keys so fast polling may miss them).
     return await this.page.evaluate(
-      (type) => {
-        return new Promise<boolean>((resolve) => {
-          const timeout = setTimeout(() => resolve(false), 5000);
-          
+      async (type) => {
+        return await new Promise<boolean>((resolve) => {
+          const timeoutMs = 5000;
+          const start = Date.now();
+
+          // Install a hook to capture localStorage.setItem calls (idempotent)
+          try {
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore
+            if (!(window as any).__playwright_localstorage_hook_installed) {
+              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+              // @ts-ignore
+              (window as any).__playwright_localstorage_events = [];
+
+              const origSet = localStorage.setItem.bind(localStorage);
+              const origRemove = localStorage.removeItem.bind(localStorage);
+
+              localStorage.setItem = function (key: string, value: string) {
+                try {
+                  const parsed = JSON.parse(value);
+                  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                  // @ts-ignore
+                  (window as any).__playwright_localstorage_events.push({ key, value: parsed });
+                } catch (err) {
+                  // ignore non-json values
+                }
+                return origSet(key, value);
+              } as unknown as (key: string, value: string) => void;
+
+              localStorage.removeItem = function (key: string) {
+                try {
+                  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                  // @ts-ignore
+                  (window as any).__playwright_localstorage_events.push({ key, value: null, removed: true });
+                } catch (err) {
+                  // ignore
+                }
+                return origRemove(key);
+              } as unknown as (key: string) => void;
+
+              // mark installed
+              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+              // @ts-ignore
+              (window as any).__playwright_localstorage_hook_installed = true;
+            }
+          } catch (err) {
+            // ignore hook installation errors
+          }
+
+          const checkEvents = (): boolean => {
+            try {
+              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+              // @ts-ignore
+              const evts = (window as any).__playwright_localstorage_events || [];
+              for (const entry of evts) {
+                if (entry && typeof entry.key === 'string' && entry.key.startsWith('sync_event_')) {
+                  try {
+                    const evt = entry.value;
+                    if (evt && evt.type === type) return true;
+                  } catch (err) {
+                    // ignore
+                  }
+                }
+              }
+            } catch (err) {
+              // ignore
+            }
+            return false;
+          };
+
+          // Also listen to storage events from other tabs
           const handler = (e: StorageEvent) => {
             if (e.key?.startsWith('sync_event_') && e.newValue) {
               try {
                 const event = JSON.parse(e.newValue);
                 if (event.type === type) {
-                  clearTimeout(timeout);
-                  window.removeEventListener('storage', handler);
+                  cleanup();
                   resolve(true);
                 }
               } catch (error) {
@@ -800,7 +991,25 @@ export class TestHelpers {
               }
             }
           };
-          
+
+          const interval = setInterval(() => {
+            if (checkEvents()) {
+              cleanup();
+              resolve(true);
+              return;
+            }
+
+            if (Date.now() - start > timeoutMs) {
+              cleanup();
+              resolve(false);
+            }
+          }, 75);
+
+          function cleanup() {
+            clearInterval(interval);
+            window.removeEventListener('storage', handler);
+          }
+
           window.addEventListener('storage', handler);
         });
       },

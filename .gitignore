@@ -135,3 +135,5 @@ node_modules
 # Users Environment Variables
 .lock-wscript
 apps/backend/metrics-exports/test-metrics-export.json
+playwright-report/*
+test-results/*

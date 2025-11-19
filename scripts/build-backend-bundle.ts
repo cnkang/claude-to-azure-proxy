@@ -44,7 +44,8 @@ console.log('🔨 Building backend with SWC...');
 console.log('📦 External packages:', external.join(', '));
 
 // Check if building for production (Docker build or NODE_ENV=production)
-const isProduction = process.env.NODE_ENV === 'production' || process.env.DOCKER_BUILD === 'true';
+const isProduction =
+  process.env.NODE_ENV === 'production' || process.env.DOCKER_BUILD === 'true';
 
 // SWC configuration
 const swcOptions = {
@@ -63,10 +64,12 @@ const swcOptions = {
       decoratorMetadata: true,
       legacyDecorator: true,
     },
-    minify: isProduction ? {
-      compress: true,
-      mangle: true,
-    } : undefined,
+    minify: isProduction
+      ? {
+          compress: true,
+          mangle: true,
+        }
+      : undefined,
   },
   module: {
     type: 'es6' as const,
@@ -81,40 +84,40 @@ try {
   // Get all TypeScript files
   const srcDir = join(backendDir, 'src');
   const distDir = join(backendDir, 'dist');
-  
+
   // Create dist directory
   mkdirSync(distDir, { recursive: true });
-  
+
   // Find all .ts files
   const files = await glob('**/*.ts', { cwd: srcDir, absolute: false });
-  
+
   // eslint-disable-next-line no-console
   console.log(`📝 Compiling ${files.length} TypeScript files...`);
-  
+
   // Compile each file
   for (const file of files) {
     const inputPath = join(srcDir, file);
     const outputPath = join(distDir, file.replace(/\.ts$/, '.js'));
     const outputDir = dirname(outputPath);
-    
+
     // Create output directory
     // eslint-disable-next-line security/detect-non-literal-fs-filename
     mkdirSync(outputDir, { recursive: true });
-    
+
     // Transform file
     const result = await transformFile(inputPath, swcOptions);
-    
+
     // Write output
     // eslint-disable-next-line security/detect-non-literal-fs-filename
     writeFileSync(outputPath, result.code);
-    
+
     // Write source map if enabled
     if (result.map !== undefined && !isProduction) {
       // eslint-disable-next-line security/detect-non-literal-fs-filename
       writeFileSync(outputPath + '.map', result.map);
     }
   }
-  
+
   // eslint-disable-next-line no-console
   console.log(`✅ Compiled ${files.length} files successfully!`);
 
@@ -134,13 +137,13 @@ try {
   // Post-process: Add .js extensions to relative imports
   // eslint-disable-next-line no-console
   console.log('🔧 Adding .js extensions to relative imports...');
-  
+
   const jsFiles = await glob('**/*.js', { cwd: distDir, absolute: false });
   for (const file of jsFiles) {
     const filePath = join(distDir, file);
     // eslint-disable-next-line security/detect-non-literal-fs-filename
     let content = readFileSync(filePath, 'utf-8');
-    
+
     // Replace relative imports without .js extension
     // Match: from './path' or from "../path" but not from './path.js'
     content = content.replace(
@@ -151,24 +154,30 @@ try {
       /import\s+['"](\.[^'"]+?)(?<!\.js)['"]/g,
       "import '$1.js'"
     );
-    
+
     // eslint-disable-next-line security/detect-non-literal-fs-filename
     writeFileSync(filePath, content);
   }
-  
+
   // eslint-disable-next-line no-console
   console.log(`✅ Added .js extensions to ${jsFiles.length} files`);
 
   // eslint-disable-next-line no-console
   console.log('✅ Backend bundle built successfully!');
   // eslint-disable-next-line no-console
-  console.log('📝 Generated production package.json with external dependencies only');
+  console.log(
+    '📝 Generated production package.json with external dependencies only'
+  );
   if (isProduction) {
     // eslint-disable-next-line no-console
-    console.log('🔒 Production build: source maps disabled, minification enabled');
+    console.log(
+      '🔒 Production build: source maps disabled, minification enabled'
+    );
   } else {
     // eslint-disable-next-line no-console
-    console.log('🔧 Development build: source maps enabled, minification disabled');
+    console.log(
+      '🔧 Development build: source maps enabled, minification disabled'
+    );
   }
 } catch (error) {
   // eslint-disable-next-line no-console

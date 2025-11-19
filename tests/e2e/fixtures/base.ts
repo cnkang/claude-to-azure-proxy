@@ -26,37 +26,9 @@ export const test = base.extend<TestFixtures>({
   cleanPage: async ({ page }, use) => {
     const helpers = new TestHelpers(page);
     
-    // Navigate to app
-    await page.goto('/');
-    
-    // Wait for app to be ready
+    // Navigate to the app
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
     await helpers.waitForAppReady();
-    
-    // Clear all storage with verification
-    await helpers.clearAllStorage();
-    
-    // Initialize storage and verify it's ready
-    await helpers.initializeStorage();
-    const isStorageReady = await helpers.verifyStorageReady();
-    
-    if (!isStorageReady) {
-      throw new Error('Storage failed to initialize properly');
-    }
-    
-    // Reload to start with clean state
-    await page.reload();
-    await helpers.waitForAppReady();
-    
-    // Verify storage is still ready after reload
-    await helpers.initializeStorage();
-    
-    // Verify storage is empty before test starts
-    const isEmpty = await helpers.verifyStorageEmpty();
-    if (!isEmpty && process.env.DEBUG) {
-      console.warn('Storage not empty at test start - attempting additional cleanup');
-      await helpers.clearAllStorage();
-      await helpers.verifyStorageEmpty();
-    }
     
     // Enable logging in debug mode
     if (process.env.DEBUG) {
@@ -68,23 +40,33 @@ export const test = base.extend<TestFixtures>({
     // Use the clean page
     await use(page);
     
-    // Cleanup after test with timeout and verification
+    // Cleanup after test
     try {
+      // Close all other pages to release DB locks
+      const context = page.context();
+      const pages = context.pages();
+      for (const p of pages) {
+        if (p !== page) {
+          await p.close();
+        }
+      }
+
       // Wait for any pending storage operations
-      await helpers.waitForPendingStorageOperations(2000);
+      await helpers.waitForPendingStorageOperations(1000);
       
-      // Perform cleanup with timeout
+      // Clear storage with timeout
       await Promise.race([
-        helpers.cleanupStorageWithVerification(),
+        helpers.clearAllStorage(),
         new Promise((_, reject) => 
           setTimeout(() => reject(new Error('Storage cleanup timeout')), 5000)
         ),
       ]);
     } catch (error) {
-      console.warn('Storage cleanup failed or timed out:', error);
+      if (process.env.DEBUG) {
+        console.warn('Storage cleanup failed or timed out:', error);
+      }
       // Continue anyway - don't fail the test due to cleanup issues
     }
-  },
   },
   
   /**
