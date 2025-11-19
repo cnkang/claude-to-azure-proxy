@@ -43,6 +43,12 @@ export class IndexedDBOptimizer {
       request.onerror = () => reject(request.error);
       request.onsuccess = () => {
         this.db = request.result;
+
+        // Handle version change (e.g. when another tab tries to upgrade or delete the DB)
+        this.db.onversionchange = (): void => {
+          this.close();
+        };
+
         this.setupPerformanceMonitoring();
         resolve();
       };

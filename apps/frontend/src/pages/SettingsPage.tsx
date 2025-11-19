@@ -19,7 +19,7 @@ import { frontendLogger } from '../utils/logger.js';
 /**
  * Settings page component
  */
-export function SettingsPage(): React.JSX.Element {
+function SettingsPage(): React.JSX.Element {
   const { themeMode, setThemeMode, systemPrefersDark } = useTheme();
   const { language, setLanguage, supportedLanguages, t } = useI18n();
   const { session, storageUsage, resetSession } = useSessionContext();
@@ -514,3 +514,5 @@ export function SettingsPage(): React.JSX.Element {
     </LayoutContainer>
   );
 }
+
+export default SettingsPage;

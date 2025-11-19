@@ -289,11 +289,20 @@ describe('MemoryManager', () => {
     });
 
     it('should handle missing GC gracefully', () => {
-      delete (global as { gc?: () => void }).gc;
+      const globalWithGC = global as { gc?: () => void };
+      const originalGC = globalWithGC.gc;
+
+      globalWithGC.gc = undefined;
 
       const result = manager.forceGarbageCollection();
 
       expect(result).toBe(false);
+
+      if (typeof originalGC === 'function') {
+        globalWithGC.gc = originalGC;
+      } else {
+        delete globalWithGC.gc;
+      }
     });
   });
 

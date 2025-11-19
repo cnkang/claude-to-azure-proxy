@@ -7,13 +7,18 @@
  * Requirements: 5.1, 5.2, 5.3, 10.1
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { isNonEmptyString } from '@repo/shared-utils';
 import { useConversations } from '../../contexts/AppContext.js';
 import { useI18n } from '../../contexts/I18nContext.js';
 import { useSessionContext } from '../../contexts/SessionContext.js';
 import { frontendLogger } from '../../utils/logger.js';
+import { createConversation } from '../../services/conversations.js';
+import { getSessionManager } from '../../services/session.js';
 import type { Conversation } from '../../types/index.js';
+import { DropdownMenu } from '../common/DropdownMenu.js';
+import { ConfirmDialog } from '../common/ConfirmDialog.js';
+import { ConversationSearch } from '../search/ConversationSearch.js';
 import './Sidebar.css';
 
 /**
@@ -33,12 +38,34 @@ export function Sidebar({
   isMobile,
   onClose,
 }: SidebarProps): React.JSX.Element {
-  const { activeConversation, conversationsList, setActiveConversation } =
-    useConversations();
+  const {
+    activeConversation,
+    conversationsList,
+    setActiveConversation,
+    addConversation,
+    updateConversation,
+    deleteConversation,
+  } = useConversations();
   const { t, formatRelativeTime } = useI18n();
   const { session } = useSessionContext();
+  const sessionManagerRef = useRef(getSessionManager());
   const sidebarRef = useRef<HTMLElement>(null);
   const sessionId = session?.sessionId ?? '';
+
+  // State for dropdown menu
+  const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
+
+  // State for rename functionality
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState<string>('');
+  const renameInputRef = useRef<HTMLInputElement>(null);
+
+  // State for delete confirmation
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [conversationToDelete, setConversationToDelete] = useState<
+    string | null
+  >(null);
 
   // Focus management for accessibility
   useEffect(() => {
@@ -76,17 +103,227 @@ export function Sidebar({
     }
   };
 
-  const handleNewConversation = (): void => {
-    // This will be implemented when we add conversation creation
-    frontendLogger.info('Sidebar new conversation requested', {
-      metadata: {
-        location: 'Sidebar',
-      },
-    });
+  const [isCreatingConversation, setIsCreatingConversation] = useState(false);
 
-    // Close sidebar on mobile
-    if (isMobile === true) {
-      onClose();
+  const handleOptionsClick = (
+    event: React.MouseEvent,
+    conversationId: string
+  ): void => {
+    event.stopPropagation();
+    setMenuAnchor(event.currentTarget as HTMLElement);
+    setMenuOpen(conversationId);
+  };
+
+  const handleMenuClose = (): void => {
+    setMenuOpen(null);
+    setMenuAnchor(null);
+  };
+
+  const handleRenameStart = (conversation: Conversation): void => {
+    setRenamingId(conversation.id);
+    setRenameValue(conversation.title);
+    handleMenuClose();
+  };
+
+  const handleRenameCancel = (): void => {
+    setRenamingId(null);
+    setRenameValue('');
+  };
+
+  const handleRenameSave = async (conversationId: string): Promise<void> => {
+    const trimmedTitle = renameValue.trim();
+
+    // Validation
+    if (!trimmedTitle) {
+      frontendLogger.error('Rename failed: title cannot be empty', {
+        metadata: { conversationId },
+      });
+      // TODO: Show error message to user
+      return;
+    }
+
+    if (trimmedTitle.length > 100) {
+      frontendLogger.error('Rename failed: title too long', {
+        metadata: { conversationId, length: trimmedTitle.length },
+      });
+      // TODO: Show error message to user
+      return;
+    }
+
+    try {
+      // Update conversation title (AppContext will handle storage sync)
+      updateConversation(conversationId, { title: trimmedTitle });
+
+      frontendLogger.info('Conversation renamed successfully', {
+        metadata: {
+          conversationId,
+          newTitle: trimmedTitle,
+        },
+      });
+
+      // TODO: Show success message to user
+
+      // Clear rename state
+      handleRenameCancel();
+    } catch (error) {
+      frontendLogger.error('Failed to rename conversation', {
+        error: error instanceof Error ? error : new Error(String(error)),
+        metadata: { conversationId },
+      });
+
+      // TODO: Show error message to user
+    }
+  };
+
+  const handleRenameKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement>,
+    conversationId: string
+  ): void => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      void handleRenameSave(conversationId);
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      handleRenameCancel();
+    }
+  };
+
+  // Focus rename input when it appears
+  useEffect(() => {
+    if (renamingId && renameInputRef.current) {
+      renameInputRef.current.focus();
+      renameInputRef.current.select();
+    }
+  }, [renamingId]);
+
+  const handleDeleteStart = (conversationId: string): void => {
+    setConversationToDelete(conversationId);
+    setDeleteConfirmOpen(true);
+    handleMenuClose();
+  };
+
+  const handleDeleteCancel = (): void => {
+    setDeleteConfirmOpen(false);
+    setConversationToDelete(null);
+  };
+
+  const handleDeleteConfirm = (): void => {
+    if (!conversationToDelete) {
+      return;
+    }
+
+    try {
+      // Delete the conversation (AppContext will handle storage sync)
+      deleteConversation(conversationToDelete);
+
+      frontendLogger.info('Conversation deleted successfully', {
+        metadata: {
+          conversationId: conversationToDelete,
+        },
+      });
+
+      // If we deleted the active conversation, select another one
+      if (activeConversation?.id === conversationToDelete) {
+        // Find another conversation to select
+        const remainingConversations = conversationsList.filter(
+          (c) => c.id !== conversationToDelete
+        );
+
+        if (remainingConversations.length > 0) {
+          setActiveConversation(remainingConversations[0].id);
+        } else {
+          setActiveConversation(null);
+        }
+      }
+
+      // TODO: Show success message to user
+
+      // Close dialog
+      handleDeleteCancel();
+    } catch (error) {
+      frontendLogger.error('Failed to delete conversation', {
+        error: error instanceof Error ? error : new Error(String(error)),
+        metadata: { conversationId: conversationToDelete },
+      });
+
+      // TODO: Show error message to user
+    }
+  };
+
+  const handleNewConversation = async (): Promise<void> => {
+    // Prevent multiple simultaneous creation requests
+    if (isCreatingConversation) {
+      return;
+    }
+
+    try {
+      setIsCreatingConversation(true);
+
+      frontendLogger.info('Sidebar new conversation requested', {
+        metadata: {
+          location: 'Sidebar',
+        },
+      });
+
+      const activeSessionId =
+        session?.sessionId ?? sessionManagerRef.current.getSessionId();
+
+      if (!activeSessionId) {
+        frontendLogger.error(
+          'Cannot create conversation without active session'
+        );
+        setIsCreatingConversation(false);
+        return;
+      }
+
+      // Get default model from session preferences
+      const defaultModel = session?.preferences.selectedModel || 'gpt-4o-mini';
+
+      // Create new conversation via API
+      const response = await createConversation({
+        title: `New Conversation ${new Date().toLocaleString()}`,
+        initialModel: defaultModel,
+      });
+
+      // Convert API response to Conversation type
+      const newConversation: Conversation = {
+        id: response.id,
+        title: response.title,
+        messages: [],
+        selectedModel: response.model,
+        createdAt: new Date(response.createdAt),
+        updatedAt: new Date(response.updatedAt),
+        sessionId: activeSessionId,
+        isStreaming: false,
+        modelHistory: [],
+      };
+
+      // Add conversation to state and storage
+      await addConversation(newConversation);
+
+      // Set as active conversation (this will trigger navigation)
+      setActiveConversation(response.id);
+
+      frontendLogger.info('New conversation created successfully', {
+        metadata: {
+          conversationId: response.id,
+          title: response.title,
+        },
+      });
+
+      // Close sidebar on mobile
+      if (isMobile === true) {
+        onClose();
+      }
+    } catch (error) {
+      frontendLogger.error('Failed to create new conversation', {
+        error: error instanceof Error ? error : new Error(String(error)),
+      });
+
+      // TODO: Show error message to user
+      // For now, just log the error
+    } finally {
+      setIsCreatingConversation(false);
     }
   };
 
@@ -107,6 +344,7 @@ export function Sidebar({
       aria-label={t('sidebar.navigation')}
       aria-hidden={!isOpen}
       tabIndex={-1}
+      data-testid="sidebar"
     >
       <div className="sidebar-content">
         {/* Sidebar header */}
@@ -115,11 +353,18 @@ export function Sidebar({
             type="button"
             className="new-conversation-button"
             onClick={handleNewConversation}
+            disabled={isCreatingConversation}
             aria-label={t('sidebar.newConversation')}
+            aria-busy={isCreatingConversation}
+            data-testid="new-conversation-button"
           >
-            <span className="new-conversation-icon">+</span>
+            <span className="new-conversation-icon">
+              {isCreatingConversation ? '⏳' : '+'}
+            </span>
             <span className="new-conversation-text">
-              {t('sidebar.newConversation')}
+              {isCreatingConversation
+                ? t('sidebar.creatingConversation')
+                : t('sidebar.newConversation')}
             </span>
           </button>
 
@@ -135,6 +380,20 @@ export function Sidebar({
           )}
         </div>
 
+        {/* Search conversations */}
+        {conversationsList.length > 0 && (
+          <div className="conversations-search-section">
+            <ConversationSearch
+              onResultSelect={(conversationId) => {
+                setActiveConversation(conversationId);
+                if (isMobile) {
+                  onClose();
+                }
+              }}
+            />
+          </div>
+        )}
+
         {/* Conversations list */}
         <div className="conversations-section">
           <h2 className="conversations-title">{t('sidebar.conversations')}</h2>
@@ -148,12 +407,17 @@ export function Sidebar({
               </p>
             </div>
           ) : (
-            <ul className="conversations-list">
+            <ul className="conversations-list" data-testid="conversations-list">
               {conversationsList.map((conversation: Conversation) => {
                 const isActive = activeConversation?.id === conversation.id;
+                const isMenuOpen = menuOpen === conversation.id;
 
                 return (
-                  <li key={conversation.id} className="conversation-item">
+                  <li
+                    key={conversation.id}
+                    className="conversation-item"
+                    data-testid={`conversation-item-${conversation.id}`}
+                  >
                     <button
                       type="button"
                       className={[
@@ -167,11 +431,35 @@ export function Sidebar({
                         title: conversation.title,
                       })}
                       aria-current={isActive ? 'page' : undefined}
+                      data-testid={`conversation-button-${conversation.id}`}
                     >
                       <div className="conversation-content">
-                        <div className="conversation-title">
-                          {conversation.title}
-                        </div>
+                        {renamingId === conversation.id ? (
+                          <input
+                            ref={renameInputRef}
+                            type="text"
+                            className="conversation-title-input"
+                            value={renameValue}
+                            onChange={(e) => setRenameValue(e.target.value)}
+                            onBlur={() =>
+                              void handleRenameSave(conversation.id)
+                            }
+                            onKeyDown={(e) =>
+                              handleRenameKeyDown(e, conversation.id)
+                            }
+                            onClick={(e) => e.stopPropagation()}
+                            maxLength={100}
+                            aria-label={t('sidebar.renameConversation')}
+                            data-testid="conversation-title-input"
+                          />
+                        ) : (
+                          <div
+                            className="conversation-title"
+                            data-testid={`conversation-title-${conversation.id}`}
+                          >
+                            {conversation.title}
+                          </div>
+                        )}
                         <div className="conversation-meta">
                           <span className="conversation-model">
                             {conversation.selectedModel}
@@ -193,29 +481,55 @@ export function Sidebar({
                           </div>
                         )}
                       </div>
-
-                      {/* Conversation actions */}
-                      <div className="conversation-actions">
-                        <button
-                          type="button"
-                          className="conversation-action"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            frontendLogger.info(
-                              'Sidebar conversation options opened',
-                              {
-                                metadata: {
-                                  conversationId: conversation.id,
-                                },
-                              }
-                            );
-                          }}
-                          aria-label={t('sidebar.conversationOptions')}
-                        >
-                          <span className="action-icon">⋯</span>
-                        </button>
-                      </div>
                     </button>
+
+                    {/* Conversation actions - moved outside button to fix HTML nesting */}
+                    <div
+                      className={`conversation-actions ${isMenuOpen ? 'open' : ''}`}
+                    >
+                      <button
+                        type="button"
+                        className="conversation-action"
+                        onClick={(event) =>
+                          handleOptionsClick(event, conversation.id)
+                        }
+                        aria-label={t('sidebar.conversationOptions')}
+                        aria-expanded={isMenuOpen}
+                        aria-haspopup="menu"
+                        data-testid={`conversation-options-${conversation.id}`}
+                      >
+                        <span className="action-icon">⋯</span>
+                      </button>
+
+                      {/* Dropdown menu */}
+                      {isMenuOpen && (
+                        <DropdownMenu
+                          isOpen={true}
+                          onClose={handleMenuClose}
+                          anchorElement={menuAnchor}
+                          items={[
+                            {
+                              id: 'rename',
+                              label: t('sidebar.renameConversation'),
+                              icon: '✏️',
+                              onClick: () => {
+                                handleRenameStart(conversation);
+                              },
+                            },
+                            {
+                              id: 'delete',
+                              label: t('sidebar.deleteConversation'),
+                              icon: '🗑️',
+                              variant: 'danger',
+                              onClick: () => {
+                                handleDeleteStart(conversation.id);
+                              },
+                            },
+                          ]}
+                          position="bottom-right"
+                        />
+                      )}
+                    </div>
                   </li>
                 );
               })}
@@ -258,6 +572,18 @@ export function Sidebar({
           </div>
         </div>
       </div>
+
+      {/* Delete confirmation dialog */}
+      <ConfirmDialog
+        isOpen={deleteConfirmOpen}
+        title={t('sidebar.confirmDelete')}
+        message={t('sidebar.confirmDeleteMessage')}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+        variant="danger"
+      />
     </aside>
   );
 }

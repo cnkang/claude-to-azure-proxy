@@ -188,9 +188,11 @@ describe('AWSBedrockClient', () => {
       controller.abort();
 
       const postSpy = vi.spyOn(
-        (client as unknown as {
-          client: { post: typeof client['client']['post'] };
-        }).client,
+        (
+          client as unknown as {
+            client: { post: (typeof client)['client']['post'] };
+          }
+        ).client,
         'post'
       );
 
@@ -212,9 +214,11 @@ describe('AWSBedrockClient', () => {
       controller.abort();
 
       const postSpy = vi.spyOn(
-        (client as unknown as {
-          client: { post: typeof client['client']['post'] };
-        }).client,
+        (
+          client as unknown as {
+            client: { post: (typeof client)['client']['post'] };
+          }
+        ).client,
         'post'
       );
 
@@ -245,19 +249,19 @@ describe('AWSBedrockClient', () => {
       const registerSpy = vi.spyOn(abortUtils, 'registerAbortListener');
 
       const postSpy = vi.spyOn(
-        (client as unknown as {
-          client: { post: typeof client['client']['post'] };
-        }).client,
+        (
+          client as unknown as {
+            client: { post: (typeof client)['client']['post'] };
+          }
+        ).client,
         'post'
       );
 
       const dataStream = new PassThrough();
       dataStream.on('error', () => {});
-      postSpy.mockResolvedValue(
-        {
-          data: dataStream,
-        } as unknown
-      );
+      postSpy.mockResolvedValue({
+        data: dataStream,
+      } as unknown);
 
       const parseSpy = vi.spyOn(
         client as unknown as {

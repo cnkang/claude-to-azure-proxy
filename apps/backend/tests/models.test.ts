@@ -33,7 +33,7 @@ describe('Models Endpoint', () => {
     process.env.AZURE_OPENAI_ENDPOINT = 'https://test.openai.azure.com';
     process.env.AZURE_OPENAI_API_KEY =
       'test-azure-key-12345678901234567890123456789012';
-    process.env.AZURE_OPENAI_MODEL = 'gpt-4';
+    process.env.AZURE_OPENAI_MODEL = 'gpt-5-codex';
     process.env.NODE_ENV = 'test';
 
     // Import modules after setting environment variables

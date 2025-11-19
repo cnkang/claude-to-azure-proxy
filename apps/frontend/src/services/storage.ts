@@ -10,6 +10,7 @@
 import type { Conversation, Message } from '../types/index.js';
 import { getSessionManager } from './session.js';
 import { frontendLogger } from '../utils/logger.js';
+import { measureAsync, OperationType } from '../utils/performance-metrics.js';
 
 // Storage configuration
 const DB_NAME = 'claude-proxy-storage';
@@ -89,6 +90,19 @@ export interface CleanupResult {
 }
 
 /**
+ * Delete result with detailed statistics
+ * Requirements: 2.1, 2.2, 2.3, 2.4
+ */
+export interface DeleteResult {
+  success: boolean;
+  conversationRemoved: boolean;
+  messagesRemoved: number;
+  metadataRemoved: boolean;
+  bytesFreed: number;
+  error?: string;
+}
+
+/**
  * ConversationStorage class providing secure IndexedDB storage with encryption
  */
 export class ConversationStorage {
@@ -112,10 +126,23 @@ export class ConversationStorage {
   }
 
   /**
+   * Close the database connection
+   */
+  public close(): void {
+    if (this.db) {
+      this.db.close();
+      this.db = null;
+    }
+  }
+
+  /**
    * Initialize the storage system
    */
   public async initialize(): Promise<void> {
     try {
+      // Initialize encryption key (required for both IndexedDB and localStorage)
+      await this.initializeEncryption();
+
       // Check if IndexedDB is available
       if (!this.isIndexedDBSupported()) {
         this.isIndexedDBAvailable = false;
@@ -124,9 +151,6 @@ export class ConversationStorage {
         );
         return;
       }
-
-      // Initialize encryption key
-      await this.initializeEncryption();
 
       // Open IndexedDB database
       await this.openDatabase();
@@ -138,7 +162,7 @@ export class ConversationStorage {
         error: error instanceof Error ? error : new Error(String(error)),
       });
       this.isIndexedDBAvailable = false;
-      // Fallback to localStorage will be used
+      // Fallback to localStorage will be used (encryption key should already be initialized)
     }
   }
 
@@ -165,8 +189,13 @@ export class ConversationStorage {
 
       this.keyId = `key_${sessionId}`;
 
-      // Try to load existing key from sessionStorage
-      const storedKey = sessionStorage.getItem(`encryption_key_${this.keyId}`);
+      const sessionStorageKey = `encryption_key_${this.keyId}`;
+      const sharedStorageKey = `shared_encryption_key_${this.keyId}`;
+
+      // Try to load existing key from sessionStorage or shared localStorage
+      const storedKey =
+        sessionStorage.getItem(sessionStorageKey) ??
+        localStorage.getItem(sharedStorageKey);
 
       if (storedKey !== null) {
         // Import existing key
@@ -180,6 +209,11 @@ export class ConversationStorage {
           { name: ENCRYPTION_ALGORITHM },
           false,
           ['encrypt', 'decrypt']
+        );
+        // Ensure sessionStorage has the key for this tab
+        sessionStorage.setItem(
+          sessionStorageKey,
+          JSON.stringify(Array.from(new Uint8Array(keyData as number[])))
         );
       } else {
         // Generate new key
@@ -197,8 +231,12 @@ export class ConversationStorage {
           'raw',
           this.encryptionKey
         );
-        sessionStorage.setItem(
-          `encryption_key_${this.keyId}`,
+        const serializedKey = JSON.stringify(
+          Array.from(new Uint8Array(exportedKey))
+        );
+        sessionStorage.setItem(sessionStorageKey, serializedKey);
+        localStorage.setItem(
+          sharedStorageKey,
           JSON.stringify(Array.from(new Uint8Array(exportedKey)))
         );
       }
@@ -223,6 +261,13 @@ export class ConversationStorage {
 
       request.onsuccess = (): void => {
         this.db = request.result;
+
+        // Handle version change (e.g. when another tab tries to upgrade or delete the DB)
+        this.db.onversionchange = (): void => {
+          this.db?.close();
+          this.db = null;
+        };
+
         resolve();
       };
 
@@ -346,6 +391,35 @@ export class ConversationStorage {
       });
       throw new Error('Failed to encrypt data');
     }
+  }
+
+  /**
+   * Serialize EncryptedData for storage (convert ArrayBuffers to arrays)
+   */
+  private serializeEncryptedData(encryptedData: EncryptedData): unknown {
+    return {
+      data: Array.from(new Uint8Array(encryptedData.data)),
+      iv: Array.from(new Uint8Array(encryptedData.iv)),
+      compressed: encryptedData.compressed,
+      timestamp: encryptedData.timestamp,
+    };
+  }
+
+  /**
+   * Deserialize EncryptedData from storage (convert arrays back to ArrayBuffers)
+   */
+  private deserializeEncryptedData(serialized: {
+    data: number[];
+    iv: number[];
+    compressed: boolean;
+    timestamp: number;
+  }): EncryptedData {
+    return {
+      data: new Uint8Array(serialized.data).buffer,
+      iv: new Uint8Array(serialized.iv).buffer,
+      compressed: serialized.compressed,
+      timestamp: serialized.timestamp,
+    };
   }
 
   /**
@@ -631,7 +705,7 @@ export class ConversationStorage {
           sessionId: conversation.sessionId,
           createdAt: conversation.createdAt.getTime(),
           updatedAt: conversation.updatedAt.getTime(),
-          encryptedData,
+          encryptedData: this.serializeEncryptedData(encryptedData),
         })
       );
     } catch (error) {
@@ -754,14 +828,23 @@ export class ConversationStorage {
       }
 
       // Decrypt conversation data
+      const encryptedData = this.deserializeEncryptedData(
+        storedData.encryptedData
+      );
       const conversationData = JSON.parse(
-        await this.decryptData(storedData.encryptedData)
+        await this.decryptData(encryptedData)
       );
 
       return {
         ...conversationData,
         createdAt: new Date(conversationData.createdAt),
         updatedAt: new Date(conversationData.updatedAt),
+        messages: conversationData.messages.map(
+          (msg: Omit<Message, 'timestamp'> & { timestamp: string | Date }) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp),
+          })
+        ),
       };
     } catch (error) {
       frontendLogger.error('Failed to get conversation from localStorage', {
@@ -855,14 +938,27 @@ export class ConversationStorage {
           if (stored) {
             try {
               const storedData = JSON.parse(stored);
+              const encryptedData = this.deserializeEncryptedData(
+                storedData.encryptedData
+              );
               const conversationData = JSON.parse(
-                await this.decryptData(storedData.encryptedData)
+                await this.decryptData(encryptedData)
               );
 
               conversations.push({
                 ...conversationData,
                 createdAt: new Date(conversationData.createdAt),
                 updatedAt: new Date(conversationData.updatedAt),
+                messages: conversationData.messages.map(
+                  (
+                    msg: Omit<Message, 'timestamp'> & {
+                      timestamp: string | Date;
+                    }
+                  ) => ({
+                    ...msg,
+                    timestamp: new Date(msg.timestamp),
+                  })
+                ),
               });
             } catch (error) {
               frontendLogger.error('Failed to decrypt conversation from key', {
@@ -892,38 +988,398 @@ export class ConversationStorage {
   }
 
   /**
-   * Delete conversation from storage
+   * Update conversation title atomically with validation
+   *
+   * Requirements: 1.1, 1.3, 1.5
+   * - Validates title length (1-200 characters)
+   * - Sanitizes input to prevent XSS attacks
+   * - Uses IndexedDB transaction for atomicity
+   * - Handles both IndexedDB and localStorage backends
+   * - Leverages existing encryption before storage
+   *
+   * @param conversationId - ID of the conversation to update
+   * @param newTitle - New title for the conversation
+   * @throws {Error} If validation fails or storage operation fails
    */
-  public async deleteConversation(conversationId: string): Promise<void> {
-    if (this.isIndexedDBAvailable && this.db) {
-      await this.deleteConversationIndexedDB(conversationId);
-    } else {
-      this.deleteConversationLocalStorage(conversationId);
+  public async updateConversationTitle(
+    conversationId: string,
+    newTitle: string
+  ): Promise<void> {
+    const correlationId = crypto.randomUUID();
+
+    // Log operation start
+    frontendLogger.info('Starting title update', {
+      metadata: {
+        correlationId,
+        conversationId,
+        titleLength: newTitle.length,
+        backend: this.isIndexedDBAvailable ? 'indexeddb' : 'localstorage',
+      },
+    });
+
+    // Measure operation with performance metrics
+    return await measureAsync(
+      OperationType.TITLE_UPDATE,
+      async () => {
+        // Validate title length (Requirement 1.1)
+        if (newTitle.length < 1 || newTitle.length > 200) {
+          throw new Error('Title must be between 1 and 200 characters');
+        }
+
+        // Sanitize title to prevent XSS attacks (Requirement 1.1)
+        const sanitizedTitle = this.sanitizeTitle(newTitle);
+
+        if (this.isIndexedDBAvailable && this.db) {
+          await this.updateConversationTitleIndexedDB(
+            conversationId,
+            sanitizedTitle,
+            correlationId
+          );
+        } else {
+          await this.updateConversationTitleLocalStorage(
+            conversationId,
+            sanitizedTitle,
+            correlationId
+          );
+        }
+
+        // Log success
+        frontendLogger.info('Title update completed successfully', {
+          metadata: {
+            correlationId,
+            conversationId,
+            sanitizedTitleLength: sanitizedTitle.length,
+          },
+        });
+      },
+      { correlationId, conversationId }
+    );
+  }
+
+  /**
+   * Sanitize title to prevent XSS attacks
+   * Removes HTML tags and dangerous characters
+   *
+   * @param title - Title to sanitize
+   * @returns Sanitized title
+   */
+  private sanitizeTitle(title: string): string {
+    // Remove script tags and their content
+    let sanitized = title.replace(
+      /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+      ''
+    );
+
+    // Remove style tags and their content
+    sanitized = sanitized.replace(
+      /<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi,
+      ''
+    );
+
+    // Remove all remaining HTML tags
+    sanitized = sanitized.replace(/<[^>]*>/g, '');
+
+    // Remove script-related content
+    sanitized = sanitized.replace(/javascript:/gi, '');
+    sanitized = sanitized.replace(/on\w+\s*=/gi, '');
+
+    // Trim whitespace
+    sanitized = sanitized.trim();
+
+    // Replace multiple spaces with single space
+    sanitized = sanitized.replace(/\s+/g, ' ');
+
+    return sanitized;
+  }
+
+  /**
+   * Update conversation title in IndexedDB using atomic transaction
+   *
+   * @param conversationId - ID of the conversation to update
+   * @param sanitizedTitle - Sanitized title
+   * @param correlationId - Correlation ID for logging
+   */
+  private async updateConversationTitleIndexedDB(
+    conversationId: string,
+    sanitizedTitle: string,
+    correlationId: string
+  ): Promise<void> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+
+    try {
+      // Start atomic transaction (Requirement 1.3)
+      const transaction = this.db.transaction(
+        [CONVERSATIONS_STORE],
+        'readwrite'
+      );
+      const store = transaction.objectStore(CONVERSATIONS_STORE);
+
+      // Get existing conversation
+      const existingRecord = await this.promisifyRequest(
+        store.get(conversationId)
+      );
+
+      if (!existingRecord) {
+        throw new Error('Conversation not found');
+      }
+
+      // Validate session access
+      if (
+        !this.sessionManager.validateConversationAccess(
+          existingRecord.sessionId
+        )
+      ) {
+        throw new Error('Invalid session access to conversation');
+      }
+
+      // Decrypt existing conversation data
+      const conversationData = JSON.parse(
+        await this.decryptData(existingRecord.encryptedData)
+      );
+
+      // Update title and timestamp
+      conversationData.title = sanitizedTitle;
+      conversationData.updatedAt = Date.now();
+
+      // Re-encrypt conversation data (Requirement 1.1 - leverage existing encryption)
+      const encryptedConversation = await this.encryptData(
+        JSON.stringify(conversationData)
+      );
+
+      // Update conversation in store atomically
+      await this.promisifyRequest(
+        store.put({
+          id: conversationId,
+          sessionId: existingRecord.sessionId,
+          createdAt: existingRecord.createdAt,
+          updatedAt: conversationData.updatedAt,
+          encryptedData: encryptedConversation,
+        })
+      );
+
+      // Update metadata
+      await this.updateStorageMetadata();
+
+      frontendLogger.info('Conversation title updated in IndexedDB', {
+        metadata: {
+          correlationId,
+          conversationId,
+          titleLength: sanitizedTitle.length,
+        },
+      });
+    } catch (error) {
+      frontendLogger.error('Failed to update conversation title in IndexedDB', {
+        metadata: { correlationId, conversationId },
+        error: error instanceof Error ? error : new Error(String(error)),
+      });
+      throw new Error('Failed to update conversation title');
     }
   }
 
   /**
-   * Delete conversation from IndexedDB
+   * Update conversation title in localStorage
+   *
+   * @param conversationId - ID of the conversation to update
+   * @param sanitizedTitle - Sanitized title
+   * @param correlationId - Correlation ID for logging
+   */
+  private async updateConversationTitleLocalStorage(
+    conversationId: string,
+    sanitizedTitle: string,
+    correlationId: string
+  ): Promise<void> {
+    try {
+      const sessionPrefix = this.sessionManager.getSessionStoragePrefix();
+      const key = `${sessionPrefix}_conversation_${conversationId}`;
+
+      const stored = localStorage.getItem(key);
+      if (!stored) {
+        throw new Error('Conversation not found');
+      }
+
+      const storedData = JSON.parse(stored);
+
+      // Validate session access
+      if (
+        !this.sessionManager.validateConversationAccess(storedData.sessionId)
+      ) {
+        throw new Error('Invalid session access to conversation');
+      }
+
+      // Decrypt existing conversation data
+      const decryptedEncryptedData = this.deserializeEncryptedData(
+        storedData.encryptedData
+      );
+      const conversationData = JSON.parse(
+        await this.decryptData(decryptedEncryptedData)
+      );
+
+      // Update title and timestamp
+      conversationData.title = sanitizedTitle;
+      conversationData.updatedAt = Date.now();
+
+      // Re-encrypt conversation data
+      const newEncryptedData = await this.encryptData(
+        JSON.stringify(conversationData)
+      );
+
+      // Update in localStorage
+      localStorage.setItem(
+        key,
+        JSON.stringify({
+          id: conversationId,
+          sessionId: storedData.sessionId,
+          createdAt: storedData.createdAt,
+          updatedAt: conversationData.updatedAt,
+          encryptedData: this.serializeEncryptedData(newEncryptedData),
+        })
+      );
+
+      frontendLogger.info('Conversation title updated in localStorage', {
+        metadata: {
+          correlationId,
+          conversationId,
+          titleLength: sanitizedTitle.length,
+        },
+      });
+    } catch (error) {
+      frontendLogger.error(
+        'Failed to update conversation title in localStorage',
+        {
+          metadata: { correlationId, conversationId },
+          error: error instanceof Error ? error : new Error(String(error)),
+        }
+      );
+      throw new Error('Failed to update conversation title');
+    }
+  }
+
+  /**
+   * Delete conversation from storage with complete cleanup tracking
+   *
+   * Requirements: 2.1, 2.2, 2.3, 2.4
+   * - Removes conversation record from storage within 500ms
+   * - Removes all associated message data
+   * - Removes all associated metadata
+   * - Returns detailed statistics (messagesRemoved, bytesFreed)
+   * - Logs deletion operations with conversation ID and timestamp
+   *
+   * @param conversationId - ID of the conversation to delete
+   * @returns DeleteResult with detailed cleanup statistics
+   */
+  public async deleteConversation(
+    conversationId: string
+  ): Promise<DeleteResult> {
+    const correlationId = crypto.randomUUID();
+
+    // Log operation start
+    frontendLogger.info('Starting conversation deletion', {
+      metadata: {
+        correlationId,
+        conversationId,
+        backend: this.isIndexedDBAvailable ? 'indexeddb' : 'localstorage',
+      },
+    });
+
+    // Measure operation with performance metrics
+    return await measureAsync(
+      OperationType.DELETION,
+      async () => {
+        const result =
+          this.isIndexedDBAvailable && this.db
+            ? await this.deleteConversationIndexedDB(
+                conversationId,
+                correlationId
+              )
+            : await this.deleteConversationLocalStorage(
+                conversationId,
+                correlationId
+              );
+
+        // Log result
+        if (result.success) {
+          frontendLogger.info('Conversation deletion completed successfully', {
+            metadata: {
+              correlationId,
+              conversationId,
+              messagesRemoved: result.messagesRemoved,
+              bytesFreed: result.bytesFreed,
+            },
+          });
+        } else {
+          frontendLogger.error('Conversation deletion failed', {
+            metadata: {
+              correlationId,
+              conversationId,
+              error: result.error,
+            },
+          });
+        }
+
+        return result;
+      },
+      { correlationId, conversationId }
+    );
+  }
+
+  /**
+   * Delete conversation from IndexedDB with complete cleanup tracking
+   *
+   * Requirements: 2.1, 2.2, 2.3, 2.4
+   *
+   * @param conversationId - ID of the conversation to delete
+   * @param correlationId - Correlation ID for logging
+   * @returns DeleteResult with detailed cleanup statistics
    */
   private async deleteConversationIndexedDB(
-    conversationId: string
-  ): Promise<void> {
+    conversationId: string,
+    correlationId: string
+  ): Promise<DeleteResult> {
     if (!this.db) {
-      return;
+      return {
+        success: false,
+        conversationRemoved: false,
+        messagesRemoved: 0,
+        metadataRemoved: false,
+        bytesFreed: 0,
+        error: 'Database not initialized',
+      };
     }
 
+    const startTime = Date.now();
+    let conversationRemoved = false;
+    let messagesRemoved = 0;
+    let metadataRemoved = false;
+    let bytesFreed = 0;
+
     try {
+      // Get conversation data before deletion to calculate size (Requirement 2.4)
+      const conversation = await this.getConversationIndexedDB(conversationId);
+
+      if (!conversation) {
+        // Conversation doesn't exist
+        return {
+          success: false,
+          conversationRemoved: false,
+          messagesRemoved: 0,
+          metadataRemoved: false,
+          bytesFreed: 0,
+          error: 'Conversation not found',
+        };
+      }
+
+      bytesFreed = this.estimateConversationSize(conversation);
+
       const transaction = this.db.transaction(
-        [CONVERSATIONS_STORE, MESSAGES_STORE],
+        [CONVERSATIONS_STORE, MESSAGES_STORE, METADATA_STORE],
         'readwrite'
       );
       const conversationStore = transaction.objectStore(CONVERSATIONS_STORE);
       const messageStore = transaction.objectStore(MESSAGES_STORE);
 
-      // Delete conversation
-      await this.promisifyRequest(conversationStore.delete(conversationId));
-
-      // Delete all messages for this conversation
+      // Delete all messages for this conversation (Requirement 2.2)
       const messageIndex = messageStore.index('conversationId');
       const messageResults = await this.promisifyRequest(
         messageIndex.getAll(conversationId)
@@ -931,32 +1387,151 @@ export class ConversationStorage {
 
       for (const messageResult of messageResults) {
         await this.promisifyRequest(messageStore.delete(messageResult.id));
+        messagesRemoved++;
       }
 
-      // Update metadata
+      // Delete conversation record (Requirement 2.1)
+      await this.promisifyRequest(conversationStore.delete(conversationId));
+      conversationRemoved = true;
+
+      // Update metadata - this removes conversation from metadata counts (Requirement 2.3)
       await this.updateStorageMetadata();
+      metadataRemoved = true;
+
+      const duration = Date.now() - startTime;
+
+      // Log deletion operation with conversation ID and timestamp (Requirement 2.5)
+      frontendLogger.info('Conversation deleted from IndexedDB', {
+        metadata: {
+          correlationId,
+          conversationId,
+          messagesRemoved,
+          bytesFreed,
+          duration,
+          timestamp: new Date().toISOString(),
+        },
+      });
+
+      return {
+        success: true,
+        conversationRemoved,
+        messagesRemoved,
+        metadataRemoved,
+        bytesFreed,
+      };
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+
+      // Log deletion failure (Requirement 2.5)
       frontendLogger.error('Failed to delete conversation from IndexedDB', {
+        metadata: {
+          correlationId,
+          conversationId,
+          timestamp: new Date().toISOString(),
+        },
         error: error instanceof Error ? error : new Error(String(error)),
       });
-      throw new Error('Failed to delete conversation');
+
+      return {
+        success: false,
+        conversationRemoved,
+        messagesRemoved,
+        metadataRemoved,
+        bytesFreed,
+        error: errorMessage,
+      };
     }
   }
 
   /**
-   * Delete conversation from localStorage
+   * Delete conversation from localStorage with complete cleanup tracking
+   *
+   * Requirements: 2.1, 2.2, 2.3, 2.4
+   *
+   * @param conversationId - ID of the conversation to delete
+   * @returns DeleteResult with detailed cleanup statistics
    */
-  private deleteConversationLocalStorage(conversationId: string): void {
+  private async deleteConversationLocalStorage(
+    conversationId: string,
+    correlationId: string
+  ): Promise<DeleteResult> {
+    const startTime = Date.now();
+    let conversationRemoved = false;
+    let messagesRemoved = 0;
+    const metadataRemoved = true; // localStorage doesn't have separate metadata store
+    let bytesFreed = 0;
+
     try {
       const sessionPrefix = this.sessionManager.getSessionStoragePrefix();
       const key = `${sessionPrefix}_conversation_${conversationId}`;
 
+      // Get conversation data before deletion to calculate size and message count (Requirement 2.4)
+      const conversation =
+        await this.getConversationLocalStorage(conversationId);
+
+      if (!conversation) {
+        // Conversation doesn't exist
+        return {
+          success: false,
+          conversationRemoved: false,
+          messagesRemoved: 0,
+          metadataRemoved: false,
+          bytesFreed: 0,
+          error: 'Conversation not found',
+        };
+      }
+
+      bytesFreed = this.estimateConversationSize(conversation);
+      messagesRemoved = conversation.messages.length; // All messages are stored with conversation in localStorage (Requirement 2.2)
+
+      // Delete conversation (includes all messages in localStorage) (Requirement 2.1, 2.2)
       localStorage.removeItem(key);
+      conversationRemoved = true;
+
+      const duration = Date.now() - startTime;
+
+      // Log deletion operation with conversation ID and timestamp (Requirement 2.5)
+      frontendLogger.info('Conversation deleted from localStorage', {
+        metadata: {
+          correlationId,
+          conversationId,
+          messagesRemoved,
+          bytesFreed,
+          duration,
+          timestamp: new Date().toISOString(),
+        },
+      });
+
+      return {
+        success: true,
+        conversationRemoved,
+        messagesRemoved,
+        metadataRemoved,
+        bytesFreed,
+      };
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+
+      // Log deletion failure (Requirement 2.5)
       frontendLogger.error('Failed to delete conversation from localStorage', {
+        metadata: {
+          correlationId,
+          conversationId,
+          timestamp: new Date().toISOString(),
+        },
         error: error instanceof Error ? error : new Error(String(error)),
       });
-      throw new Error('Failed to delete conversation');
+
+      return {
+        success: false,
+        conversationRemoved,
+        messagesRemoved,
+        metadataRemoved,
+        bytesFreed,
+        error: errorMessage,
+      };
     }
   }
 
@@ -1153,14 +1728,24 @@ export class ConversationStorage {
         }
 
         try {
-          // Estimate conversation size
-          const conversationSize = this.estimateConversationSize(conversation);
+          // Delete conversation and get detailed statistics
+          const deleteResult = await this.deleteConversation(conversation.id);
 
-          await this.deleteConversation(conversation.id);
-
-          conversationsRemoved++;
-          messagesRemoved += conversation.messages.length;
-          bytesFreed += conversationSize;
+          if (deleteResult.success) {
+            conversationsRemoved++;
+            messagesRemoved += deleteResult.messagesRemoved;
+            bytesFreed += deleteResult.bytesFreed;
+          } else {
+            frontendLogger.error(
+              'Failed to delete conversation during cleanup',
+              {
+                metadata: {
+                  conversationId: conversation.id,
+                  error: deleteResult.error,
+                },
+              }
+            );
+          }
         } catch (error) {
           frontendLogger.error('Failed to delete conversation during cleanup', {
             metadata: { conversationId: conversation.id },
@@ -1313,6 +1898,43 @@ export class ConversationStorage {
       });
       throw new Error('Failed to export conversation data');
     }
+  }
+
+  /**
+   * Get storage backend type
+   * Used by search service to determine search strategy
+   */
+  public getStorageBackend(): 'indexeddb' | 'localstorage' | null {
+    if (this.isIndexedDBAvailable && this.db !== null) {
+      return 'indexeddb';
+    } else if (!this.isIndexedDBAvailable) {
+      return 'localstorage';
+    }
+    return null;
+  }
+
+  /**
+   * Get IndexedDB database instance
+   * Used by search service for full-text index operations
+   */
+  public async getDatabase(): Promise<IDBDatabase | null> {
+    if (!this.isIndexedDBAvailable) {
+      return null;
+    }
+
+    // If database is not open, try to open it
+    if (!this.db) {
+      try {
+        await this.openDatabase();
+      } catch (error) {
+        frontendLogger.error('Failed to open database', {
+          error: error instanceof Error ? error : new Error(String(error)),
+        });
+        return null;
+      }
+    }
+
+    return this.db;
   }
 
   /**

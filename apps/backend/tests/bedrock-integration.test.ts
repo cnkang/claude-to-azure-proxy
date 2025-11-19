@@ -500,7 +500,9 @@ describe('Bedrock Integration Tests', () => {
 
       // Verify request transformation to Bedrock format
       const postCall = mockAxiosInstance.post.mock.calls[0];
-      expect(postCall[0]).toContain('/model/qwen.qwen3-coder-480b-a35b-v1:0/converse');
+      expect(postCall[0]).toContain(
+        '/model/qwen.qwen3-coder-480b-a35b-v1:0/converse'
+      );
       expect(postCall[1]).toMatchObject({
         messages: [
           {

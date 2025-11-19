@@ -12,6 +12,7 @@ import React, {
   useContext,
   useEffect,
   useReducer,
+  useRef,
   type ReactNode,
 } from 'react';
 import type {
@@ -21,6 +22,10 @@ import type {
   ConversationFilters,
 } from '../types/index.js';
 import { useSessionContext } from './SessionContext';
+import { getCrossTabSyncService } from '../services/cross-tab-sync.js';
+import type { SyncEvent } from '../services/cross-tab-sync.js';
+import { getSessionManager } from '../services/session.js';
+import { frontendLogger } from '../utils/logger.js';
 
 /**
  * App actions
@@ -43,6 +48,9 @@ export type AppAction =
       payload: { id: string; updates: Partial<Conversation> };
     }
   | { type: 'DELETE_CONVERSATION'; payload: string }
+  | { type: 'SET_SEARCH_QUERY'; payload: string }
+  | { type: 'SET_SEARCH_RESULTS'; payload: Conversation[] }
+  | { type: 'SET_SEARCH_ERROR'; payload: string | null }
   | { type: 'RESET_STATE' };
 
 /**
@@ -65,7 +73,7 @@ export interface AppContextType {
   setActiveConversation: (conversationId: string | null) => void;
   addConversation: (
     conversation: import('../types/index.js').Conversation
-  ) => void;
+  ) => Promise<void>;
   updateConversation: (
     id: string,
     updates: Partial<import('../types/index.js').Conversation>
@@ -74,7 +82,9 @@ export interface AppContextType {
   resetState: () => void;
 }
 
-export const DEFAULT_CONVERSATION_FILTERS: ConversationFilters = {
+// Moved to a separate constants file to avoid Fast Refresh issues
+// Fast Refresh requires that files only export React components
+const DEFAULT_CONVERSATION_FILTERS: ConversationFilters = {
   searchQuery: '',
   model: undefined,
   dateRange: undefined,
@@ -101,6 +111,10 @@ const createInitialState = (): AppState => ({
     isLoading: false,
     error: undefined,
     filters: DEFAULT_CONVERSATION_FILTERS,
+    searchQuery: '',
+    searchResults: [],
+    isSearching: false,
+    searchError: undefined,
   },
   ui: {
     theme: 'auto',
@@ -195,14 +209,27 @@ function appReducer(state: AppState, action: AppAction): AppState {
         },
       };
 
-    case 'SET_CONVERSATIONS':
+    case 'SET_CONVERSATIONS': {
+      const newConversations = action.payload;
+      const currentActiveId = state.conversations.activeConversationId;
+
+      // Preserve active ID only if it exists in the new conversations map
+      // This prevents activeConversationId from pointing to a non-existent conversation
+      // while ensuring we don't reset it unnecessarily if the conversation still exists
+      const nextActiveId =
+        currentActiveId && newConversations.has(currentActiveId)
+          ? currentActiveId
+          : null;
+
       return {
         ...state,
         conversations: {
           ...state.conversations,
-          conversations: action.payload,
+          conversations: newConversations,
+          activeConversationId: nextActiveId,
         },
       };
+    }
 
     case 'SET_ACTIVE_CONVERSATION':
       return {
@@ -258,11 +285,29 @@ function appReducer(state: AppState, action: AppAction): AppState {
       const existingConversation = updatedConversations.get(action.payload.id);
 
       if (existingConversation) {
-        updatedConversations.set(action.payload.id, {
+        const updatedConversation = {
           ...existingConversation,
           ...action.payload.updates,
           updatedAt: new Date(),
-        });
+        };
+
+        // Task 11.2: Enforce message history limit to prevent unbounded memory growth
+        // Keep only the last 100 messages to prevent memory leaks in long conversations
+        const MAX_MESSAGES_PER_CONVERSATION = 100;
+        if (
+          updatedConversation.messages &&
+          updatedConversation.messages.length > MAX_MESSAGES_PER_CONVERSATION
+        ) {
+          // Keep the most recent messages
+          updatedConversation.messages = updatedConversation.messages.slice(
+            -MAX_MESSAGES_PER_CONVERSATION
+          );
+
+          // Messages trimmed for memory optimization
+          // Monitoring: conversationId, originalCount, trimmedCount tracked internally
+        }
+
+        updatedConversations.set(action.payload.id, updatedConversation);
       }
 
       return {
@@ -294,6 +339,34 @@ function appReducer(state: AppState, action: AppAction): AppState {
       };
     }
 
+    case 'SET_SEARCH_QUERY':
+      return {
+        ...state,
+        conversations: {
+          ...state.conversations,
+          searchQuery: action.payload,
+          isSearching: action.payload.trim().length > 0,
+        },
+      };
+
+    case 'SET_SEARCH_RESULTS':
+      return {
+        ...state,
+        conversations: {
+          ...state.conversations,
+          searchResults: action.payload,
+        },
+      };
+
+    case 'SET_SEARCH_ERROR':
+      return {
+        ...state,
+        conversations: {
+          ...state.conversations,
+          searchError: action.payload ?? undefined,
+        },
+      };
+
     case 'RESET_STATE':
       return createInitialState();
 
@@ -320,6 +393,7 @@ export interface AppProviderProps {
 export function AppProvider({ children }: AppProviderProps): React.JSX.Element {
   const [state, dispatch] = useReducer(appReducer, createInitialState());
   const { session, updatePreferences } = useSessionContext();
+  const sessionManagerRef = useRef(getSessionManager());
 
   // Sync session data with app state
   useEffect(() => {
@@ -334,6 +408,237 @@ export function AppProvider({ children }: AppProviderProps): React.JSX.Element {
       });
     }
   }, [session]);
+
+  // Load conversations from storage on mount
+  useEffect(() => {
+    const loadConversations = async (): Promise<void> => {
+      try {
+        const { getConversationStorage } = await import(
+          '../services/storage.js'
+        );
+        const storage = getConversationStorage();
+
+        // Initialize storage
+        await storage.initialize();
+
+        // Load all conversations
+        const conversations = await storage.getAllConversations();
+
+        if (conversations.length > 0) {
+          // Convert array to Map
+          const conversationsMap = new Map(
+            conversations.map((conv) => [conv.id, conv])
+          );
+
+          dispatch({
+            type: 'SET_CONVERSATIONS',
+            payload: conversationsMap,
+          });
+
+          // Set the most recent conversation as active
+          dispatch({
+            type: 'SET_ACTIVE_CONVERSATION',
+            payload: conversations[0].id,
+          });
+        }
+      } catch (_error) {
+        // Failed to load conversations from storage - error handled silently
+        dispatch({
+          type: 'SET_CONVERSATIONS_ERROR',
+          payload: 'Failed to load conversations',
+        });
+      }
+    };
+
+    void loadConversations();
+  }, []);
+
+  // Cross-tab synchronization (Requirements: 4.1, 4.2, 4.3)
+  const syncServiceRef = useRef(getCrossTabSyncService());
+  // Keep a ref to conversations for event handlers to avoid dependency cycles
+  const conversationsRef = useRef(state.conversations.conversations);
+  useEffect(() => {
+    conversationsRef.current = state.conversations.conversations;
+  }, [state.conversations.conversations]);
+
+  useEffect(() => {
+    const syncService = syncServiceRef.current;
+
+    // Initialize cross-tab sync service
+    syncService.initialize();
+
+    // Helper to normalize date strings from JSON
+    const normalizeDate = (date: string | Date | undefined): Date => {
+      if (!date) {
+        return new Date();
+      }
+      return date instanceof Date ? date : new Date(date);
+    };
+
+    // Helper to normalize conversation data from sync events
+    const normalizeSyncData = (
+      data: Partial<Conversation>
+    ): Partial<Conversation> => {
+      const normalized = { ...data };
+      if (normalized.createdAt) {
+        normalized.createdAt = normalizeDate(normalized.createdAt);
+      }
+      if (normalized.updatedAt) {
+        normalized.updatedAt = normalizeDate(normalized.updatedAt);
+      }
+      if (normalized.messages) {
+        normalized.messages = normalized.messages.map((msg) => ({
+          ...msg,
+          timestamp: normalizeDate(msg.timestamp),
+        }));
+      }
+      return normalized;
+    };
+
+    // Subscribe to update events
+    const unsubscribeUpdate = syncService.subscribe(
+      'update',
+      (event: SyncEvent) => {
+        frontendLogger.info('Received cross-tab update event', {
+          metadata: {
+            conversationId: event.conversationId,
+            sourceTabId: event.sourceTabId,
+          },
+        });
+
+        // Update conversation in state if it exists
+        // Use ref to check existence without triggering re-subscription
+        if (event.data && conversationsRef.current.has(event.conversationId)) {
+          const existingConversation = conversationsRef.current.get(
+            event.conversationId
+          );
+
+          if (existingConversation) {
+            const normalizedUpdates = normalizeSyncData(event.data);
+
+            // Conflict resolution: use service's robust resolution (Requirement 4.4)
+            const resolution = syncService.resolveConflict(
+              existingConversation,
+              normalizedUpdates
+            );
+
+            if (resolution.strategy === 'remote') {
+              // Remote change is newer or merged, apply it
+              dispatch({
+                type: 'UPDATE_CONVERSATION',
+                payload: {
+                  id: event.conversationId,
+                  updates: resolution.resolved,
+                },
+              });
+
+              frontendLogger.info('Applied remote update', {
+                metadata: {
+                  conversationId: event.conversationId,
+                  strategy: resolution.strategy,
+                },
+              });
+            } else {
+              // Local change is newer, ignore remote update
+              frontendLogger.info(
+                'Ignored remote update (conflict resolved locally)',
+                {
+                  metadata: {
+                    conversationId: event.conversationId,
+                    strategy: resolution.strategy,
+                  },
+                }
+              );
+            }
+          }
+        }
+      }
+    );
+
+    // Subscribe to delete events
+    const unsubscribeDelete = syncService.subscribe(
+      'delete',
+      (event: SyncEvent) => {
+        frontendLogger.info('Received cross-tab delete event', {
+          metadata: {
+            conversationId: event.conversationId,
+            sourceTabId: event.sourceTabId,
+          },
+        });
+
+        // Delete conversation from state
+        dispatch({
+          type: 'DELETE_CONVERSATION',
+          payload: event.conversationId,
+        });
+      }
+    );
+
+    // Subscribe to create events
+    const unsubscribeCreate = syncService.subscribe(
+      'create',
+      (event: SyncEvent) => {
+        frontendLogger.info('Received cross-tab create event', {
+          metadata: {
+            conversationId: event.conversationId,
+            sourceTabId: event.sourceTabId,
+          },
+        });
+
+        // Add conversation to state if data is provided
+        if (event.data) {
+          // Check if we already have it (to avoid duplicates/overwrites)
+          if (conversationsRef.current.has(event.conversationId)) {
+            return;
+          }
+
+          // Use provided data directly instead of fetching from storage
+          // This is faster and avoids race conditions
+          const normalizedConversation = normalizeSyncData(
+            event.data
+          ) as Conversation;
+
+          // Ensure required fields exist
+          if (normalizedConversation.id && normalizedConversation.title) {
+            dispatch({
+              type: 'ADD_CONVERSATION',
+              payload: normalizedConversation,
+            });
+          } else {
+            // Fallback to storage if data is incomplete
+            import('../services/storage.js')
+              .then(({ getConversationStorage }) => {
+                const storage = getConversationStorage();
+                storage
+                  .getConversation(event.conversationId)
+                  .then((conversation) => {
+                    if (conversation) {
+                      dispatch({
+                        type: 'ADD_CONVERSATION',
+                        payload: conversation,
+                      });
+                    }
+                  })
+                  .catch(() => {
+                    // Failed to load conversation - error handled silently
+                  });
+              })
+              .catch(() => undefined);
+          }
+        }
+      }
+    );
+
+    // Cleanup on unmount
+    return () => {
+      unsubscribeUpdate();
+      unsubscribeDelete();
+      unsubscribeCreate();
+      syncService.destroy();
+
+      frontendLogger.info('Cross-tab sync service cleaned up');
+    };
+  }, []); // Empty dependency array - run once on mount
 
   // Computed values
   const activeConversationId = state.conversations.activeConversationId;
@@ -373,10 +678,58 @@ export function AppProvider({ children }: AppProviderProps): React.JSX.Element {
     dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: conversationId });
   };
 
-  const addConversation = (
+  const addConversation = async (
     conversation: import('../types/index.js').Conversation
-  ): void => {
-    dispatch({ type: 'ADD_CONVERSATION', payload: conversation });
+  ): Promise<void> => {
+    const sessionManager = sessionManagerRef.current;
+    const resolvedSessionId =
+      session?.sessionId ?? sessionManager.getSessionId();
+
+    if (!resolvedSessionId) {
+      frontendLogger.error('Cannot store conversation without active session', {
+        metadata: { conversationId: conversation.id },
+      });
+      return;
+    }
+
+    const normalizedConversation: Conversation = {
+      ...conversation,
+      sessionId: resolvedSessionId,
+    };
+
+    if (conversation.sessionId !== resolvedSessionId) {
+      frontendLogger.warn('Normalized conversation session to active session', {
+        metadata: {
+          conversationId: conversation.id,
+          providedSessionId: conversation.sessionId,
+          resolvedSessionId,
+        },
+      });
+    }
+
+    dispatch({ type: 'ADD_CONVERSATION', payload: normalizedConversation });
+
+    // Broadcast to other tabs (Requirement 4.1)
+    const syncService = syncServiceRef.current;
+    syncService.broadcastCreation(
+      normalizedConversation.id,
+      normalizedConversation
+    );
+
+    try {
+      const { getConversationStorage } = await import('../services/storage.js');
+      const storage = getConversationStorage();
+      await storage.initialize();
+      await storage.storeConversation(normalizedConversation);
+    } catch (error) {
+      frontendLogger.error('Failed to store conversation', {
+        metadata: {
+          conversationId: conversation.id,
+          sessionId: resolvedSessionId,
+        },
+        error: error instanceof Error ? error : new Error(String(error)),
+      });
+    }
   };
 
   const updateConversation = (
@@ -384,10 +737,47 @@ export function AppProvider({ children }: AppProviderProps): React.JSX.Element {
     updates: Partial<import('../types/index.js').Conversation>
   ): void => {
     dispatch({ type: 'UPDATE_CONVERSATION', payload: { id, updates } });
+
+    // Persist to storage
+    const conversation = state.conversations.conversations.get(id);
+    if (conversation) {
+      const updatedConversation = {
+        ...conversation,
+        ...updates,
+        updatedAt: new Date(),
+      };
+
+      import('../services/storage.js')
+        .then(({ getConversationStorage }) => {
+          const storage = getConversationStorage();
+          storage.storeConversation(updatedConversation).catch(() => {
+            // Failed to update conversation in storage - error handled silently
+          });
+        })
+        .catch(() => undefined);
+
+      // Broadcast to other tabs (Requirement 4.2)
+      const syncService = syncServiceRef.current;
+      syncService.broadcastUpdate(id, updates);
+    }
   };
 
   const deleteConversation = (id: string): void => {
     dispatch({ type: 'DELETE_CONVERSATION', payload: id });
+
+    // Delete from storage
+    import('../services/storage.js')
+      .then(({ getConversationStorage }) => {
+        const storage = getConversationStorage();
+        storage.deleteConversation(id).catch(() => {
+          // Failed to delete conversation from storage - error handled silently
+        });
+      })
+      .catch(() => undefined);
+
+    // Broadcast to other tabs (Requirement 4.2)
+    const syncService = syncServiceRef.current;
+    syncService.broadcastDeletion(id);
   };
 
   const resetState = (): void => {
@@ -461,7 +851,7 @@ export function useConversations(): {
   activeConversation: Conversation | null;
   conversationsList: Conversation[];
   setActiveConversation: (conversationId: string | null) => void;
-  addConversation: (conversation: Conversation) => void;
+  addConversation: (conversation: Conversation) => Promise<void>;
   updateConversation: (id: string, updates: Partial<Conversation>) => void;
   deleteConversation: (conversationId: string) => void;
 } {

@@ -80,12 +80,13 @@ const ConversationListItem = memo<ConversationListItemProps>(
         ]
           .filter(Boolean)
           .join(' ')}
-        role="button"
+        role="option"
         tabIndex={0}
-        aria-pressed={isActive}
+        aria-selected={isActive}
         aria-label={t('conversation.selectConversation', {
           title: conversation.title,
         })}
+        aria-describedby={`conversation-${conversation.id}-meta`}
         onClick={() => onSelect(conversation.id)}
         onKeyDown={(event) => {
           if (event.key === 'Enter' || event.key === ' ') {
@@ -164,7 +165,10 @@ const ConversationListItem = memo<ConversationListItemProps>(
             </div>
           </div>
 
-          <div className="conversation-item-meta">
+          <div
+            className="conversation-item-meta"
+            id={`conversation-${conversation.id}-meta`}
+          >
             <span className="conversation-model">
               {conversation.selectedModel}
             </span>
@@ -212,6 +216,7 @@ export function OptimizedConversationList({
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
+  const [focusedIndex, setFocusedIndex] = useState<number>(-1);
 
   const debouncedSearch = useDebounce(searchQuery, 250);
 
@@ -226,6 +231,7 @@ export function OptimizedConversationList({
     enableVirtualScrolling && conversations.length > 50 && listHeight >= 320;
 
   const listRef = useRef<VirtualizedListRef>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const handleSelect = useCallback(
     (conversationId: string): void => {
@@ -290,6 +296,103 @@ export function OptimizedConversationList({
       }
     },
     [deleteConversation, editingId, handleCancelEdit]
+  );
+
+  // Enhanced keyboard navigation handler for arrow keys
+  const handleKeyboardNavigation = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      // Don't interfere with editing or search input
+      if (editingId !== null) {
+        return;
+      }
+
+      // Don't handle if focus is on search input
+      if (
+        event.target instanceof HTMLInputElement &&
+        event.target.classList.contains('search-input')
+      ) {
+        return;
+      }
+
+      const currentIndex =
+        focusedIndex >= 0
+          ? focusedIndex
+          : conversations.findIndex((c) => c.id === activeConversation?.id);
+
+      switch (event.key) {
+        case 'ArrowDown': {
+          event.preventDefault();
+          const nextIndex = Math.min(
+            currentIndex + 1,
+            conversations.length - 1
+          );
+          setFocusedIndex(nextIndex);
+          // Focus the next item
+          const nextItem = containerRef.current?.querySelector(
+            `.conversation-list-item:nth-child(${nextIndex + 1})`
+          ) as HTMLElement;
+          nextItem?.focus();
+          // Scroll into view if needed
+          nextItem?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          break;
+        }
+        case 'ArrowUp': {
+          event.preventDefault();
+          const prevIndex = Math.max(currentIndex - 1, 0);
+          setFocusedIndex(prevIndex);
+          // Focus the previous item
+          const prevItem = containerRef.current?.querySelector(
+            `.conversation-list-item:nth-child(${prevIndex + 1})`
+          ) as HTMLElement;
+          prevItem?.focus();
+          // Scroll into view if needed
+          prevItem?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          break;
+        }
+        case 'Home': {
+          event.preventDefault();
+          setFocusedIndex(0);
+          const firstItem = containerRef.current?.querySelector(
+            '.conversation-list-item:first-child'
+          ) as HTMLElement;
+          firstItem?.focus();
+          firstItem?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          break;
+        }
+        case 'End': {
+          event.preventDefault();
+          const lastIndex = conversations.length - 1;
+          setFocusedIndex(lastIndex);
+          const lastItem = containerRef.current?.querySelector(
+            '.conversation-list-item:last-child'
+          ) as HTMLElement;
+          lastItem?.focus();
+          lastItem?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          break;
+        }
+        case 'Enter':
+        case ' ': {
+          // Enter or Space on focused item selects it
+          if (currentIndex >= 0 && currentIndex < conversations.length) {
+            event.preventDefault();
+            const conversation = conversations[currentIndex];
+            if (conversation) {
+              handleSelect(conversation.id);
+            }
+          }
+          break;
+        }
+        default:
+          break;
+      }
+    },
+    [
+      conversations,
+      activeConversation?.id,
+      editingId,
+      focusedIndex,
+      handleSelect,
+    ]
   );
 
   const renderItem = useCallback(
@@ -384,8 +487,19 @@ export function OptimizedConversationList({
       </header>
 
       <div
+        ref={containerRef}
         className="conversation-list-container"
         style={{ height: `${listHeight}px` }}
+        onKeyDown={handleKeyboardNavigation}
+        role="listbox"
+        tabIndex={0}
+        aria-label={t('conversation.conversationList', 'Conversation list')}
+        aria-multiselectable="false"
+        aria-activedescendant={
+          activeConversation?.id
+            ? `conversation-${activeConversation.id}-meta`
+            : undefined
+        }
       >
         {state.isLoading && (
           <div className="conversation-list-loading" role="status">

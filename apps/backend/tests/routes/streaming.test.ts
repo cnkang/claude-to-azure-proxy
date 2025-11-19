@@ -167,7 +167,7 @@ describe('Streaming Functionality', () => {
         id: 'resp_test123',
         object: 'response',
         created: Date.now(),
-        model: 'gpt-4-test-deployment',
+        model: 'gpt-5-codex',
         output: [
           {
             type: 'text',
@@ -196,7 +196,7 @@ describe('Streaming Functionality', () => {
       expect(mockResponsesClient.createResponse).toHaveBeenCalledWith(
         expect.objectContaining({
           // stream parameter is not passed to non-streaming API
-          model: 'gpt-4-test-deployment', // Mapped from gpt-4 in Claude request
+          model: 'gpt-5-codex', // Mapped from gpt-4 in Claude request
           input: expect.any(Array),
           max_output_tokens: claudeStreamingRequest.max_tokens,
         }),
@@ -283,7 +283,7 @@ describe('Streaming Functionality', () => {
         id: 'resp_test123',
         object: 'response',
         created: Date.now(),
-        model: 'gpt-4-test-deployment',
+        model: 'gpt-5-codex',
         output: [
           {
             type: 'reasoning',
@@ -378,7 +378,7 @@ describe('Streaming Functionality', () => {
         id: 'resp_test456',
         object: 'response',
         created: Date.now(),
-        model: 'gpt-4-test-deployment',
+        model: 'gpt-5-codex',
         output: [
           {
             type: 'text',
@@ -483,7 +483,7 @@ describe('Streaming Functionality', () => {
         id: 'resp_test789',
         object: 'response',
         created: Date.now(),
-        model: 'gpt-4-test-deployment',
+        model: 'gpt-5-codex',
         output: [
           {
             type: 'text',
@@ -552,12 +552,14 @@ describe('Streaming Functionality', () => {
       );
 
       // Also mock createResponse for fallback non-streaming simulation
-      const allChunksText = manyChunks.map(c => c.output[0].type === 'text' ? c.output[0].text : '').join('');
+      const allChunksText = manyChunks
+        .map((c) => (c.output[0].type === 'text' ? c.output[0].text : ''))
+        .join('');
       mockResponsesClient.createResponse.mockResolvedValue({
         id: 'resp_test_perf',
         object: 'response',
         created: Date.now(),
-        model: 'gpt-4-test-deployment',
+        model: 'gpt-5-codex',
         output: [
           {
             type: 'text',
@@ -630,7 +632,7 @@ describe('Streaming Functionality', () => {
         id: 'resp_conversation',
         object: 'response',
         created: Date.now(),
-        model: 'gpt-4-test-deployment',
+        model: 'gpt-5-codex',
         output: [
           {
             type: 'text',

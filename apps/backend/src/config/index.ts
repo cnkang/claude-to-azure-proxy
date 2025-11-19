@@ -93,15 +93,26 @@ export interface Config {
   AZURE_OPENAI_API_KEY: string;
 
   /**
-   * Azure OpenAI model deployment name.
+   * Azure OpenAI available models.
    *
-   * The name of the model deployment in your Azure OpenAI resource.
-   * This should match exactly with the deployment name configured
-   * in Azure OpenAI Studio.
+   * Comma-separated list of Azure OpenAI model IDs that should be available.
+   * Can be a single model or multiple models separated by commas.
+   * Leave empty to disable Azure OpenAI models.
    *
-   * @example "gpt-4" or "gpt-35-turbo-16k"
+   * @example "gpt-4o" or "gpt-4o,gpt-4o-mini,o1-preview"
    */
   AZURE_OPENAI_MODEL: string;
+
+  /**
+   * AWS Bedrock available models (optional).
+   *
+   * Comma-separated list of AWS Bedrock model IDs that should be available.
+   * Can be a single model or multiple models separated by commas.
+   * Leave empty or omit to disable AWS Bedrock models.
+   *
+   * @example "qwen-3-coder" or "qwen-3-coder,qwen.qwen3-coder-480b-a35b-v1:0"
+   */
+  AWS_BEDROCK_MODELS?: string;
 
   /**
    * Request timeout in milliseconds for Azure OpenAI API calls.
@@ -329,13 +340,25 @@ const configSchema = Joi.object<Config>({
     .required()
     .description('Azure OpenAI API key for backend authentication'),
 
-  // Required Azure OpenAI model deployment name
+  // Azure OpenAI available models (comma-separated)
   AZURE_OPENAI_MODEL: Joi.string()
-    .min(1)
-    .max(100)
-    .pattern(/^[a-zA-Z0-9-_]+$/)
-    .required()
-    .description('Azure OpenAI model deployment name'),
+    // eslint-disable-next-line security/detect-unsafe-regex
+    .pattern(/^[a-zA-Z0-9-_.]+(?:,[a-zA-Z0-9-_.]+)*$/)
+    .allow('')
+    .default('')
+    .description(
+      'Comma-separated list of Azure OpenAI model IDs (e.g., "gpt-4o,gpt-4o-mini,o1-preview,gpt-4.1")'
+    ),
+
+  // AWS Bedrock available models (comma-separated, optional)
+  AWS_BEDROCK_MODELS: Joi.string()
+    // eslint-disable-next-line security/detect-unsafe-regex
+    .pattern(/^[a-zA-Z0-9-_.:]+(?:,[a-zA-Z0-9-_.:]+)*$/)
+    .allow('')
+    .optional()
+    .description(
+      'Comma-separated list of AWS Bedrock model IDs (e.g., "qwen-3-coder,qwen.qwen3-coder-480b-a35b-v1:0")'
+    ),
 
   // Optional timeout with default value and range validation
   AZURE_OPENAI_TIMEOUT: Joi.number()
@@ -478,7 +501,6 @@ function createConfig(): Readonly<Config> {
     AZURE_OPENAI_ENDPOINT: process.env.AZURE_OPENAI_ENDPOINT,
     AZURE_OPENAI_API_KEY: process.env.AZURE_OPENAI_API_KEY,
     AZURE_OPENAI_MODEL: process.env.AZURE_OPENAI_MODEL,
-
     AZURE_OPENAI_TIMEOUT: process.env.AZURE_OPENAI_TIMEOUT,
     AZURE_OPENAI_MAX_RETRIES: process.env.AZURE_OPENAI_MAX_RETRIES,
     DEFAULT_REASONING_EFFORT: process.env.DEFAULT_REASONING_EFFORT,
@@ -488,6 +510,7 @@ function createConfig(): Readonly<Config> {
     NODE_ENV: process.env.NODE_ENV,
     AWS_BEDROCK_API_KEY: process.env.AWS_BEDROCK_API_KEY,
     AWS_BEDROCK_REGION: process.env.AWS_BEDROCK_REGION,
+    AWS_BEDROCK_MODELS: process.env.AWS_BEDROCK_MODELS,
     AWS_BEDROCK_TIMEOUT: process.env.AWS_BEDROCK_TIMEOUT,
     AWS_BEDROCK_MAX_RETRIES: process.env.AWS_BEDROCK_MAX_RETRIES,
     // Node.js 24 configuration

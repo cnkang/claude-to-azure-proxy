@@ -9,7 +9,8 @@
     "apps/backend/tests/**/*",
     "apps/frontend/src/**/*",
     "packages/**/*",
-    "scripts/**/*"
+    "scripts/**/*",
+    "tests/**/*"
   ],
   "files": ["eslint.config.ts"]
 }

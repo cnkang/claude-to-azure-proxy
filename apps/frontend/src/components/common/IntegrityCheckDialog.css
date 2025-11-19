@@ -1,0 +1,149 @@
+/**
+ * Integrity Check Dialog Styles
+ *
+ * WCAG 2.2 AAA compliant styles for the data integrity check dialog.
+ */
+
+.integrity-check-dialog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.integrity-dialog-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.integrity-dialog-content {
+  position: relative;
+  background-color: var(--background-color, #ffffff);
+  color: var(--text-color, #000000);
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow:
+    0 4px 6px rgba(0, 0, 0, 0.1),
+    0 2px 4px rgba(0, 0, 0, 0.06);
+  z-index: 10000;
+}
+
+.integrity-dialog-content h2 {
+  margin: 0 0 16px 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-color, #000000);
+}
+
+.integrity-dialog-content p {
+  margin: 0 0 12px 0;
+  line-height: 1.6;
+  color: var(--text-secondary-color, #333333);
+}
+
+.integrity-dialog-content ul {
+  margin: 12px 0;
+  padding-left: 24px;
+  list-style-type: disc;
+}
+
+.integrity-dialog-content li {
+  margin: 8px 0;
+  line-height: 1.6;
+  color: var(--text-secondary-color, #333333);
+}
+
+.integrity-dialog-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  justify-content: flex-end;
+}
+
+.integrity-dialog-button {
+  padding: 10px 20px;
+  border: 2px solid var(--border-color, #cccccc);
+  border-radius: 6px;
+  background-color: var(--background-color, #ffffff);
+  color: var(--text-color, #000000);
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 100px;
+  min-height: 44px; /* WCAG AAA touch target size */
+}
+
+.integrity-dialog-button:hover {
+  background-color: var(--hover-background-color, #f5f5f5);
+  border-color: var(--hover-border-color, #999999);
+}
+
+.integrity-dialog-button:focus {
+  outline: 3px solid var(--focus-color, #0066cc);
+  outline-offset: 2px;
+}
+
+.integrity-dialog-button.primary {
+  background-color: var(--primary-color, #0066cc);
+  color: #ffffff;
+  border-color: var(--primary-color, #0066cc);
+}
+
+.integrity-dialog-button.primary:hover {
+  background-color: var(--primary-hover-color, #0052a3);
+  border-color: var(--primary-hover-color, #0052a3);
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .integrity-dialog-content {
+    --background-color: #1a1a1a;
+    --text-color: #ffffff;
+    --text-secondary-color: #cccccc;
+    --border-color: #333333;
+    --hover-background-color: #2a2a2a;
+    --hover-border-color: #555555;
+    --primary-color: #66b3ff;
+    --primary-hover-color: #99ccff;
+    --focus-color: #66b3ff;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .integrity-dialog-content {
+    border: 2px solid var(--text-color, #000000);
+  }
+
+  .integrity-dialog-button {
+    border-width: 3px;
+  }
+
+  .integrity-dialog-button:focus {
+    outline-width: 4px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .integrity-dialog-button {
+    transition: none;
+  }
+
+  .integrity-dialog-overlay {
+    backdrop-filter: none;
+  }
+}

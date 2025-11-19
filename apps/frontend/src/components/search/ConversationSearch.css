@@ -1,0 +1,392 @@
+/**
+ * ConversationSearch Styles
+ * 
+ * WCAG 2.2 AAA compliant styles with 7:1 contrast ratios.
+ * Includes responsive design, focus indicators, and smooth transitions.
+ * 
+ * Requirements:
+ * - WCAG 2.2 AAA: 7:1 contrast ratio for text
+ * - 3px focus indicators with 3:1 contrast
+ * - 44x44px touch targets
+ * - Responsive design
+ * - Respects prefers-reduced-motion
+ */
+
+.conversation-search {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+/* Search Header */
+.search-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Search Input */
+.search-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--color-foreground);
+  background-color: var(--color-background);
+  border: 2px solid var(--color-border);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  min-height: 44px; /* WCAG AAA touch target */
+}
+
+.search-input::placeholder {
+  color: var(--color-foreground-tertiary);
+  opacity: 1;
+}
+
+.search-input:hover {
+  border-color: var(--color-border-secondary);
+}
+
+.search-input:focus {
+  outline: 3px solid var(--color-border-focus); /* 3px focus indicator */
+  outline-offset: 2px;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 4px var(--color-focus);
+}
+
+/* Search Statistics */
+.search-stats {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--color-foreground-secondary);
+  padding: 0 0.25rem;
+}
+
+.stats-count {
+  font-weight: 600;
+  color: var(--color-foreground);
+}
+
+.stats-time {
+  color: var(--color-foreground-tertiary);
+  font-style: italic;
+}
+
+/* Loading Indicator */
+.search-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  gap: 1rem;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--color-border);
+  border-top: 3px solid var(--color-accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .loading-spinner {
+    animation: none;
+    border-top-color: var(--color-accent);
+  }
+}
+
+/* Error Message */
+.search-error {
+  padding: 1rem;
+  background-color: var(--color-error-light);
+  border: 2px solid var(--color-error);
+  border-radius: 8px;
+  color: var(--color-foreground);
+}
+
+.search-error p {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* Search Results Container */
+.search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 600px;
+  overflow-y: auto;
+  padding: 0.5rem;
+  border-radius: 8px;
+  background-color: var(--color-background-secondary);
+}
+
+/* Custom scrollbar */
+.search-results::-webkit-scrollbar {
+  width: 8px;
+}
+
+.search-results::-webkit-scrollbar-track {
+  background: var(--color-background-tertiary);
+  border-radius: 4px;
+}
+
+.search-results::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+.search-results::-webkit-scrollbar-thumb:hover {
+  background: var(--color-foreground-tertiary);
+}
+
+/* Firefox scrollbar */
+.search-results {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) var(--color-background-tertiary);
+}
+
+/* No Results Message (Requirement 8.8) */
+.no-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 2rem;
+  text-align: center;
+  background-color: var(--color-background-secondary);
+  border-radius: 8px;
+  border: 2px dashed var(--color-border);
+}
+
+.no-results-message {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-foreground);
+  margin: 0;
+}
+
+.search-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+.suggestions-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-foreground-secondary);
+  margin: 0;
+  text-align: left;
+}
+
+.suggestions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+}
+
+.suggestions-list li {
+  font-size: 0.875rem;
+  color: var(--color-foreground-secondary);
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.suggestions-list li::before {
+  content: '•';
+  position: absolute;
+  left: 0.5rem;
+  color: var(--color-accent);
+  font-weight: bold;
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  .search-input {
+    border-width: 3px;
+  }
+
+  .search-input:focus {
+    outline-width: 4px;
+  }
+
+  .search-error {
+    border-width: 3px;
+  }
+
+  .no-results {
+    border-width: 3px;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .conversation-search {
+    padding: 0.75rem;
+  }
+
+  .search-results {
+    max-height: 400px;
+  }
+
+  .no-results {
+    padding: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .conversation-search {
+    padding: 0.5rem;
+  }
+
+  .search-input {
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+
+  .search-stats {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .search-results {
+    max-height: 300px;
+  }
+
+  .no-results {
+    padding: 1rem;
+  }
+
+  .suggestions-list li {
+    font-size: 0.8125rem;
+  }
+}
+
+/* Dark Mode Adjustments */
+.theme-dark .search-input {
+  background-color: var(--color-background-elevated);
+}
+
+.theme-dark .search-results {
+  background-color: var(--color-background);
+}
+
+.theme-dark .no-results {
+  background-color: var(--color-background);
+}
+
+/* Print Styles */
+@media print {
+  .conversation-search {
+    display: none;
+  }
+}
+
+/* Prefetch Progress Indicator (Requirement 8.10) */
+.search-prefetching {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1rem;
+  background-color: var(--color-background-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+}
+
+.prefetch-indicator {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+.prefetch-text {
+  font-size: 0.875rem;
+  color: var(--color-foreground-secondary);
+  text-align: center;
+}
+
+.prefetch-progress {
+  width: 100%;
+  height: 4px;
+  background-color: var(--color-background-tertiary);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.prefetch-progress-bar {
+  height: 100%;
+  background-color: var(--color-accent);
+  transition: width 0.3s ease;
+  border-radius: 2px;
+}
+
+/* Respect reduced motion preference for prefetch animation */
+@media (prefers-reduced-motion: reduce) {
+  .prefetch-progress-bar {
+    transition: none;
+  }
+}
+
+/* Cache indicator (Requirement 6.1) */
+.stats-cached {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: var(--color-success);
+  cursor: help;
+  margin-left: 0.25rem;
+}
+
+/* High contrast mode for prefetch indicator */
+@media (prefers-contrast: high) {
+  .search-prefetching {
+    border-width: 2px;
+  }
+
+  .prefetch-progress {
+    height: 6px;
+    border: 1px solid var(--color-border);
+  }
+}
+
+/* Responsive adjustments for prefetch indicator */
+@media (max-width: 480px) {
+  .prefetch-text {
+    font-size: 0.8125rem;
+  }
+
+  .prefetch-progress {
+    height: 3px;
+  }
+}

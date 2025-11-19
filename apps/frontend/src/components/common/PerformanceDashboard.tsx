@@ -14,6 +14,11 @@ import {
 } from '../../hooks/usePerformanceMonitoring';
 import { getMemoryUsage } from '../../utils/performance';
 import { indexedDBOptimizer } from '../../services/indexeddb-optimization';
+import {
+  getPerformanceMetrics,
+  OperationType,
+  type MetricStats,
+} from '../../utils/performance-metrics';
 
 interface IndexedDbStats {
   conversationCount: number;
@@ -119,6 +124,183 @@ const MemoryChart = memo<{
 });
 
 MemoryChart.displayName = 'MemoryChart';
+
+/**
+ * Persistence metrics display component
+ *
+ * Task 9.3: Display persistence metrics (avg latency, success rate)
+ * Requirements: 6.1, 6.2, 6.3, 6.4, 6.5
+ */
+const PersistenceMetrics = memo(() => {
+  const [persistenceStats, setPersistenceStats] = useState<
+    Map<OperationType, MetricStats>
+  >(new Map());
+
+  useEffect(() => {
+    const updateStats = () => {
+      const metrics = getPerformanceMetrics();
+      setPersistenceStats(metrics.getAllStats());
+    };
+
+    updateStats();
+    const interval = setInterval(updateStats, 5000); // Update every 5 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  // Filter to show only persistence-related operations
+  const persistenceOperations = [
+    OperationType.TITLE_UPDATE,
+    OperationType.DELETION,
+    OperationType.SEARCH,
+    OperationType.CROSS_TAB_SYNC,
+    OperationType.INTEGRITY_CHECK,
+  ];
+
+  const getStatusColor = (latency: number, target: number): string => {
+    if (latency <= target) {
+      return '#4CAF50';
+    } // Green - good
+    if (latency <= target * 1.5) {
+      return '#FF9800';
+    } // Orange - warning
+    return '#F44336'; // Red - critical
+  };
+
+  return (
+    <div className="persistence-metrics" style={{ marginBottom: '16px' }}>
+      <h4 style={{ margin: '0 0 8px 0', fontSize: '12px' }}>
+        Persistence Performance
+      </h4>
+      <div
+        className="metrics-grid"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr',
+          gap: '8px',
+        }}
+      >
+        {persistenceOperations.map((opType) => {
+          const stats = persistenceStats.get(opType);
+          if (!stats || stats.total === 0) {
+            return null;
+          }
+
+          const target = {
+            [OperationType.TITLE_UPDATE]: 500,
+            [OperationType.DELETION]: 500,
+            [OperationType.SEARCH]: 500,
+            [OperationType.CROSS_TAB_SYNC]: 1000,
+            [OperationType.INTEGRITY_CHECK]: 5000,
+            [OperationType.STORAGE_READ]: 100,
+            [OperationType.STORAGE_WRITE]: 200,
+            [OperationType.ENCRYPTION]: 50,
+            [OperationType.DECRYPTION]: 50,
+          }[opType];
+
+          const statusColor = getStatusColor(stats.p95Latency, target);
+
+          return (
+            <div
+              key={opType}
+              className="persistence-metric-card"
+              style={{
+                background: 'rgba(255, 255, 255, 0.05)',
+                padding: '8px',
+                borderRadius: '4px',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+              }}
+            >
+              <div
+                className="metric-header"
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '8px',
+                }}
+              >
+                <span
+                  className="metric-name"
+                  style={{ fontSize: '11px', fontWeight: 'bold' }}
+                >
+                  {opType.replace(/_/g, ' ').toUpperCase()}
+                </span>
+                <span
+                  className="metric-badge"
+                  style={{
+                    backgroundColor: statusColor,
+                    padding: '2px 6px',
+                    borderRadius: '3px',
+                    fontSize: '10px',
+                  }}
+                >
+                  {stats.successRate.toFixed(1)}%
+                </span>
+              </div>
+              <div className="metric-details">
+                <div
+                  className="metric-row"
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    fontSize: '10px',
+                    marginBottom: '4px',
+                  }}
+                >
+                  <span>Avg:</span>
+                  <span>{stats.averageLatency.toFixed(0)}ms</span>
+                </div>
+                <div
+                  className="metric-row"
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    fontSize: '10px',
+                    marginBottom: '4px',
+                  }}
+                >
+                  <span>P95:</span>
+                  <span style={{ color: statusColor }}>
+                    {stats.p95Latency.toFixed(0)}ms
+                  </span>
+                </div>
+                <div
+                  className="metric-row"
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    fontSize: '10px',
+                    marginBottom: '4px',
+                  }}
+                >
+                  <span>Total:</span>
+                  <span>{stats.total}</span>
+                </div>
+                <div
+                  className="metric-row"
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    fontSize: '10px',
+                  }}
+                >
+                  <span>Failed:</span>
+                  <span
+                    style={{ color: stats.failed > 0 ? '#F44336' : '#4CAF50' }}
+                  >
+                    {stats.failed}
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+});
+
+PersistenceMetrics.displayName = 'PersistenceMetrics';
 
 /**
  * Performance dashboard component
@@ -329,6 +511,11 @@ export const PerformanceDashboard = memo<PerformanceDashboardProps>(
 
             {isExpanded && (
               <>
+                {/* Persistence metrics - Task 9.3 */}
+                <div style={{ marginBottom: '16px' }}>
+                  <PersistenceMetrics />
+                </div>
+
                 {/* Memory chart */}
                 {memoryHistory.length > 1 && (
                   <div style={{ marginBottom: '16px' }}>

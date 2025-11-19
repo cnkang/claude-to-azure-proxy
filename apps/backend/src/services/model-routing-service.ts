@@ -511,17 +511,17 @@ export class ModelRoutingService {
  */
 const DEFAULT_MODEL_ROUTING_CONFIG: ModelRoutingConfig = {
   defaultProvider: 'azure',
-  defaultModel: 'gpt-4o-mini',
+  defaultModel: 'gpt-4o',
   entries: [
     {
       provider: 'azure',
-      backendModel: 'gpt-5-codex',
-      aliases: ['gpt-5-codex', 'gpt-4', 'gpt-4o', 'gpt-4-turbo'],
+      backendModel: 'gpt-4o',
+      aliases: ['gpt-4o', 'gpt-4', 'gpt-4-turbo'],
     },
     {
       provider: 'azure',
-      backendModel: 'gpt-4o',
-      aliases: ['gpt-4o'],
+      backendModel: 'gpt-5-codex',
+      aliases: ['gpt-5-codex'],
     },
     {
       provider: 'azure',

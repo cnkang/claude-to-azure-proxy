@@ -1,0 +1,186 @@
+name: E2E Tests
+
+# Run E2E tests on pull requests and main branch pushes
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+  workflow_dispatch: # Allow manual trigger
+
+env:
+  NODE_VERSION: 24
+
+jobs:
+  # Run E2E tests across multiple browsers
+  e2e-tests:
+    name: E2E Tests (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Use Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared packages
+        run: pnpm build:shared
+
+      - name: Build frontend
+        run: pnpm build:frontend
+
+      - name: Install Playwright browsers
+        run: pnpm playwright:install
+
+      - name: Run E2E tests
+        run: pnpm test:e2e --project=${{ matrix.browser }}
+        env:
+          CI: true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results-${{ matrix.browser }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+      - name: Upload test videos
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-videos-${{ matrix.browser }}
+          path: test-results/**/video.webm
+          retention-days: 7
+
+      - name: Upload test traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces-${{ matrix.browser }}
+          path: test-results/**/trace.zip
+          retention-days: 7
+
+  # Generate and publish HTML report
+  publish-report:
+    name: Publish Test Report
+    runs-on: ubuntu-latest
+    needs: e2e-tests
+    if: always()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all test results
+        uses: actions/download-artifact@v4
+        with:
+          path: all-results
+          pattern: playwright-results-*
+          merge-multiple: true
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Use Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install Playwright
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm playwright:install
+
+      - name: Merge test reports
+        run: |
+          # Copy all downloaded results to playwright-report
+          mkdir -p playwright-report
+          if [ -d "all-results/playwright-report" ]; then
+            cp -r all-results/playwright-report/* playwright-report/ || true
+          fi
+
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-html-report
+          path: playwright-report/
+          retention-days: 30
+
+      - name: Comment PR with test results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            // Try to read test results
+            let resultsPath = 'playwright-report/results.json';
+            let comment = '## 🎭 Playwright E2E Test Results\n\n';
+            
+            if (fs.existsSync(resultsPath)) {
+              const results = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
+              const stats = results.stats || {};
+              
+              comment += `- ✅ Passed: ${stats.expected || 0}\n`;
+              comment += `- ❌ Failed: ${stats.unexpected || 0}\n`;
+              comment += `- ⏭️ Skipped: ${stats.skipped || 0}\n`;
+              comment += `- ⏱️ Duration: ${Math.round((stats.duration || 0) / 1000)}s\n\n`;
+              
+              if (stats.unexpected > 0) {
+                comment += '⚠️ Some tests failed. Check the artifacts for details.\n';
+              } else {
+                comment += '✨ All tests passed!\n';
+              }
+            } else {
+              comment += '⚠️ Could not find test results file.\n';
+            }
+            
+            comment += `\n[View full report](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`;
+            
+            // Post comment
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  # Test status check
+  e2e-status:
+    name: E2E Tests Status
+    runs-on: ubuntu-latest
+    needs: e2e-tests
+    if: always()
+    
+    steps:
+      - name: Check test results
+        run: |
+          if [ "${{ needs.e2e-tests.result }}" = "success" ]; then
+            echo "✅ All E2E tests passed!"
+            exit 0
+          else
+            echo "❌ Some E2E tests failed!"
+            exit 1
+          fi

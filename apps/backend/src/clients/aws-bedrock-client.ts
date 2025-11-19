@@ -243,7 +243,7 @@ export class AWSBedrockClient implements AsyncDisposable {
 
       let responseId = correlationId;
       let createdAt = Math.floor(Date.now() / 1000);
-      const {model} = params;
+      const { model } = params;
       let chunkCount = 0;
       const startTime = performance.now();
 
@@ -344,7 +344,7 @@ export class AWSBedrockClient implements AsyncDisposable {
               output: outputs,
             };
             chunkCount++;
-              yield assertValidResponsesStreamChunk(chunk);
+            yield assertValidResponsesStreamChunk(chunk);
           }
           continue;
         }
@@ -369,12 +369,16 @@ export class AWSBedrockClient implements AsyncDisposable {
           try {
             await streamResource[Symbol.asyncDispose]();
           } catch (disposeError) {
-            logger.warn('Failed to dispose aborted Bedrock stream resource', '', {
-              error:
-                disposeError instanceof Error
-                  ? disposeError.message
-                  : 'Unknown error',
-            });
+            logger.warn(
+              'Failed to dispose aborted Bedrock stream resource',
+              '',
+              {
+                error:
+                  disposeError instanceof Error
+                    ? disposeError.message
+                    : 'Unknown error',
+              }
+            );
           }
         }
       }
@@ -857,7 +861,7 @@ export class AWSBedrockClient implements AsyncDisposable {
     if (this.isAxiosError(error)) {
       const status = error.response?.status ?? 500;
       const rawData = error.response?.data;
-      let {message} = error;
+      let { message } = error;
 
       if (
         rawData !== undefined &&
@@ -1002,7 +1006,7 @@ export class AWSBedrockClient implements AsyncDisposable {
   private shouldRetry(error: AxiosError): boolean {
     const status = error.response?.status;
     if (status !== undefined && (status >= 500 || status === 429)) {
-          return true;
+      return true;
     }
 
     const code = error.code ?? '';

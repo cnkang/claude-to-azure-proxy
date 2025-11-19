@@ -14,9 +14,9 @@ import type {
   RequestWithCorrelationId as _RequestWithCorrelationId,
   UniversalRequest,
   ClaudeRequest,
-  OpenAIRequest,
+  OpenAIRequest as _OpenAIRequest,
   ClaudeStreamChunk as _ClaudeStreamChunk,
-  OpenAIStreamChunk,
+  OpenAIStreamChunk as _OpenAIStreamChunk,
   ModelProvider as _ModelProvider,
 } from '../types/index.js';
 import {
@@ -32,9 +32,11 @@ import {
 
 /**
  * Stream chunk for SSE communication
+ *
+ * Task 6.1: Added 'heartbeat' type for connection health monitoring
  */
 export interface StreamChunk {
-  readonly type: 'start' | 'chunk' | 'end' | 'error';
+  readonly type: 'start' | 'chunk' | 'end' | 'error' | 'heartbeat';
   readonly content?: string;
   readonly messageId?: string;
   readonly correlationId: string;
@@ -83,24 +85,94 @@ export class StreamingService {
 
   /**
    * Processes a streaming chat request with model routing
+   *
+   * Task 9.6.1: Accept messageId parameter to ensure consistent ID throughout the flow
    */
   public async processStreamingRequest(
     request: ChatStreamRequest,
     handler: StreamingResponseHandler,
-    correlationId: string
+    correlationId: string,
+    messageId?: string
   ): Promise<void> {
-    const messageId = uuidv4();
+    // Use provided messageId or generate new one (for backward compatibility)
+    const streamMessageId = messageId || uuidv4();
     const abortController = new AbortController();
-    this.activeStreams.set(messageId, abortController);
+    this.activeStreams.set(streamMessageId, abortController);
+
+    let completionHandled = false;
+    let abortReason: string | undefined;
+
+    // Log AbortController creation
+    logger.debug(
+      '[ABORT-DEBUG] AbortController created for streaming request',
+      correlationId,
+      {
+        messageId: streamMessageId,
+        providedMessageId: messageId,
+        signalAborted: abortController.signal.aborted,
+        activeStreamsCount: this.activeStreams.size,
+        timestamp: new Date().toISOString(),
+      }
+    );
+
+    // Add abort event listener to track when and why signal gets aborted
+    abortController.signal.addEventListener('abort', () => {
+      abortReason = abortController.signal.reason || 'No reason provided';
+      logger.warn(
+        '[ABORT-DEBUG] AbortController signal aborted',
+        correlationId,
+        {
+          messageId: streamMessageId,
+          reason: abortReason,
+          timestamp: new Date().toISOString(),
+          stackTrace: new Error().stack,
+        }
+      );
+    });
 
     try {
+      // Check signal state at entry
+      if (abortController.signal.aborted) {
+        logger.error(
+          '[ABORT-DEBUG] Signal already aborted at entry',
+          correlationId,
+          {
+            messageId: streamMessageId,
+            reason: abortController.signal.reason,
+            timestamp: new Date().toISOString(),
+          }
+        );
+        throw new Error(
+          `Request aborted at entry: ${abortController.signal.reason}`
+        );
+      }
+
       logger.info('Processing streaming request', correlationId, {
+        messageId: streamMessageId,
+        providedMessageId: messageId,
         conversationId: request.conversationId,
         model: request.model,
         messageLength: request.message.length,
         hasFiles: !!request.files?.length,
         hasContext: !!request.contextMessages?.length,
+        signalAborted: abortController.signal.aborted,
       });
+
+      // Check signal state before building context
+      if (abortController.signal.aborted) {
+        logger.error(
+          '[ABORT-DEBUG] Signal aborted before building context',
+          correlationId,
+          {
+            messageId: streamMessageId,
+            reason: abortController.signal.reason,
+            timestamp: new Date().toISOString(),
+          }
+        );
+        throw new Error(
+          `Request aborted before context: ${abortController.signal.reason}`
+        );
+      }
 
       // Build conversation context
       const contextMessages = await this.buildConversationContext(
@@ -110,6 +182,22 @@ export class StreamingService {
         correlationId
       );
 
+      // Check signal state after building context
+      if (abortController.signal.aborted) {
+        logger.error(
+          '[ABORT-DEBUG] Signal aborted after building context',
+          correlationId,
+          {
+            messageId: streamMessageId,
+            reason: abortController.signal.reason,
+            timestamp: new Date().toISOString(),
+          }
+        );
+        throw new Error(
+          `Request aborted after context: ${abortController.signal.reason}`
+        );
+      }
+
       // Create universal request
       const universalRequest = this.createUniversalRequest(
         request.message,
@@ -118,6 +206,22 @@ export class StreamingService {
         request.files
       );
 
+      // Check signal state before routing
+      if (abortController.signal.aborted) {
+        logger.error(
+          '[ABORT-DEBUG] Signal aborted before routing',
+          correlationId,
+          {
+            messageId: streamMessageId,
+            reason: abortController.signal.reason,
+            timestamp: new Date().toISOString(),
+          }
+        );
+        throw new Error(
+          `Request aborted before routing: ${abortController.signal.reason}`
+        );
+      }
+
       // Route the request to appropriate provider
       const routingResult = await this.modelRoutingService.routeModelRequest(
         request.model,
@@ -125,8 +229,36 @@ export class StreamingService {
         correlationId
       );
 
-      // Send start event
-      handler.onStart(messageId, routingResult.decision.backendModel);
+      // Check signal state after routing
+      if (abortController.signal.aborted) {
+        logger.error(
+          '[ABORT-DEBUG] Signal aborted after routing',
+          correlationId,
+          {
+            messageId: streamMessageId,
+            reason: abortController.signal.reason,
+            timestamp: new Date().toISOString(),
+          }
+        );
+        throw new Error(
+          `Request aborted after routing: ${abortController.signal.reason}`
+        );
+      }
+
+      // Note: onStart is called by the handler in chat-stream.ts before this method is invoked
+      // Do not call handler.onStart here to avoid duplicate start events
+
+      // Log signal state before processing
+      logger.debug(
+        '[ABORT-DEBUG] Starting provider-specific streaming',
+        correlationId,
+        {
+          messageId: streamMessageId,
+          provider: routingResult.decision.provider,
+          signalAborted: abortController.signal.aborted,
+          timestamp: new Date().toISOString(),
+        }
+      );
 
       // Process streaming response based on provider
       switch (routingResult.decision.provider) {
@@ -134,7 +266,7 @@ export class StreamingService {
           await this.processAzureOpenAIStream(
             universalRequest,
             routingResult,
-            messageId,
+            streamMessageId,
             handler,
             abortController.signal,
             correlationId
@@ -144,7 +276,7 @@ export class StreamingService {
           await this.processAWSBedrockStream(
             universalRequest,
             routingResult,
-            messageId,
+            streamMessageId,
             handler,
             abortController.signal,
             correlationId
@@ -158,19 +290,152 @@ export class StreamingService {
             routingResult.decision.provider
           );
       }
+
+      // Check signal state before marking completion
+      if (abortController.signal.aborted) {
+        logger.warn(
+          '[ABORT-DEBUG] Signal aborted before marking completion',
+          correlationId,
+          {
+            messageId: streamMessageId,
+            reason: abortController.signal.reason,
+            timestamp: new Date().toISOString(),
+          }
+        );
+      }
+
+      // Mark completion as handled if we reach here successfully
+      completionHandled = true;
+      logger.debug(
+        '[ABORT-DEBUG] Streaming request completed successfully',
+        correlationId,
+        {
+          messageId: streamMessageId,
+          signalAborted: abortController.signal.aborted,
+          abortReason,
+          timestamp: new Date().toISOString(),
+        }
+      );
     } catch (error) {
-      logger.error('Streaming request failed', correlationId, {
-        messageId,
-        conversationId: request.conversationId,
-        error: error instanceof Error ? error.message : String(error),
+      logger.error(
+        '[ABORT-DEBUG] Streaming request failed in processStreamingRequest',
+        correlationId,
+        {
+          messageId: streamMessageId,
+          conversationId: request.conversationId,
+          error: error instanceof Error ? error.message : String(error),
+          errorName: error instanceof Error ? error.name : 'unknown',
+          signalAborted: abortController.signal.aborted,
+          signalReason: abortController.signal.reason || abortReason,
+          timestamp: new Date().toISOString(),
+        }
+      );
+
+      // Only call onError if completion hasn't been handled yet
+      if (!completionHandled) {
+        completionHandled = true;
+        handler.onError(
+          error instanceof Error ? error.message : 'Unknown streaming error',
+          streamMessageId
+        );
+      }
+    } finally {
+      // Always clean up resources in finally block
+      // This ensures cleanup happens on both success and error paths
+
+      // Log cleanup timing with race condition detection
+      const wasAborted = abortController.signal.aborted;
+      const finalAbortReason = abortController.signal.reason || abortReason;
+      const cleanupStartTime = Date.now();
+
+      logger.debug(
+        '[ABORT-DEBUG] Streaming request cleanup starting',
+        correlationId,
+        {
+          messageId: streamMessageId,
+          completionHandled,
+          signalAborted: wasAborted,
+          signalReason: finalAbortReason,
+          activeStreamsCount: this.activeStreams.size,
+          timestamp: new Date().toISOString(),
+        }
+      );
+
+      // Check if there's a race condition - signal aborted but completion handled
+      if (wasAborted && completionHandled) {
+        logger.warn(
+          '[ABORT-DEBUG] Potential race condition detected',
+          correlationId,
+          {
+            messageId: streamMessageId,
+            description:
+              'Signal was aborted but completion was handled successfully',
+            abortReason: finalAbortReason,
+            timestamp: new Date().toISOString(),
+          }
+        );
+      }
+
+      // Remove from active streams before aborting to prevent re-entry
+      const wasInActiveStreams = this.activeStreams.has(streamMessageId);
+      this.activeStreams.delete(streamMessageId);
+
+      logger.debug('[ABORT-DEBUG] Removed from active streams', correlationId, {
+        messageId: streamMessageId,
+        wasInActiveStreams,
+        remainingActiveStreams: this.activeStreams.size,
+        timestamp: new Date().toISOString(),
       });
 
-      handler.onError(
-        error instanceof Error ? error.message : 'Unknown streaming error',
-        messageId
+      // CRITICAL FIX: Only abort if completion was NOT handled successfully
+      // If completion was handled, the stream finished normally and we should NOT abort
+      if (!completionHandled && !abortController.signal.aborted) {
+        logger.debug(
+          '[ABORT-DEBUG] Aborting controller in finally block (stream did not complete)',
+          correlationId,
+          {
+            messageId: streamMessageId,
+            timestamp: new Date().toISOString(),
+          }
+        );
+        abortController.abort(
+          'Cleanup in finally block - stream did not complete'
+        );
+      } else if (completionHandled) {
+        logger.debug(
+          '[ABORT-DEBUG] Skipping abort - stream completed successfully',
+          correlationId,
+          {
+            messageId: streamMessageId,
+            timestamp: new Date().toISOString(),
+          }
+        );
+      } else {
+        logger.debug(
+          '[ABORT-DEBUG] Controller already aborted, skipping abort call',
+          correlationId,
+          {
+            messageId: streamMessageId,
+            existingReason: finalAbortReason,
+            timestamp: new Date().toISOString(),
+          }
+        );
+      }
+
+      const cleanupDuration = Date.now() - cleanupStartTime;
+      logger.debug(
+        '[ABORT-DEBUG] Streaming request cleanup completed',
+        correlationId,
+        {
+          messageId: streamMessageId,
+          completionHandled,
+          wasAborted,
+          finalAbortReason,
+          activeStreamsCount: this.activeStreams.size,
+          cleanupDuration,
+          timestamp: new Date().toISOString(),
+        }
       );
-    } finally {
-      this.activeStreams.delete(messageId);
     }
   }
 
@@ -316,6 +581,9 @@ export class StreamingService {
     signal: AbortSignal,
     correlationId: string
   ): Promise<void> {
+    let completed = false;
+    let buffer = ''; // Buffer for accumulating partial chunks
+
     try {
       // Transform request to Azure OpenAI format
       const azureRequest = this.transformToAzureOpenAIRequest(
@@ -323,9 +591,72 @@ export class StreamingService {
         routingResult
       );
 
-      // Make streaming request to Azure OpenAI
+      // Log request lifecycle: Before axios request creation
+      logger.info(
+        '[ABORT-DEBUG] Azure OpenAI streaming request starting',
+        correlationId,
+        {
+          messageId,
+          endpoint: `${routingResult.providerEndpoint}/openai/v1/responses`,
+          model: routingResult.decision.backendModel,
+          maxOutputTokens: azureRequest.max_output_tokens,
+          signalAborted: signal.aborted,
+          signalReason: signal.reason,
+          timestamp: new Date().toISOString(),
+        }
+      );
+
+      // Check AbortController signal state before request
+      if (signal.aborted) {
+        logger.error(
+          '[ABORT-DEBUG] AbortController signal already aborted before request',
+          correlationId,
+          {
+            messageId,
+            reason: signal.reason,
+            timestamp: new Date().toISOString(),
+            stackTrace: new Error().stack,
+          }
+        );
+        throw new Error(`Request aborted before starting: ${signal.reason}`);
+      }
+
+      // Make streaming request to Azure OpenAI using v1 responses endpoint
+      // Use configured timeout from environment (default 120000ms)
+      const configuredTimeout = process.env.AZURE_OPENAI_TIMEOUT
+        ? parseInt(process.env.AZURE_OPENAI_TIMEOUT, 10)
+        : 120000;
+
+      const requestStartTime = Date.now();
+      logger.debug(
+        '[ABORT-DEBUG] Creating axios streaming request',
+        correlationId,
+        {
+          messageId,
+          timeout: configuredTimeout,
+          signalAborted: signal.aborted,
+          signalReason: signal.reason,
+          requestStartTime,
+          timestamp: new Date().toISOString(),
+        }
+      );
+
+      // Check signal immediately before axios call
+      if (signal.aborted) {
+        logger.error(
+          '[ABORT-DEBUG] Signal aborted immediately before axios call',
+          correlationId,
+          {
+            messageId,
+            reason: signal.reason,
+            timestamp: new Date().toISOString(),
+          }
+        );
+        throw new Error(`Request aborted before axios call: ${signal.reason}`);
+      }
+
       const response = await axios.post(
-        `${routingResult.providerEndpoint}/openai/deployments/${routingResult.decision.backendModel}/chat/completions?api-version=2024-02-01`,
+        `${routingResult.providerEndpoint}/openai/v1/responses`,
         azureRequest,
         {
           headers: {
@@ -334,71 +665,357 @@ export class StreamingService {
           },
           responseType: 'stream',
           signal,
-          timeout: 120000,
+          timeout: configuredTimeout,
+        }
+      );
+
+      // Check signal immediately after axios call
+      if (signal.aborted) {
+        logger.warn(
+          '[ABORT-DEBUG] Signal aborted immediately after axios call',
+          correlationId,
+          {
+            messageId,
+            reason: signal.reason,
+            timestamp: new Date().toISOString(),
+          }
+        );
+      }
+
+      // Log successful response headers
+      const requestDuration = Date.now() - requestStartTime;
+      logger.info(
+        '[ABORT-DEBUG] Azure OpenAI streaming response received',
+        correlationId,
+        {
+          messageId,
+          status: response.status,
+          statusText: response.statusText,
+          contentType: response.headers['content-type'],
+          transferEncoding: response.headers['transfer-encoding'],
+          requestDuration,
+          signalAborted: signal.aborted,
+          signalReason: signal.reason,
+          timestamp: new Date().toISOString(),
         }
       );
 
       let accumulatedContent = '';
-      const inputTokens = 0;
-      const outputTokens = 0;
+      let inputTokens = 0;
+      let outputTokens = 0;
+      let chunkCount = 0;
+      const streamStartTime = Date.now();
 
-      // Process SSE stream
+      // Process SSE stream with robust parser for Responses API
       response.data.on('data', (chunk: Buffer) => {
-        const lines = chunk.toString().split('\n');
+        if (completed) {
+          return;
+        }
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6).trim();
-
-            if (data === '[DONE]') {
-              handler.onEnd(messageId, {
-                inputTokens,
-                outputTokens,
-                totalTokens: inputTokens + outputTokens,
-              });
-              return;
+        // Check signal state at start of data handler
+        if (signal.aborted) {
+          logger.warn(
+            '[ABORT-DEBUG] Signal aborted in data handler',
+            correlationId,
+            {
+              messageId,
+              chunkNumber: chunkCount + 1,
+              reason: signal.reason,
+              timestamp: new Date().toISOString(),
             }
+          );
+          return;
+        }
 
-            try {
-              const parsed = JSON.parse(data) as OpenAIStreamChunk;
+        chunkCount++;
+        const chunkSize = chunk.length;
 
-              if (parsed.choices?.[0]?.delta?.content) {
-                const content = parsed.choices[0].delta.content;
-                accumulatedContent += content;
-                handler.onChunk(content, messageId);
+        // Log chunk reception (throttled to avoid log spam)
+        if (chunkCount === 1 || chunkCount % 10 === 0) {
+          logger.debug('[ABORT-DEBUG] SSE data chunk received', correlationId, {
+            messageId,
+            chunkNumber: chunkCount,
+            chunkSize,
+            bufferSize: buffer.length,
+            signalAborted: signal.aborted,
+            signalReason: signal.reason,
+            elapsedTime: Date.now() - streamStartTime,
+            timestamp: new Date().toISOString(),
+          });
+        }
+
+        try {
+          // Append chunk to buffer
+          buffer += chunk.toString();
+
+          // Split by both LF and CRLF line endings
+          const lines = buffer.split(/\r?\n/);
+
+          // Keep the last incomplete line in the buffer
+          buffer = lines.pop() || '';
+
+          // Process complete lines
+          for (const line of lines) {
+            if (!line.trim()) {
+              continue;
+            } // Skip empty lines
+
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6).trim();
+
+              if (data === '[DONE]') {
+                completed = true;
+                const streamDuration = Date.now() - streamStartTime;
+                logger.info(
+                  'SSE stream completed with [DONE] marker',
+                  correlationId,
+                  {
+                    messageId,
+                    chunkCount,
+                    streamDuration,
+                    contentLength: accumulatedContent.length,
+                    inputTokens,
+                    outputTokens,
+                    signalAborted: signal.aborted,
+                  }
+                );
+                handler.onEnd(messageId, {
+                  inputTokens,
+                  outputTokens,
+                  totalTokens: inputTokens + outputTokens,
+                });
+                return;
               }
 
-              // Extract usage information if available (usage is not typically in stream chunks)
-              // Usage information is usually sent in the final chunk or separately
-            } catch (_parseError) {
-              // Ignore parsing errors for non-JSON lines
+              try {
+                const parsed = JSON.parse(data);
+
+                // Handle Responses API format
+                if (
+                  parsed.type === 'response.output_text.delta' &&
+                  parsed.delta
+                ) {
+                  // Text delta from Responses API
+                  const content = parsed.delta;
+                  accumulatedContent += content;
+                  outputTokens = Math.floor(accumulatedContent.length / 4); // Rough token estimate
+                  handler.onChunk(content, messageId);
+                } else if (
+                  parsed.type === 'response.completed' &&
+                  parsed.response
+                ) {
+                  // Final response with usage information
+                  completed = true;
+                  const streamDuration = Date.now() - streamStartTime;
+                  if (parsed.response.usage) {
+                    inputTokens = parsed.response.usage.input_tokens || 0;
+                    outputTokens = parsed.response.usage.output_tokens || 0;
+                  }
+                  logger.info(
+                    'SSE stream completed with response.completed',
+                    correlationId,
+                    {
+                      messageId,
+                      chunkCount,
+                      streamDuration,
+                      contentLength: accumulatedContent.length,
+                      inputTokens,
+                      outputTokens,
+                      signalAborted: signal.aborted,
+                    }
+                  );
+                  handler.onEnd(messageId, {
+                    inputTokens,
+                    outputTokens,
+                    totalTokens: inputTokens + outputTokens,
+                  });
+                  return;
+                }
+                // Ignore other event types (response.created, response.in_progress, etc.)
+              } catch (parseError) {
+                logger.warn('Failed to parse SSE data', correlationId, {
+                  messageId,
+                  data: data.substring(0, 100), // Log first 100 chars
+                  error:
+                    parseError instanceof Error
+                      ? parseError.message
+                      : String(parseError),
+                });
+                // Continue processing other lines
+              }
+            } else if (line.startsWith('event: ')) {
+              // Handle SSE event type
+              const eventType = line.slice(7).trim();
+              logger.debug('SSE event received', correlationId, {
+                messageId,
+                eventType,
+              });
+            } else if (line.startsWith('id: ')) {
+              // Handle SSE event ID
+              const eventId = line.slice(4).trim();
+              logger.debug('SSE event ID received', correlationId, {
+                messageId,
+                eventId,
+              });
             }
           }
+        } catch (error) {
+          logger.error('Error processing SSE chunk', correlationId, {
+            messageId,
+            error: error instanceof Error ? error.message : String(error),
+          });
         }
       });
 
       response.data.on('error', (error: Error) => {
-        logger.error('Azure OpenAI stream error', correlationId, {
-          messageId,
-          error: error.message,
-        });
+        if (completed) {
+          return;
+        }
+
+        const streamDuration = Date.now() - streamStartTime;
+        logger.error(
+          '[ABORT-DEBUG] Azure OpenAI stream error event',
+          correlationId,
+          {
+            messageId,
+            error: error.message,
+            errorName: error.name,
+            chunkCount,
+            streamDuration,
+            signalAborted: signal.aborted,
+            signalReason: signal.reason,
+            timestamp: new Date().toISOString(),
+          }
+        );
+        completed = true;
         handler.onError(error.message, messageId);
       });
 
       response.data.on('end', () => {
-        if (accumulatedContent) {
-          handler.onEnd(messageId, {
-            inputTokens,
-            outputTokens,
-            totalTokens: inputTokens + outputTokens,
-          });
+        if (completed) {
+          return;
         }
+
+        const streamDuration = Date.now() - streamStartTime;
+
+        // Check signal state at stream end
+        if (signal.aborted) {
+          logger.warn(
+            '[ABORT-DEBUG] Signal aborted at stream end',
+            correlationId,
+            {
+              messageId,
+              reason: signal.reason,
+              streamDuration,
+              timestamp: new Date().toISOString(),
+            }
+          );
+        }
+
+        // Mark as completed and send final message
+        completed = true;
+        handler.onEnd(messageId, {
+          inputTokens,
+          outputTokens,
+          totalTokens: inputTokens + outputTokens,
+        });
+
+        logger.info(
+          '[ABORT-DEBUG] Azure OpenAI stream end event',
+          correlationId,
+          {
+            messageId,
+            contentLength: accumulatedContent.length,
+            estimatedTokens: outputTokens,
+            chunkCount,
+            streamDuration,
+            signalAborted: signal.aborted,
+            signalReason: signal.reason,
+            timestamp: new Date().toISOString(),
+          }
+        );
       });
     } catch (error) {
-      logger.error('Azure OpenAI streaming failed', correlationId, {
-        messageId,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      if (completed) {
+        return;
+      }
+
+      // Log detailed error information with cancellation detection
+      if (axios.isAxiosError(error)) {
+        const isCanceled =
+          error.code === 'ERR_CANCELED' || error.message.includes('canceled');
+        const isTimeout =
+          error.code === 'ECONNABORTED' || error.message.includes('timeout');
+
+        logger.error(
+          '[ABORT-DEBUG] Azure OpenAI streaming failed (axios error)',
+          correlationId,
+          {
+            messageId,
+            error: error.message,
+            errorCode: error.code,
+            errorName: error.name,
+            isCanceled,
+            isTimeout,
+            status: error.response?.status,
+            statusText: error.response?.statusText,
+            responseData: error.response?.data,
+            requestUrl: error.config?.url,
+            requestMethod: error.config?.method,
+            signalAborted: signal.aborted,
+            signalReason: signal.reason,
+            timestamp: new Date().toISOString(),
+            // Additional abort debugging
+            wasSignalAbortedBeforeError: signal.aborted,
+            abortReasonAtError: signal.reason,
+            errorStack: error.stack,
+          }
+        );
+
+        // If canceled, check if it was due to our AbortController
+        if (isCanceled) {
+          logger.warn(
+            '[ABORT-DEBUG] Request was canceled - analyzing cause',
+            correlationId,
+            {
+              messageId,
+              signalAborted: signal.aborted,
+              signalReason: signal.reason,
+              errorMessage: error.message,
+              wasAbortControllerTriggered: signal.aborted,
+              timestamp: new Date().toISOString(),
+            }
+          );
+        }
+      } else if (error instanceof Error) {
+        logger.error(
+          '[ABORT-DEBUG] Azure OpenAI streaming failed (error)',
+          correlationId,
+          {
+            messageId,
+            error: error.message,
+            errorName: error.name,
+            errorStack: error.stack,
+            signalAborted: signal.aborted,
+            signalReason: signal.reason,
+            timestamp: new Date().toISOString(),
+          }
+        );
+      } else {
+        logger.error(
+          '[ABORT-DEBUG] Azure OpenAI streaming failed (unknown)',
+          correlationId,
+          {
+            messageId,
+            error: String(error),
+            signalAborted: signal.aborted,
+            signalReason: signal.reason,
+            timestamp: new Date().toISOString(),
+          }
+        );
+      }
+
+      completed = true;
 
       if (axios.isAxiosError(error)) {
         const errorMessage =
@@ -421,6 +1038,8 @@ export class StreamingService {
     signal: AbortSignal,
     correlationId: string
   ): Promise<void> {
+    let completed = false;
+
     try {
       // For now, simulate Bedrock streaming since AWS SDK integration is complex
       // In production, this would use AWS SDK for Bedrock Runtime
@@ -446,7 +1065,8 @@ export class StreamingService {
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
-      if (!signal.aborted) {
+      if (!signal.aborted && !completed) {
+        completed = true;
         handler.onEnd(messageId, {
           inputTokens: Math.floor(JSON.stringify(request).length / 4),
           outputTokens: Math.floor(simulatedResponse.length / 4),
@@ -456,68 +1076,101 @@ export class StreamingService {
         });
       }
     } catch (error) {
+      if (completed) {
+        return;
+      }
+
       logger.error('AWS Bedrock streaming failed', correlationId, {
         messageId,
         error: error instanceof Error ? error.message : String(error),
       });
+
+      completed = true;
       handler.onError('AWS Bedrock streaming failed', messageId);
+    } finally {
+      // Ensure completion is always handled
+      if (!completed && !signal.aborted) {
+        completed = true;
+        handler.onEnd(messageId, {
+          inputTokens: 0,
+          outputTokens: 0,
+          totalTokens: 0,
+        });
+      }
     }
   }
 
   /**
-   * Transforms universal request to Azure OpenAI format
+   * Transforms universal request to Azure OpenAI Responses API format
    */
   private transformToAzureOpenAIRequest(
     request: UniversalRequest,
     routingResult: any
   ): any {
+    // Responses API uses 'input' instead of 'messages'
+    // and 'max_output_tokens' instead of 'max_tokens' or 'max_completion_tokens'
+
+    let inputMessages: any[] = [];
+
     if ('messages' in request) {
-      // Claude format - transform to OpenAI
-      return {
-        messages: request.messages.map((msg) => ({
-          role: msg.role,
-          content:
-            typeof msg.content === 'string'
-              ? msg.content
-              : JSON.stringify(msg.content),
-        })),
-        max_tokens:
-          request.max_tokens ||
-          routingResult.transformationParams.maxTokens ||
-          4000,
-        temperature:
-          request.temperature ||
-          routingResult.transformationParams.temperature ||
-          0.7,
-        top_p: request.top_p || routingResult.transformationParams.topP,
-        stream: true,
-        stop: 'stop_sequences' in request ? request.stop_sequences : undefined,
-      };
+      // Claude format - transform to Responses API
+      inputMessages = request.messages.map((msg) => ({
+        role: msg.role,
+        content:
+          typeof msg.content === 'string'
+            ? msg.content
+            : JSON.stringify(msg.content),
+      }));
     }
 
-    // Already in OpenAI format
-    if ('messages' in request && 'model' in request) {
-      const openAIRequest = request as OpenAIRequest;
-      return {
-        model: openAIRequest.model,
-        messages: openAIRequest.messages,
-        max_tokens:
-          openAIRequest.max_tokens || openAIRequest.max_completion_tokens,
-        temperature: openAIRequest.temperature,
-        top_p: openAIRequest.top_p,
-        stream: true,
-        tools: openAIRequest.tools,
-        tool_choice: openAIRequest.tool_choice,
-        response_format: openAIRequest.response_format,
-      };
+    // Calculate max_output_tokens (minimum 16)
+    let maxOutputTokens = 4000;
+    if ('max_tokens' in request && request.max_tokens) {
+      maxOutputTokens = Math.max(16, request.max_tokens);
+    } else if (
+      'max_completion_tokens' in request &&
+      request.max_completion_tokens
+    ) {
+      maxOutputTokens = Math.max(16, request.max_completion_tokens);
+    } else if (routingResult.transformationParams.maxTokens) {
+      maxOutputTokens = Math.max(
+        16,
+        routingResult.transformationParams.maxTokens
+      );
     }
 
-    // Fallback for other request types
-    return {
-      model: 'gpt-4o-mini',
-      messages: [],
+    const responsesRequest: any = {
+      model: routingResult.decision.backendModel,
+      input: inputMessages,
+      max_output_tokens: maxOutputTokens,
       stream: true,
     };
+
+    // Add optional parameters only if supported by the model
+    // Note: Some models (like gpt-5) don't support temperature
+    // We'll let the API handle parameter validation
+    if ('temperature' in request && request.temperature !== undefined) {
+      responsesRequest.temperature = request.temperature;
+    } else if (routingResult.transformationParams.temperature !== undefined) {
+      responsesRequest.temperature =
+        routingResult.transformationParams.temperature;
+    }
+
+    if ('top_p' in request && request.top_p !== undefined) {
+      responsesRequest.top_p = request.top_p;
+    } else if (routingResult.transformationParams.topP !== undefined) {
+      responsesRequest.top_p = routingResult.transformationParams.topP;
+    }
+
+    // Add tools if present and supported
+    if ('tools' in request && request.tools && request.tools.length > 0) {
+      responsesRequest.tools = request.tools;
+      if ('tool_choice' in request && request.tool_choice) {
+        responsesRequest.tool_choice = request.tool_choice;
+      }
+    }
+
+    return responsesRequest;
   }
 }
 

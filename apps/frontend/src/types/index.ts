@@ -35,6 +35,12 @@ export interface ConversationState {
   isLoading: boolean;
   error?: string;
   filters: ConversationFilters;
+
+  // Search state (Requirement 8.1)
+  searchQuery: string;
+  searchResults: Conversation[];
+  isSearching: boolean;
+  searchError?: string;
 }
 
 export interface Conversation {
@@ -51,6 +57,12 @@ export interface Conversation {
   contextUsage?: ContextUsage;
   parentConversationId?: string;
   compressionHistory?: CompressionEvent[];
+
+  // Persistence tracking fields (Requirements: 1.1, 2.1)
+  lastSyncedAt?: Date;
+  syncVersion?: number;
+  isDirty?: boolean; // Has unsaved changes
+  persistenceStatus?: 'synced' | 'pending' | 'error';
 }
 
 export interface Message {
@@ -170,7 +182,7 @@ export interface SessionInfo {
 
 // Stream types
 export interface StreamChunk {
-  type: 'start' | 'chunk' | 'end' | 'error';
+  type: 'start' | 'chunk' | 'end' | 'error' | 'heartbeat';
   content?: string;
   messageId?: string;
   correlationId: string;
@@ -184,7 +196,11 @@ export interface ChatRequest {
   conversationId: string;
   files?: FileInfo[];
   correlationId: string;
-  contextMessages?: Message[];
+  // Task 10 Fix: Backend validation expects only role and content
+  contextMessages?: Array<{
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+  }>;
 }
 
 export interface ConversationRequest {

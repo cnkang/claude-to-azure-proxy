@@ -18,6 +18,7 @@ import {
   type ConversationContext,
   type ContextBuildingOptions,
 } from '../services/conversation-context-service.js';
+import { isValidConversationId } from '../utils/validation.js';
 import { type ContextMessage } from '../services/context-management-service.js';
 
 // Conversation data structures for API responses
@@ -321,7 +322,7 @@ export const createConversationHandler = [
 export const getConversationHandler = [
   // Input validation
   param('conversationId')
-    .isUUID()
+    .custom(isValidConversationId)
     .withMessage('Invalid conversation ID format'),
 
   async (req: Request, res: Response): Promise<void> => {
@@ -412,7 +413,7 @@ export const getConversationHandler = [
 export const updateConversationHandler = [
   // Input validation
   param('conversationId')
-    .isUUID()
+    .custom(isValidConversationId)
     .withMessage('Invalid conversation ID format'),
   body('title')
     .optional()
@@ -504,7 +505,7 @@ export const updateConversationHandler = [
 export const deleteConversationHandler = [
   // Input validation
   param('conversationId')
-    .isUUID()
+    .custom(isValidConversationId)
     .withMessage('Invalid conversation ID format'),
 
   async (req: Request, res: Response): Promise<void> => {
@@ -586,7 +587,7 @@ export const deleteConversationHandler = [
 export const addMessageHandler = [
   // Input validation
   param('conversationId')
-    .isUUID()
+    .custom(isValidConversationId)
     .withMessage('Invalid conversation ID format'),
   body('role')
     .isIn(['user', 'assistant', 'system'])

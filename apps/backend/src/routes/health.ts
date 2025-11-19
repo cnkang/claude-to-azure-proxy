@@ -82,16 +82,55 @@ const checkAzureOpenAI = async (
 };
 
 // Get memory usage information
-const getMemoryUsage = (): HealthCheckResult['memory'] => {
+// Task 11.4: Enhanced with detailed memory metrics and alerts
+const getMemoryUsage = (): HealthCheckResult['memory'] & {
+  heapTotal?: number;
+  external?: number;
+  arrayBuffers?: number;
+} => {
   const memUsage = process.memoryUsage();
   // Use RSS (Resident Set Size) as total memory for more accurate percentage
   const totalMemory = memUsage.rss;
   const usedMemory = memUsage.heapUsed;
+  const percentage = Math.round((usedMemory / totalMemory) * 100);
+
+  // Task 11.4: Log warning if memory usage is critical
+  if (percentage > 90) {
+    logger.warn('Critical memory usage detected', '', {
+      percentUsed: percentage,
+      usedMB: Math.round(usedMemory / 1024 / 1024),
+      totalMB: Math.round(totalMemory / 1024 / 1024),
+      heapUsedMB: Math.round(memUsage.heapUsed / 1024 / 1024),
+      heapTotalMB: Math.round(memUsage.heapTotal / 1024 / 1024),
+      externalMB: Math.round(memUsage.external / 1024 / 1024),
+    });
+
+    // Task 11.4: Trigger garbage collection if available
+    if (global.gc) {
+      logger.info(
+        'Triggering garbage collection due to high memory usage',
+        '',
+        {
+          percentUsed: percentage,
+        }
+      );
+      global.gc();
+    }
+  } else if (percentage > 80) {
+    logger.warn('High memory usage detected', '', {
+      percentUsed: percentage,
+      usedMB: Math.round(usedMemory / 1024 / 1024),
+      totalMB: Math.round(totalMemory / 1024 / 1024),
+    });
+  }
 
   return {
     used: usedMemory,
     total: totalMemory,
-    percentage: Math.round((usedMemory / totalMemory) * 100),
+    percentage,
+    heapTotal: memUsage.heapTotal,
+    external: memUsage.external,
+    arrayBuffers: memUsage.arrayBuffers,
   };
 };
 
@@ -149,6 +188,17 @@ export const healthCheckHandler = (config: Readonly<ServerConfig>) => {
         awsBedrockStatus = { status: 'disconnected' };
       }
 
+      // Get SSE health metrics (Task 7.3)
+      let sseMetrics: HealthCheckResult['sse'];
+      try {
+        const { getSSEHealthMetrics } = await import('./chat-stream.js');
+        sseMetrics = getSSEHealthMetrics();
+      } catch (error) {
+        logger.warn('Failed to get SSE health metrics', correlationId, {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+
       // Determine overall health status
       // Consider unhealthy if memory usage > 85%
       // In test environments, don't require Azure OpenAI connectivity
@@ -183,6 +233,7 @@ export const healthCheckHandler = (config: Readonly<ServerConfig>) => {
         memory,
         azureOpenAI: azureOpenAIStatus,
         awsBedrock: awsBedrockStatus,
+        sse: sseMetrics,
         resilience: {
           circuitBreakers: circuitBreakerMetrics,
           retryStrategies: retryMetrics,

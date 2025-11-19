@@ -5,6 +5,7 @@ Security configuration and best practices for the Claude-to-Azure Proxy.
 ## 🔐 Authentication & Authorization
 
 ### API Key Security
+
 ```bash
 # Generate secure proxy API key (32+ characters)
 openssl rand -base64 32
@@ -17,6 +18,7 @@ echo "API key length: ${#PROXY_API_KEY}"  # Should be 32+
 ```
 
 ### Azure OpenAI Security
+
 - Use dedicated API keys for the proxy
 - Rotate keys regularly (monthly recommended)
 - Monitor usage in Azure portal
@@ -25,6 +27,7 @@ echo "API key length: ${#PROXY_API_KEY}"  # Should be 32+
 ## 🛡️ Content Security
 
 ### Content Validation
+
 ```bash
 # Production (default) - Enable for untrusted input
 export ENABLE_CONTENT_SECURITY_VALIDATION=true
@@ -34,17 +37,20 @@ export ENABLE_CONTENT_SECURITY_VALIDATION=false
 ```
 
 **When to disable:**
+
 - Code review and analysis
 - Documentation processing
 - Template development
 - Internal development tools
 
 **When to enable:**
+
 - User-facing applications
 - Untrusted input processing
 - Production environments
 
 ### Blocked Content Types
+
 - HTML with event handlers: `<div onclick="handler()">`
 - Template syntax: `{{constructor}}`, `{{user.name}}`
 - JavaScript protocols: `javascript:alert(1)`
@@ -53,6 +59,7 @@ export ENABLE_CONTENT_SECURITY_VALIDATION=false
 ## 🌐 Network Security
 
 ### CORS Configuration
+
 ```bash
 # Production - Specific origins
 export CORS_ORIGIN="https://yourdomain.com,https://app.yourdomain.com"
@@ -62,6 +69,7 @@ export CORS_ORIGIN="*"
 ```
 
 ### Rate Limiting
+
 ```bash
 # Configure rate limits
 export RATE_LIMIT_WINDOW_MS=900000      # 15 minutes
@@ -72,6 +80,7 @@ export RATE_LIMIT_PER_IP=true
 ```
 
 ### HTTPS Configuration
+
 ```bash
 # Enable HTTPS in production
 export HTTPS_CERT_PATH=/path/to/cert.pem
@@ -82,6 +91,7 @@ export FORCE_HTTPS=true
 ## 🐳 Container Security
 
 ### Security Features
+
 - ✅ **Non-root user**: Runs as UID 1001 (appuser)
 - ✅ **Alpine Linux**: Minimal attack surface
 - ✅ **Multi-stage build**: No build tools in final image
@@ -90,6 +100,7 @@ export FORCE_HTTPS=true
 - ✅ **Health checks**: Built-in monitoring
 
 ### Security Scanning
+
 ```bash
 # Run comprehensive security scan
 make security-scan
@@ -101,6 +112,7 @@ hadolint Dockerfile                          # Dockerfile linting
 ```
 
 ### Runtime Security
+
 ```bash
 # Run with security constraints
 docker run --init --read-only --tmpfs /tmp \
@@ -112,6 +124,7 @@ docker run --init --read-only --tmpfs /tmp \
 ## 🔑 Secrets Management
 
 ### Environment Variables
+
 ```bash
 # Never commit secrets to git
 echo ".env" >> .gitignore
@@ -123,6 +136,7 @@ cp .env.example .env
 ```
 
 ### Docker Secrets
+
 ```bash
 # Create Docker secrets
 echo "your-proxy-api-key" | docker secret create proxy_api_key -
@@ -138,6 +152,7 @@ services:
 ```
 
 ### Kubernetes Secrets
+
 ```bash
 # Create from command line
 kubectl create secret generic claude-proxy-secrets \
@@ -151,6 +166,7 @@ kubectl create secret generic claude-proxy-secrets \
 ```
 
 ### AWS Secrets Manager
+
 ```bash
 # Store secrets in AWS
 aws secretsmanager create-secret \
@@ -169,6 +185,7 @@ aws secretsmanager get-secret-value \
 ## 🔍 Security Monitoring
 
 ### Audit Logging
+
 ```bash
 # Enable structured logging
 export LOG_FORMAT=json
@@ -179,6 +196,7 @@ export LOG_SECURITY_EVENTS=true
 ```
 
 ### Key Security Metrics
+
 - Authentication failures
 - Rate limit violations
 - Content security violations
@@ -186,6 +204,7 @@ export LOG_SECURITY_EVENTS=true
 - Error rates and types
 
 ### Log Analysis
+
 ```bash
 # Monitor authentication failures
 grep "authentication.*failed" logs/app.log | jq -r '.ip' | sort | uniq -c
@@ -200,6 +219,7 @@ grep "content.*security" logs/app.log | jq -r '.violation_type' | sort | uniq -c
 ## 🚨 Incident Response
 
 ### Security Incident Checklist
+
 1. **Immediate Response**
    - [ ] Identify affected systems
    - [ ] Isolate compromised components
@@ -226,6 +246,7 @@ grep "content.*security" logs/app.log | jq -r '.violation_type' | sort | uniq -c
    - [ ] Implement additional controls
 
 ### Emergency Procedures
+
 ```bash
 # Emergency key rotation
 export OLD_PROXY_API_KEY=$PROXY_API_KEY
@@ -242,6 +263,7 @@ docker compose restart
 ## 🔒 Security Hardening
 
 ### Production Security Checklist
+
 - [ ] **Strong API keys** (32+ characters, rotated regularly)
 - [ ] **HTTPS enabled** with valid certificates
 - [ ] **Content security validation** enabled for untrusted input
@@ -254,6 +276,7 @@ docker compose restart
 - [ ] **Incident response** procedures documented
 
 ### Security Updates
+
 ```bash
 # Regular security updates
 docker pull alpine:latest  # Update base image
@@ -272,25 +295,30 @@ pnpm audit fix             # Fix vulnerabilities
 ### Resolved Vulnerabilities
 
 #### CVE-2025-56200: validator.js URL Validation Bypass
+
 **Status**: ✅ RESOLVED - Migrated to Joi validation  
 **Severity**: Moderate (CVSS 6.1)  
 **Resolution**: Complete migration from express-validator to Joi
 
-**Impact**: The project was not directly affected as it didn't use the vulnerable `isURL()` function, but we proactively migrated to Joi validation for better security and maintainability.
+**Impact**: The project was not directly affected as it didn't use the vulnerable `isURL()`
+function, but we proactively migrated to Joi validation for better security and maintainability.
 
 **Actions Taken**:
+
 - ✅ Removed express-validator dependency entirely
-- ✅ Migrated all validation to secure Joi schemas  
+- ✅ Migrated all validation to secure Joi schemas
 - ✅ Eliminated validator.js transitive dependency
 - ✅ Verified no vulnerabilities remain: `pnpm audit`
 
 ### Security Review Process
+
 1. **Weekly Audits**: `pnpm audit` for new vulnerabilities
 2. **Dependency Updates**: Security review before updates
 3. **Code Review**: Prevent vulnerable patterns
 4. **CI/CD Integration**: Automated security scanning
 
 ### Compliance Considerations
+
 - **Data Privacy**: No conversation data stored permanently
 - **Encryption**: All data encrypted in transit (HTTPS/TLS)
 - **Access Control**: API key-based authentication
@@ -300,6 +328,7 @@ pnpm audit fix             # Fix vulnerabilities
 ## 📋 Security Assessment
 
 ### Self-Assessment Questions
+
 1. Are all API keys strong and regularly rotated?
 2. Is HTTPS enabled in production?
 3. Are secrets properly managed (not in code/images)?
@@ -312,6 +341,7 @@ pnpm audit fix             # Fix vulnerabilities
 10. Is incident response procedure documented and tested?
 
 ### Security Testing
+
 ```bash
 # Test authentication
 curl -H "Authorization: Bearer invalid-key" http://localhost:8080/v1/models
@@ -329,6 +359,7 @@ curl -X POST http://localhost:8080/v1/messages \
 ```
 
 For implementation details, see:
+
 - [Configuration Guide](./CONFIGURATION.md) - Security configuration options
 - [Deployment Guide](./DEPLOYMENT.md) - Production security setup
 - [Troubleshooting Guide](./TROUBLESHOOTING.md) - Security issue resolution

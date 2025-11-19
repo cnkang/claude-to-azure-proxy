@@ -113,23 +113,9 @@ export function AppRouter(): React.JSX.Element {
             {/* Default route - redirect to chat */}
             <Route path="/" element={<Navigate to="/chat" replace />} />
 
-            {/* Chat interface with preloading */}
+            {/* Chat interface with preloading - use wildcard to prevent remounting */}
             <Route
-              path="/chat"
-              element={
-                <RouteGuard>
-                  <RoutePreloader
-                    onLoad={() => routePreloadStrategy.onChatPageLoad()}
-                  >
-                    <LazyChatPage />
-                  </RoutePreloader>
-                </RouteGuard>
-              }
-            />
-
-            {/* Conversation-specific route */}
-            <Route
-              path="/chat/:conversationId"
+              path="/chat/*"
               element={
                 <RouteGuard>
                   <RoutePreloader
@@ -168,48 +154,13 @@ export function AppRouter(): React.JSX.Element {
 
 /**
  * Hook for programmatic navigation
+ * Moved to ../hooks/useAppNavigation.ts to avoid Fast Refresh issues
+ * Import from there instead: import { useAppNavigation } from '../hooks/useAppNavigation'
  */
-export interface AppNavigation {
-  readonly navigate: (path: string) => void;
-  readonly navigateToChat: (conversationId?: string) => void;
-  readonly navigateToSettings: () => void;
-  readonly goBack: () => void;
-  readonly goForward: () => void;
-}
-
-export function useAppNavigation(): AppNavigation {
-  const navigate = (path: string): void => {
-    window.location.href = path;
-  };
-
-  const navigateToChat = (conversationId?: string): void => {
-    if (typeof conversationId === 'string' && conversationId.length > 0) {
-      navigate(`/chat/${conversationId}`);
-    } else {
-      navigate('/chat');
-    }
-  };
-
-  const navigateToSettings = (): void => {
-    navigate('/settings');
-  };
-
-  const goBack = (): void => {
-    window.history.back();
-  };
-
-  const goForward = (): void => {
-    window.history.forward();
-  };
-
-  return {
-    navigate,
-    navigateToChat,
-    navigateToSettings,
-    goBack,
-    goForward,
-  };
-}
+export {
+  useAppNavigation,
+  type AppNavigation,
+} from '../hooks/useAppNavigation';
 
 /**
  * Hook for current route information

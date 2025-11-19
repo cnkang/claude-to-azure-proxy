@@ -134,9 +134,11 @@ describe('Retry Strategy', () => {
     it('should handle aborted signal during operation execution', async () => {
       const controller = new AbortController();
       controller.abort();
-      
+
       // Operation should still be called but can check signal internally
-      const operation = vi.fn().mockRejectedValue(new Error('Operation aborted'));
+      const operation = vi
+        .fn()
+        .mockRejectedValue(new Error('Operation aborted'));
 
       const result = await retryStrategy.execute(
         operation,

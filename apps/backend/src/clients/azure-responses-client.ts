@@ -216,8 +216,10 @@ export class AzureResponsesClient implements AsyncDisposable {
 
       // Make the API call using the OpenAI client with enhanced monitoring
       const startTime = performance.now();
-      const response: OpenAIResponse =
-        await this.client.responses.create(requestParams, { signal });
+      const response: OpenAIResponse = await this.client.responses.create(
+        requestParams,
+        { signal }
+      );
       const duration = performance.now() - startTime;
 
       // Log performance metrics
