@@ -42,8 +42,25 @@ jobs:
       - name: Build shared packages
         run: pnpm build:shared
 
+      - name: Build backend
+        run: pnpm build:backend
+
       - name: Build frontend
         run: pnpm build:frontend
+
+      - name: Start backend API server
+        run: |
+          PROXY_API_KEY="e2e-proxy-key-123456789012345678901234567890" \
+          AZURE_OPENAI_ENDPOINT="https://example.openai.azure.com" \
+          AZURE_OPENAI_API_KEY="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" \
+          AZURE_OPENAI_MODEL="gpt-4o" \
+          PORT=8080 \
+          NODE_ENV=development \
+          pnpm --filter @repo/backend start:prod > backend.log 2>&1 &
+          echo $! > backend.pid
+
+      - name: Wait for backend health
+        run: pnpm dlx wait-on http://127.0.0.1:8080/health
 
       - name: Install Playwright browsers
         run: pnpm playwright:install
@@ -62,6 +79,13 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 7
+
+      - name: Stop backend server
+        if: always()
+        run: |
+          if [ -f backend.pid ]; then
+            kill "$(cat backend.pid)" || true
+          fi
 
       - name: Upload test videos
         if: failure()
