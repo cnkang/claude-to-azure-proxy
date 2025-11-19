@@ -469,10 +469,10 @@ curl http://localhost:8080/health
 
 ```bash
 # Node.js 24 optimized memory settings
-export NODE_OPTIONS="--max-old-space-size=1024 --max-new-space-size=128 --optimize-for-size --gc-interval=100 --incremental-marking --concurrent-marking --parallel-scavenge"
+export NODE_OPTIONS="--max-old-space-size=1024 --max-semi-space-size=128 --optimize-for-size --gc-interval=100 --incremental-marking --concurrent-marking --parallel-scavenge"
 
 # High-performance settings for heavy loads
-export NODE_OPTIONS="--max-old-space-size=2048 --max-new-space-size=256 --optimize-for-size --gc-interval=50 --incremental-marking --concurrent-marking --parallel-scavenge --expose-gc"
+export NODE_OPTIONS="--max-old-space-size=2048 --max-semi-space-size=256 --optimize-for-size --gc-interval=50 --incremental-marking --concurrent-marking --parallel-scavenge --expose-gc"
 
 # Performance profiling with Node.js 24 features
 export NODE_OPTIONS="--prof --prof-process --heap-prof --cpu-prof"
@@ -489,7 +489,7 @@ export NODE_OPTIONS="--expose-gc --heap-prof --heap-prof-interval=10000"
 | Setting                 | Description                           | Recommended Value                         |
 | ----------------------- | ------------------------------------- | ----------------------------------------- |
 | `--max-old-space-size`  | Maximum old generation heap size (MB) | `1024` (standard), `2048` (high-load)     |
-| `--max-new-space-size`  | Maximum new generation heap size (MB) | `128` (standard), `256` (high-load)       |
+| `--max-semi-space-size` | Maximum new generation heap size (MB) | `128` (standard), `256` (high-load)       |
 | `--optimize-for-size`   | Optimize for memory usage over speed  | Always enabled                            |
 | `--gc-interval`         | Garbage collection interval           | `100` (standard), `50` (high-performance) |
 | `--incremental-marking` | Enable incremental GC marking         | Always enabled                            |

@@ -23,7 +23,7 @@ The application includes optimized Node.js 24 startup parameters:
 # Production optimized startup
 node --enable-source-maps \
      --max-old-space-size=1024 \
-     --max-new-space-size=128 \
+     --max-semi-space-size=128 \
      --optimize-for-size \
      --gc-interval=100 \
      --incremental-marking \
@@ -88,7 +88,7 @@ services:
   claude-proxy:
     environment:
       # Node.js 24 optimized settings
-      - NODE_OPTIONS=--max-old-space-size=1024 --max-new-space-size=128 --optimize-for-size
+      - NODE_OPTIONS=--max-old-space-size=1024 --max-semi-space-size=128 --optimize-for-size
         --gc-interval=100 --incremental-marking --concurrent-marking --parallel-scavenge
       - NODE_ENV=production
     deploy:
@@ -110,7 +110,7 @@ services:
   claude-proxy:
     environment:
       # High-performance Node.js 24 settings
-      - NODE_OPTIONS=--max-old-space-size=2048 --max-new-space-size=256 --optimize-for-size
+      - NODE_OPTIONS=--max-old-space-size=2048 --max-semi-space-size=256 --optimize-for-size
         --gc-interval=50 --incremental-marking --concurrent-marking --parallel-scavenge --expose-gc
       - NODE_ENV=production
       - ENABLE_MEMORY_MONITORING=true

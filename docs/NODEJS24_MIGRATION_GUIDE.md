@@ -156,9 +156,9 @@ pnpm add -D tsx@^4.20.6
 ```json
 {
   "scripts": {
-    "start": "node --enable-source-maps --max-old-space-size=1024 --max-new-space-size=128 --optimize-for-size --gc-interval=100 --incremental-marking --concurrent-marking --parallel-scavenge dist/index.js",
-    "start:prod": "node --enable-source-maps --max-old-space-size=2048 --max-new-space-size=256 --optimize-for-size --gc-interval=50 --incremental-marking --concurrent-marking --parallel-scavenge dist/index.js",
-    "start:optimized": "node --enable-source-maps --max-old-space-size=2048 --max-new-space-size=256 --optimize-for-size --gc-interval=50 --incremental-marking --concurrent-marking --parallel-scavenge --expose-gc dist/index.js"
+    "start": "node --enable-source-maps --max-old-space-size=1024 --max-semi-space-size=128 --optimize-for-size --gc-interval=100 --incremental-marking --concurrent-marking --parallel-scavenge dist/index.js",
+    "start:prod": "node --enable-source-maps --max-old-space-size=2048 --max-semi-space-size=256 --optimize-for-size --gc-interval=50 --incremental-marking --concurrent-marking --parallel-scavenge dist/index.js",
+    "start:optimized": "node --enable-source-maps --max-old-space-size=2048 --max-semi-space-size=256 --optimize-for-size --gc-interval=50 --incremental-marking --concurrent-marking --parallel-scavenge --expose-gc dist/index.js"
   },
   "engines": {
     "node": ">=24.0.0"
@@ -176,7 +176,7 @@ FROM node:24-alpine AS base
 RUN corepack enable && corepack prepare pnpm@10.19.0 --activate
 
 # Set Node.js 24 optimized environment variables
-ENV NODE_OPTIONS="--max-old-space-size=1024 --max-new-space-size=128 --optimize-for-size --gc-interval=100 --incremental-marking --concurrent-marking --parallel-scavenge"
+ENV NODE_OPTIONS="--max-old-space-size=1024 --max-semi-space-size=128 --optimize-for-size --gc-interval=100 --incremental-marking --concurrent-marking --parallel-scavenge"
 
 # Rest of Dockerfile remains the same...
 ```
@@ -188,7 +188,7 @@ ENV NODE_OPTIONS="--max-old-space-size=1024 --max-new-space-size=128 --optimize-
 NODE_ENV=production
 
 # Node.js 24 memory optimization
-NODE_OPTIONS="--max-old-space-size=1024 --max-new-space-size=128 --optimize-for-size --gc-interval=100 --incremental-marking --concurrent-marking --parallel-scavenge"
+NODE_OPTIONS="--max-old-space-size=1024 --max-semi-space-size=128 --optimize-for-size --gc-interval=100 --incremental-marking --concurrent-marking --parallel-scavenge"
 
 # Enable Node.js 24 performance monitoring
 ENABLE_MEMORY_MONITORING=true
@@ -278,7 +278,7 @@ services:
   claude-proxy:
     build: .
     environment:
-      - NODE_OPTIONS=--max-old-space-size=1024 --max-new-space-size=128 --optimize-for-size
+      - NODE_OPTIONS=--max-old-space-size=1024 --max-semi-space-size=128 --optimize-for-size
         --gc-interval=100 --incremental-marking --concurrent-marking --parallel-scavenge
       - NODE_ENV=production
     deploy:
@@ -308,7 +308,7 @@ spec:
           env:
             - name: NODE_OPTIONS
               value:
-                '--max-old-space-size=1024 --max-new-space-size=128 --optimize-for-size
+                '--max-old-space-size=1024 --max-semi-space-size=128 --optimize-for-size
                 --gc-interval=100 --incremental-marking --concurrent-marking --parallel-scavenge'
           resources:
             requests:
@@ -402,7 +402,7 @@ const module = await import('node:fs/promises');
 
 ```bash
 # Increase heap size
-export NODE_OPTIONS="--max-old-space-size=2048 --max-new-space-size=256"
+export NODE_OPTIONS="--max-old-space-size=2048 --max-semi-space-size=256"
 
 # Enable garbage collection monitoring
 export NODE_OPTIONS="--expose-gc --gc-interval=50"

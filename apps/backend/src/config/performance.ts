@@ -91,7 +91,7 @@ export function configureGarbageCollection(
   // Set V8 flags for optimal garbage collection
   const v8Flags = [
     `--max-old-space-size=${config.maxOldSpaceSize}`,
-    `--max-new-space-size=${config.maxNewSpaceSize}`,
+    `--max-semi-space-size=${config.maxNewSpaceSize}`,
   ];
 
   if (config.enableOptimizations) {
