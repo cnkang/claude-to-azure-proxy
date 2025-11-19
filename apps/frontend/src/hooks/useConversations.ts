@@ -23,7 +23,6 @@ import type {
   ContextUsage,
   Message,
 } from '../types/index.js';
-import type { SyncEvent } from '../services/cross-tab-sync.js';
 
 /**
  * Hook state returned alongside conversation data.
@@ -63,6 +62,7 @@ export interface UseConversationsReturn {
     conversationIds: string[]
   ) => Promise<void>;
   readonly exportConversations: (conversationIds?: string[]) => Promise<string>;
+  readonly activeConversationId: string | null;
 }
 
 interface ConversationSearchControls {
@@ -135,17 +135,6 @@ const normalizeConversation = (conversation: Conversation): Conversation => ({
   contextUsage: conversation.contextUsage ?? createDefaultContextUsage(),
 });
 
-const buildConversationMap = (
-  conversations: Conversation[]
-): Map<string, Conversation> => {
-  const map = new Map<string, Conversation>();
-  conversations.forEach((conversation) => {
-    const normalized = normalizeConversation(conversation);
-    map.set(normalized.id, normalized);
-  });
-  return map;
-};
-
 const serializeConversationForExport = (
   conversation: Conversation
 ): Record<string, unknown> => ({
@@ -164,9 +153,6 @@ const serializeConversationForExport = (
     timestamp: message.timestamp.toISOString(),
   })),
 });
-
-let hasHydratedConversations = false;
-let lastHydrationError: string | null = null;
 
 /**
  * Main conversation management hook implementation.
@@ -235,70 +221,10 @@ export function useConversations(): UseConversationsReturn {
   /**
    * Hydrate conversations from the storage service on first use.
    */
+  // Hydration is handled by AppContext
   useEffect(() => {
-    if (hasHydratedConversations) {
-      if (lastHydrationError !== null) {
-        dispatch({
-          type: 'SET_CONVERSATIONS_ERROR',
-          payload: lastHydrationError,
-        });
-      }
-      return;
-    }
-
-    let cancelled = false;
-
-    const hydrate = async (): Promise<void> => {
-      dispatch({ type: 'SET_CONVERSATIONS_LOADING', payload: true });
-
-      try {
-        await ensureStorageReady();
-
-        const stored = await storageRef.current.getAllConversations();
-        if (cancelled) {
-          return;
-        }
-
-        if (stored.length > 0) {
-          const map = buildConversationMap(stored);
-          dispatch({ type: 'SET_CONVERSATIONS', payload: map });
-        }
-
-        dispatch({ type: 'SET_CONVERSATIONS_ERROR', payload: null });
-        lastHydrationError = null;
-      } catch (error) {
-        const normalizedError =
-          error instanceof Error
-            ? error
-            : new Error('Failed to load conversations');
-
-        frontendLogger.error('Conversation hydration failed', {
-          metadata: { operation: 'hydrateConversations' },
-          error: normalizedError,
-        });
-
-        lastHydrationError = normalizedError.message;
-
-        if (!cancelled) {
-          dispatch({
-            type: 'SET_CONVERSATIONS_ERROR',
-            payload: normalizedError.message,
-          });
-        }
-      } finally {
-        if (!cancelled) {
-          dispatch({ type: 'SET_CONVERSATIONS_LOADING', payload: false });
-        }
-        hasHydratedConversations = true;
-      }
-    };
-
-    void hydrate();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [dispatch, ensureStorageReady]);
+    // No-op, keeping for now if we need to add side effects later
+  }, []);
 
   /**
    * Initialize cross-tab synchronization and subscribe to sync events
@@ -306,10 +232,11 @@ export function useConversations(): UseConversationsReturn {
    * Requirement 4.2: Broadcast local changes to other tabs
    * Requirement 4.3: Handle race conditions
    */
+  // Cross-tab sync subscription is now handled in AppContext to avoid
+  // duplicate listeners and re-subscription loops.
+  // We only initialize the service here if needed for broadcasting.
   useEffect(() => {
     const syncService = syncServiceRef.current;
-
-    // Initialize sync service
     if (!syncService.isReady()) {
       try {
         syncService.initialize();
@@ -317,135 +244,9 @@ export function useConversations(): UseConversationsReturn {
         frontendLogger.error('Failed to initialize cross-tab sync', {
           error: error instanceof Error ? error : new Error(String(error)),
         });
-        return;
       }
     }
-
-    // Handle update events from other tabs
-    const handleUpdate = async (event: SyncEvent): Promise<void> => {
-      try {
-        const existing = state.conversations.conversations.get(
-          event.conversationId
-        );
-
-        if (!existing) {
-          // Conversation doesn't exist locally, ignore
-          return;
-        }
-
-        // Resolve conflicts using timestamp-based resolution
-        const resolution = syncService.resolveConflict(existing, event.data ?? {});
-
-        if (resolution.hadConflict) {
-          frontendLogger.info('Resolved cross-tab update conflict', {
-            metadata: {
-              conversationId: event.conversationId,
-              strategy: resolution.strategy,
-            },
-          });
-        }
-
-        // Update local state with resolved data
-        if (resolution.strategy === 'remote') {
-          updateConversationInContext(event.conversationId, resolution.resolved);
-        }
-      } catch (error) {
-        frontendLogger.error('Failed to handle cross-tab update', {
-          error: error instanceof Error ? error : new Error(String(error)),
-          metadata: {
-            conversationId: event.conversationId,
-          },
-        });
-      }
-    };
-
-    // Handle delete events from other tabs
-    const handleDelete = async (event: SyncEvent): Promise<void> => {
-      try {
-        const existing = state.conversations.conversations.get(
-          event.conversationId
-        );
-
-        if (!existing) {
-          // Already deleted locally, ignore
-          return;
-        }
-
-        // Remove from local state
-        deleteConversationInContext(event.conversationId);
-
-        frontendLogger.info('Conversation deleted in another tab', {
-          metadata: {
-            conversationId: event.conversationId,
-          },
-        });
-      } catch (error) {
-        frontendLogger.error('Failed to handle cross-tab deletion', {
-          error: error instanceof Error ? error : new Error(String(error)),
-          metadata: {
-            conversationId: event.conversationId,
-          },
-        });
-      }
-    };
-
-    // Handle create events from other tabs
-    const handleCreate = async (event: SyncEvent): Promise<void> => {
-      try {
-        const existing = state.conversations.conversations.get(
-          event.conversationId
-        );
-
-        if (existing) {
-          // Already exists locally, ignore
-          return;
-        }
-
-        if (!event.data) {
-          frontendLogger.warn('Create event missing conversation data', {
-            metadata: {
-              conversationId: event.conversationId,
-            },
-          });
-          return;
-        }
-
-        // Add to local state
-        const conversation = normalizeConversation(event.data as Conversation);
-        addConversation(conversation);
-
-        frontendLogger.info('Conversation created in another tab', {
-          metadata: {
-            conversationId: event.conversationId,
-          },
-        });
-      } catch (error) {
-        frontendLogger.error('Failed to handle cross-tab creation', {
-          error: error instanceof Error ? error : new Error(String(error)),
-          metadata: {
-            conversationId: event.conversationId,
-          },
-        });
-      }
-    };
-
-    // Subscribe to sync events
-    const unsubscribeUpdate = syncService.subscribe('update', handleUpdate);
-    const unsubscribeDelete = syncService.subscribe('delete', handleDelete);
-    const unsubscribeCreate = syncService.subscribe('create', handleCreate);
-
-    // Cleanup on unmount
-    return () => {
-      unsubscribeUpdate();
-      unsubscribeDelete();
-      unsubscribeCreate();
-    };
-  }, [
-    state.conversations.conversations,
-    updateConversationInContext,
-    deleteConversationInContext,
-    addConversation,
-  ]);
+  }, []);
 
   const updateFilters = useCallback(
     (updater: (current: ConversationFilters) => ConversationFilters): void => {
@@ -600,7 +401,7 @@ export function useConversations(): UseConversationsReturn {
 
   /**
    * Rename conversation with optimistic update and rollback
-   * 
+   *
    * Requirements: 1.1, 1.3, 3.1, 3.4
    * - Apply optimistic UI update immediately via AppContext
    * - Persist to storage asynchronously using atomic method
@@ -611,7 +412,7 @@ export function useConversations(): UseConversationsReturn {
   const renameConversationHandler = useCallback(
     async (conversationId: string, newTitle: string): Promise<void> => {
       const trimmed = newTitle.trim();
-      
+
       // Validate title
       if (trimmed.length === 0) {
         const error = createPersistenceError(
@@ -664,12 +465,13 @@ export function useConversations(): UseConversationsReturn {
 
       try {
         // Persist to storage asynchronously with retry (Requirement 1.3)
-        await retryManagerRef.current.execute(
-          async () => {
-            await ensureStorageReady();
-            await storageRef.current.updateConversationTitle(conversationId, trimmed);
-          }
-        );
+        await retryManagerRef.current.execute(async () => {
+          await ensureStorageReady();
+          await storageRef.current.updateConversationTitle(
+            conversationId,
+            trimmed
+          );
+        });
 
         // Update persistence status to synced
         updateConversationInContext(conversationId, {
@@ -735,7 +537,7 @@ export function useConversations(): UseConversationsReturn {
 
   /**
    * Delete conversation with optimistic update and rollback
-   * 
+   *
    * Requirements: 2.1, 2.2, 2.3, 3.1, 3.4
    * - Remove from UI immediately via AppContext
    * - Delete from storage asynchronously
@@ -764,12 +566,10 @@ export function useConversations(): UseConversationsReturn {
 
       try {
         // Delete from storage asynchronously with retry (Requirement 2.1, 2.2, 2.3)
-        const deleteResult = await retryManagerRef.current.execute(
-          async () => {
-            await ensureStorageReady();
-            return await storageRef.current.deleteConversation(conversationId);
-          }
-        );
+        const deleteResult = await retryManagerRef.current.execute(async () => {
+          await ensureStorageReady();
+          return await storageRef.current.deleteConversation(conversationId);
+        });
 
         if (!deleteResult.success) {
           throw createPersistenceError(
@@ -859,7 +659,7 @@ export function useConversations(): UseConversationsReturn {
   const hookState = useMemo<ConversationManagementState>(
     () => ({
       isLoading: conversationState.isLoading,
-      error: conversationState.error ?? lastHydrationError,
+      error: conversationState.error ?? null,
       filters,
       searchResults: filteredConversations,
       isSearching: filters.searchQuery.trim().length > 0,
@@ -888,6 +688,7 @@ export function useConversations(): UseConversationsReturn {
     clearSearch,
     deleteMultipleConversations,
     exportConversations,
+    activeConversationId: state.conversations.activeConversationId,
   };
 }
 
