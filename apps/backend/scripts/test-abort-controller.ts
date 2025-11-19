@@ -1,12 +1,12 @@
 /**
  * Test script for debugging AbortController signal behavior
- * 
+ *
  * This script tests streaming with and without AbortController to isolate
  * whether the AbortController is causing premature cancellation.
- * 
+ *
  * Usage:
  *   pnpm tsx apps/backend/scripts/test-abort-controller.ts [mode]
- * 
+ *
  * Modes:
  *   with-abort    - Test with AbortController (default)
  *   without-abort - Test without AbortController
@@ -30,7 +30,7 @@ function getTestConfig(): TestConfig {
   const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
   const apiKey = process.env.AZURE_OPENAI_API_KEY;
   const model = process.env.AZURE_OPENAI_MODEL;
-  
+
   if (!endpoint || !apiKey || !model) {
     console.error('Missing required environment variables');
     process.exit(1);
@@ -42,7 +42,9 @@ function getTestConfig(): TestConfig {
   return { endpoint, apiKey, model, useAbortController };
 }
 
-async function testStreamingWithAbortController(config: TestConfig): Promise<void> {
+async function testStreamingWithAbortController(
+  config: TestConfig
+): Promise<void> {
   console.log('\n=== Testing WITH AbortController ===\n');
 
   const abortController = new AbortController();
@@ -79,7 +81,7 @@ async function testStreamingWithAbortController(config: TestConfig): Promise<voi
         headers: {
           'api-key': config.apiKey,
           'Content-Type': 'application/json',
-          'Accept': 'text/event-stream',
+          Accept: 'text/event-stream',
         },
         responseType: 'stream',
         signal: abortController.signal,
@@ -94,7 +96,7 @@ async function testStreamingWithAbortController(config: TestConfig): Promise<voi
 
     response.data.on('data', (chunk: Buffer) => {
       chunkCount++;
-      
+
       if (chunkCount === 1) {
         logSignalState('FIRST CHUNK');
       }
@@ -142,7 +144,6 @@ async function testStreamingWithAbortController(config: TestConfig): Promise<voi
       response.data.on('end', resolve);
       response.data.on('error', reject);
     });
-
   } catch (error) {
     console.error(`\n❌ Request failed:`);
     if (axios.isAxiosError(error)) {
@@ -155,7 +156,9 @@ async function testStreamingWithAbortController(config: TestConfig): Promise<voi
   }
 }
 
-async function testStreamingWithoutAbortController(config: TestConfig): Promise<void> {
+async function testStreamingWithoutAbortController(
+  config: TestConfig
+): Promise<void> {
   console.log('\n=== Testing WITHOUT AbortController ===\n');
 
   const startTime = Date.now();
@@ -183,7 +186,7 @@ async function testStreamingWithoutAbortController(config: TestConfig): Promise<
         headers: {
           'api-key': config.apiKey,
           'Content-Type': 'application/json',
-          'Accept': 'text/event-stream',
+          Accept: 'text/event-stream',
         },
         responseType: 'stream',
         // NO signal property
@@ -198,7 +201,7 @@ async function testStreamingWithoutAbortController(config: TestConfig): Promise<
 
     response.data.on('data', (chunk: Buffer) => {
       chunkCount++;
-      
+
       if (chunkCount === 1) {
         console.log('[FIRST CHUNK] Received\n');
       }
@@ -246,7 +249,6 @@ async function testStreamingWithoutAbortController(config: TestConfig): Promise<
       response.data.on('end', resolve);
       response.data.on('error', reject);
     });
-
   } catch (error) {
     console.error(`\n❌ Request failed:`);
     if (axios.isAxiosError(error)) {
@@ -264,7 +266,7 @@ const mode = process.argv[2] || 'with-abort';
 async function runTests() {
   if (mode === 'both') {
     console.log('Running both tests...\n');
-    
+
     try {
       await testStreamingWithAbortController(config);
       console.log('\n✅ Test WITH AbortController passed\n');
@@ -272,7 +274,7 @@ async function runTests() {
       console.error('\n❌ Test WITH AbortController failed\n');
     }
 
-    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s between tests
+    await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait 2s between tests
 
     try {
       await testStreamingWithoutAbortController(config);
@@ -280,4 +282,18 @@ async function runTests() {
     } catch (error) {
       console.error('\n❌ Test WITHOUT AbortController failed\n');
     }
-  } else if (mod
+  } else if (mode === 'with-abort') {
+    await testStreamingWithAbortController(config);
+  } else if (mode === 'without-abort') {
+    await testStreamingWithoutAbortController(config);
+  } else {
+    console.error(`Unknown mode: ${mode}`);
+    console.error('Valid modes: with-abort | without-abort | both');
+    process.exit(1);
+  }
+}
+
+runTests().catch((error) => {
+  console.error('Test run failed:', error);
+  process.exit(1);
+});
