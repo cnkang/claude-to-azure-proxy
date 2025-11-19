@@ -2,7 +2,8 @@
 
 ## Overview
 
-This document provides comprehensive documentation for all public APIs related to conversation persistence, search, cross-tab synchronization, and data integrity.
+This document provides comprehensive documentation for all public APIs related to conversation
+persistence, search, cross-tab synchronization, and data integrity.
 
 ## Table of Contents
 
@@ -18,7 +19,8 @@ This document provides comprehensive documentation for all public APIs related t
 
 ### Overview
 
-Provides secure local storage for conversation data using IndexedDB with Web Crypto API encryption, data compression, and fallback to localStorage when IndexedDB is unavailable.
+Provides secure local storage for conversation data using IndexedDB with Web Crypto API encryption,
+data compression, and fallback to localStorage when IndexedDB is unavailable.
 
 **Location**: `apps/frontend/src/services/storage.ts`
 
@@ -31,6 +33,7 @@ Get singleton instance of ConversationStorage.
 **Returns**: `ConversationStorage` - The singleton instance
 
 **Example**:
+
 ```typescript
 const storage = ConversationStorage.getInstance();
 ```
@@ -44,6 +47,7 @@ Initialize the storage system. Must be called before using any other methods.
 **Throws**: `Error` - If initialization fails
 
 **Example**:
+
 ```typescript
 await storage.initialize();
 ```
@@ -55,11 +59,13 @@ await storage.initialize();
 Store conversation in IndexedDB or localStorage fallback.
 
 **Parameters**:
+
 - `conversation: Conversation` - The conversation to store
 
 **Throws**: `Error` - If storage operation fails
 
 **Example**:
+
 ```typescript
 await storage.storeConversation(conversation);
 ```
@@ -71,11 +77,13 @@ await storage.storeConversation(conversation);
 Retrieve conversation from storage.
 
 **Parameters**:
+
 - `conversationId: string` - ID of the conversation to retrieve
 
 **Returns**: `Promise<Conversation | null>` - The conversation or null if not found
 
 **Example**:
+
 ```typescript
 const conversation = await storage.getConversation('conv-123');
 ```
@@ -89,6 +97,7 @@ Get all conversations for current session.
 **Returns**: `Promise<Conversation[]>` - Array of all conversations
 
 **Example**:
+
 ```typescript
 const conversations = await storage.getAllConversations();
 ```
@@ -102,6 +111,7 @@ Update conversation title with atomic operation and validation.
 **Requirements**: 1.1, 1.2, 1.3, 1.5
 
 **Features**:
+
 - Atomic transaction using IndexedDB
 - Input validation (1-200 characters)
 - XSS prevention through sanitization
@@ -109,15 +119,18 @@ Update conversation title with atomic operation and validation.
 - Performance tracking (<500ms target)
 
 **Parameters**:
+
 - `conversationId: string` - ID of the conversation to update
 - `newTitle: string` - New title for the conversation (1-200 characters)
 
-**Throws**: 
+**Throws**:
+
 - `Error` - If validation fails (title length invalid)
 - `Error` - If conversation not found
 - `Error` - If storage operation fails
 
 **Example**:
+
 ```typescript
 await storage.updateConversationTitle('conv-123', 'New Title');
 ```
@@ -131,6 +144,7 @@ Delete conversation with complete cleanup of all associated data.
 **Requirements**: 2.1, 2.2, 2.3, 2.4, 2.5
 
 **Features**:
+
 - Removes conversation record
 - Removes all associated messages
 - Removes all metadata
@@ -139,11 +153,13 @@ Delete conversation with complete cleanup of all associated data.
 - Performance tracking (<500ms target)
 
 **Parameters**:
+
 - `conversationId: string` - ID of the conversation to delete
 
 **Returns**: `Promise<DeleteResult>` - Detailed deletion statistics
 
 **DeleteResult Interface**:
+
 ```typescript
 interface DeleteResult {
   success: boolean;
@@ -156,6 +172,7 @@ interface DeleteResult {
 ```
 
 **Example**:
+
 ```typescript
 const result = await storage.deleteConversation('conv-123');
 console.log(`Freed ${result.bytesFreed} bytes`);
@@ -171,16 +188,18 @@ Get storage quota information.
 **Returns**: `Promise<StorageQuota>` - Storage quota details
 
 **StorageQuota Interface**:
+
 ```typescript
 interface StorageQuota {
-  used: number;        // Bytes used
-  quota: number;       // Total quota in bytes
-  percentage: number;  // Percentage used (0-100)
-  available: number;   // Bytes available
+  used: number; // Bytes used
+  quota: number; // Total quota in bytes
+  percentage: number; // Percentage used (0-100)
+  available: number; // Bytes available
 }
 ```
 
 **Example**:
+
 ```typescript
 const quota = await storage.getStorageQuota();
 if (quota.percentage > 80) {
@@ -197,6 +216,7 @@ Get comprehensive storage statistics.
 **Returns**: `Promise<StorageStats>` - Storage statistics
 
 **StorageStats Interface**:
+
 ```typescript
 interface StorageStats {
   conversationCount: number;
@@ -209,6 +229,7 @@ interface StorageStats {
 ```
 
 **Example**:
+
 ```typescript
 const stats = await storage.getStorageStats();
 console.log(`${stats.conversationCount} conversations`);
@@ -224,6 +245,7 @@ Check if storage cleanup is needed (>80% full).
 **Returns**: `Promise<boolean>` - True if cleanup needed
 
 **Example**:
+
 ```typescript
 if (await storage.isCleanupNeeded()) {
   await storage.performCleanup();
@@ -239,6 +261,7 @@ Perform storage cleanup by removing old conversations.
 **Returns**: `Promise<CleanupResult>` - Cleanup statistics
 
 **CleanupResult Interface**:
+
 ```typescript
 interface CleanupResult {
   conversationsRemoved: number;
@@ -250,6 +273,7 @@ interface CleanupResult {
 ```
 
 **Example**:
+
 ```typescript
 const result = await storage.performCleanup();
 console.log(`Cleaned up ${result.conversationsRemoved} conversations`);
@@ -264,6 +288,7 @@ Clear all storage data for current session.
 **Warning**: This is destructive and cannot be undone.
 
 **Example**:
+
 ```typescript
 await storage.clearAllData();
 ```
@@ -277,6 +302,7 @@ Export all conversation data as JSON string.
 **Returns**: `Promise<string>` - JSON string of all conversations
 
 **Example**:
+
 ```typescript
 const json = await storage.exportData();
 const blob = new Blob([json], { type: 'application/json' });
@@ -289,7 +315,8 @@ const blob = new Blob([json], { type: 'application/json' });
 
 ### Overview
 
-Provides real-time synchronization of conversation changes across browser tabs using the Storage Event API.
+Provides real-time synchronization of conversation changes across browser tabs using the Storage
+Event API.
 
 **Location**: `apps/frontend/src/services/cross-tab-sync.ts`
 
@@ -304,6 +331,7 @@ Get singleton instance of CrossTabSyncService.
 **Returns**: `CrossTabSyncService` - The singleton instance
 
 **Example**:
+
 ```typescript
 const syncService = CrossTabSyncService.getInstance();
 ```
@@ -315,6 +343,7 @@ const syncService = CrossTabSyncService.getInstance();
 Initialize cross-tab synchronization. Sets up storage event listeners.
 
 **Example**:
+
 ```typescript
 syncService.initialize();
 ```
@@ -326,10 +355,12 @@ syncService.initialize();
 Broadcast conversation update to other tabs.
 
 **Parameters**:
+
 - `conversationId: string` - ID of the updated conversation
 - `updates: Partial<Conversation>` - The updates to broadcast
 
 **Example**:
+
 ```typescript
 syncService.broadcastUpdate('conv-123', { title: 'New Title' });
 ```
@@ -341,9 +372,11 @@ syncService.broadcastUpdate('conv-123', { title: 'New Title' });
 Broadcast conversation deletion to other tabs.
 
 **Parameters**:
+
 - `conversationId: string` - ID of the deleted conversation
 
 **Example**:
+
 ```typescript
 syncService.broadcastDeletion('conv-123');
 ```
@@ -355,9 +388,11 @@ syncService.broadcastDeletion('conv-123');
 Broadcast new conversation creation to other tabs.
 
 **Parameters**:
+
 - `conversationId: string` - ID of the new conversation
 
 **Example**:
+
 ```typescript
 syncService.broadcastCreation('conv-123');
 ```
@@ -369,12 +404,14 @@ syncService.broadcastCreation('conv-123');
 Subscribe to sync events from other tabs.
 
 **Parameters**:
+
 - `eventType: SyncEventType` - Type of event ('update' | 'delete' | 'create')
 - `listener: SyncListener` - Callback function
 
 **Returns**: `() => void` - Unsubscribe function
 
 **Example**:
+
 ```typescript
 const unsubscribe = syncService.subscribe('update', (event) => {
   console.log(`Conversation ${event.conversationId} updated in another tab`);
@@ -391,6 +428,7 @@ const unsubscribe = syncService.subscribe('update', (event) => {
 Clean up resources and remove event listeners.
 
 **Example**:
+
 ```typescript
 syncService.destroy();
 ```
@@ -432,9 +470,11 @@ Provides data integrity checking, orphan detection, and automatic repair mechani
 Create a new DataIntegrityService instance.
 
 **Parameters**:
+
 - `storage: ConversationStorage` - The storage instance to check
 
 **Example**:
+
 ```typescript
 const integrityService = new DataIntegrityService(storage);
 ```
@@ -448,6 +488,7 @@ Run comprehensive integrity check on application startup.
 **Returns**: `Promise<IntegrityReport>` - Detailed integrity report
 
 **IntegrityReport Interface**:
+
 ```typescript
 interface IntegrityReport {
   totalConversations: number;
@@ -460,6 +501,7 @@ interface IntegrityReport {
 ```
 
 **Example**:
+
 ```typescript
 const report = await integrityService.runStartupCheck();
 if (report.orphanedMessages > 0) {
@@ -476,6 +518,7 @@ Detect messages without parent conversation.
 **Returns**: `Promise<string[]>` - Array of orphaned message IDs
 
 **Example**:
+
 ```typescript
 const orphanIds = await integrityService.detectOrphanedMessages();
 console.log(`Found ${orphanIds.length} orphaned messages`);
@@ -488,11 +531,13 @@ console.log(`Found ${orphanIds.length} orphaned messages`);
 Clean up orphaned messages.
 
 **Parameters**:
+
 - `messageIds: string[]` - Array of message IDs to clean up
 
 **Returns**: `Promise<number>` - Number of messages cleaned up
 
 **Example**:
+
 ```typescript
 const orphanIds = await integrityService.detectOrphanedMessages();
 const cleaned = await integrityService.cleanupOrphanedMessages(orphanIds);
@@ -505,7 +550,8 @@ console.log(`Cleaned up ${cleaned} orphaned messages`);
 
 ### Overview
 
-Provides full-text search across conversations and messages with keyword highlighting, pagination, and performance optimization.
+Provides full-text search across conversations and messages with keyword highlighting, pagination,
+and performance optimization.
 
 **Location**: `apps/frontend/src/services/conversation-search.ts`
 
@@ -518,9 +564,11 @@ Provides full-text search across conversations and messages with keyword highlig
 Create a new ConversationSearchService instance.
 
 **Parameters**:
+
 - `storage: ConversationStorage` - The storage instance to search
 
 **Example**:
+
 ```typescript
 const searchService = new ConversationSearchService(storage);
 ```
@@ -532,6 +580,7 @@ const searchService = new ConversationSearchService(storage);
 Initialize search service and build search index.
 
 **Example**:
+
 ```typescript
 await searchService.initialize();
 ```
@@ -543,24 +592,27 @@ await searchService.initialize();
 Search conversations by keyword with pagination.
 
 **Parameters**:
+
 - `query: string` - Search query
 - `options?: SearchOptions` - Search options
 
 **SearchOptions Interface**:
+
 ```typescript
 interface SearchOptions {
-  caseSensitive?: boolean;      // Default: false
-  page?: number;                // Default: 0
-  pageSize?: number;            // Default: 20
-  searchInTitles?: boolean;     // Default: true
-  searchInMessages?: boolean;   // Default: true
-  conversationIds?: string[];   // Limit to specific conversations
+  caseSensitive?: boolean; // Default: false
+  page?: number; // Default: 0
+  pageSize?: number; // Default: 20
+  searchInTitles?: boolean; // Default: true
+  searchInMessages?: boolean; // Default: true
+  conversationIds?: string[]; // Limit to specific conversations
 }
 ```
 
 **Returns**: `Promise<SearchResponse>` - Search results with pagination
 
 **SearchResponse Interface**:
+
 ```typescript
 interface SearchResponse {
   results: SearchResult[];
@@ -577,11 +629,12 @@ interface SearchResponse {
 ```
 
 **Example**:
+
 ```typescript
 const response = await searchService.search('authentication', {
   caseSensitive: false,
   page: 0,
-  pageSize: 20
+  pageSize: 20,
 });
 
 console.log(`Found ${response.pagination.totalResults} results`);
@@ -595,6 +648,7 @@ console.log(`Search took ${response.searchTime}ms`);
 Build search index from all conversations.
 
 **Example**:
+
 ```typescript
 await searchService.buildSearchIndex();
 ```
@@ -606,9 +660,11 @@ await searchService.buildSearchIndex();
 Update search index when conversation changes.
 
 **Parameters**:
+
 - `conversationId: string` - ID of the changed conversation
 
 **Example**:
+
 ```typescript
 await searchService.updateIndex('conv-123');
 ```
@@ -620,9 +676,11 @@ await searchService.updateIndex('conv-123');
 Remove conversation from search index.
 
 **Parameters**:
+
 - `conversationId: string` - ID of the conversation to remove
 
 **Example**:
+
 ```typescript
 await searchService.removeFromIndex('conv-123');
 ```
@@ -675,17 +733,19 @@ Provides search with automatic prefetching and caching.
 **Location**: `apps/frontend/src/hooks/useSearchWithPrefetch.ts`
 
 **Parameters**:
+
 - `searchService: ConversationSearchService` - The search service instance
 - `options?: UseSearchWithPrefetchOptions` - Configuration options
 
 **Returns**: `UseSearchWithPrefetchResult`
 
 **Example**:
+
 ```typescript
-const { searchWithPrefetch, clearCache, prefetchStatus } = useSearchWithPrefetch(
-  searchService,
-  { initialPages: 3, maxCacheSize: 100 }
-);
+const { searchWithPrefetch, clearCache, prefetchStatus } = useSearchWithPrefetch(searchService, {
+  initialPages: 3,
+  maxCacheSize: 100,
+});
 
 const results = await searchWithPrefetch('keyword', 0);
 ```
@@ -699,23 +759,22 @@ Provides debounced title updates with automatic persistence.
 **Location**: `apps/frontend/src/hooks/useDebouncedTitle.ts`
 
 **Parameters**:
+
 - `initialTitle: string` - Initial title value
 - `config: DebouncedTitleConfig` - Configuration
 
 **Returns**: `DebouncedTitleResult`
 
 **Example**:
+
 ```typescript
-const { title, setTitle, isPending, error } = useDebouncedTitle(
-  conversation.title,
-  {
-    conversationId: conversation.id,
-    debounceMs: 300,
-    onSave: async (newTitle) => {
-      await storage.updateConversationTitle(conversation.id, newTitle);
-    }
-  }
-);
+const { title, setTitle, isPending, error } = useDebouncedTitle(conversation.title, {
+  conversationId: conversation.id,
+  debounceMs: 300,
+  onSave: async (newTitle) => {
+    await storage.updateConversationTitle(conversation.id, newTitle);
+  },
+});
 ```
 
 ---
@@ -729,6 +788,7 @@ Main search interface component.
 **Location**: `apps/frontend/src/components/search/ConversationSearch.tsx`
 
 **Props**:
+
 ```typescript
 interface ConversationSearchProps {
   onResultSelect?: (conversationId: string, messageId?: string) => void;
@@ -738,6 +798,7 @@ interface ConversationSearchProps {
 ```
 
 **Features**:
+
 - Debounced search input (300ms)
 - Real-time result count
 - Loading states
@@ -746,6 +807,7 @@ interface ConversationSearchProps {
 - WCAG 2.2 AAA compliant
 
 **Example**:
+
 ```tsx
 <ConversationSearch
   onResultSelect={(convId, msgId) => {
@@ -767,6 +829,7 @@ Individual search result display.
 **Location**: `apps/frontend/src/components/search/SearchResultItem.tsx`
 
 **Props**:
+
 ```typescript
 interface SearchResultItemProps {
   result: SearchResult;
@@ -777,6 +840,7 @@ interface SearchResultItemProps {
 ```
 
 **Features**:
+
 - Keyword highlighting
 - Context display
 - Match count
@@ -784,6 +848,7 @@ interface SearchResultItemProps {
 - Keyboard activation
 
 **Example**:
+
 ```tsx
 <SearchResultItem
   result={result}
@@ -802,6 +867,7 @@ Accessible pagination controls.
 **Location**: `apps/frontend/src/components/search/SearchPagination.tsx`
 
 **Props**:
+
 ```typescript
 interface SearchPaginationProps {
   currentPage: number;
@@ -814,6 +880,7 @@ interface SearchPaginationProps {
 ```
 
 **Features**:
+
 - Previous/Next buttons
 - Page number navigation
 - ARIA labels
@@ -821,6 +888,7 @@ interface SearchPaginationProps {
 - Disabled state handling
 
 **Example**:
+
 ```tsx
 <SearchPagination
   currentPage={0}
@@ -851,7 +919,7 @@ interface Conversation {
   modelHistory: ModelChange[];
   contextUsage: ContextUsage;
   compressionHistory: CompressionEvent[];
-  
+
   // Persistence tracking
   lastSyncedAt?: Date;
   syncVersion?: number;
@@ -873,13 +941,13 @@ interface Message {
 
 ## Performance Targets
 
-| Operation | Target Latency (95th percentile) |
-|-----------|----------------------------------|
-| Title Update | <500ms |
-| Deletion | <500ms |
-| Search | <500ms |
-| Cross-Tab Sync | <1000ms |
-| Integrity Check | <5000ms |
+| Operation       | Target Latency (95th percentile) |
+| --------------- | -------------------------------- |
+| Title Update    | <500ms                           |
+| Deletion        | <500ms                           |
+| Search          | <500ms                           |
+| Cross-Tab Sync  | <1000ms                          |
+| Integrity Check | <5000ms                          |
 
 ---
 
@@ -912,6 +980,7 @@ class PersistenceError extends Error {
 ### Error Recovery
 
 All persistence operations include:
+
 - Automatic retry with exponential backoff (up to 3 attempts)
 - Error classification (retryable vs. non-retryable)
 - User-friendly error messages
@@ -975,11 +1044,13 @@ All persistence operations include:
 ### From v1.x to v2.0
 
 **Breaking Changes**:
+
 1. `deleteConversation()` now returns `DeleteResult` instead of `void`
 2. `updateConversationTitle()` requires title length 1-200 characters
 3. Search service requires explicit initialization
 
 **Migration Steps**:
+
 ```typescript
 // Old
 await storage.deleteConversation(id);
@@ -996,6 +1067,7 @@ console.log(`Freed ${result.bytesFreed} bytes`);
 ### Common Issues
 
 **Storage Full**:
+
 ```typescript
 if (await storage.isCleanupNeeded()) {
   await storage.performCleanup();
@@ -1003,6 +1075,7 @@ if (await storage.isCleanupNeeded()) {
 ```
 
 **Orphaned Data**:
+
 ```typescript
 const service = new DataIntegrityService(storage);
 const report = await service.runStartupCheck();
@@ -1013,6 +1086,7 @@ if (report.orphanedMessages > 0) {
 ```
 
 **Search Not Working**:
+
 ```typescript
 await searchService.buildSearchIndex();
 ```
@@ -1022,11 +1096,11 @@ await searchService.buildSearchIndex();
 ## Support
 
 For issues, questions, or feature requests:
+
 - GitHub Issues: [Link]
 - Documentation: [Link]
 - Email: support@example.com
 
 ---
 
-**Last Updated**: 2024-01-15
-**Version**: 2.0.0
+**Last Updated**: 2024-01-15 **Version**: 2.0.0

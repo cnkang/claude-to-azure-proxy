@@ -2,7 +2,8 @@
 
 ## Overview
 
-This guide covers performance monitoring, metrics collection, and optimization strategies for the application.
+This guide covers performance monitoring, metrics collection, and optimization strategies for the
+application.
 
 ## Performance Metrics System
 
@@ -11,6 +12,7 @@ This guide covers performance monitoring, metrics collection, and optimization s
 **Location**: `apps/frontend/src/utils/performance-metrics.ts`
 
 **Features**:
+
 - Singleton pattern for centralized metrics
 - Rolling window of last 100 operations per type
 - Automatic cleanup to prevent memory leaks
@@ -20,21 +22,22 @@ This guide covers performance monitoring, metrics collection, and optimization s
 
 ### Operation Types and Targets
 
-| Operation | Target Latency | Description |
-|-----------|---------------|-------------|
-| TITLE_UPDATE | <500ms | Conversation title updates |
-| DELETION | <500ms | Conversation deletion |
-| SEARCH | <500ms | Search operations |
-| CROSS_TAB_SYNC | <1000ms | Cross-tab synchronization |
-| INTEGRITY_CHECK | <5000ms | Data integrity validation |
-| STORAGE_READ | <100ms | Storage read operations |
-| STORAGE_WRITE | <200ms | Storage write operations |
-| ENCRYPTION | <50ms | Data encryption |
-| DECRYPTION | <50ms | Data decryption |
+| Operation       | Target Latency | Description                |
+| --------------- | -------------- | -------------------------- |
+| TITLE_UPDATE    | <500ms         | Conversation title updates |
+| DELETION        | <500ms         | Conversation deletion      |
+| SEARCH          | <500ms         | Search operations          |
+| CROSS_TAB_SYNC  | <1000ms        | Cross-tab synchronization  |
+| INTEGRITY_CHECK | <5000ms        | Data integrity validation  |
+| STORAGE_READ    | <100ms         | Storage read operations    |
+| STORAGE_WRITE   | <200ms         | Storage write operations   |
+| ENCRYPTION      | <50ms          | Data encryption            |
+| DECRYPTION      | <50ms          | Data decryption            |
 
 ### Recording Metrics
 
 **Manual Recording**:
+
 ```typescript
 import { getPerformanceMetrics, OperationType } from '../utils/performance-metrics';
 
@@ -48,6 +51,7 @@ metrics.record(OperationType.DELETION, 1200, false, 'Storage full');
 ```
 
 **Using Measurement Helpers**:
+
 ```typescript
 import { measureAsync, OperationType } from '../utils/performance-metrics';
 
@@ -62,20 +66,19 @@ const result = await measureAsync(
 ```
 
 **Wrapper Function**:
+
 ```typescript
 import { withMetrics, OperationType } from '../utils/performance-metrics';
 
-const measuredFunction = withMetrics(
-  OperationType.STORAGE_WRITE,
-  async (data) => {
-    return await storage.write(data);
-  }
-);
+const measuredFunction = withMetrics(OperationType.STORAGE_WRITE, async (data) => {
+  return await storage.write(data);
+});
 ```
 
 ### Viewing Metrics
 
 **Get Statistics**:
+
 ```typescript
 const metrics = getPerformanceMetrics();
 
@@ -96,6 +99,7 @@ if (violations.size > 0) {
 ```
 
 **Export Metrics**:
+
 ```typescript
 const exported = metrics.exportMetrics();
 // Send to monitoring service or save for analysis
@@ -113,6 +117,7 @@ const exported = metrics.exportMetrics();
 ### Dashboard Features
 
 **Persistence Metrics Display**:
+
 - Success rate percentage
 - Average latency
 - P95 latency (color-coded)
@@ -120,6 +125,7 @@ const exported = metrics.exportMetrics();
 - Failed operations count
 
 **Status Colors**:
+
 - 🟢 Green - Latency ≤ target (good)
 - 🟠 Orange - Latency ≤ 1.5× target (warning)
 - 🔴 Red - Latency > 1.5× target (critical)
@@ -127,6 +133,7 @@ const exported = metrics.exportMetrics();
 ### Memory Monitoring
 
 The dashboard also displays:
+
 - Current memory usage
 - Memory usage trend chart
 - Heap size limits
@@ -137,6 +144,7 @@ The dashboard also displays:
 ### Correlation IDs
 
 All operations generate unique correlation IDs for request tracing:
+
 ```typescript
 const correlationId = crypto.randomUUID();
 ```
@@ -152,6 +160,7 @@ Correlation IDs are included in all log messages for debugging and distributed t
 ### Log Metadata
 
 All logs include:
+
 - Correlation ID
 - Operation type
 - Duration/latency
@@ -163,6 +172,7 @@ All logs include:
 ### Example Logs
 
 **Title Update Success**:
+
 ```json
 {
   "level": "info",
@@ -176,6 +186,7 @@ All logs include:
 ```
 
 **Deletion with Statistics**:
+
 ```json
 {
   "level": "info",
@@ -194,36 +205,39 @@ All logs include:
 ### Memory Management
 
 **Rolling Window**:
+
 - Maximum 100 entries per operation type
 - ~9 operation types × 100 entries = 900 total
 - Each entry ~200 bytes
 - Total memory ~180KB maximum
 
 **Cleanup**:
+
 - Automatic cleanup of old entries
 - Metrics cleared on page refresh
 - Export available for historical analysis
 
 ### CPU Usage
 
-**Metric Recording**: O(1) constant time
-**Statistics Calculation**: O(n log n) for sorting (n ≤ 100)
-**Dashboard Updates**: Every 5 seconds
-**Impact**: Minimal on application performance
+**Metric Recording**: O(1) constant time **Statistics Calculation**: O(n log n) for sorting (n
+≤ 100) **Dashboard Updates**: Every 5 seconds **Impact**: Minimal on application performance
 
 ### Storage Optimization
 
 **Compression**:
+
 - Large conversations automatically compressed
 - Reduces storage quota usage
 - Transparent to application code
 
 **Lazy Loading**:
+
 - Conversation details loaded on demand
 - Efficient IndexedDB queries
 - Pagination for large datasets
 
 **Quota Monitoring**:
+
 - Track storage usage
 - Alert when approaching limits
 - Automatic cleanup of old data
@@ -233,6 +247,7 @@ All logs include:
 ### Latency Requirements
 
 All operations must meet 95th percentile targets:
+
 - Title updates: <500ms
 - Deletions: <500ms
 - Search: <500ms
@@ -242,16 +257,19 @@ All operations must meet 95th percentile targets:
 ### Resource Usage
 
 **Memory**:
+
 - Application heap: <100MB typical
 - Peak usage: <200MB
 - Metrics overhead: <1MB
 
 **Storage**:
+
 - IndexedDB: Unlimited (browser-dependent)
 - localStorage: 5-10MB limit
 - Compression ratio: ~3:1 for text
 
 **Network**:
+
 - API calls: <2s timeout
 - Retry with exponential backoff
 - Circuit breaker for repeated failures
@@ -261,12 +279,14 @@ All operations must meet 95th percentile targets:
 ### External Services
 
 Metrics can be exported to:
+
 - Sentry (error tracking)
 - DataDog (APM)
 - New Relic (performance monitoring)
 - Custom monitoring solutions
 
 **Export Format**:
+
 ```typescript
 {
   "timestamp": "2024-11-17T10:30:00.000Z",
@@ -286,6 +306,7 @@ Metrics can be exported to:
 ### Alerting
 
 **Performance Violations**:
+
 ```typescript
 const violations = metrics.getPerformanceViolations();
 if (violations.size > 0) {
@@ -293,12 +314,13 @@ if (violations.size > 0) {
   alertService.send({
     severity: 'warning',
     message: 'Performance targets exceeded',
-    violations: Array.from(violations)
+    violations: Array.from(violations),
   });
 }
 ```
 
 **Error Rate Monitoring**:
+
 ```typescript
 const stats = metrics.getStats(OperationType.TITLE_UPDATE);
 if (stats.successRate < 95) {
@@ -307,7 +329,7 @@ if (stats.successRate < 95) {
     severity: 'critical',
     message: 'High error rate detected',
     operation: 'TITLE_UPDATE',
-    successRate: stats.successRate
+    successRate: stats.successRate,
   });
 }
 ```
@@ -344,12 +366,14 @@ if (stats.successRate < 95) {
 **Symptoms**: Operations consistently exceed targets
 
 **Diagnosis**:
+
 1. Check P95/P99 latencies
 2. Review recent entries for patterns
 3. Check for network issues
 4. Verify storage performance
 
 **Solutions**:
+
 - Optimize database queries
 - Add caching layer
 - Reduce payload sizes
@@ -360,12 +384,14 @@ if (stats.successRate < 95) {
 **Symptoms**: Memory usage grows over time
 
 **Diagnosis**:
+
 1. Monitor heap size in dashboard
 2. Check for retained objects
 3. Review event listener cleanup
 4. Verify metrics cleanup
 
 **Solutions**:
+
 - Ensure proper cleanup in `afterEach`
 - Remove event listeners
 - Clear caches periodically
@@ -376,11 +402,13 @@ if (stats.successRate < 95) {
 **Symptoms**: Storage operations fail
 
 **Diagnosis**:
+
 1. Check storage usage
 2. Review conversation sizes
 3. Verify compression is working
 
 **Solutions**:
+
 - Enable compression
 - Implement data cleanup
 - Archive old conversations

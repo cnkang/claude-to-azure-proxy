@@ -2,7 +2,8 @@
 
 ## Overview
 
-This guide covers testing practices, patterns, and infrastructure for the Claude-to-Azure OpenAI Proxy project.
+This guide covers testing practices, patterns, and infrastructure for the Claude-to-Azure OpenAI
+Proxy project.
 
 ## Test Infrastructure
 
@@ -11,6 +12,7 @@ This guide covers testing practices, patterns, and infrastructure for the Claude
 **Configuration**: `apps/frontend/vitest.config.ts`, `apps/backend/vitest.config.ts`
 
 **Running Tests**:
+
 ```bash
 # Run all tests once (recommended)
 pnpm test --run
@@ -26,6 +28,7 @@ pnpm test --run path/to/test.ts
 ```
 
 **Test Requirements**:
+
 - Minimum 90% code coverage
 - All tests must pass before merging
 - Follow patterns documented in `.kiro/steering/test-patterns.md`
@@ -35,12 +38,14 @@ pnpm test --run path/to/test.ts
 **Configuration**: `playwright.config.ts`
 
 **Setup**:
+
 ```bash
 # Install Playwright browsers (first time only)
 pnpm playwright:install
 ```
 
 **Running E2E Tests**:
+
 ```bash
 # Run all E2E tests
 pnpm test:e2e
@@ -61,6 +66,7 @@ pnpm test:e2e:report
 ```
 
 **E2E Test Coverage**:
+
 - Title persistence across browser refresh
 - Cross-tab synchronization
 - Deletion cleanup
@@ -74,54 +80,57 @@ pnpm test:e2e:report
 ### Async Testing with Fake Timers
 
 **Correct Pattern for Successful Operations**:
+
 ```typescript
 test('should execute operation successfully', async () => {
   vi.useFakeTimers();
-  
+
   const operation = vi.fn().mockResolvedValue('success');
   const manager = new RetryManager({ maxAttempts: 3 });
-  
+
   // Create promise first
   const promise = manager.execute(operation);
-  
+
   // Advance timers to trigger callbacks
   await vi.runAllTimersAsync();
-  
+
   // Now await the promise
   const result = await promise;
-  
+
   expect(result).toBe('success');
   expect(operation).toHaveBeenCalledTimes(1);
-  
+
   vi.useRealTimers();
 });
 ```
 
 **Correct Pattern for Failing Operations**:
+
 ```typescript
 test('should retry on failure', async () => {
   vi.useFakeTimers();
-  
-  const operation = vi.fn()
+
+  const operation = vi
+    .fn()
     .mockRejectedValueOnce(new Error('Attempt 1 failed'))
     .mockRejectedValueOnce(new Error('Attempt 2 failed'))
     .mockRejectedValueOnce(new Error('Attempt 3 failed'));
-  
+
   const manager = new RetryManager({ maxAttempts: 3 });
-  
+
   // Create promise and catch rejection immediately
   const promise = manager.execute(operation);
   const rejectionPromise = promise.catch((error) => error);
-  
+
   // Advance timers to trigger retries
   await vi.runAllTimersAsync();
-  
+
   // Await the caught rejection
   const error = await rejectionPromise;
-  
+
   expect(error).toBeInstanceOf(Error);
   expect(operation).toHaveBeenCalledTimes(3);
-  
+
   vi.useRealTimers();
 });
 ```
@@ -129,6 +138,7 @@ test('should retry on failure', async () => {
 ### Storage Testing
 
 **Storage Initialization**:
+
 ```typescript
 let storage: ConversationStorage;
 let originalIndexedDB: typeof indexedDB;
@@ -138,36 +148,37 @@ beforeEach(async () => {
   vi.clearAllMocks();
   sessionStorage.clear();
   localStorage.clear();
-  
+
   // Disable IndexedDB for consistent testing
   originalIndexedDB = window.indexedDB;
   Object.defineProperty(window, 'indexedDB', {
     configurable: true,
     value: null,
   });
-  
+
   // Initialize storage and wait for completion
   storage = ConversationStorage.getInstance();
   await storage.initialize();
-  
+
   // Verify fallback mode
   expect((storage as any).isIndexedDBAvailable).toBe(false);
 });
 ```
 
 **Storage Cleanup**:
+
 ```typescript
 afterEach(async () => {
   // Clear all storage data
   sessionStorage.clear();
   localStorage.clear();
-  
+
   // Restore IndexedDB
   Object.defineProperty(window, 'indexedDB', {
     configurable: true,
     value: originalIndexedDB,
   });
-  
+
   // Wait for pending operations
   await new Promise((resolve) => setTimeout(resolve, 0));
 });
@@ -176,6 +187,7 @@ afterEach(async () => {
 ### E2E Testing
 
 **Browser Storage Setup**:
+
 ```typescript
 test.beforeEach(async ({ page }) => {
   // Clear all storage before each test
@@ -183,7 +195,7 @@ test.beforeEach(async ({ page }) => {
     localStorage.clear();
     sessionStorage.clear();
   });
-  
+
   // Clear IndexedDB databases
   await page.evaluate(async () => {
     const databases = await indexedDB.databases();
@@ -193,10 +205,10 @@ test.beforeEach(async ({ page }) => {
       }
     }
   });
-  
+
   // Navigate to page
   await page.goto('/');
-  
+
   // Wait for storage initialization
   await page.waitForFunction(() => {
     return window.localStorage !== null && window.sessionStorage !== null;
@@ -211,6 +223,7 @@ test.beforeEach(async ({ page }) => {
 **Location**: `tests/e2e/utils/test-helpers.ts`
 
 **Key Methods**:
+
 - `waitForAppReady()` - Wait for application to load
 - `clearAllStorage()` - Clear all browser storage
 - `createTestConversation(title, messages)` - Create test conversation
@@ -230,9 +243,11 @@ Use test factories to create consistent test data across tests.
 
 **Problem**: `[vitest-pool-runner]: Timeout waiting for worker to respond`
 
-**Solution**: This is a known Vitest issue related to memory management. The test wrapper script handles this gracefully. Tests are considered passing if the majority pass successfully.
+**Solution**: This is a known Vitest issue related to memory management. The test wrapper script
+handles this gracefully. Tests are considered passing if the majority pass successfully.
 
 **Configuration**:
+
 - 4GB heap size: `--max-old-space-size=4096`
 - Garbage collection enabled: `--expose-gc`
 - Single fork mode to prevent memory accumulation
@@ -242,9 +257,10 @@ Use test factories to create consistent test data across tests.
 **Problem**: Tests fail with unhandled promise rejection warnings
 
 **Solution**: Always catch rejected promises before test completion:
+
 ```typescript
 const promise = operation();
-const rejectionPromise = promise.catch(error => error);
+const rejectionPromise = promise.catch((error) => error);
 await vi.runAllTimersAsync();
 await rejectionPromise;
 ```
@@ -253,13 +269,15 @@ await rejectionPromise;
 
 **Problem**: Tests fail due to storage state contamination
 
-**Solution**: Always clear storage in `beforeEach` and `afterEach` hooks. Disable IndexedDB for consistent fallback mode testing.
+**Solution**: Always clear storage in `beforeEach` and `afterEach` hooks. Disable IndexedDB for
+consistent fallback mode testing.
 
 ## Coverage Requirements
 
 ### Minimum Thresholds
 
 All packages must maintain:
+
 - **Branches**: 80%
 - **Functions**: 80%
 - **Lines**: 80%
@@ -268,6 +286,7 @@ All packages must maintain:
 ### Critical Components
 
 Security-critical functions require 100% coverage:
+
 - Authentication middleware
 - Input validation
 - Error handling
@@ -278,6 +297,7 @@ Security-critical functions require 100% coverage:
 ### GitHub Actions
 
 Tests run automatically on:
+
 - Pull requests
 - Pushes to main branch
 - Manual workflow dispatch
@@ -285,6 +305,7 @@ Tests run automatically on:
 **Workflow**: `.github/workflows/ci-cd.yml`
 
 **Steps**:
+
 1. Install dependencies
 2. Run type-check
 3. Run lint
@@ -295,11 +316,13 @@ Tests run automatically on:
 ### Local Pre-commit
 
 Run quality checks before committing:
+
 ```bash
 pnpm quality:all
 ```
 
 This runs:
+
 - Type checking
 - Linting
 - Unit tests

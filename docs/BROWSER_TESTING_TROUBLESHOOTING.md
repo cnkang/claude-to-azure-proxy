@@ -5,12 +5,13 @@
 ### Issue 1: Dev Server Timeout
 
 **Error Message:**
+
 ```
 Error: Timed out waiting 120000ms from config.webServer.
 ```
 
-**Cause:**
-The Playwright configuration tries to automatically start the dev server, but it times out after 120 seconds.
+**Cause:** The Playwright configuration tries to automatically start the dev server, but it times
+out after 120 seconds.
 
 **Solution 1: Use Manual Configuration (Recommended)**
 
@@ -52,6 +53,7 @@ kill -9 <PID>
 ### Issue 2: Browser Not Installed
 
 **Error Message:**
+
 ```
 Error: browserType.launch: Executable doesn't exist
 ```
@@ -73,6 +75,7 @@ pnpm exec playwright install --with-deps
 ### Issue 3: Tests Timing Out
 
 **Error Message:**
+
 ```
 Test timeout of 30000ms exceeded
 ```
@@ -110,6 +113,7 @@ await helpers.waitForAppReady();
 ### Issue 4: Storage Not Persisting
 
 **Error Message:**
+
 ```
 Expected "New Title" but got "Original Title"
 ```
@@ -133,6 +137,7 @@ expect(title).toBe('New Title');
 ### Issue 5: Cross-Tab Sync Not Working
 
 **Error Message:**
+
 ```
 Storage event not received
 ```
@@ -157,6 +162,7 @@ await newTab.waitForEvent('storage');
 ### Issue 6: Mobile Tests Failing
 
 **Error Message:**
+
 ```
 Element not visible on mobile viewport
 ```
@@ -181,6 +187,7 @@ pnpm exec playwright test --project=mobile-chrome
 ### Issue 7: Accessibility Violations
 
 **Error Message:**
+
 ```
 Expected 0 violations but got 5
 ```
@@ -199,6 +206,7 @@ console.log(JSON.stringify(results.violations, null, 2));
 ```
 
 Common fixes:
+
 - Add ARIA labels
 - Fix color contrast
 - Add alt text to images
@@ -207,6 +215,7 @@ Common fixes:
 ### Issue 8: Browser-Specific Failures
 
 **Error Message:**
+
 ```
 Test passes on Chromium but fails on WebKit
 ```
@@ -216,15 +225,18 @@ Test passes on Chromium but fails on WebKit
 Check browser-specific issues:
 
 **WebKit (Safari):**
+
 - Use ISO 8601 date format: `new Date().toISOString()`
 - Keep IndexedDB transactions short
 - Check storage quota before operations
 
 **Firefox:**
+
 - Batch large IndexedDB operations
 - Use smaller transactions
 
 **Chromium:**
+
 - Check storage quota calculation
 
 See [Browser Compatibility Guide](./BROWSER_COMPATIBILITY.md) for details.
@@ -232,6 +244,7 @@ See [Browser Compatibility Guide](./BROWSER_COMPATIBILITY.md) for details.
 ### Issue 9: Flaky Tests
 
 **Error Message:**
+
 ```
 Test passes sometimes but fails randomly
 ```
@@ -254,7 +267,7 @@ Add to test setup:
 
 ```typescript
 await page.addStyleTag({
-  content: '* { animation: none !important; transition: none !important; }'
+  content: '* { animation: none !important; transition: none !important; }',
 });
 ```
 
@@ -269,6 +282,7 @@ retries: 2, // Retry failed tests twice
 ### Issue 10: Screenshots Not Captured
 
 **Error Message:**
+
 ```
 No screenshots in playwright-report
 ```
@@ -321,7 +335,7 @@ pnpm exec playwright test --config=playwright.config.manual.ts --headed --slow-m
 Enable console logging in tests:
 
 ```typescript
-page.on('console', msg => console.log('PAGE LOG:', msg.text()));
+page.on('console', (msg) => console.log('PAGE LOG:', msg.text()));
 ```
 
 ### 5. Trace Viewer
@@ -341,11 +355,11 @@ pnpm exec playwright show-trace playwright-report/trace.zip
 Log network requests:
 
 ```typescript
-page.on('request', request => {
+page.on('request', (request) => {
   console.log('REQUEST:', request.url());
 });
 
-page.on('response', response => {
+page.on('response', (response) => {
   console.log('RESPONSE:', response.url(), response.status());
 });
 ```

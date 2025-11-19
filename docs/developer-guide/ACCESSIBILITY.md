@@ -2,7 +2,8 @@
 
 ## Overview
 
-This application is fully compliant with WCAG 2.2 Level AAA accessibility standards. This guide covers the accessibility features, implementation patterns, and testing procedures.
+This application is fully compliant with WCAG 2.2 Level AAA accessibility standards. This guide
+covers the accessibility features, implementation patterns, and testing procedures.
 
 ## WCAG 2.2 AAA Compliance
 
@@ -37,6 +38,7 @@ This application is fully compliant with WCAG 2.2 Level AAA accessibility standa
 **Location**: `apps/frontend/src/components/accessibility/AccessibilityProvider.tsx`
 
 **Features**:
+
 - Centralized accessibility state management
 - System preference detection
 - User preference persistence
@@ -44,15 +46,12 @@ This application is fully compliant with WCAG 2.2 Level AAA accessibility standa
 - WCAG compliance level configuration
 
 **Usage**:
+
 ```tsx
 import { AccessibilityProvider } from '@/components/accessibility';
 
 function App() {
-  return (
-    <AccessibilityProvider>
-      {/* Your app */}
-    </AccessibilityProvider>
-  );
+  return <AccessibilityProvider>{/* Your app */}</AccessibilityProvider>;
 }
 ```
 
@@ -61,12 +60,14 @@ function App() {
 **Location**: `apps/frontend/src/components/accessibility/ScreenReaderAnnouncer.tsx`
 
 **Features**:
+
 - Live region announcements
 - Polite and assertive priorities
 - Automatic cleanup
 - Screen reader compatibility
 
 **Usage**:
+
 ```tsx
 import { useScreenReaderAnnouncer } from '@/components/accessibility';
 
@@ -86,6 +87,7 @@ function MyComponent() {
 **Location**: `apps/frontend/src/components/accessibility/KeyboardNavigation.tsx`
 
 **Features**:
+
 - Focus trap for modals
 - Roving tabindex for lists
 - Arrow key navigation
@@ -93,15 +95,13 @@ function MyComponent() {
 - Home/End key support
 
 **Usage**:
+
 ```tsx
 import { KeyboardNavigation } from '@/components/accessibility';
 
 function Modal({ onClose }) {
   return (
-    <KeyboardNavigation
-      onEscape={onClose}
-      trapFocus={true}
-    >
+    <KeyboardNavigation onEscape={onClose} trapFocus={true}>
       {/* Modal content */}
     </KeyboardNavigation>
   );
@@ -113,12 +113,14 @@ function Modal({ onClose }) {
 **Location**: `apps/frontend/src/components/accessibility/SkipLink.tsx`
 
 **Features**:
+
 - Skip to main content
 - Keyboard accessible
 - Visually hidden until focused
 - Customizable target
 
 **Usage**:
+
 ```tsx
 import { SkipLink } from '@/components/accessibility';
 
@@ -127,9 +129,7 @@ function App() {
     <>
       <SkipLink targetId="main-content" />
       <Header />
-      <main id="main-content">
-        {/* Main content */}
-      </main>
+      <main id="main-content">{/* Main content */}</main>
     </>
   );
 }
@@ -140,23 +140,21 @@ function App() {
 **Location**: `apps/frontend/src/components/accessibility/HighContrastMode.tsx`
 
 **Features**:
+
 - 7:1 contrast ratio (AAA)
 - System preference detection
 - Manual override
 - CSS custom properties
 
 **Usage**:
+
 ```tsx
 import { useHighContrastMode } from '@/components/accessibility';
 
 function Settings() {
   const { isHighContrast, toggle } = useHighContrastMode();
 
-  return (
-    <button onClick={toggle}>
-      {isHighContrast ? 'Disable' : 'Enable'} High Contrast
-    </button>
-  );
+  return <button onClick={toggle}>{isHighContrast ? 'Disable' : 'Enable'} High Contrast</button>;
 }
 ```
 
@@ -165,6 +163,7 @@ function Settings() {
 **Location**: `apps/frontend/src/components/accessibility/FocusManager.tsx`
 
 **Features**:
+
 - Enhanced focus indicators
 - Focus restoration after modals
 - Auto-focus on important elements
@@ -177,11 +176,11 @@ function Settings() {
 All colors meet WCAG AAA 7:1 contrast ratio:
 
 ```css
---color-text: #000000;           /* 21:1 on white */
+--color-text: #000000; /* 21:1 on white */
 --color-text-secondary: #333333; /* 12.6:1 on white */
---color-accent: #0066CC;         /* 7.5:1 on white */
---color-error: #CC0000;          /* 7.5:1 on white */
---color-success: #008000;        /* 7:1 on white */
+--color-accent: #0066cc; /* 7.5:1 on white */
+--color-error: #cc0000; /* 7.5:1 on white */
+--color-success: #008000; /* 7:1 on white */
 ```
 
 ### Dark Mode
@@ -189,11 +188,11 @@ All colors meet WCAG AAA 7:1 contrast ratio:
 All colors meet WCAG AAA 7:1 contrast ratio:
 
 ```css
---color-text: #FFFFFF;           /* 21:1 on black */
---color-text-secondary: #CCCCCC; /* 12.6:1 on black */
---color-accent: #66B3FF;         /* 7.5:1 on black */
---color-error: #FF6666;          /* 7.5:1 on black */
---color-success: #66FF66;        /* 7:1 on black */
+--color-text: #ffffff; /* 21:1 on black */
+--color-text-secondary: #cccccc; /* 12.6:1 on black */
+--color-accent: #66b3ff; /* 7.5:1 on black */
+--color-error: #ff6666; /* 7.5:1 on black */
+--color-success: #66ff66; /* 7:1 on black */
 ```
 
 ### High Contrast Mode
@@ -202,42 +201,42 @@ Maximum contrast for users with low vision:
 
 ```css
 --color-background: #000000;
---color-text: #FFFFFF;
---color-accent: #FFFFFF;
---color-error: #FF0000;
---color-success: #00FF00;
+--color-text: #ffffff;
+--color-accent: #ffffff;
+--color-error: #ff0000;
+--color-success: #00ff00;
 ```
 
 ## Keyboard Navigation
 
 ### Global Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| Tab | Move to next element |
+| Shortcut  | Action                   |
+| --------- | ------------------------ |
+| Tab       | Move to next element     |
 | Shift+Tab | Move to previous element |
-| Enter | Activate element |
-| Space | Activate button/checkbox |
-| Escape | Close modal/Clear search |
-| Ctrl+K | Open search |
+| Enter     | Activate element         |
+| Space     | Activate button/checkbox |
+| Escape    | Close modal/Clear search |
+| Ctrl+K    | Open search              |
 
 ### Search Navigation
 
-| Shortcut | Action |
-|----------|--------|
-| ArrowDown | Next result |
-| ArrowUp | Previous result |
-| Enter | Open result |
-| Home | First result |
-| End | Last result |
+| Shortcut  | Action          |
+| --------- | --------------- |
+| ArrowDown | Next result     |
+| ArrowUp   | Previous result |
+| Enter     | Open result     |
+| Home      | First result    |
+| End       | Last result     |
 
 ### Conversation Navigation
 
-| Shortcut | Action |
-|----------|--------|
-| Ctrl+N | New conversation |
-| Ctrl+D | Delete conversation |
-| Ctrl+R | Rename conversation |
+| Shortcut | Action              |
+| -------- | ------------------- |
+| Ctrl+N   | New conversation    |
+| Ctrl+D   | Delete conversation |
+| Ctrl+R   | Rename conversation |
 
 ## ARIA Patterns
 
@@ -264,18 +263,9 @@ Maximum contrast for users with low vision:
 ### Search Results
 
 ```tsx
-<div
-  id="search-results"
-  role="region"
-  aria-label="Search results"
-  aria-live="polite"
->
+<div id="search-results" role="region" aria-label="Search results" aria-live="polite">
   {results.map((result) => (
-    <article
-      key={result.id}
-      role="article"
-      aria-labelledby={`result-title-${result.id}`}
-    >
+    <article key={result.id} role="article" aria-labelledby={`result-title-${result.id}`}>
       <h3 id={`result-title-${result.id}`}>{result.title}</h3>
     </article>
   ))}
@@ -286,19 +276,13 @@ Maximum contrast for users with low vision:
 
 ```tsx
 <nav role="navigation" aria-label="Search results pagination">
-  <button
-    aria-label="Previous page"
-    aria-disabled={!hasPreviousPage}
-    disabled={!hasPreviousPage}
-  >
+  <button aria-label="Previous page" aria-disabled={!hasPreviousPage} disabled={!hasPreviousPage}>
     Previous
   </button>
-  <span aria-current="page">Page {currentPage} of {totalPages}</span>
-  <button
-    aria-label="Next page"
-    aria-disabled={!hasNextPage}
-    disabled={!hasNextPage}
-  >
+  <span aria-current="page">
+    Page {currentPage} of {totalPages}
+  </span>
+  <button aria-label="Next page" aria-disabled={!hasNextPage} disabled={!hasNextPage}>
     Next
   </button>
 </nav>
@@ -351,10 +335,10 @@ const trapFocus = (container: HTMLElement) => {
   const focusableElements = container.querySelectorAll(
     'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
   );
-  
+
   const firstElement = focusableElements[0];
   const lastElement = focusableElements[focusableElements.length - 1];
-  
+
   container.addEventListener('keydown', (e) => {
     if (e.key === 'Tab') {
       if (e.shiftKey && document.activeElement === firstElement) {
@@ -389,11 +373,13 @@ Respects user's motion preferences:
 ### Safe Animations
 
 Only use animations that don't cause vestibular issues:
+
 - Fade in/out
 - Slide in/out (small distances)
 - Scale (subtle changes)
 
 Avoid:
+
 - Spinning
 - Parallax scrolling
 - Large movements
@@ -404,7 +390,11 @@ Avoid:
 All interactive elements meet minimum size requirements:
 
 ```css
-button, a, input, select, textarea {
+button,
+a,
+input,
+select,
+textarea {
   min-width: 44px;
   min-height: 44px;
   padding: 12px;
@@ -412,7 +402,11 @@ button, a, input, select, textarea {
 
 /* Mobile devices */
 @media (max-width: 768px) {
-  button, a, input, select, textarea {
+  button,
+  a,
+  input,
+  select,
+  textarea {
     min-width: 48px;
     min-height: 48px;
   }
@@ -485,17 +479,20 @@ describe('Component Accessibility', () => {
 ### Screen Reader Testing
 
 **NVDA (Windows)**:
+
 1. Download from [nvaccess.org](https://www.nvaccess.org/)
 2. Press Insert+Down to start reading
 3. Use Tab to navigate interactive elements
 4. Use Arrow keys to read line by line
 
 **JAWS (Windows)**:
+
 1. Commercial screen reader
 2. Similar navigation to NVDA
 3. More advanced features
 
 **VoiceOver (macOS)**:
+
 1. Enable in System Preferences > Accessibility
 2. Press Cmd+F5 to start
 3. Use VO+Arrow keys to navigate

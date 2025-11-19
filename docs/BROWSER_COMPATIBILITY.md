@@ -1,26 +1,27 @@
 # Browser Compatibility Guide
 
-This document outlines browser compatibility testing, known issues, and workarounds for the conversation persistence feature.
+This document outlines browser compatibility testing, known issues, and workarounds for the
+conversation persistence feature.
 
 ## Supported Browsers
 
 ### Desktop Browsers
 
-| Browser | Minimum Version | Status | Notes |
-|---------|----------------|--------|-------|
-| Chrome | 90+ | ✅ Fully Supported | Primary development browser |
-| Firefox | 88+ | ✅ Fully Supported | Full feature parity |
-| Safari | 14+ | ✅ Fully Supported | WebKit-specific workarounds implemented |
-| Edge | 90+ | ✅ Fully Supported | Chromium-based, same as Chrome |
+| Browser | Minimum Version | Status             | Notes                                   |
+| ------- | --------------- | ------------------ | --------------------------------------- |
+| Chrome  | 90+             | ✅ Fully Supported | Primary development browser             |
+| Firefox | 88+             | ✅ Fully Supported | Full feature parity                     |
+| Safari  | 14+             | ✅ Fully Supported | WebKit-specific workarounds implemented |
+| Edge    | 90+             | ✅ Fully Supported | Chromium-based, same as Chrome          |
 
 ### Mobile Browsers
 
-| Browser | Minimum Version | Status | Notes |
-|---------|----------------|--------|-------|
-| Chrome Mobile | 90+ | ✅ Fully Supported | Android |
-| Safari Mobile | 14+ | ✅ Fully Supported | iOS |
-| Firefox Mobile | 88+ | ✅ Fully Supported | Android |
-| Samsung Internet | 14+ | ✅ Fully Supported | Android |
+| Browser          | Minimum Version | Status             | Notes   |
+| ---------------- | --------------- | ------------------ | ------- |
+| Chrome Mobile    | 90+             | ✅ Fully Supported | Android |
+| Safari Mobile    | 14+             | ✅ Fully Supported | iOS     |
+| Firefox Mobile   | 88+             | ✅ Fully Supported | Android |
+| Samsung Internet | 14+             | ✅ Fully Supported | Android |
 
 ## Browser Feature Support
 
@@ -28,14 +29,15 @@ This document outlines browser compatibility testing, known issues, and workarou
 
 #### IndexedDB
 
-| Browser | Support | Notes |
-|---------|---------|-------|
-| Chrome | ✅ Full | Primary storage mechanism |
+| Browser | Support | Notes                                   |
+| ------- | ------- | --------------------------------------- |
+| Chrome  | ✅ Full | Primary storage mechanism               |
 | Firefox | ✅ Full | Slightly different transaction behavior |
-| Safari | ✅ Full | Stricter transaction timeout rules |
-| Edge | ✅ Full | Same as Chrome |
+| Safari  | ✅ Full | Stricter transaction timeout rules      |
+| Edge    | ✅ Full | Same as Chrome                          |
 
 **Implementation Notes:**
+
 - All browsers support IndexedDB v2 with full transaction support
 - Safari requires shorter transaction durations
 - Firefox may be slower with large transactions
@@ -43,14 +45,15 @@ This document outlines browser compatibility testing, known issues, and workarou
 
 #### localStorage
 
-| Browser | Support | Notes |
-|---------|---------|-------|
-| Chrome | ✅ Full | Fallback storage mechanism |
-| Firefox | ✅ Full | Same behavior as Chrome |
-| Safari | ✅ Full | Same behavior as Chrome |
-| Edge | ✅ Full | Same behavior as Chrome |
+| Browser | Support | Notes                      |
+| ------- | ------- | -------------------------- |
+| Chrome  | ✅ Full | Fallback storage mechanism |
+| Firefox | ✅ Full | Same behavior as Chrome    |
+| Safari  | ✅ Full | Same behavior as Chrome    |
+| Edge    | ✅ Full | Same behavior as Chrome    |
 
 **Implementation Notes:**
+
 - Used as fallback when IndexedDB is unavailable
 - 5-10MB storage limit across all browsers
 - Synchronous API (blocking)
@@ -58,14 +61,15 @@ This document outlines browser compatibility testing, known issues, and workarou
 
 #### Storage Events (Cross-Tab Sync)
 
-| Browser | Support | Notes |
-|---------|---------|-------|
-| Chrome | ✅ Full | Reliable event delivery |
+| Browser | Support | Notes                   |
+| ------- | ------- | ----------------------- |
+| Chrome  | ✅ Full | Reliable event delivery |
 | Firefox | ✅ Full | Reliable event delivery |
-| Safari | ✅ Full | Reliable event delivery |
-| Edge | ✅ Full | Same as Chrome |
+| Safari  | ✅ Full | Reliable event delivery |
+| Edge    | ✅ Full | Same as Chrome          |
 
 **Implementation Notes:**
+
 - All browsers support storage events for cross-tab synchronization
 - Events fire reliably when localStorage is modified
 - Same-tab modifications do not trigger events (expected behavior)
@@ -73,14 +77,15 @@ This document outlines browser compatibility testing, known issues, and workarou
 
 ### Web Crypto API
 
-| Browser | Support | Notes |
-|---------|---------|-------|
-| Chrome | ✅ Full | AES-GCM 256-bit encryption |
+| Browser | Support | Notes                      |
+| ------- | ------- | -------------------------- |
+| Chrome  | ✅ Full | AES-GCM 256-bit encryption |
 | Firefox | ✅ Full | AES-GCM 256-bit encryption |
-| Safari | ✅ Full | AES-GCM 256-bit encryption |
-| Edge | ✅ Full | Same as Chrome |
+| Safari  | ✅ Full | AES-GCM 256-bit encryption |
+| Edge    | ✅ Full | Same as Chrome             |
 
 **Implementation Notes:**
+
 - All browsers support Web Crypto API for encryption
 - AES-GCM 256-bit encryption is supported across all browsers
 - Key derivation using PBKDF2 is supported
@@ -90,50 +95,50 @@ This document outlines browser compatibility testing, known issues, and workarou
 
 #### CSS Grid
 
-| Browser | Support | Notes |
-|---------|---------|-------|
-| Chrome | ✅ Full | Primary layout system |
-| Firefox | ✅ Full | Full feature parity |
-| Safari | ✅ Full | Full feature parity |
-| Edge | ✅ Full | Same as Chrome |
+| Browser | Support | Notes                 |
+| ------- | ------- | --------------------- |
+| Chrome  | ✅ Full | Primary layout system |
+| Firefox | ✅ Full | Full feature parity   |
+| Safari  | ✅ Full | Full feature parity   |
+| Edge    | ✅ Full | Same as Chrome        |
 
 #### CSS Flexbox
 
-| Browser | Support | Notes |
-|---------|---------|-------|
-| Chrome | ✅ Full | Secondary layout system |
-| Firefox | ✅ Full | Full feature parity |
-| Safari | ✅ Full | Full feature parity |
-| Edge | ✅ Full | Same as Chrome |
+| Browser | Support | Notes                   |
+| ------- | ------- | ----------------------- |
+| Chrome  | ✅ Full | Secondary layout system |
+| Firefox | ✅ Full | Full feature parity     |
+| Safari  | ✅ Full | Full feature parity     |
+| Edge    | ✅ Full | Same as Chrome          |
 
 #### CSS Custom Properties (Variables)
 
-| Browser | Support | Notes |
-|---------|---------|-------|
-| Chrome | ✅ Full | Used for theming |
+| Browser | Support | Notes               |
+| ------- | ------- | ------------------- |
+| Chrome  | ✅ Full | Used for theming    |
 | Firefox | ✅ Full | Full feature parity |
-| Safari | ✅ Full | Full feature parity |
-| Edge | ✅ Full | Same as Chrome |
+| Safari  | ✅ Full | Full feature parity |
+| Edge    | ✅ Full | Same as Chrome      |
 
 ### JavaScript Features
 
 #### ES Modules
 
-| Browser | Support | Notes |
-|---------|---------|-------|
-| Chrome | ✅ Full | Native ES module support |
+| Browser | Support | Notes                    |
+| ------- | ------- | ------------------------ |
+| Chrome  | ✅ Full | Native ES module support |
 | Firefox | ✅ Full | Native ES module support |
-| Safari | ✅ Full | Native ES module support |
-| Edge | ✅ Full | Same as Chrome |
+| Safari  | ✅ Full | Native ES module support |
+| Edge    | ✅ Full | Same as Chrome           |
 
 #### Async/Await
 
-| Browser | Support | Notes |
-|---------|---------|-------|
-| Chrome | ✅ Full | Used throughout application |
-| Firefox | ✅ Full | Full feature parity |
-| Safari | ✅ Full | Full feature parity |
-| Edge | ✅ Full | Same as Chrome |
+| Browser | Support | Notes                       |
+| ------- | ------- | --------------------------- |
+| Chrome  | ✅ Full | Used throughout application |
+| Firefox | ✅ Full | Full feature parity         |
+| Safari  | ✅ Full | Full feature parity         |
+| Edge    | ✅ Full | Same as Chrome              |
 
 ## Known Browser-Specific Issues
 
@@ -141,10 +146,10 @@ This document outlines browser compatibility testing, known issues, and workarou
 
 #### Issue 1: Date Parsing
 
-**Problem:**
-Safari requires ISO 8601 format for date strings. Other formats may fail to parse.
+**Problem:** Safari requires ISO 8601 format for date strings. Other formats may fail to parse.
 
 **Example:**
+
 ```javascript
 // ❌ May fail in Safari
 new Date('2024-01-15 10:30:00');
@@ -153,8 +158,7 @@ new Date('2024-01-15 10:30:00');
 new Date('2024-01-15T10:30:00.000Z');
 ```
 
-**Workaround:**
-Always use `toISOString()` when serializing dates:
+**Workaround:** Always use `toISOString()` when serializing dates:
 
 ```typescript
 // Serialize date
@@ -168,11 +172,10 @@ const date = new Date(timestamp);
 
 #### Issue 2: IndexedDB Transaction Timeout
 
-**Problem:**
-Safari has stricter transaction timeout rules. Transactions that take too long will fail.
+**Problem:** Safari has stricter transaction timeout rules. Transactions that take too long will
+fail.
 
-**Workaround:**
-Keep transactions short and focused:
+**Workaround:** Keep transactions short and focused:
 
 ```typescript
 // ❌ Long transaction (may timeout in Safari)
@@ -189,17 +192,15 @@ await store.put(conversation);
 
 #### Issue 3: Storage Quota Estimation
 
-**Problem:**
-Safari's storage quota estimation may differ from other browsers.
+**Problem:** Safari's storage quota estimation may differ from other browsers.
 
-**Workaround:**
-Always check quota before large operations:
+**Workaround:** Always check quota before large operations:
 
 ```typescript
 if ('storage' in navigator && 'estimate' in navigator.storage) {
   const estimate = await navigator.storage.estimate();
   const percentUsed = (estimate.usage! / estimate.quota!) * 100;
-  
+
   if (percentUsed > 80) {
     // Warn user or cleanup old data
   }
@@ -212,11 +213,9 @@ if ('storage' in navigator && 'estimate' in navigator.storage) {
 
 #### Issue 1: IndexedDB Performance
 
-**Problem:**
-Firefox may be slower with large IndexedDB transactions compared to Chrome.
+**Problem:** Firefox may be slower with large IndexedDB transactions compared to Chrome.
 
-**Workaround:**
-Batch operations and use smaller transactions:
+**Workaround:** Batch operations and use smaller transactions:
 
 ```typescript
 // ❌ Single large transaction
@@ -230,11 +229,11 @@ for (let i = 0; i < items.length; i += BATCH_SIZE) {
   const batch = items.slice(i, i + BATCH_SIZE);
   const transaction = db.transaction(['store'], 'readwrite');
   const store = transaction.objectStore('store');
-  
+
   for (const item of batch) {
     store.put(item);
   }
-  
+
   await transaction.complete;
 }
 ```
@@ -243,11 +242,9 @@ for (let i = 0; i < items.length; i += BATCH_SIZE) {
 
 #### Issue 2: Console Logging
 
-**Problem:**
-Firefox console may show more verbose warnings than other browsers.
+**Problem:** Firefox console may show more verbose warnings than other browsers.
 
-**Workaround:**
-Filter non-critical warnings in development:
+**Workaround:** Filter non-critical warnings in development:
 
 ```typescript
 // Suppress non-critical warnings in Firefox
@@ -268,11 +265,9 @@ if (navigator.userAgent.includes('Firefox')) {
 
 #### Issue 1: Storage Quota Calculation
 
-**Problem:**
-Chromium calculates storage quota differently than other browsers.
+**Problem:** Chromium calculates storage quota differently than other browsers.
 
-**Workaround:**
-Use Storage API for accurate quota information:
+**Workaround:** Use Storage API for accurate quota information:
 
 ```typescript
 const estimate = await navigator.storage.estimate();
@@ -293,13 +288,14 @@ if (available < requiredSpace) {
 **Requirement:** WCAG 2.2 AAA requires minimum 44x44 CSS pixels for touch targets.
 
 **Implementation:**
+
 ```css
 /* Ensure adequate touch target size */
 button,
 a,
 input,
-[role="button"],
-[tabindex="0"] {
+[role='button'],
+[tabindex='0'] {
   min-width: 44px;
   min-height: 44px;
   padding: 12px;
@@ -311,11 +307,13 @@ input,
 ### Viewport Configuration
 
 **Implementation:**
+
 ```html
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
 ```
 
 **Notes:**
+
 - Allows zoom up to 5x for accessibility
 - Prevents horizontal scrolling
 - Responsive design adapts to all viewport sizes
@@ -325,6 +323,7 @@ input,
 ### Mobile Scrolling
 
 **Implementation:**
+
 ```css
 /* Smooth scrolling on mobile */
 html {
@@ -344,11 +343,13 @@ body {
 ### Mobile Input Handling
 
 **Considerations:**
+
 - Virtual keyboard may cover input fields
 - Use `scrollIntoView()` to ensure input is visible
 - Handle orientation changes gracefully
 
 **Implementation:**
+
 ```typescript
 // Scroll input into view when focused
 input.addEventListener('focus', () => {
@@ -410,7 +411,8 @@ pnpm exec playwright test --config=playwright.config.manual.ts tests/e2e/browser
 USE_MANUAL_CONFIG=true ./scripts/test-browser-compatibility.sh
 ```
 
-**Troubleshooting:** If you see "Error: Timed out waiting 120000ms from config.webServer", use Option 2 (manual dev server).
+**Troubleshooting:** If you see "Error: Timed out waiting 120000ms from config.webServer", use
+Option 2 (manual dev server).
 
 ### Manual Testing Checklist
 
@@ -454,6 +456,7 @@ cat playwright-report/performance-metrics.json
 ```
 
 **Target Metrics:**
+
 - Load time: <1000ms
 - Title update: <500ms
 - Deletion: <500ms
@@ -536,24 +539,24 @@ jobs:
     strategy:
       matrix:
         browser: [chromium, firefox, webkit]
-    
+
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '20'
-      
+
       - name: Install dependencies
         run: pnpm install
-      
+
       - name: Install Playwright
         run: pnpm exec playwright install --with-deps
-      
+
       - name: Run tests
         run: pnpm exec playwright test --project=${{ matrix.browser }}
-      
+
       - name: Upload results
         if: failure()
         uses: actions/upload-artifact@v3
@@ -644,6 +647,7 @@ For browser-specific issues:
 ## Changelog
 
 ### 2024-01-15
+
 - Initial browser compatibility documentation
 - Added Safari date parsing workaround
 - Added Firefox IndexedDB performance notes
@@ -652,4 +656,5 @@ For browser-specific issues:
 
 ---
 
-*This document is maintained by the development team and updated as new browser-specific issues are discovered.*
+_This document is maintained by the development team and updated as new browser-specific issues are
+discovered._

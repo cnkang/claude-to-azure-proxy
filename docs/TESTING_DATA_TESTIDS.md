@@ -2,7 +2,8 @@
 
 ## Overview
 
-This document defines the `data-testid` attributes used throughout the application for E2E testing. Using consistent test IDs makes tests more stable and maintainable.
+This document defines the `data-testid` attributes used throughout the application for E2E testing.
+Using consistent test IDs makes tests more stable and maintainable.
 
 ## Why Use data-testid?
 
@@ -16,6 +17,7 @@ This document defines the `data-testid` attributes used throughout the applicati
 Format: `{component}-{element}-{action?}`
 
 Examples:
+
 - `app-container` - Main app container
 - `conversation-item` - Individual conversation in list
 - `conversation-title` - Conversation title text
@@ -27,53 +29,53 @@ Examples:
 
 ### App Layout
 
-| Element | Test ID | Component | Purpose |
-|---------|---------|-----------|---------|
-| Main app container | `app-container` | App.tsx | Wait for app ready |
-| Loading spinner | `loading-spinner` | App.tsx | Wait for loading complete |
-| Sidebar | `sidebar` | Sidebar.tsx | Sidebar interactions |
-| Main content | `main-content` | AppLayout.tsx | Content area |
+| Element            | Test ID           | Component     | Purpose                   |
+| ------------------ | ----------------- | ------------- | ------------------------- |
+| Main app container | `app-container`   | App.tsx       | Wait for app ready        |
+| Loading spinner    | `loading-spinner` | App.tsx       | Wait for loading complete |
+| Sidebar            | `sidebar`         | Sidebar.tsx   | Sidebar interactions      |
+| Main content       | `main-content`    | AppLayout.tsx | Content area              |
 
 ### Conversation List (Sidebar)
 
-| Element | Test ID | Component | Purpose |
-|---------|---------|-----------|---------|
-| New conversation button | `new-conversation-button` | Sidebar.tsx | Create new conversation |
-| Conversations list | `conversations-list` | Sidebar.tsx | List container |
-| Conversation item | `conversation-item-{id}` | Sidebar.tsx | Individual conversation |
-| Conversation title | `conversation-title-{id}` | Sidebar.tsx | Conversation title |
-| Conversation options | `conversation-options-{id}` | Sidebar.tsx | Options menu button |
-| Rename button | `conversation-rename-{id}` | Sidebar.tsx | Rename action |
-| Delete button | `conversation-delete-{id}` | Sidebar.tsx | Delete action |
-| Title input | `conversation-title-input` | Sidebar.tsx | Title editing input |
+| Element                 | Test ID                     | Component   | Purpose                 |
+| ----------------------- | --------------------------- | ----------- | ----------------------- |
+| New conversation button | `new-conversation-button`   | Sidebar.tsx | Create new conversation |
+| Conversations list      | `conversations-list`        | Sidebar.tsx | List container          |
+| Conversation item       | `conversation-item-{id}`    | Sidebar.tsx | Individual conversation |
+| Conversation title      | `conversation-title-{id}`   | Sidebar.tsx | Conversation title      |
+| Conversation options    | `conversation-options-{id}` | Sidebar.tsx | Options menu button     |
+| Rename button           | `conversation-rename-{id}`  | Sidebar.tsx | Rename action           |
+| Delete button           | `conversation-delete-{id}`  | Sidebar.tsx | Delete action           |
+| Title input             | `conversation-title-input`  | Sidebar.tsx | Title editing input     |
 
 ### Search
 
-| Element | Test ID | Component | Purpose |
-|---------|---------|-----------|---------|
-| Search input | `search-input` | ConversationSearch.tsx | Search input field |
-| Search results | `search-results` | ConversationSearch.tsx | Results container |
-| Search result item | `search-result-{id}` | SearchResultItem.tsx | Individual result |
-| Search pagination | `search-pagination` | SearchPagination.tsx | Pagination controls |
-| No results message | `search-no-results` | ConversationSearch.tsx | Empty state |
+| Element            | Test ID              | Component              | Purpose             |
+| ------------------ | -------------------- | ---------------------- | ------------------- |
+| Search input       | `search-input`       | ConversationSearch.tsx | Search input field  |
+| Search results     | `search-results`     | ConversationSearch.tsx | Results container   |
+| Search result item | `search-result-{id}` | SearchResultItem.tsx   | Individual result   |
+| Search pagination  | `search-pagination`  | SearchPagination.tsx   | Pagination controls |
+| No results message | `search-no-results`  | ConversationSearch.tsx | Empty state         |
 
 ### Chat Interface
 
-| Element | Test ID | Component | Purpose |
-|---------|---------|-----------|---------|
-| Chat container | `chat-container` | ChatInterface.tsx | Main chat area |
-| Message list | `message-list` | ChatInterface.tsx | Messages container |
-| Message item | `message-{id}` | ChatInterface.tsx | Individual message |
-| Message input | `message-input` | ChatInterface.tsx | Input field |
-| Send button | `send-button` | ChatInterface.tsx | Send message |
+| Element        | Test ID          | Component         | Purpose            |
+| -------------- | ---------------- | ----------------- | ------------------ |
+| Chat container | `chat-container` | ChatInterface.tsx | Main chat area     |
+| Message list   | `message-list`   | ChatInterface.tsx | Messages container |
+| Message item   | `message-{id}`   | ChatInterface.tsx | Individual message |
+| Message input  | `message-input`  | ChatInterface.tsx | Input field        |
+| Send button    | `send-button`    | ChatInterface.tsx | Send message       |
 
 ### Dialogs
 
-| Element | Test ID | Component | Purpose |
-|---------|---------|-----------|---------|
+| Element        | Test ID          | Component         | Purpose             |
+| -------------- | ---------------- | ----------------- | ------------------- |
 | Confirm dialog | `confirm-dialog` | ConfirmDialog.tsx | Confirmation dialog |
-| Confirm button | `confirm-button` | ConfirmDialog.tsx | Confirm action |
-| Cancel button | `cancel-button` | ConfirmDialog.tsx | Cancel action |
+| Confirm button | `confirm-button` | ConfirmDialog.tsx | Confirm action      |
+| Cancel button  | `cancel-button`  | ConfirmDialog.tsx | Cancel action       |
 
 ## Implementation Checklist
 
@@ -111,6 +113,7 @@ Examples:
 ## Usage in Tests
 
 ### Before (Fragile)
+
 ```typescript
 // Bad: Relies on CSS classes and text content
 await page.waitForSelector('.conversation-list-item:has-text("My Conversation")');
@@ -118,6 +121,7 @@ await page.click('button[aria-label*="Rename"]');
 ```
 
 ### After (Stable)
+
 ```typescript
 // Good: Uses stable test IDs
 await page.waitForSelector('[data-testid="conversation-item-123"]');
@@ -155,8 +159,8 @@ await page.click('[data-testid="conversation-rename-123"]');
 
 ```tsx
 // Sidebar.tsx
-<li 
-  key={conversation.id} 
+<li
+  key={conversation.id}
   className="conversation-item"
   data-testid={`conversation-item-${conversation.id}`}
 >
@@ -165,14 +169,11 @@ await page.click('[data-testid="conversation-rename-123"]');
     data-testid={`conversation-button-${conversation.id}`}
     onClick={() => handleSelect(conversation.id)}
   >
-    <div 
-      className="conversation-title"
-      data-testid={`conversation-title-${conversation.id}`}
-    >
+    <div className="conversation-title" data-testid={`conversation-title-${conversation.id}`}>
       {conversation.title}
     </div>
   </button>
-  
+
   <button
     className="conversation-action"
     data-testid={`conversation-options-${conversation.id}`}

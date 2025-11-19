@@ -15,7 +15,9 @@
 
 ## Overview
 
-The Conversation Search feature allows you to quickly find specific information across all your conversations and messages. With full-text search, keyword highlighting, and intelligent pagination, you can locate any conversation or message in seconds.
+The Conversation Search feature allows you to quickly find specific information across all your
+conversations and messages. With full-text search, keyword highlighting, and intelligent pagination,
+you can locate any conversation or message in seconds.
 
 ### Key Features
 
@@ -73,22 +75,26 @@ Finds conversations containing both "error" AND "handling"
 **Default: Case-Insensitive**
 
 By default, search is case-insensitive:
+
 - `API` matches "api", "API", "Api"
 - `error` matches "Error", "ERROR", "error"
 
 **Case-Sensitive Search**
 
 To enable case-sensitive search:
+
 1. Click the "Aa" button in the search bar
 2. Or use the settings menu
 
 With case-sensitive enabled:
+
 - `API` only matches "API"
 - `error` only matches "error"
 
 ### Search Scope
 
 Search looks in:
+
 - **Conversation Titles**: Weighted higher in results
 - **Message Content**: All user and assistant messages
 - **Timestamps**: Recent conversations ranked higher
@@ -97,40 +103,40 @@ Search looks in:
 
 ### Global Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl+K` / `Cmd+K` | Open search |
-| `Escape` | Clear search / Close |
+| Shortcut           | Action               |
+| ------------------ | -------------------- |
+| `Ctrl+K` / `Cmd+K` | Open search          |
+| `Escape`           | Clear search / Close |
 
 ### Navigation Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| `ArrowDown` | Move to next result |
-| `ArrowUp` | Move to previous result |
-| `Enter` | Open selected result |
-| `Space` | Open selected result |
-| `Home` | Jump to first result |
-| `End` | Jump to last result |
+| Shortcut    | Action                  |
+| ----------- | ----------------------- |
+| `ArrowDown` | Move to next result     |
+| `ArrowUp`   | Move to previous result |
+| `Enter`     | Open selected result    |
+| `Space`     | Open selected result    |
+| `Home`      | Jump to first result    |
+| `End`       | Jump to last result     |
 
 ### Pagination Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| `PageDown` | Next page of results |
-| `PageUp` | Previous page of results |
-| `Ctrl+ArrowRight` | Next page |
-| `Ctrl+ArrowLeft` | Previous page |
+| Shortcut          | Action                   |
+| ----------------- | ------------------------ |
+| `PageDown`        | Next page of results     |
+| `PageUp`          | Previous page of results |
+| `Ctrl+ArrowRight` | Next page                |
+| `Ctrl+ArrowLeft`  | Previous page            |
 
 ### In-Conversation Shortcuts
 
 When viewing a conversation from search:
 
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl+F` | Find next occurrence |
+| Shortcut       | Action                   |
+| -------------- | ------------------------ |
+| `Ctrl+F`       | Find next occurrence     |
 | `Ctrl+Shift+F` | Find previous occurrence |
-| `Escape` | Exit find mode |
+| `Escape`       | Exit find mode           |
 
 ## Search Results
 
@@ -156,17 +162,20 @@ Results are ranked by relevance:
 ### Result Actions
 
 **Click a Result**:
+
 - Opens the conversation
 - Scrolls to the first keyword occurrence
 - Highlights all keyword occurrences
 - Shows navigation controls
 
 **Hover Over Result**:
+
 - Shows full context preview
 - Displays all match locations
 - Highlights the result
 
 **Keyboard Selection**:
+
 - Use arrow keys to navigate
 - Press Enter to open
 - Tab to move between elements
@@ -180,12 +189,14 @@ Search results are paginated with 20 results per page for optimal performance.
 ### Navigation
 
 **Page Controls**:
+
 - **Previous Button**: Go to previous page
 - **Next Button**: Go to next page
 - **Page Numbers**: Click to jump to specific page
 - **Current Page**: Highlighted in blue
 
 **Keyboard Navigation**:
+
 - `PageDown`: Next page
 - `PageUp`: Previous page
 - `Ctrl+ArrowRight`: Next page
@@ -194,6 +205,7 @@ Search results are paginated with 20 results per page for optimal performance.
 ### Prefetching
 
 For faster navigation:
+
 - **First 3 Pages**: Loaded immediately (60 results)
 - **Additional Pages**: Loaded on demand
 - **Cache**: Results cached for instant navigation
@@ -202,6 +214,7 @@ For faster navigation:
 ### Page Information
 
 The pagination bar shows:
+
 - Current page number
 - Total number of pages
 - Total number of results
@@ -212,6 +225,7 @@ The pagination bar shows:
 ### In Search Results
 
 Keywords are highlighted in:
+
 - **Conversation Titles**: Yellow background
 - **Context Previews**: Yellow background with bold text
 - **Match Count**: Shows total occurrences
@@ -228,11 +242,13 @@ When you open a conversation from search:
 ### Navigation Between Matches
 
 **Using Controls**:
+
 - Click "Previous" to go to previous match
 - Click "Next" to go to next match
 - Counter shows "2 of 5" (current of total)
 
 **Using Keyboard**:
+
 - `Ctrl+F`: Next match
 - `Ctrl+Shift+F`: Previous match
 - `Escape`: Exit find mode
@@ -240,16 +256,19 @@ When you open a conversation from search:
 ### Highlight Colors
 
 **Light Mode**:
+
 - Current match: `#FFEB3B` (bright yellow)
 - Other matches: `#FFF9C4` (light yellow)
 - Text: `#000000` (black, 21:1 contrast)
 
 **Dark Mode**:
+
 - Current match: `#FFD700` (gold)
 - Other matches: `#FFF59D` (pale yellow)
 - Text: `#000000` (black, 21:1 contrast)
 
 **High Contrast Mode**:
+
 - Current match: `#FFFF00` (pure yellow)
 - Other matches: `#FFFF99` (light yellow)
 - Text: `#000000` (black)
@@ -263,18 +282,21 @@ The search interface meets the highest accessibility standards:
 #### Visual Accessibility
 
 **Color Contrast**:
+
 - All text: 7:1 contrast ratio (AAA)
 - Large text: 4.5:1 contrast ratio (AAA)
 - UI components: 3:1 contrast ratio
 - Focus indicators: 3:1 contrast ratio
 
 **Color Independence**:
+
 - Never relies on color alone
 - Keywords use both color AND bold text
 - Icons have text labels
 - Status indicated with text and icons
 
 **Responsive Design**:
+
 - Text resizable up to 200%
 - Zoom up to 400% without horizontal scroll
 - Reflow for different viewport sizes
@@ -283,18 +305,21 @@ The search interface meets the highest accessibility standards:
 #### Keyboard Accessibility
 
 **Full Keyboard Access**:
+
 - All features accessible via keyboard
 - No keyboard traps
 - Logical tab order
 - Skip links available
 
 **Focus Indicators**:
+
 - 3px outline on all interactive elements
 - High contrast focus indicators
 - Always visible
 - Never hidden
 
 **Keyboard Shortcuts**:
+
 - Documented and discoverable
 - Customizable (coming soon)
 - No conflicts with browser shortcuts
@@ -303,24 +328,28 @@ The search interface meets the highest accessibility standards:
 #### Screen Reader Support
 
 **ARIA Labels**:
+
 - All interactive elements labeled
 - Form fields have labels
 - Buttons have descriptive text
 - Links indicate destination
 
 **Live Regions**:
+
 - Search results announced
 - Page changes announced
 - Errors announced immediately
 - Status updates announced
 
 **Semantic HTML**:
+
 - Proper heading hierarchy (h1 → h2 → h3)
 - Landmark regions (search, navigation, main)
 - Lists for list content
 - Tables for tabular data
 
 **Role Attributes**:
+
 - `role="search"` for search container
 - `role="searchbox"` for search input
 - `role="region"` for results area
@@ -329,12 +358,14 @@ The search interface meets the highest accessibility standards:
 #### Motion & Animation
 
 **Reduced Motion**:
+
 - Respects `prefers-reduced-motion`
 - Animations disabled when requested
 - Instant transitions instead
 - No auto-playing content
 
 **Safe Animations**:
+
 - Subtle fade-ins (300ms)
 - Smooth scrolling (when enabled)
 - No flashing or strobing
@@ -343,18 +374,21 @@ The search interface meets the highest accessibility standards:
 ### Assistive Technology Support
 
 **Screen Readers**:
+
 - NVDA (Windows)
 - JAWS (Windows)
 - VoiceOver (macOS/iOS)
 - TalkBack (Android)
 
 **Magnification**:
+
 - ZoomText
 - Windows Magnifier
 - macOS Zoom
 - Browser zoom
 
 **Voice Control**:
+
 - Dragon NaturallySpeaking
 - Windows Speech Recognition
 - macOS Dictation
@@ -365,15 +399,18 @@ The search interface meets the highest accessibility standards:
 ### Efficient Searching
 
 **Use Specific Keywords**:
+
 - ✅ "authentication error 401"
 - ❌ "problem"
 
 **Search Titles First**:
+
 - Titles are weighted higher
 - More likely to find what you need
 - Faster to scan
 
 **Use Multiple Keywords**:
+
 - Narrows down results
 - More relevant matches
 - Better ranking
@@ -381,6 +418,7 @@ The search interface meets the highest accessibility standards:
 ### Finding Recent Conversations
 
 **Sort by Date**:
+
 - Recent conversations ranked higher
 - Use date-related keywords
 - Check "Recent" filter (coming soon)
@@ -388,12 +426,14 @@ The search interface meets the highest accessibility standards:
 ### Finding Specific Messages
 
 **Use Unique Terms**:
+
 - Technical terms
 - Error codes
 - Function names
 - Specific phrases
 
 **Use Context**:
+
 - Words around the target
 - Related concepts
 - Associated terms
@@ -401,11 +441,13 @@ The search interface meets the highest accessibility standards:
 ### Navigating Large Result Sets
 
 **Use Pagination**:
+
 - Jump to specific pages
 - Use keyboard shortcuts
 - Prefetching makes it fast
 
 **Refine Your Search**:
+
 - Add more keywords
 - Use case-sensitive search
 - Filter by date (coming soon)
@@ -413,11 +455,13 @@ The search interface meets the highest accessibility standards:
 ### Performance Tips
 
 **Clear Cache Periodically**:
+
 - Refresh the page
 - Clears search cache
 - Rebuilds index
 
 **Limit Result Count**:
+
 - Use specific keywords
 - Narrow search scope
 - Filter results
@@ -427,12 +471,14 @@ The search interface meets the highest accessibility standards:
 ### No Results Found
 
 **Possible Causes**:
+
 1. Typo in search query
 2. Case-sensitive search enabled
 3. Conversation deleted
 4. Search index not built
 
 **Solutions**:
+
 1. Check spelling
 2. Disable case-sensitive search
 3. Verify conversation exists
@@ -441,12 +487,14 @@ The search interface meets the highest accessibility standards:
 ### Slow Search
 
 **Possible Causes**:
+
 1. Large number of conversations
 2. Search index not built
 3. Browser performance issues
 4. Network latency
 
 **Solutions**:
+
 1. Wait for index to build (first search)
 2. Refresh the page
 3. Close other tabs
@@ -455,12 +503,14 @@ The search interface meets the highest accessibility standards:
 ### Highlighting Not Working
 
 **Possible Causes**:
+
 1. Browser extension interference
 2. Custom CSS overrides
 3. High contrast mode issues
 4. JavaScript errors
 
 **Solutions**:
+
 1. Disable browser extensions
 2. Reset custom styles
 3. Check browser console
@@ -469,12 +519,14 @@ The search interface meets the highest accessibility standards:
 ### Keyboard Shortcuts Not Working
 
 **Possible Causes**:
+
 1. Browser extension conflict
 2. Operating system shortcuts
 3. Focus not in search area
 4. Accessibility mode enabled
 
 **Solutions**:
+
 1. Disable conflicting extensions
 2. Check OS keyboard settings
 3. Click in search box first
@@ -483,12 +535,14 @@ The search interface meets the highest accessibility standards:
 ### Pagination Issues
 
 **Possible Causes**:
+
 1. Cache corruption
 2. Network errors
 3. Browser storage full
 4. JavaScript errors
 
 **Solutions**:
+
 1. Clear browser cache
 2. Check network connection
 3. Free up storage space
@@ -497,18 +551,21 @@ The search interface meets the highest accessibility standards:
 ### Accessibility Issues
 
 **Screen Reader Not Announcing**:
+
 1. Check screen reader settings
 2. Verify ARIA support
 3. Update screen reader
 4. Try different browser
 
 **Focus Not Visible**:
+
 1. Check browser zoom level
 2. Verify focus indicator styles
 3. Disable custom themes
 4. Check high contrast mode
 
 **Keyboard Navigation Broken**:
+
 1. Check for JavaScript errors
 2. Verify focus management
 3. Test in different browser
@@ -519,16 +576,19 @@ The search interface meets the highest accessibility standards:
 ### Support Resources
 
 **Documentation**:
+
 - [Main README](../../apps/frontend/README.md)
 - [API Documentation](../api/)
 - [Troubleshooting Guide](../TROUBLESHOOTING.md)
 
 **Community**:
+
 - GitHub Issues
 - Discussion Forum
 - Stack Overflow
 
 **Contact**:
+
 - Email: support@example.com
 - Chat: Available in app
 - Phone: 1-800-SUPPORT
@@ -559,30 +619,30 @@ We welcome feature requests! Please include:
 
 ### Search Performance Metrics
 
-| Metric | Target | Typical |
-|--------|--------|---------|
-| Search Latency | <500ms | 200-300ms |
-| Index Build Time | <5s | 2-3s |
-| Result Display | <100ms | 50ms |
-| Page Navigation | <50ms | 20ms |
-| Highlight Rendering | <100ms | 50ms |
+| Metric              | Target | Typical   |
+| ------------------- | ------ | --------- |
+| Search Latency      | <500ms | 200-300ms |
+| Index Build Time    | <5s    | 2-3s      |
+| Result Display      | <100ms | 50ms      |
+| Page Navigation     | <50ms  | 20ms      |
+| Highlight Rendering | <100ms | 50ms      |
 
 ### Supported Browsers
 
 | Browser | Minimum Version | Recommended |
-|---------|----------------|-------------|
-| Chrome | 90+ | Latest |
-| Firefox | 88+ | Latest |
-| Safari | 14+ | Latest |
-| Edge | 90+ | Latest |
+| ------- | --------------- | ----------- |
+| Chrome  | 90+             | Latest      |
+| Firefox | 88+             | Latest      |
+| Safari  | 14+             | Latest      |
+| Edge    | 90+             | Latest      |
 
 ### Storage Requirements
 
-| Data | Size | Notes |
-|------|------|-------|
-| Search Index | ~1MB per 1000 conversations | In-memory |
-| Cache | ~500KB per 100 results | Session storage |
-| Metadata | ~10KB | Persistent |
+| Data         | Size                        | Notes           |
+| ------------ | --------------------------- | --------------- |
+| Search Index | ~1MB per 1000 conversations | In-memory       |
+| Cache        | ~500KB per 100 results      | Session storage |
+| Metadata     | ~10KB                       | Persistent      |
 
 ### Keyboard Shortcut Reference Card
 
@@ -608,6 +668,5 @@ Print this for quick reference:
 
 ---
 
-**Last Updated**: 2024-01-15
-**Version**: 1.0.0
-**Feedback**: Please report issues or suggestions via GitHub Issues
+**Last Updated**: 2024-01-15 **Version**: 1.0.0 **Feedback**: Please report issues or suggestions
+via GitHub Issues

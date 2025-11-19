@@ -2,51 +2,53 @@
 
 ## Overview
 
-Added `data-testid` attributes to critical UI components to make E2E tests more stable and maintainable.
+Added `data-testid` attributes to critical UI components to make E2E tests more stable and
+maintainable.
 
 ## Implemented Test IDs
 
 ### ✅ App Layout (AppLayout.tsx)
 
-| Element | Test ID | Status |
-|---------|---------|--------|
-| Main app container | `app-container` | ✅ Already existed |
-| Loading spinner | `loading-spinner` | ✅ Already existed |
+| Element            | Test ID           | Status             |
+| ------------------ | ----------------- | ------------------ |
+| Main app container | `app-container`   | ✅ Already existed |
+| Loading spinner    | `loading-spinner` | ✅ Already existed |
 
 ### ✅ Sidebar (Sidebar.tsx)
 
-| Element | Test ID | Status |
-|---------|---------|--------|
-| Sidebar container | `sidebar` | ✅ Added |
-| New conversation button | `new-conversation-button` | ✅ Added |
-| Conversations list | `conversations-list` | ✅ Added |
-| Conversation item | `conversation-item-{id}` | ✅ Added |
-| Conversation button | `conversation-button-{id}` | ✅ Added |
-| Conversation title | `conversation-title-{id}` | ✅ Added |
-| Conversation options | `conversation-options-{id}` | ✅ Added |
-| Title input (editing) | `conversation-title-input` | ✅ Added |
+| Element                 | Test ID                     | Status   |
+| ----------------------- | --------------------------- | -------- |
+| Sidebar container       | `sidebar`                   | ✅ Added |
+| New conversation button | `new-conversation-button`   | ✅ Added |
+| Conversations list      | `conversations-list`        | ✅ Added |
+| Conversation item       | `conversation-item-{id}`    | ✅ Added |
+| Conversation button     | `conversation-button-{id}`  | ✅ Added |
+| Conversation title      | `conversation-title-{id}`   | ✅ Added |
+| Conversation options    | `conversation-options-{id}` | ✅ Added |
+| Title input (editing)   | `conversation-title-input`  | ✅ Added |
 
 ### ✅ Search (ConversationSearch.tsx)
 
-| Element | Test ID | Status |
-|---------|---------|--------|
-| Search input | `search-input` | ✅ Added |
-| Search results container | `search-results` | ✅ Added |
-| No results message | `search-no-results` | ✅ Added |
+| Element                  | Test ID             | Status   |
+| ------------------------ | ------------------- | -------- |
+| Search input             | `search-input`      | ✅ Added |
+| Search results container | `search-results`    | ✅ Added |
+| No results message       | `search-no-results` | ✅ Added |
 
 ### ✅ Dialogs (ConfirmDialog.tsx)
 
-| Element | Test ID | Status |
-|---------|---------|--------|
+| Element        | Test ID          | Status   |
+| -------------- | ---------------- | -------- |
 | Confirm dialog | `confirm-dialog` | ✅ Added |
 | Confirm button | `confirm-button` | ✅ Added |
-| Cancel button | `cancel-button` | ✅ Added |
+| Cancel button  | `cancel-button`  | ✅ Added |
 
 ## Updated Test Helpers
 
 Updated `tests/e2e/utils/test-helpers.ts` to use the new test IDs:
 
 ### Before (Fragile)
+
 ```typescript
 // Relied on CSS classes and text content
 const conversationItem = await page.waitForSelector(
@@ -56,6 +58,7 @@ const conversationItem = await page.waitForSelector(
 ```
 
 ### After (Stable)
+
 ```typescript
 // Uses stable test IDs
 const conversationItem = await page.waitForSelector(
@@ -87,8 +90,10 @@ pnpm exec playwright test --config=playwright.config.manual.ts tests/e2e/browser
 
 With these test IDs in place, the following tests should now pass:
 
-1. ✅ **should persist title changes in all browsers** - Uses `conversation-item-{id}` and `conversation-title-input`
-2. ✅ **should delete conversations completely in all browsers** - Uses `conversation-item-{id}` and `confirm-button`
+1. ✅ **should persist title changes in all browsers** - Uses `conversation-item-{id}` and
+   `conversation-title-input`
+2. ✅ **should delete conversations completely in all browsers** - Uses `conversation-item-{id}` and
+   `confirm-button`
 3. ✅ **should search conversations in all browsers** - Uses `search-input` and `search-results`
 4. ✅ **should handle events consistently in all browsers** - Uses `conversation-button-{id}`
 
@@ -120,6 +125,5 @@ With these test IDs in place, the following tests should now pass:
 
 ---
 
-**Date**: 2024-11-14
-**Task**: Add data-testid attributes for E2E testing
-**Status**: ✅ Implementation complete, ready for testing
+**Date**: 2024-11-14 **Task**: Add data-testid attributes for E2E testing **Status**: ✅
+Implementation complete, ready for testing

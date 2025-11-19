@@ -4,7 +4,8 @@ Complete guide for migrating the Claude-to-Azure Proxy from Node.js 22 to Node.j
 
 ## 🎯 Overview
 
-This guide covers the migration process from Node.js 22 to Node.js 24 LTS, including breaking changes, new features, performance optimizations, and troubleshooting steps.
+This guide covers the migration process from Node.js 22 to Node.js 24 LTS, including breaking
+changes, new features, performance optimizations, and troubleshooting steps.
 
 ### Migration Benefits
 
@@ -132,9 +133,9 @@ pnpm add -D tsx@^4.20.6
 // tsconfig.json updates
 {
   "compilerOptions": {
-    "target": "ES2024",           // Updated from ES2022
+    "target": "ES2024", // Updated from ES2022
     "module": "ESNext",
-    "lib": ["ES2024", "DOM"],     // Updated from ES2022
+    "lib": ["ES2024", "DOM"], // Updated from ES2022
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "noEmit": true,
@@ -232,7 +233,7 @@ export class ResourceManager {
     // Automatic cleanup
     this.cleanup();
   }
-  
+
   [Symbol.asyncDispose](): Promise<void> {
     // Async cleanup
     return this.asyncCleanup();
@@ -277,7 +278,8 @@ services:
   claude-proxy:
     build: .
     environment:
-      - NODE_OPTIONS=--max-old-space-size=1024 --max-new-space-size=128 --optimize-for-size --gc-interval=100 --incremental-marking --concurrent-marking --parallel-scavenge
+      - NODE_OPTIONS=--max-old-space-size=1024 --max-new-space-size=128 --optimize-for-size
+        --gc-interval=100 --incremental-marking --concurrent-marking --parallel-scavenge
       - NODE_ENV=production
     deploy:
       resources:
@@ -301,18 +303,20 @@ spec:
   template:
     spec:
       containers:
-      - name: claude-proxy
-        image: claude-proxy:node24
-        env:
-        - name: NODE_OPTIONS
-          value: "--max-old-space-size=1024 --max-new-space-size=128 --optimize-for-size --gc-interval=100 --incremental-marking --concurrent-marking --parallel-scavenge"
-        resources:
-          requests:
-            memory: "1Gi"
-            cpu: "500m"
-          limits:
-            memory: "2Gi"
-            cpu: "1000m"
+        - name: claude-proxy
+          image: claude-proxy:node24
+          env:
+            - name: NODE_OPTIONS
+              value:
+                '--max-old-space-size=1024 --max-new-space-size=128 --optimize-for-size
+                --gc-interval=100 --incremental-marking --concurrent-marking --parallel-scavenge'
+          resources:
+            requests:
+              memory: '1Gi'
+              cpu: '500m'
+            limits:
+              memory: '2Gi'
+              cpu: '1000m'
 ```
 
 ## 🔧 Breaking Changes and Mitigations
@@ -324,6 +328,7 @@ spec:
 **Impact**: Some older JavaScript features may not be available
 
 **Mitigation**:
+
 ```bash
 # Update TypeScript configuration
 pnpm add -D typescript@^5.6.0
@@ -339,10 +344,11 @@ pnpm add -D typescript@^5.6.0
 **Impact**: Some previously valid code may show type errors
 
 **Mitigation**:
+
 ```typescript
 // Fix unsafe any types
 // Before
-function process(data: any) { }
+function process(data: any) {}
 
 // After
 function process(data: unknown) {
@@ -359,6 +365,7 @@ function process(data: unknown) {
 **Impact**: Memory usage patterns may change
 
 **Mitigation**:
+
 ```bash
 # Monitor memory usage
 NODE_OPTIONS="--expose-gc --heap-prof" pnpm start
@@ -374,6 +381,7 @@ NODE_OPTIONS="--max-old-space-size=2048" pnpm start
 **Impact**: Some dynamic imports may behave differently
 
 **Mitigation**:
+
 ```typescript
 // Use proper async import syntax
 const module = await import('node:fs/promises');
@@ -391,6 +399,7 @@ const module = await import('node:fs/promises');
 **Symptom**: Out of memory errors or high memory usage
 
 **Solution**:
+
 ```bash
 # Increase heap size
 export NODE_OPTIONS="--max-old-space-size=2048 --max-new-space-size=256"
@@ -407,6 +416,7 @@ pnpm run test:memory
 **Symptom**: Slower response times after migration
 
 **Solution**:
+
 ```bash
 # Enable performance optimizations
 export NODE_OPTIONS="--optimize-for-size --incremental-marking --concurrent-marking --parallel-scavenge"
@@ -424,6 +434,7 @@ node --prof-process isolate-*.log > profile.txt
 **Symptom**: TypeScript compilation fails with new errors
 
 **Solution**:
+
 ```bash
 # Update TypeScript and types
 pnpm add -D typescript@^5.6.0 @types/node@^24.9.1
@@ -442,6 +453,7 @@ pnpm add -D typescript@^5.6.0 @types/node@^24.9.1
 **Symptom**: Module import errors or unexpected behavior
 
 **Solution**:
+
 ```typescript
 // Use proper ES module syntax
 import { readFile } from 'node:fs/promises';
@@ -458,6 +470,7 @@ const { readFile } = await import('node:fs/promises');
 **Symptom**: Docker build fails with Node.js 24
 
 **Solution**:
+
 ```dockerfile
 # Ensure proper base image
 FROM node:24-alpine AS base
@@ -474,6 +487,7 @@ ENV NODE_OPTIONS="--max-old-space-size=1024"
 **Symptom**: Some dependencies don't work with Node.js 24
 
 **Solution**:
+
 ```bash
 # Update all dependencies
 pnpm update
@@ -533,13 +547,13 @@ curl http://localhost:8080/health
 
 ### Before (Node.js 22) vs After (Node.js 24)
 
-| Metric | Node.js 22 | Node.js 24 | Improvement |
-|--------|------------|------------|-------------|
-| Startup Time | 2.5s | 1.8s | 28% faster |
-| Memory Usage | 180MB | 140MB | 22% reduction |
-| Request Latency | 45ms | 35ms | 22% faster |
-| Throughput | 850 req/s | 1100 req/s | 29% increase |
-| GC Pause Time | 12ms | 7ms | 42% reduction |
+| Metric          | Node.js 22 | Node.js 24 | Improvement   |
+| --------------- | ---------- | ---------- | ------------- |
+| Startup Time    | 2.5s       | 1.8s       | 28% faster    |
+| Memory Usage    | 180MB      | 140MB      | 22% reduction |
+| Request Latency | 45ms       | 35ms       | 22% faster    |
+| Throughput      | 850 req/s  | 1100 req/s | 29% increase  |
+| GC Pause Time   | 12ms       | 7ms        | 42% reduction |
 
 ### Benchmarking Commands
 
@@ -618,7 +632,8 @@ ab -n 1000 -c 10 -H "Authorization: Bearer your-key" \
 
 ## 🎉 Migration Complete
 
-Congratulations! You have successfully migrated to Node.js 24 LTS. Your application now benefits from:
+Congratulations! You have successfully migrated to Node.js 24 LTS. Your application now benefits
+from:
 
 - ✅ Enhanced performance and reduced memory usage
 - ✅ Improved security and stability
@@ -636,4 +651,5 @@ Congratulations! You have successfully migrated to Node.js 24 LTS. Your applicat
 
 ---
 
-**Need Help?** If you encounter issues during migration, refer to the troubleshooting section above or create an issue in the project repository.
+**Need Help?** If you encounter issues during migration, refer to the troubleshooting section above
+or create an issue in the project repository.
