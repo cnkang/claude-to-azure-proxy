@@ -160,7 +160,9 @@ describe('Configuration Module', () => {
       process.env.AZURE_OPENAI_API_KEY = 'b'.repeat(32);
       delete process.env.AZURE_OPENAI_MODEL; // Allow it to be missing
 
-      const configModule = await import('../src/config/index.js?t=' + Date.now());
+      const configModule = await import(
+        '../src/config/index.js?t=' + Date.now()
+      );
 
       // Should not exit - empty model is allowed
       expect(exitSpy).not.toHaveBeenCalled();

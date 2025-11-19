@@ -9,7 +9,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { StreamingResponseHandler, ChatStreamRequest } from '../src/services/streaming-service.js';
+import type {
+  StreamingResponseHandler,
+  ChatStreamRequest,
+} from '../src/services/streaming-service.js';
 import { createStreamingService } from '../src/services/streaming-service.js';
 
 describe('StreamingService', () => {
@@ -185,7 +188,9 @@ describe('StreamingService', () => {
       );
 
       // onError should be called for unsupported provider
-      expect((handler.onError as any).mock.calls.length).toBeGreaterThanOrEqual(0);
+      expect((handler.onError as any).mock.calls.length).toBeGreaterThanOrEqual(
+        0
+      );
     });
 
     it('should handle errors in finally block', async () => {

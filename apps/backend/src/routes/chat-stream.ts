@@ -14,8 +14,15 @@ import { ValidationError } from '../errors/index.js';
 import { logger } from '../middleware/logging.js';
 import type { RequestWithCorrelationId } from '../types/index.js';
 import type { ContextMessage } from '../services/context-management-service.js';
-import { isValidConversationId, isValidConnectionId, isValidMessageId } from '../utils/validation.js';
-import { forceGarbageCollection, getCurrentMemoryMetrics } from '../utils/memory-manager.js';
+import {
+  isValidConversationId,
+  isValidConnectionId,
+  isValidMessageId,
+} from '../utils/validation.js';
+import {
+  forceGarbageCollection,
+  getCurrentMemoryMetrics,
+} from '../utils/memory-manager.js';
 
 interface RequestWithSession extends RequestWithCorrelationId {
   sessionId: string;
@@ -109,7 +116,7 @@ const SSE_CONFIG = {
 
 /**
  * Clean up inactive connections
- * 
+ *
  * Task 11.3: Enhanced cleanup with statistics pruning and memory management
  */
 function cleanupInactiveConnections(): void {
@@ -132,28 +139,28 @@ function cleanupInactiveConnections(): void {
       remainingConnections: sseConnections.size,
     });
   }
-  
+
   // Task 11.3: Clean up statistics maps to prevent unbounded growth
   cleanupStatistics();
-  
+
   // Task 11.3: Check memory and trigger GC if needed after cleanup
   const memoryMetrics = getCurrentMemoryMetrics();
   const memoryPercentUsed = memoryMetrics.heap.percentage;
-  
+
   if (memoryPercentUsed > 80) {
     logger.info('High memory usage detected after cleanup, triggering GC', '', {
       memoryPercentUsed: memoryPercentUsed.toFixed(2),
       heapUsedMB: (memoryMetrics.heap.used / 1024 / 1024).toFixed(2),
       heapTotalMB: (memoryMetrics.heap.total / 1024 / 1024).toFixed(2),
     });
-    
+
     forceGarbageCollection();
   }
 }
 
 /**
  * Clean up statistics maps to prevent memory leaks
- * 
+ *
  * Task 11.3: Limit statistics map sizes
  * - Limit errorsByType to top 50 error types
  * - Clean up reconnectionsBySession for inactive sessions
@@ -165,30 +172,33 @@ function cleanupStatistics(): void {
     const sortedErrors = Array.from(sseStatistics.errorsByType.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, STATS_CONFIG.maxErrorTypes);
-    
+
     sseStatistics.errorsByType.clear();
     for (const [type, count] of sortedErrors) {
       sseStatistics.errorsByType.set(type, count);
     }
-    
+
     logger.debug('Pruned errorsByType map', '', {
       keptEntries: sseStatistics.errorsByType.size,
       maxEntries: STATS_CONFIG.maxErrorTypes,
     });
   }
-  
+
   // Clean up reconnectionsBySession for sessions with no active connections
-  if (sseStatistics.reconnectionsBySession.size > STATS_CONFIG.maxReconnectionSessions) {
+  if (
+    sseStatistics.reconnectionsBySession.size >
+    STATS_CONFIG.maxReconnectionSessions
+  ) {
     const activeSessions = new Set(sessionConnections.keys());
     let removedCount = 0;
-    
+
     for (const sessionId of sseStatistics.reconnectionsBySession.keys()) {
       if (!activeSessions.has(sessionId)) {
         sseStatistics.reconnectionsBySession.delete(sessionId);
         removedCount++;
       }
     }
-    
+
     logger.debug('Cleaned up reconnectionsBySession map', '', {
       removedSessions: removedCount,
       remainingSessions: sseStatistics.reconnectionsBySession.size,
@@ -202,7 +212,7 @@ function cleanupStatistics(): void {
 function classifyError(error: unknown): 'transient' | 'permanent' {
   if (error instanceof Error) {
     const message = error.message.toLowerCase();
-    
+
     // Transient errors that might recover
     if (
       message.includes('timeout') ||
@@ -213,7 +223,7 @@ function classifyError(error: unknown): 'transient' | 'permanent' {
       return 'transient';
     }
   }
-  
+
   // Default to permanent for safety
   return 'permanent';
 }
@@ -231,14 +241,14 @@ function sendSSEMessage(connectionId: string, data: StreamChunk): boolean {
   try {
     const sseData = `data: ${JSON.stringify(data)}\n\n`;
     connection.response.write(sseData);
-    
+
     // Update last message timestamp for health monitoring
     connection.lastMessageTimestamp = Date.now();
-    
+
     return true;
   } catch (error) {
     const errorType = classifyError(error);
-    
+
     logger.warn('Failed to send SSE message', connection.correlationId, {
       connectionId,
       error: error instanceof Error ? error.message : String(error),
@@ -254,7 +264,7 @@ function sendSSEMessage(connectionId: string, data: StreamChunk): boolean {
 
 /**
  * Send heartbeat to all active connections
- * 
+ *
  * Task 6.1: Use dedicated heartbeat message type
  */
 function sendHeartbeat(): void {
@@ -281,7 +291,7 @@ function sendHeartbeat(): void {
 
 /**
  * Close SSE connection
- * 
+ *
  * Task 11.3: Enhanced cleanup to release Response object references
  */
 function closeSSEConnection(connectionId: string, reason: string): void {
@@ -317,10 +327,12 @@ function closeSSEConnection(connectionId: string, reason: string): void {
 
     // Track statistics
     sseStatistics.totalConnectionsClosed++;
-    
+
     // Store connection duration (keep last N durations)
     sseStatistics.connectionDurations.push(duration);
-    if (sseStatistics.connectionDurations.length > SSE_CONFIG.maxStoredDurations) {
+    if (
+      sseStatistics.connectionDurations.length > SSE_CONFIG.maxStoredDurations
+    ) {
       sseStatistics.connectionDurations.shift(); // Remove oldest
     }
 
@@ -333,11 +345,15 @@ function closeSSEConnection(connectionId: string, reason: string): void {
 
     // Track reconnections (if this is not the first connection for this session)
     if (reason === 'client_disconnect' || reason.includes('error')) {
-      const reconnectCount = sseStatistics.reconnectionsBySession.get(connection.sessionId) || 0;
+      const reconnectCount =
+        sseStatistics.reconnectionsBySession.get(connection.sessionId) || 0;
       if (reconnectCount > 0) {
         sseStatistics.totalReconnections++;
       }
-      sseStatistics.reconnectionsBySession.set(connection.sessionId, reconnectCount + 1);
+      sseStatistics.reconnectionsBySession.set(
+        connection.sessionId,
+        reconnectCount + 1
+      );
     }
 
     logger.info('SSE connection closed', connection.correlationId, {
@@ -348,7 +364,7 @@ function closeSSEConnection(connectionId: string, reason: string): void {
       duration,
       totalClosed: sseStatistics.totalConnectionsClosed,
     });
-    
+
     // Task 11.3: Explicitly nullify connection reference to help GC
     // (connection variable will be garbage collected after this function returns)
   }
@@ -369,8 +385,8 @@ export const chatSSEHandler = [
     .withMessage('Invalid conversation ID format'),
 
   (req: Request, res: Response): void => {
-    const {correlationId} = req as RequestWithCorrelationId;
-    const {sessionId} = req as RequestWithSession;
+    const { correlationId } = req as RequestWithCorrelationId;
+    const { sessionId } = req as RequestWithSession;
     const conversationId = req.params.conversationId as string;
 
     try {
@@ -469,9 +485,13 @@ export const chatSSEHandler = [
             });
           }
         } else {
-          logger.warn('Connection closed before initial message could be sent', correlationId, {
-            connectionId,
-          });
+          logger.warn(
+            'Connection closed before initial message could be sent',
+            correlationId,
+            {
+              connectionId,
+            }
+          );
         }
       }, 100); // 100ms delay to ensure client is ready
 
@@ -523,7 +543,9 @@ export const chatSSEHandler = [
  */
 export const sendChatMessageHandler = [
   // Input validation
-  body('conversationId').custom(isValidConversationId).withMessage('Invalid conversation ID format'),
+  body('conversationId')
+    .custom(isValidConversationId)
+    .withMessage('Invalid conversation ID format'),
   body('message')
     .isString()
     .isLength({ min: 1, max: SSE_CONFIG.maxMessageSize })
@@ -533,11 +555,14 @@ export const sendChatMessageHandler = [
     .isLength({ min: 1, max: 100 })
     .withMessage('Model must be a string between 1 and 100 characters'),
   body('files').optional().isArray().withMessage('Files must be an array'),
-  body('contextMessages').optional().isArray().withMessage('Context messages must be an array'),
+  body('contextMessages')
+    .optional()
+    .isArray()
+    .withMessage('Context messages must be an array'),
 
   async (req: Request, res: Response): Promise<void> => {
-    const {correlationId} = req as RequestWithCorrelationId;
-    const {sessionId} = req as RequestWithSession;
+    const { correlationId } = req as RequestWithCorrelationId;
+    const { sessionId } = req as RequestWithSession;
 
     try {
       // Task 10.1: Log incoming message request for debugging
@@ -560,7 +585,7 @@ export const sendChatMessageHandler = [
         // Task 10.1: Enhanced error logging with detailed validation failure information
         logger.error('Chat message validation failed', correlationId, {
           errors: errors.array(),
-          errorDetails: errors.array().map(err => ({
+          errorDetails: errors.array().map((err) => ({
             field: err.type === 'field' ? (err as any).path : 'unknown',
             message: err.msg,
             value: err.type === 'field' ? (err as any).value : undefined,
@@ -588,23 +613,27 @@ export const sendChatMessageHandler = [
       if (contextMessages && Array.isArray(contextMessages)) {
         logger.debug('Validating context messages', correlationId, {
           contextMessageCount: contextMessages.length,
-          contextMessages: contextMessages.map(msg => ({
+          contextMessages: contextMessages.map((msg) => ({
             id: msg.id,
             role: msg.role,
             hasContent: !!msg.content,
           })),
         });
-        
+
         for (let i = 0; i < contextMessages.length; i++) {
           const msg = contextMessages[i];
-          
+
           // Validate message ID if provided (it's optional)
           if (msg.id && !isValidMessageId(msg.id)) {
-            logger.warn('Invalid message ID in context messages', correlationId, {
-              index: i,
-              messageId: msg.id,
-              role: msg.role,
-            });
+            logger.warn(
+              'Invalid message ID in context messages',
+              correlationId,
+              {
+                index: i,
+                messageId: msg.id,
+                role: msg.role,
+              }
+            );
             throw new ValidationError(
               `Invalid message ID in context messages at index ${i}`,
               correlationId,
@@ -612,7 +641,7 @@ export const sendChatMessageHandler = [
               msg.id
             );
           }
-          
+
           // Validate role
           if (msg.role && !['user', 'assistant', 'system'].includes(msg.role)) {
             logger.warn('Invalid role in context messages', correlationId, {
@@ -627,9 +656,12 @@ export const sendChatMessageHandler = [
               msg.role
             );
           }
-          
+
           // Validate content exists
-          if (!msg.content || (typeof msg.content === 'string' && msg.content.trim().length === 0)) {
+          if (
+            !msg.content ||
+            (typeof msg.content === 'string' && msg.content.trim().length === 0)
+          ) {
             logger.warn('Empty content in context messages', correlationId, {
               index: i,
               role: msg.role,
@@ -643,7 +675,7 @@ export const sendChatMessageHandler = [
             );
           }
         }
-        
+
         logger.debug('Context messages validation passed', correlationId, {
           validatedCount: contextMessages.length,
         });
@@ -652,7 +684,9 @@ export const sendChatMessageHandler = [
       // Task 10.2: Find active SSE connection for this conversation and session using secondary index
       const indexKey = `${sessionId}_${conversationId}`;
       const connectionId = connectionIndex.get(indexKey);
-      const targetConnection = connectionId ? sseConnections.get(connectionId) : undefined;
+      const targetConnection = connectionId
+        ? sseConnections.get(connectionId)
+        : undefined;
 
       // Task 10.2: Log connection lookup details for debugging
       logger.info('Connection lookup for message', correlationId, {
@@ -683,16 +717,18 @@ export const sendChatMessageHandler = [
           sessionId,
           indexKey,
           connectionId,
-          allConnections: Array.from(sseConnections.entries()).map(([id, conn]) => ({
-            id,
-            sessionId: conn.sessionId,
-            conversationId: conn.conversationId,
-            isActive: conn.isActive,
-            age: Date.now() - conn.createdAt.getTime(),
-          })),
+          allConnections: Array.from(sseConnections.entries()).map(
+            ([id, conn]) => ({
+              id,
+              sessionId: conn.sessionId,
+              conversationId: conn.conversationId,
+              isActive: conn.isActive,
+              age: Date.now() - conn.createdAt.getTime(),
+            })
+          ),
           allIndexKeys: Array.from(connectionIndex.keys()),
         });
-        
+
         res.status(400).json({
           error: {
             type: 'no_active_connection',
@@ -705,11 +741,12 @@ export const sendChatMessageHandler = [
 
       // Task 10.3: Check if there's already an active stream for this conversation
       const existingStream = Array.from(sseConnections.values()).find(
-        conn => conn.conversationId === conversationId && 
-                conn.sessionId === sessionId && 
-                conn.isActive
+        (conn) =>
+          conn.conversationId === conversationId &&
+          conn.sessionId === sessionId &&
+          conn.isActive
       );
-      
+
       logger.info('Processing chat message for streaming', correlationId, {
         conversationId,
         sessionId,
@@ -723,15 +760,19 @@ export const sendChatMessageHandler = [
 
       // Generate message ID for tracking
       const messageId = uuidv4();
-      
+
       // Task 9.6.2: Log message ID at sendMessage response stage
-      logger.info('[MESSAGE-ID-TRACKING] Message ID generated in sendChatMessageHandler', correlationId, {
-        messageId,
-        conversationId,
-        sessionId,
-        stage: 'sendMessage_response',
-        timestamp: new Date().toISOString(),
-      });
+      logger.info(
+        '[MESSAGE-ID-TRACKING] Message ID generated in sendChatMessageHandler',
+        correlationId,
+        {
+          messageId,
+          conversationId,
+          sessionId,
+          stage: 'sendMessage_response',
+          timestamp: new Date().toISOString(),
+        }
+      );
 
       // Note: Start message will be sent by the streaming handler
       // Do not send duplicate start message here
@@ -812,25 +853,33 @@ async function processStreamingResponse(
     const handler = {
       onStart: (_msgId: string, model: string) => {
         // Task 9.6.2: Log message ID at SSE START event stage
-        logger.info('[MESSAGE-ID-TRACKING] Sending SSE START event', correlationId, {
-          messageId: messageId,
-          streamingServiceMessageId: _msgId,
-          idsMatch: _msgId === messageId,
-          stage: 'SSE_START_event',
-          model,
-          timestamp: new Date().toISOString(),
-        });
-        
+        logger.info(
+          '[MESSAGE-ID-TRACKING] Sending SSE START event',
+          correlationId,
+          {
+            messageId: messageId,
+            streamingServiceMessageId: _msgId,
+            idsMatch: _msgId === messageId,
+            stage: 'SSE_START_event',
+            model,
+            timestamp: new Date().toISOString(),
+          }
+        );
+
         // Task 9.6.2: Add assertion to verify IDs match
         if (_msgId !== messageId) {
-          logger.warn('[MESSAGE-ID-TRACKING] Streaming service returned different ID (expected, will use our ID)', correlationId, {
-            streamingServiceMessageId: _msgId,
-            ourMessageId: messageId,
-            stage: 'SSE_START_event',
-            timestamp: new Date().toISOString(),
-          });
+          logger.warn(
+            '[MESSAGE-ID-TRACKING] Streaming service returned different ID (expected, will use our ID)',
+            correlationId,
+            {
+              streamingServiceMessageId: _msgId,
+              ourMessageId: messageId,
+              stage: 'SSE_START_event',
+              timestamp: new Date().toISOString(),
+            }
+          );
         }
-        
+
         const startMessage: StreamChunk = {
           type: 'start',
           messageId: messageId, // Task 9.6.1: Use our messageId, not the one from streaming service
@@ -845,33 +894,41 @@ async function processStreamingResponse(
         if (connection.isActive !== true) {
           return;
         }
-        
+
         // Task 9.6.2: Log message ID at SSE CHUNK event stage (throttled to avoid spam)
         // Task 11.3: Use properly defined chunkCount property
         // Only log first chunk and every 10th chunk
         const chunkCount = connection.chunkCount;
         connection.chunkCount = chunkCount + 1;
-        
+
         if (chunkCount === 0 || chunkCount % 10 === 0) {
-          logger.debug('[MESSAGE-ID-TRACKING] Sending SSE CHUNK event', correlationId, {
-            messageId: messageId,
-            streamingServiceMessageId: _msgId,
-            idsMatch: _msgId === messageId,
-            stage: 'SSE_CHUNK_event',
-            chunkNumber: chunkCount + 1,
-            contentLength: content.length,
-            timestamp: new Date().toISOString(),
-          });
-          
-          // Task 9.6.2: Add assertion to verify IDs match
-          if (_msgId !== messageId) {
-            logger.debug('[MESSAGE-ID-TRACKING] Streaming service ID differs (using our ID)', correlationId, {
+          logger.debug(
+            '[MESSAGE-ID-TRACKING] Sending SSE CHUNK event',
+            correlationId,
+            {
+              messageId: messageId,
               streamingServiceMessageId: _msgId,
-              ourMessageId: messageId,
+              idsMatch: _msgId === messageId,
               stage: 'SSE_CHUNK_event',
               chunkNumber: chunkCount + 1,
+              contentLength: content.length,
               timestamp: new Date().toISOString(),
-            });
+            }
+          );
+
+          // Task 9.6.2: Add assertion to verify IDs match
+          if (_msgId !== messageId) {
+            logger.debug(
+              '[MESSAGE-ID-TRACKING] Streaming service ID differs (using our ID)',
+              correlationId,
+              {
+                streamingServiceMessageId: _msgId,
+                ourMessageId: messageId,
+                stage: 'SSE_CHUNK_event',
+                chunkNumber: chunkCount + 1,
+                timestamp: new Date().toISOString(),
+              }
+            );
           }
         }
 
@@ -887,25 +944,33 @@ async function processStreamingResponse(
 
       onEnd: (_msgId: string, usage?: StreamChunk['usage']) => {
         // Task 9.6.2: Log message ID at SSE END event stage
-        logger.info('[MESSAGE-ID-TRACKING] Sending SSE END event', correlationId, {
-          messageId: messageId,
-          streamingServiceMessageId: _msgId,
-          idsMatch: _msgId === messageId,
-          stage: 'SSE_END_event',
-          usage,
-          timestamp: new Date().toISOString(),
-        });
-        
+        logger.info(
+          '[MESSAGE-ID-TRACKING] Sending SSE END event',
+          correlationId,
+          {
+            messageId: messageId,
+            streamingServiceMessageId: _msgId,
+            idsMatch: _msgId === messageId,
+            stage: 'SSE_END_event',
+            usage,
+            timestamp: new Date().toISOString(),
+          }
+        );
+
         // Task 9.6.2: Add assertion to verify IDs match
         if (_msgId !== messageId) {
-          logger.warn('[MESSAGE-ID-TRACKING] Streaming service returned different ID (using our ID)', correlationId, {
-            streamingServiceMessageId: _msgId,
-            ourMessageId: messageId,
-            stage: 'SSE_END_event',
-            timestamp: new Date().toISOString(),
-          });
+          logger.warn(
+            '[MESSAGE-ID-TRACKING] Streaming service returned different ID (using our ID)',
+            correlationId,
+            {
+              streamingServiceMessageId: _msgId,
+              ourMessageId: messageId,
+              stage: 'SSE_END_event',
+              timestamp: new Date().toISOString(),
+            }
+          );
         }
-        
+
         const endMessage: StreamChunk = {
           type: 'end',
           messageId: messageId, // Task 9.6.1: Use our messageId, not the one from streaming service
@@ -924,25 +989,33 @@ async function processStreamingResponse(
 
       onError: (error: string, _msgId: string) => {
         // Task 9.6.2: Log message ID at SSE ERROR event stage
-        logger.error('[MESSAGE-ID-TRACKING] Sending SSE ERROR event', correlationId, {
-          messageId: messageId,
-          streamingServiceMessageId: _msgId,
-          idsMatch: _msgId === messageId,
-          stage: 'SSE_ERROR_event',
-          error,
-          timestamp: new Date().toISOString(),
-        });
-        
+        logger.error(
+          '[MESSAGE-ID-TRACKING] Sending SSE ERROR event',
+          correlationId,
+          {
+            messageId: messageId,
+            streamingServiceMessageId: _msgId,
+            idsMatch: _msgId === messageId,
+            stage: 'SSE_ERROR_event',
+            error,
+            timestamp: new Date().toISOString(),
+          }
+        );
+
         // Task 9.6.2: Add assertion to verify IDs match
         if (_msgId !== messageId) {
-          logger.warn('[MESSAGE-ID-TRACKING] Streaming service returned different ID (using our ID)', correlationId, {
-            streamingServiceMessageId: _msgId,
-            ourMessageId: messageId,
-            stage: 'SSE_ERROR_event',
-            timestamp: new Date().toISOString(),
-          });
+          logger.warn(
+            '[MESSAGE-ID-TRACKING] Streaming service returned different ID (using our ID)',
+            correlationId,
+            {
+              streamingServiceMessageId: _msgId,
+              ourMessageId: messageId,
+              stage: 'SSE_ERROR_event',
+              timestamp: new Date().toISOString(),
+            }
+          );
         }
-        
+
         const errorMessage: StreamChunk = {
           type: 'error',
           content: error,
@@ -989,15 +1062,15 @@ async function processStreamingResponse(
 /**
  * Get active SSE connections for session
  * GET /api/chat/connections
- * 
+ *
  * Task 7.1: Enhanced with connection health metrics, last message timestamp, and connection age
  */
 export const getConnectionsHandler = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const {correlationId} = req as RequestWithCorrelationId;
-  const {sessionId} = req as RequestWithSession;
+  const { correlationId } = req as RequestWithCorrelationId;
+  const { sessionId } = req as RequestWithSession;
 
   try {
     const sessionConns = sessionConnections.get(sessionId) ?? new Set<string>();
@@ -1010,11 +1083,12 @@ export const getConnectionsHandler = async (
         const connectionAge = now - connection.createdAt.getTime();
         const ageInMinutes = Math.floor(connectionAge / 60000);
         const ageInSeconds = Math.floor((connectionAge % 60000) / 1000);
-        
+
         // Calculate connection health based on age and activity
         const isStale = connectionAge > 5 * 60 * 1000; // 5 minutes without activity
-        const isNearTimeout = connectionAge > SSE_CONFIG.connectionTimeout * 0.8;
-        
+        const isNearTimeout =
+          connectionAge > SSE_CONFIG.connectionTimeout * 0.8;
+
         let healthStatus: 'healthy' | 'stale' | 'near_timeout';
         if (isNearTimeout) {
           healthStatus = 'near_timeout';
@@ -1074,11 +1148,13 @@ export const getConnectionsHandler = async (
  */
 export const closeConnectionHandler = [
   // Input validation
-  param('connectionId').custom(isValidConnectionId).withMessage('Invalid connection ID format'),
+  param('connectionId')
+    .custom(isValidConnectionId)
+    .withMessage('Invalid connection ID format'),
 
   async (req: Request, res: Response): Promise<void> => {
-    const {correlationId} = req as RequestWithCorrelationId;
-    const {sessionId} = req as RequestWithSession;
+    const { correlationId } = req as RequestWithCorrelationId;
+    const { sessionId } = req as RequestWithSession;
     const connectionId = req.params.connectionId as string;
 
     try {
@@ -1155,14 +1231,14 @@ export const closeConnectionHandler = [
 /**
  * Get SSE connection statistics (for monitoring)
  * GET /api/chat-stats
- * 
+ *
  * Task 7.2: Comprehensive statistics endpoint with connection metrics, error rates, and reconnection data
  */
 export const getChatStatsHandler = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const {correlationId} = req as RequestWithCorrelationId;
+  const { correlationId } = req as RequestWithCorrelationId;
 
   try {
     // Clean up inactive connections first
@@ -1188,7 +1264,8 @@ export const getChatStatsHandler = async (
           healthyConnections++;
         }
 
-        const sessionCount = connectionsBySession.get(connection.sessionId) || 0;
+        const sessionCount =
+          connectionsBySession.get(connection.sessionId) || 0;
         connectionsBySession.set(connection.sessionId, sessionCount + 1);
       }
     }
@@ -1202,11 +1279,16 @@ export const getChatStatsHandler = async (
 
     // Calculate error rate
     const totalConnections = sseStatistics.totalConnectionsCreated;
-    const errorRate = totalConnections > 0 ? (sseStatistics.totalErrors / totalConnections) * 100 : 0;
+    const errorRate =
+      totalConnections > 0
+        ? (sseStatistics.totalErrors / totalConnections) * 100
+        : 0;
 
     // Calculate reconnection rate
     const reconnectionRate =
-      totalConnections > 0 ? (sseStatistics.totalReconnections / totalConnections) * 100 : 0;
+      totalConnections > 0
+        ? (sseStatistics.totalReconnections / totalConnections) * 100
+        : 0;
 
     // Get top error types
     const topErrors = Array.from(sseStatistics.errorsByType.entries())
@@ -1216,7 +1298,8 @@ export const getChatStatsHandler = async (
 
     // Task 11.4: Add memory usage metrics
     const memoryUsage = process.memoryUsage();
-    const memoryPercentUsed = (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
+    const memoryPercentUsed =
+      (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
 
     res.json({
       // Current state
@@ -1225,7 +1308,7 @@ export const getChatStatsHandler = async (
       healthyConnections,
       staleConnections,
       totalSessions: sessionConnections.size,
-      
+
       // Lifetime statistics
       lifetime: {
         totalConnectionsCreated: sseStatistics.totalConnectionsCreated,
@@ -1239,8 +1322,10 @@ export const getChatStatsHandler = async (
       averageConnectionDurationFormatted: formatDuration(avgDuration),
       averageConnectionsPerSession:
         connectionsBySession.size > 0
-          ? Array.from(connectionsBySession.values()).reduce((a, b) => a + b, 0) /
-            connectionsBySession.size
+          ? Array.from(connectionsBySession.values()).reduce(
+              (a, b) => a + b,
+              0
+            ) / connectionsBySession.size
           : 0,
       errorRate: Math.round(errorRate * 100) / 100, // Round to 2 decimal places
       reconnectionRate: Math.round(reconnectionRate * 100) / 100,
@@ -1252,13 +1337,15 @@ export const getChatStatsHandler = async (
       // Reconnection statistics
       reconnectionStatistics: {
         totalReconnections: sseStatistics.totalReconnections,
-        sessionsWithReconnections: Array.from(sseStatistics.reconnectionsBySession.values()).filter(
-          (count) => count > 1
-        ).length,
+        sessionsWithReconnections: Array.from(
+          sseStatistics.reconnectionsBySession.values()
+        ).filter((count) => count > 1).length,
         averageReconnectionsPerSession:
           sseStatistics.reconnectionsBySession.size > 0
-            ? Array.from(sseStatistics.reconnectionsBySession.values()).reduce((a, b) => a + b, 0) /
-              sseStatistics.reconnectionsBySession.size
+            ? Array.from(sseStatistics.reconnectionsBySession.values()).reduce(
+                (a, b) => a + b,
+                0
+              ) / sseStatistics.reconnectionsBySession.size
             : 0,
       },
 
@@ -1342,7 +1429,10 @@ export function getSSEHealthMetrics(): {
 
   // Calculate error rate
   const totalConnections = sseStatistics.totalConnectionsCreated;
-  const errorRate = totalConnections > 0 ? (sseStatistics.totalErrors / totalConnections) * 100 : 0;
+  const errorRate =
+    totalConnections > 0
+      ? (sseStatistics.totalErrors / totalConnections) * 100
+      : 0;
 
   return {
     activeConnections: sseConnections.size,

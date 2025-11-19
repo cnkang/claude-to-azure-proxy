@@ -1,6 +1,6 @@
 /**
  * Test script to investigate streaming timeout behavior
- * 
+ *
  * This script tests Azure OpenAI streaming with different timeout configurations
  * to identify if timeout is causing the "canceled" error.
  */
@@ -26,9 +26,11 @@ async function testStreamingWithTimeout(
 ): Promise<TestResult> {
   const startTime = Date.now();
   let chunksReceived = 0;
-  
-  const abortController = useAbortController ? new AbortController() : undefined;
-  
+
+  const abortController = useAbortController
+    ? new AbortController()
+    : undefined;
+
   try {
     logger.info('Testing streaming with timeout', '', {
       timeoutMs,
@@ -158,11 +160,13 @@ async function testStreamingWithTimeout(
     });
   } catch (error) {
     const duration = Date.now() - startTime;
-    
+
     if (axios.isAxiosError(error)) {
-      const isCanceled = error.code === 'ERR_CANCELED' || error.message.includes('canceled');
-      const isTimeout = error.code === 'ECONNABORTED' || error.message.includes('timeout');
-      
+      const isCanceled =
+        error.code === 'ERR_CANCELED' || error.message.includes('canceled');
+      const isTimeout =
+        error.code === 'ECONNABORTED' || error.message.includes('timeout');
+
       logger.error('Axios error during streaming test', '', {
         timeoutMs,
         error: error.message,
@@ -211,11 +215,11 @@ async function runTimeoutTests(): Promise<void> {
   console.log(`Current Timeout: ${config.AZURE_OPENAI_TIMEOUT}ms\n`);
 
   const timeouts = [
-    30000,   // 30 seconds
-    60000,   // 60 seconds
-    120000,  // 120 seconds (current default)
-    180000,  // 180 seconds
-    300000,  // 300 seconds (5 minutes)
+    30000, // 30 seconds
+    60000, // 60 seconds
+    120000, // 120 seconds (current default)
+    180000, // 180 seconds
+    300000, // 300 seconds (5 minutes)
   ];
 
   const results: TestResult[] = [];
@@ -227,23 +231,32 @@ async function runTimeoutTests(): Promise<void> {
     try {
       const result = await testStreamingWithTimeout(timeout, true);
       results.push(result);
-      console.log(`✓ Success: ${result.duration}ms, ${result.chunksReceived} chunks\n`);
+      console.log(
+        `✓ Success: ${result.duration}ms, ${result.chunksReceived} chunks\n`
+      );
     } catch (error: any) {
       results.push(error);
       console.log(`✗ Failed: ${error.error}\n`);
     }
-    
+
     // Wait between tests
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
   }
 
   // Test without AbortController
   console.log('\n--- Testing WITHOUT AbortController ---\n');
-  console.log(`Testing timeout: ${config.AZURE_OPENAI_TIMEOUT}ms (${config.AZURE_OPENAI_TIMEOUT / 1000}s)`);
+  console.log(
+    `Testing timeout: ${config.AZURE_OPENAI_TIMEOUT}ms (${config.AZURE_OPENAI_TIMEOUT / 1000}s)`
+  );
   try {
-    const result = await testStreamingWithTimeout(config.AZURE_OPENAI_TIMEOUT, false);
+    const result = await testStreamingWithTimeout(
+      config.AZURE_OPENAI_TIMEOUT,
+      false
+    );
     results.push(result);
-    console.log(`✓ Success: ${result.duration}ms, ${result.chunksReceived} chunks\n`);
+    console.log(
+      `✓ Success: ${result.duration}ms, ${result.chunksReceived} chunks\n`
+    );
   } catch (error: any) {
     results.push(error);
     console.log(`✗ Failed: ${error.error}\n`);
@@ -254,7 +267,9 @@ async function runTimeoutTests(): Promise<void> {
   try {
     const result = await testStreamingWithTimeout(0, true);
     results.push(result);
-    console.log(`✓ Success: ${result.duration}ms, ${result.chunksReceived} chunks\n`);
+    console.log(
+      `✓ Success: ${result.duration}ms, ${result.chunksReceived} chunks\n`
+    );
   } catch (error: any) {
     results.push(error);
     console.log(`✗ Failed: ${error.error}\n`);
@@ -264,33 +279,45 @@ async function runTimeoutTests(): Promise<void> {
   console.log('\n=== Test Summary ===\n');
   console.log('Timeout (ms) | Success | Duration (ms) | Chunks | Error');
   console.log('-------------|---------|---------------|--------|-------');
-  
+
   for (const result of results) {
     const success = result.success ? '✓' : '✗';
     const duration = result.duration || 'N/A';
     const chunks = result.chunksReceived || 0;
     const error = result.error || '';
-    console.log(`${result.timeoutMs.toString().padEnd(12)} | ${success.padEnd(7)} | ${duration.toString().padEnd(13)} | ${chunks.toString().padEnd(6)} | ${error}`);
+    console.log(
+      `${result.timeoutMs.toString().padEnd(12)} | ${success.padEnd(7)} | ${duration.toString().padEnd(13)} | ${chunks.toString().padEnd(6)} | ${error}`
+    );
   }
 
   console.log('\n=== Recommendations ===\n');
-  
-  const successfulTests = results.filter(r => r.success);
-  const failedTests = results.filter(r => !r.success);
+
+  const successfulTests = results.filter((r) => r.success);
+  const failedTests = results.filter((r) => !r.success);
 
   if (successfulTests.length === 0) {
-    console.log('⚠️  All tests failed. This indicates a fundamental issue with the streaming setup.');
-    console.log('   Check: API endpoint, API key, model deployment, network connectivity');
+    console.log(
+      '⚠️  All tests failed. This indicates a fundamental issue with the streaming setup.'
+    );
+    console.log(
+      '   Check: API endpoint, API key, model deployment, network connectivity'
+    );
   } else if (failedTests.length === 0) {
     console.log('✓ All tests passed. Timeout is not the issue.');
     console.log('  The "canceled" error is likely caused by something else.');
   } else {
-    const minSuccessfulTimeout = Math.min(...successfulTests.map(r => r.timeoutMs));
-    const maxFailedTimeout = Math.max(...failedTests.map(r => r.timeoutMs));
-    
+    const minSuccessfulTimeout = Math.min(
+      ...successfulTests.map((r) => r.timeoutMs)
+    );
+    const maxFailedTimeout = Math.max(...failedTests.map((r) => r.timeoutMs));
+
     if (minSuccessfulTimeout > maxFailedTimeout) {
-      console.log(`✓ Increase timeout to at least ${minSuccessfulTimeout}ms (${minSuccessfulTimeout / 1000}s)`);
-      console.log(`  Current timeout of ${config.AZURE_OPENAI_TIMEOUT}ms may be too short.`);
+      console.log(
+        `✓ Increase timeout to at least ${minSuccessfulTimeout}ms (${minSuccessfulTimeout / 1000}s)`
+      );
+      console.log(
+        `  Current timeout of ${config.AZURE_OPENAI_TIMEOUT}ms may be too short.`
+      );
     } else {
       console.log('⚠️  Mixed results. Timeout may not be the primary issue.');
       console.log('   Consider investigating AbortController signal behavior.');

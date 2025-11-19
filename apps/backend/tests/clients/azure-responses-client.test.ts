@@ -213,9 +213,15 @@ describe('AzureResponsesClient', () => {
       controller.abort();
 
       const createSpy = vi.spyOn(
-        (client as unknown as {
-          client: { responses: { create: typeof client['client']['responses']['create'] } };
-        }).client.responses,
+        (
+          client as unknown as {
+            client: {
+              responses: {
+                create: (typeof client)['client']['responses']['create'];
+              };
+            };
+          }
+        ).client.responses,
         'create'
       );
 
@@ -235,13 +241,15 @@ describe('AzureResponsesClient', () => {
       controller.abort();
 
       const streamSpy = vi.spyOn(
-        (client as unknown as {
-          client: {
-            responses: {
-              stream: typeof client['client']['responses']['stream'];
+        (
+          client as unknown as {
+            client: {
+              responses: {
+                stream: (typeof client)['client']['responses']['stream'];
+              };
             };
-          };
-        }).client.responses,
+          }
+        ).client.responses,
         'stream'
       );
 

@@ -561,7 +561,7 @@ describe('Completions Route - Responses API Integration', () => {
       // Mock non-streaming response to fail (simulated streaming uses non-streaming backend)
       mockResponsesClient.createResponse.mockRejectedValue(streamError);
 
-      // When the backend request fails before streaming starts, 
+      // When the backend request fails before streaming starts,
       // graceful degradation may return a fallback response with 200
       const response = await request(app)
         .post('/v1/completions')
@@ -570,7 +570,7 @@ describe('Completions Route - Responses API Integration', () => {
       // Should either return an error (500) or a graceful degradation response (200)
       // or an empty response if streaming was started but failed
       expect([200, 500]).toContain(response.status);
-      
+
       // The response may be empty if streaming was started but failed early
       // This is acceptable behavior for streaming errors
     });

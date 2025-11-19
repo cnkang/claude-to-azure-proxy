@@ -1,6 +1,6 @@
 /**
  * Test Azure OpenAI Configuration
- * 
+ *
  * Verifies that Azure OpenAI credentials are correctly configured
  */
 
@@ -16,7 +16,7 @@ async function testAzureConfig(): Promise<void> {
   console.log(`  Model: ${config.AZURE_OPENAI_MODEL}\n`);
 
   // Parse models
-  const models = config.AZURE_OPENAI_MODEL.split(',').map(m => m.trim());
+  const models = config.AZURE_OPENAI_MODEL.split(',').map((m) => m.trim());
   console.log(`Available models: ${models.join(', ')}\n`);
 
   // Test with first model
@@ -70,11 +70,15 @@ async function testAzureConfig(): Promise<void> {
         console.error('\n⚠️  Authentication Error (401):');
         console.error('  - Check that AZURE_OPENAI_API_KEY is correct');
         console.error('  - Verify the API key has not expired');
-        console.error('  - Ensure the API key has access to the specified deployment');
+        console.error(
+          '  - Ensure the API key has access to the specified deployment'
+        );
       } else if (error.response?.status === 404) {
         console.error('\n⚠️  Not Found Error (404):');
         console.error('  - Check that AZURE_OPENAI_ENDPOINT is correct');
-        console.error(`  - Verify deployment "${testModel}" exists in your Azure OpenAI resource`);
+        console.error(
+          `  - Verify deployment "${testModel}" exists in your Azure OpenAI resource`
+        );
         console.error('  - Check the API version is supported');
       }
     } else {

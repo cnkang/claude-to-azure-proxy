@@ -104,12 +104,16 @@ const getMemoryUsage = (): HealthCheckResult['memory'] & {
       heapTotalMB: Math.round(memUsage.heapTotal / 1024 / 1024),
       externalMB: Math.round(memUsage.external / 1024 / 1024),
     });
-    
+
     // Task 11.4: Trigger garbage collection if available
     if (global.gc) {
-      logger.info('Triggering garbage collection due to high memory usage', '', {
-        percentUsed: percentage,
-      });
+      logger.info(
+        'Triggering garbage collection due to high memory usage',
+        '',
+        {
+          percentUsed: percentage,
+        }
+      );
       global.gc();
     }
   } else if (percentage > 80) {

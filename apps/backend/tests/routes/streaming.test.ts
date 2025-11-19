@@ -552,7 +552,9 @@ describe('Streaming Functionality', () => {
       );
 
       // Also mock createResponse for fallback non-streaming simulation
-      const allChunksText = manyChunks.map(c => c.output[0].type === 'text' ? c.output[0].text : '').join('');
+      const allChunksText = manyChunks
+        .map((c) => (c.output[0].type === 'text' ? c.output[0].text : ''))
+        .join('');
       mockResponsesClient.createResponse.mockResolvedValue({
         id: 'resp_test_perf',
         object: 'response',

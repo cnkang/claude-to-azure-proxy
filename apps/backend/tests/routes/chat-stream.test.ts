@@ -1,6 +1,6 @@
 /**
  * Tests for SSE Connection Manager in chat-stream route
- * 
+ *
  * Tests cover:
  * - Secondary index creation and lookup (Task 3.1)
  * - Initial message timing (Task 3.2)

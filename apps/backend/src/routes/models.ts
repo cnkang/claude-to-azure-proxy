@@ -85,10 +85,20 @@ const MODEL_CONFIGURATIONS: readonly ModelInfo[] = [
   {
     id: 'gpt-4o',
     name: 'GPT-4o',
-    description: 'OpenAI\'s flagship multimodal model with omnichannel capabilities. Processes text, images, and audio with 128K context window. Excels at real-time interactions, multimodal reasoning, and complex problem-solving. Average response time of 320ms for audio. Ideal for customer support, content creation, and interactive applications.',
+    description:
+      "OpenAI's flagship multimodal model with omnichannel capabilities. Processes text, images, and audio with 128K context window. Excels at real-time interactions, multimodal reasoning, and complex problem-solving. Average response time of 320ms for audio. Ideal for customer support, content creation, and interactive applications.",
     provider: 'azure',
     contextLength: 128000,
-    capabilities: ['text', 'images', 'audio', 'code', 'reasoning', 'function_calling', 'real-time', 'multimodal'],
+    capabilities: [
+      'text',
+      'images',
+      'audio',
+      'code',
+      'reasoning',
+      'function_calling',
+      'real-time',
+      'multimodal',
+    ],
     category: 'general',
     isAvailable: true,
     healthStatus: 'healthy',
@@ -107,7 +117,8 @@ const MODEL_CONFIGURATIONS: readonly ModelInfo[] = [
   {
     id: 'gpt-4o-mini',
     name: 'GPT-4o Mini',
-    description: 'Cost-efficient small model that outperforms GPT-3.5 Turbo. 60% cheaper with 128K context window. Scores 82% on MMLU benchmark. Ideal for high-volume API calls, customer support, receipt processing, and email responses. Balances intelligence with speed and affordability.',
+    description:
+      'Cost-efficient small model that outperforms GPT-3.5 Turbo. 60% cheaper with 128K context window. Scores 82% on MMLU benchmark. Ideal for high-volume API calls, customer support, receipt processing, and email responses. Balances intelligence with speed and affordability.',
     provider: 'azure',
     contextLength: 128000,
     capabilities: ['text', 'images', 'code', 'vision'],
@@ -129,10 +140,18 @@ const MODEL_CONFIGURATIONS: readonly ModelInfo[] = [
   {
     id: 'gpt-4.1',
     name: 'GPT-4.1',
-    description: 'Latest GPT-4 series with major improvements in coding and instruction following. Scores 54.6% on SWE-bench Verified (21.4% improvement over GPT-4o). 88% on Aider polyglot coding. 1M token context window with improved long-context comprehension. 10.5% better instruction following. Ideal for complex coding tasks, repository analysis, and agentic workflows.',
+    description:
+      'Latest GPT-4 series with major improvements in coding and instruction following. Scores 54.6% on SWE-bench Verified (21.4% improvement over GPT-4o). 88% on Aider polyglot coding. 1M token context window with improved long-context comprehension. 10.5% better instruction following. Ideal for complex coding tasks, repository analysis, and agentic workflows.',
     provider: 'azure',
     contextLength: 1000000,
-    capabilities: ['text', 'images', 'code', 'reasoning', 'function_calling', 'long-context'],
+    capabilities: [
+      'text',
+      'images',
+      'code',
+      'reasoning',
+      'function_calling',
+      'long-context',
+    ],
     category: 'coding',
     isAvailable: true,
     healthStatus: 'healthy',
@@ -151,10 +170,20 @@ const MODEL_CONFIGURATIONS: readonly ModelInfo[] = [
   {
     id: 'gpt-5',
     name: 'GPT-5',
-    description: 'OpenAI\'s most advanced model for coding and agentic tasks. State-of-the-art: 74.9% on SWE-bench Verified, 88% on Aider polyglot. Excels at frontend development (70% preferred over o3), bug fixing, and complex codebase analysis. 400K context length with 128K max output. Supports hybrid reasoning modes (minimal/low/medium/high) and verbosity control. Ideal for production coding, autonomous agents, and complex problem-solving.',
+    description:
+      "OpenAI's most advanced model for coding and agentic tasks. State-of-the-art: 74.9% on SWE-bench Verified, 88% on Aider polyglot. Excels at frontend development (70% preferred over o3), bug fixing, and complex codebase analysis. 400K context length with 128K max output. Supports hybrid reasoning modes (minimal/low/medium/high) and verbosity control. Ideal for production coding, autonomous agents, and complex problem-solving.",
     provider: 'azure',
     contextLength: 400000,
-    capabilities: ['text', 'images', 'code', 'reasoning', 'function_calling', 'agentic', 'frontend', 'long-context'],
+    capabilities: [
+      'text',
+      'images',
+      'code',
+      'reasoning',
+      'function_calling',
+      'agentic',
+      'frontend',
+      'long-context',
+    ],
     category: 'coding',
     isAvailable: true,
     healthStatus: 'healthy',
@@ -173,10 +202,18 @@ const MODEL_CONFIGURATIONS: readonly ModelInfo[] = [
   {
     id: 'gpt-5-codex',
     name: 'GPT-5 Codex',
-    description: 'Specialized coding variant of GPT-5 optimized for software development. Enhanced code generation, debugging, and repository-scale analysis. Supports custom tools with plaintext input (no JSON escaping required). Ideal for IDE integrations, code review, and automated refactoring.',
+    description:
+      'Specialized coding variant of GPT-5 optimized for software development. Enhanced code generation, debugging, and repository-scale analysis. Supports custom tools with plaintext input (no JSON escaping required). Ideal for IDE integrations, code review, and automated refactoring.',
     provider: 'azure',
     contextLength: 400000,
-    capabilities: ['text', 'code', 'reasoning', 'function_calling', 'agentic', 'custom-tools'],
+    capabilities: [
+      'text',
+      'code',
+      'reasoning',
+      'function_calling',
+      'agentic',
+      'custom-tools',
+    ],
     category: 'coding',
     isAvailable: true,
     healthStatus: 'healthy',
@@ -195,10 +232,20 @@ const MODEL_CONFIGURATIONS: readonly ModelInfo[] = [
   {
     id: 'gpt-5-pro',
     name: 'GPT-5 Pro',
-    description: 'Premium GPT-5 variant with enhanced reasoning and factuality. 80% fewer factual errors than o3. Excels at health questions, legal analysis, and decision-making. Supports advanced agentic workflows with multi-step tool calling. Ideal for enterprise applications requiring highest accuracy and reliability.',
+    description:
+      'Premium GPT-5 variant with enhanced reasoning and factuality. 80% fewer factual errors than o3. Excels at health questions, legal analysis, and decision-making. Supports advanced agentic workflows with multi-step tool calling. Ideal for enterprise applications requiring highest accuracy and reliability.',
     provider: 'azure',
     contextLength: 400000,
-    capabilities: ['text', 'images', 'code', 'reasoning', 'function_calling', 'agentic', 'factuality', 'health'],
+    capabilities: [
+      'text',
+      'images',
+      'code',
+      'reasoning',
+      'function_calling',
+      'agentic',
+      'factuality',
+      'health',
+    ],
     category: 'reasoning',
     isAvailable: true,
     healthStatus: 'healthy',
@@ -217,7 +264,8 @@ const MODEL_CONFIGURATIONS: readonly ModelInfo[] = [
   {
     id: 'gpt-4-turbo',
     name: 'GPT-4 Turbo',
-    description: 'Advanced GPT-4 model with 128K context window and enhanced vision capabilities. Includes Dall-E 3 integration for image generation. Supports comprehensive multimodal processing. Knowledge cutoff: December 2023.',
+    description:
+      'Advanced GPT-4 model with 128K context window and enhanced vision capabilities. Includes Dall-E 3 integration for image generation. Supports comprehensive multimodal processing. Knowledge cutoff: December 2023.',
     provider: 'azure',
     contextLength: 128000,
     capabilities: ['text', 'images', 'code', 'reasoning', 'image-generation'],
@@ -284,11 +332,20 @@ const MODEL_CONFIGURATIONS: readonly ModelInfo[] = [
   {
     id: 'qwen.qwen3-coder-480b-a35b-v1:0',
     name: 'Qwen3-Coder-480B-A35B',
-    description: 'Alibaba\'s flagship MoE coding model with 480B total parameters and 35B active. Optimized for agentic coding, browser use, and tool orchestration. Native 256K context (extensible to 1M tokens) enables repository-scale analysis. Excels at code generation, debugging, and multi-step workflows across Python, JavaScript, Java, C++, Go, and Rust. Supports advanced function calling and tool integration. Ideal for autonomous coding agents and complex software engineering tasks.',
+    description:
+      "Alibaba's flagship MoE coding model with 480B total parameters and 35B active. Optimized for agentic coding, browser use, and tool orchestration. Native 256K context (extensible to 1M tokens) enables repository-scale analysis. Excels at code generation, debugging, and multi-step workflows across Python, JavaScript, Java, C++, Go, and Rust. Supports advanced function calling and tool integration. Ideal for autonomous coding agents and complex software engineering tasks.",
     provider: 'bedrock',
     contextLength: 256000,
     extendedContextLength: 1000000,
-    capabilities: ['text', 'code', 'reasoning', 'agentic', 'tool-calling', 'multilingual', 'long-context'],
+    capabilities: [
+      'text',
+      'code',
+      'reasoning',
+      'agentic',
+      'tool-calling',
+      'multilingual',
+      'long-context',
+    ],
     category: 'coding',
     isAvailable: false, // Will be updated based on configuration
     healthStatus: 'unavailable',

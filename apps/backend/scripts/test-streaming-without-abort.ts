@@ -1,9 +1,9 @@
 /**
  * Test Script: Streaming Without AbortController
- * 
+ *
  * This script tests Azure OpenAI streaming without using AbortController
  * to isolate whether the AbortController is causing the "canceled" error.
- * 
+ *
  * Usage: pnpm tsx apps/backend/scripts/test-streaming-without-abort.ts
  */
 
@@ -26,7 +26,9 @@ interface ResponsesAPIRequest {
 }
 
 async function testStreamingWithoutAbort(): Promise<void> {
-  console.log('=== Testing Azure OpenAI Streaming WITHOUT AbortController ===\n');
+  console.log(
+    '=== Testing Azure OpenAI Streaming WITHOUT AbortController ===\n'
+  );
 
   const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
   const apiKey = process.env.AZURE_OPENAI_API_KEY;
@@ -45,7 +47,8 @@ async function testStreamingWithoutAbort(): Promise<void> {
     input: [
       {
         role: 'user',
-        content: 'Say "Hello, World!" and explain what this phrase means in programming.',
+        content:
+          'Say "Hello, World!" and explain what this phrase means in programming.',
       },
     ],
     max_output_tokens: 500,
@@ -145,7 +148,9 @@ async function testStreamingWithoutAbort(): Promise<void> {
       console.log(`Duration: ${duration}ms`);
       console.log(`Total chunks: ${chunkCount}`);
       console.log(`Content length: ${accumulatedContent.length} characters`);
-      console.log(`Estimated tokens: ${Math.floor(accumulatedContent.length / 4)}`);
+      console.log(
+        `Estimated tokens: ${Math.floor(accumulatedContent.length / 4)}`
+      );
       console.log('\n✅ Test completed successfully WITHOUT AbortController');
     });
 
@@ -165,16 +170,22 @@ async function testStreamingWithoutAbort(): Promise<void> {
       console.error(`  Message: ${error.message}`);
       console.error(`  Status: ${error.response?.status}`);
       console.error(`  Status Text: ${error.response?.statusText}`);
-      
-      const isCanceled = error.code === 'ERR_CANCELED' || error.message.includes('canceled');
-      const isTimeout = error.code === 'ECONNABORTED' || error.message.includes('timeout');
-      
+
+      const isCanceled =
+        error.code === 'ERR_CANCELED' || error.message.includes('canceled');
+      const isTimeout =
+        error.code === 'ECONNABORTED' || error.message.includes('timeout');
+
       console.error(`  Is Canceled: ${isCanceled}`);
       console.error(`  Is Timeout: ${isTimeout}`);
-      
+
       if (isCanceled) {
-        console.error('\n❌ Request was CANCELED even WITHOUT AbortController!');
-        console.error('This suggests the issue is NOT with our AbortController usage.');
+        console.error(
+          '\n❌ Request was CANCELED even WITHOUT AbortController!'
+        );
+        console.error(
+          'This suggests the issue is NOT with our AbortController usage.'
+        );
       } else if (isTimeout) {
         console.error('\n⏱️  Request TIMED OUT');
       }

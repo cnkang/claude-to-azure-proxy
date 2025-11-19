@@ -8,7 +8,7 @@ import config from '../src/config/index.js';
 async function testStreamingResponses(): Promise<void> {
   console.log('🔍 Testing Azure OpenAI Streaming with Responses API...\n');
 
-  const models = config.AZURE_OPENAI_MODEL.split(',').map(m => m.trim());
+  const models = config.AZURE_OPENAI_MODEL.split(',').map((m) => m.trim());
   const testModel = models[0];
 
   const url = `${config.AZURE_OPENAI_ENDPOINT}/openai/v1/responses`;
@@ -57,7 +57,7 @@ async function testStreamingResponses(): Promise<void> {
 
         if (line.startsWith('data: ')) {
           const data = line.slice(6).trim();
-          
+
           if (data === '[DONE]') {
             console.log('\n✅ Stream completed with [DONE] marker');
             return;
@@ -66,7 +66,10 @@ async function testStreamingResponses(): Promise<void> {
           try {
             const parsed = JSON.parse(data);
             chunkCount++;
-            console.log(`Chunk ${chunkCount}:`, JSON.stringify(parsed, null, 2));
+            console.log(
+              `Chunk ${chunkCount}:`,
+              JSON.stringify(parsed, null, 2)
+            );
           } catch (e) {
             console.log(`Raw data: ${data}`);
           }
@@ -90,7 +93,6 @@ async function testStreamingResponses(): Promise<void> {
       response.data.on('error', reject);
       setTimeout(() => reject(new Error('Timeout')), 30000);
     });
-
   } catch (error) {
     if (axios.isAxiosError(error)) {
       console.error('\n❌ Request failed:');

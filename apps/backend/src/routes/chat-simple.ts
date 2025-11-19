@@ -1,6 +1,6 @@
 /**
  * Simple Chat Route Handler (Without SSE)
- * 
+ *
  * Provides a simple non-streaming chat endpoint for testing purposes.
  * This bypasses the SSE complexity and returns the complete response at once.
  */
@@ -30,7 +30,9 @@ interface SimpleChatRequest {
  */
 export const simpleChatHandler = [
   // Input validation
-  body('conversationId').custom(isValidConversationId).withMessage('Invalid conversation ID format'),
+  body('conversationId')
+    .custom(isValidConversationId)
+    .withMessage('Invalid conversation ID format'),
   body('message').isString().isLength({ min: 1, max: 100000 }),
   body('model').isString().isLength({ min: 1, max: 100 }),
 

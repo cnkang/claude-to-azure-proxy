@@ -257,10 +257,7 @@ const config: Linter.FlatConfig[] = [
   // Enforce readonly parameters on pure utility modules where mutation must be explicit
   {
     files: ['src/utils/**/*.ts'],
-    ignores: [
-      'src/utils/abort-utils.ts',
-      'src/utils/streaming-helpers.ts',
-    ],
+    ignores: ['src/utils/abort-utils.ts', 'src/utils/streaming-helpers.ts'],
     rules: {
       '@typescript-eslint/prefer-readonly-parameter-types': [
         'error',

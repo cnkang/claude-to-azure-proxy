@@ -8,7 +8,9 @@ let restoreConfig: (() => void) | undefined;
 beforeAll(async () => {
   // Mock the config module to include Bedrock models
   vi.doMock('../src/config/index.js', async () => {
-    const actual = await vi.importActual<typeof import('../src/config/index.js')>('../src/config/index.js');
+    const actual = await vi.importActual<
+      typeof import('../src/config/index.js')
+    >('../src/config/index.js');
     return {
       ...actual,
       default: {

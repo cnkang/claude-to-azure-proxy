@@ -2,11 +2,13 @@
 
 ## Overview
 
-This script provides comprehensive validation of the complete streaming flow after implementing fixes for SSE connection stability issues (Task 4.7.5).
+This script provides comprehensive validation of the complete streaming flow after implementing
+fixes for SSE connection stability issues (Task 4.7.5).
 
 ## Purpose
 
 Validates that:
+
 - ✅ All chunk events are correctly received
 - ✅ Usage statistics are properly returned
 - ✅ Multiple consecutive requests work correctly
@@ -20,6 +22,7 @@ Validates that:
 ## Prerequisites
 
 1. **Environment Variables**: Ensure `.env` file is configured with:
+
    ```bash
    AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
    AZURE_OPENAI_API_KEY=your-api-key
@@ -27,12 +30,14 @@ Validates that:
    ```
 
 2. **Dependencies**: Install required packages:
+
    ```bash
    cd apps/backend
    pnpm install
    ```
 
-3. **Azure OpenAI Access**: Ensure your Azure OpenAI resource is accessible and the model deployment is active.
+3. **Azure OpenAI Access**: Ensure your Azure OpenAI resource is accessible and the model deployment
+   is active.
 
 ## Usage
 
@@ -55,9 +60,10 @@ pnpm test:streaming-flow
 The script runs 5 comprehensive tests:
 
 ### Test 1: Single Message - Chunk Validation
+
 - **Purpose**: Validate basic streaming functionality
 - **Message**: "Hello! Please respond with a short greeting (2-3 sentences)."
-- **Validates**: 
+- **Validates**:
   - Start event received
   - Chunks received correctly
   - End event received
@@ -65,6 +71,7 @@ The script runs 5 comprehensive tests:
   - No canceled errors
 
 ### Test 2: Longer Response - Multiple Chunks
+
 - **Purpose**: Test handling of longer responses with multiple chunks
 - **Message**: "Please explain what TypeScript is in 3-4 sentences."
 - **Validates**:
@@ -73,8 +80,9 @@ The script runs 5 comprehensive tests:
   - All content accumulated correctly
 
 ### Test 3-5: Consecutive Requests
+
 - **Purpose**: Validate stability across multiple consecutive requests
-- **Messages**: 
+- **Messages**:
   - "What is 2 + 2?"
   - "What is the capital of France?"
   - "Name one programming language."
@@ -223,6 +231,7 @@ The validation is considered successful when:
 **Symptom**: Tests fail with "ERR_CANCELED" or "canceled" error message
 
 **Possible Causes**:
+
 - AbortController being triggered prematurely
 - Cleanup logic aborting before stream completes
 - Race conditions in finally blocks
@@ -234,6 +243,7 @@ The validation is considered successful when:
 **Symptom**: Tests complete but `chunksReceived: 0`
 
 **Possible Causes**:
+
 - SSE parsing issues
 - Model not generating output
 - Request format incorrect
@@ -245,6 +255,7 @@ The validation is considered successful when:
 **Symptom**: Tests pass but `usageReturned: false`
 
 **Possible Causes**:
+
 - End event not including usage data
 - Response format changed
 - Parser not extracting usage correctly
@@ -256,6 +267,7 @@ The validation is considered successful when:
 **Symptom**: Tests fail with timeout error after 2 minutes
 
 **Possible Causes**:
+
 - Model taking too long to respond
 - Network issues
 - API throttling
@@ -293,7 +305,8 @@ Run the direct Azure test to establish baseline:
 pnpm test:azure-direct
 ```
 
-If direct test passes but this validation fails, the issue is in the StreamingService implementation.
+If direct test passes but this validation fails, the issue is in the StreamingService
+implementation.
 
 ## Integration with Task Workflow
 
@@ -327,11 +340,16 @@ This script is part of Task 4.7.5 validation:
 
 ## Related Documentation
 
-- Task 4.7.4 Validation Report: `.kiro/specs/fix-sse-connection-stability/task-4.7.4-validation-report.md`
-- Task 4.7.3 Validation Guide: `.kiro/specs/fix-sse-connection-stability/task-4.7.3-validation-guide.md`
+- Task 4.7.4 Validation Report:
+  `.kiro/specs/fix-sse-connection-stability/task-4.7.4-validation-report.md`
+- Task 4.7.3 Validation Guide:
+  `.kiro/specs/fix-sse-connection-stability/task-4.7.3-validation-guide.md`
 - Design Document: `.kiro/specs/fix-sse-connection-stability/design.md`
 - Requirements Document: `.kiro/specs/fix-sse-connection-stability/requirements.md`
 
 ## Conclusion
 
-This validation script provides comprehensive verification that the streaming flow works correctly after implementing fixes for SSE connection stability issues. It tests all critical aspects including chunk reception, usage statistics, and consecutive request handling, ensuring the system meets all requirements before proceeding to the next phase of implementation.
+This validation script provides comprehensive verification that the streaming flow works correctly
+after implementing fixes for SSE connection stability issues. It tests all critical aspects
+including chunk reception, usage statistics, and consecutive request handling, ensuring the system
+meets all requirements before proceeding to the next phase of implementation.

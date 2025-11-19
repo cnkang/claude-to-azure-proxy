@@ -9,15 +9,7 @@
  * Requirements covered: 4.1, 4.2, 8.4, 10.1, 10.2, 11.1-11.9
  */
 
-import {
-  describe,
-  it,
-  expect,
-  beforeAll,
-  beforeEach,
-  vi,
-  afterAll,
-} from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { UniversalRequestProcessor } from '../src/utils/universal-request-processor';
 import { sanitizeErrorMessage, ValidationError } from '../src/errors/index';
 import type {
@@ -450,14 +442,26 @@ class CompatibilityResponseFactory {
 }
 
 describe('Compatibility Validation Tests', () => {
+  type AgentResponse = Promise<{
+    status: number;
+    body: any;
+    headers: Record<string, string>;
+  }> & {
+    expect: (status: number) => Promise<{
+      status: number;
+      body: any;
+      headers: Record<string, string>;
+    }>;
+  };
+
   let universalProcessor: UniversalRequestProcessor;
   let agent: {
-    post: (
-      path: '/v1/messages' | '/v1/chat/completions'
-    ) => {
-      send: (
-        body: ClaudeRequest | OpenAIRequest
-      ) => { expect: (status: number) => Promise<{ status: number; body: any }> };
+    post: (path: '/v1/messages' | '/v1/chat/completions') => {
+      send: (body: ClaudeRequest | OpenAIRequest) => AgentResponse;
+      set: (
+        name: string,
+        value: string
+      ) => { send: (body: ClaudeRequest | OpenAIRequest) => AgentResponse };
     };
   };
 
@@ -465,7 +469,11 @@ describe('Compatibility Validation Tests', () => {
     path: '/v1/messages' | '/v1/chat/completions',
     body: ClaudeRequest | OpenAIRequest,
     headers: Record<string, string>
-  ): Promise<{ status: number; body: any; headers: Record<string, string> }> => {
+  ): Promise<{
+    status: number;
+    body: any;
+    headers: Record<string, string>;
+  }> => {
     try {
       const result = await universalProcessor.processRequest({
         headers,
@@ -511,12 +519,13 @@ describe('Compatibility Validation Tests', () => {
         };
       }
 
-      const claudeResponse = CompatibilityResponseFactory.createLegacyClaudeResponse(
-        responsesResponse.output
-          .filter((output) => output.type === 'text')
-          .map((output) => output.text)
-          .join('')
-      );
+      const claudeResponse =
+        CompatibilityResponseFactory.createLegacyClaudeResponse(
+          responsesResponse.output
+            .filter((output) => output.type === 'text')
+            .map((output) => output.text)
+            .join('')
+        );
 
       return {
         status: 200,
@@ -607,9 +616,14 @@ describe('Compatibility Validation Tests', () => {
         };
 
         const attachExpect = (
-          promise: Promise<{ status: number; body: any; headers: Record<string, string> }>
+          promise: Promise<{
+            status: number;
+            body: any;
+            headers: Record<string, string>;
+          }>
         ) => {
-          (promise as any).expect = (status: number) => runRequest(bodyRef, status);
+          (promise as any).expect = (status: number) =>
+            runRequest(bodyRef, status);
           return promise as any;
         };
 
@@ -1133,9 +1147,7 @@ describe('Compatibility Validation Tests', () => {
         max_tokens: -1, // Invalid negative value
       };
 
-      const response = await agent
-        .post('/v1/messages')
-        .send(malformedRequest);
+      const response = await agent.post('/v1/messages').send(malformedRequest);
 
       expect([400, 500]).toContain(response.status);
       expect(response.body).toHaveProperty('type', 'error');
@@ -1267,9 +1279,7 @@ describe('Compatibility Validation Tests', () => {
         max_tokens: 500,
       };
 
-      const response = await agent
-        .post('/v1/messages')
-        .send(injectionRequest);
+      const response = await agent.post('/v1/messages').send(injectionRequest);
 
       // The request should either be rejected or sanitized
       expect([200, 400, 500]).toContain(response.status);
@@ -1292,9 +1302,7 @@ describe('Compatibility Validation Tests', () => {
         max_tokens: 100,
       };
 
-      const response = await agent
-        .post('/v1/messages')
-        .send(oversizedRequest);
+      const response = await agent.post('/v1/messages').send(oversizedRequest);
 
       // Should reject oversized requests
       expect([413, 500]).toContain(response.status);

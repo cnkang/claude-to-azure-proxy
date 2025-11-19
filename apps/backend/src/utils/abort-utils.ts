@@ -34,7 +34,11 @@ export const createAbortError = (reason?: unknown): Error => {
   return abortError;
 };
 
-const isAbortErrorInstance = (error: Error, seen: Set<Error>, depth = 0): boolean => {
+const isAbortErrorInstance = (
+  error: Error,
+  seen: Set<Error>,
+  depth = 0
+): boolean => {
   // Prevent infinite recursion with maximum depth limit
   if (depth > 10 || seen.has(error)) {
     return false;

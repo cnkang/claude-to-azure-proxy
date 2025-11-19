@@ -235,14 +235,22 @@ describe('Completions handler - Bedrock routing', () => {
 
         return await new Promise((resolve, reject) => {
           if (signal?.aborted) {
-            reject(Object.assign(new Error('Aborted before start'), { name: 'AbortError' }));
+            reject(
+              Object.assign(new Error('Aborted before start'), {
+                name: 'AbortError',
+              })
+            );
             return;
           }
 
           signal?.addEventListener(
             'abort',
             () => {
-              reject(Object.assign(new Error('Request aborted'), { name: 'AbortError' }));
+              reject(
+                Object.assign(new Error('Request aborted'), {
+                  name: 'AbortError',
+                })
+              );
             },
             { once: true }
           );

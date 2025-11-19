@@ -372,17 +372,20 @@ export class ProxyServer {
     );
 
     // API info endpoint moved to /api/info to avoid conflict with frontend root
-    this.app.get('/api/info', (req: Readonly<Request>, res: Readonly<Response>) => {
-      const { correlationId } = req as unknown as RequestWithCorrelationId;
-      logger.info('API info endpoint accessed', correlationId);
+    this.app.get(
+      '/api/info',
+      (req: Readonly<Request>, res: Readonly<Response>) => {
+        const { correlationId } = req as unknown as RequestWithCorrelationId;
+        logger.info('API info endpoint accessed', correlationId);
 
-      res.json({
-        service: 'Claude-to-Azure Proxy',
-        version: '1.0.0',
-        status: 'running',
-        correlationId,
-      });
-    });
+        res.json({
+          service: 'Claude-to-Azure Proxy',
+          version: '1.0.0',
+          status: 'running',
+          correlationId,
+        });
+      }
+    );
 
     // Claude API compatible endpoints with authentication and feature availability checks
     this.app.get(
@@ -621,7 +624,9 @@ export class ProxyServer {
     // Resolve frontend build path - works in both development and Docker
     // In Docker: /app/apps/frontend/dist
     // In development: ../frontend/dist (from apps/backend)
-    const frontendBuildPath = fs.existsSync(path.resolve(process.cwd(), 'apps/frontend/dist'))
+    const frontendBuildPath = fs.existsSync(
+      path.resolve(process.cwd(), 'apps/frontend/dist')
+    )
       ? path.resolve(process.cwd(), 'apps/frontend/dist')
       : path.resolve(process.cwd(), '../frontend/dist');
 

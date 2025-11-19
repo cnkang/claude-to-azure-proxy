@@ -317,7 +317,9 @@ describe('Performance and Load Testing', () => {
 
   const defaultUserAgent = 'performance-load-test';
 
-  const normalizeHeaders = (headers?: Record<string, string>): Record<string, string> => ({
+  const normalizeHeaders = (
+    headers?: Record<string, string>
+  ): Record<string, string> => ({
     'User-Agent': defaultUserAgent,
     ...(headers ?? {}),
   });
@@ -365,7 +367,11 @@ describe('Performance and Load Testing', () => {
     },
   });
 
-  const recordGeneralMetric = (method: string, path: string, duration: number): void => {
+  const recordGeneralMetric = (
+    method: string,
+    path: string,
+    duration: number
+  ): void => {
     performanceMetrics.recordMetric(`${method} ${path}`, duration);
   };
 
@@ -384,7 +390,8 @@ describe('Performance and Load Testing', () => {
   ): Promise<{ status: number; body: unknown }> => {
     const method = 'POST';
     const headers = normalizeHeaders(options?.headers);
-    const userAgent = headers['User-Agent'] ?? headers['user-agent'] ?? defaultUserAgent;
+    const userAgent =
+      headers['User-Agent'] ?? headers['user-agent'] ?? defaultUserAgent;
 
     const startTime = performance.now();
 
@@ -402,7 +409,11 @@ describe('Performance and Load Testing', () => {
 
       const duration = performance.now() - startTime;
       recordGeneralMetric(method, path, duration);
-      performanceMetrics.recordMetric(operation, duration, extractTokenUsage(responsesResponse));
+      performanceMetrics.recordMetric(
+        operation,
+        duration,
+        extractTokenUsage(responsesResponse)
+      );
 
       return {
         status: 200,

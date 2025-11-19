@@ -361,17 +361,21 @@ export const validateSessionMiddleware = async (
 
   if (!session) {
     // Auto-create session if it doesn't exist (for frontend-generated session IDs)
-    logger.info('Auto-creating session for frontend-generated session ID', correlationId, {
-      sessionId,
-    });
-    
+    logger.info(
+      'Auto-creating session for frontend-generated session ID',
+      correlationId,
+      {
+        sessionId,
+      }
+    );
+
     const newSession: SessionData = {
       id: sessionId,
       fingerprint,
       createdAt: new Date(),
       lastAccessed: new Date(),
     };
-    
+
     sessions.set(sessionId, newSession);
     session = newSession;
   }

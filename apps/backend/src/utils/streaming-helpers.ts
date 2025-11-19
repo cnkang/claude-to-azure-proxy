@@ -1,6 +1,10 @@
 import type { Response } from 'express';
 
-import { createAbortError, registerAbortListener, throwIfAborted } from './abort-utils';
+import {
+  createAbortError,
+  registerAbortListener,
+  throwIfAborted,
+} from './abort-utils';
 
 interface WritableOptions {
   readonly closedMessage?: string;
@@ -34,8 +38,8 @@ export const createAbortableStreamWriter = (
       } catch (writeError) {
         // Convert write errors to abort errors for consistent handling
         throw createAbortError(
-          writeError instanceof Error 
-            ? writeError.message 
+          writeError instanceof Error
+            ? writeError.message
             : 'Failed to write to response stream'
         );
       }
@@ -47,8 +51,8 @@ export const createAbortableStreamWriter = (
           res.write(finalChunk);
         } catch (writeError) {
           throw createAbortError(
-            writeError instanceof Error 
-              ? writeError.message 
+            writeError instanceof Error
+              ? writeError.message
               : 'Failed to write final chunk to response stream'
           );
         }
@@ -59,8 +63,8 @@ export const createAbortableStreamWriter = (
           res.end();
         } catch (endError) {
           throw createAbortError(
-            endError instanceof Error 
-              ? endError.message 
+            endError instanceof Error
+              ? endError.message
               : 'Failed to end response stream'
           );
         }

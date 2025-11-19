@@ -539,7 +539,7 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
 
       const abortController = new AbortController();
       let cleanupDone = false;
-      
+
       const abortRequest = (): void => {
         if (!abortController.signal.aborted) {
           abortController.abort(
@@ -908,7 +908,7 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
                 azureRequestTime: metrics.azureRequestTime,
               }
             );
-            
+
             // Ensure response is ended if not already sent
             // 499 Client Closed Request - client actively closed the connection
             if (!res.headersSent) {
@@ -1150,7 +1150,7 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
           logger.info('Completions request aborted by client', correlationId, {
             totalTime: Date.now() - metrics.startTime,
           });
-          
+
           // Ensure response is ended if not already sent
           // 499 Client Closed Request - client actively closed the connection
           if (!res.headersSent) {
@@ -1451,7 +1451,7 @@ async function handleBedrockRequest(
       logger.info('Bedrock request aborted by client', correlationId, {
         bedrockRequestTime: metrics.bedrockRequestTime,
       });
-      
+
       // Ensure response is ended if not already sent
       // 499 Client Closed Request - client actively closed the connection
       if (!res.headersSent) {
@@ -1843,7 +1843,7 @@ async function handleBedrockSimulatedStreamingRequest(
           bedrockRequestTime: metrics.bedrockRequestTime,
         }
       );
-      
+
       // Ensure response is ended if not already sent
       // 499 Client Closed Request - client actively closed the connection
       if (!res.headersSent) {
@@ -1998,7 +1998,7 @@ async function handleSimulatedStreamingRequest(
         totalTime: metrics.totalTime,
         azureRequestTime: metrics.azureRequestTime,
       });
-      
+
       // Ensure response is ended if not already sent
       // 499 Client Closed Request - client actively closed the connection
       if (!res.headersSent) {
@@ -2071,155 +2071,155 @@ async function simulateStreamingResponse(
 
   try {
     if (responseFormat === 'claude') {
-    writer.write('event: message_start\n');
-    writer.write(
-      `data: ${JSON.stringify({
-        type: 'message_start',
-        message: {
-          id: response.id,
-          type: 'message',
-          role: 'assistant',
-          content: [],
-          model: 'claude-3-5-sonnet-20241022',
-          stop_reason: null,
+      writer.write('event: message_start\n');
+      writer.write(
+        `data: ${JSON.stringify({
+          type: 'message_start',
+          message: {
+            id: response.id,
+            type: 'message',
+            role: 'assistant',
+            content: [],
+            model: 'claude-3-5-sonnet-20241022',
+            stop_reason: null,
+            usage: {
+              input_tokens: response.usage.prompt_tokens,
+              output_tokens: 0,
+            },
+          },
+        })}\n\n`
+      );
+
+      const textContent = extractTextFromResponseOutput(response.output);
+
+      if (textContent && textContent.length > 0) {
+        writer.write('event: content_block_start\n');
+        writer.write(
+          `data: ${JSON.stringify({
+            type: 'content_block_start',
+            index: 0,
+            content_block: {
+              type: 'text',
+              text: '',
+            },
+          })}\n\n`
+        );
+
+        const chunkSize = Math.max(1, Math.floor(textContent.length / 5));
+        for (let i = 0; i < textContent.length; i += chunkSize) {
+          const chunk = textContent.slice(i, i + chunkSize);
+
+          writer.write('event: content_block_delta\n', simulationOptions);
+          writer.write(
+            `data: ${JSON.stringify({
+              type: 'content_block_delta',
+              index: 0,
+              delta: {
+                type: 'text_delta',
+                text: chunk,
+              },
+            })}\n\n`,
+            simulationOptions
+          );
+
+          await abortableDelay(50, signal, 'Simulated streaming delay aborted');
+          writer.ensureWritable(simulationOptions);
+        }
+
+        writer.write('event: content_block_stop\n');
+        writer.write(
+          `data: ${JSON.stringify({
+            type: 'content_block_stop',
+            index: 0,
+          })}\n\n`
+        );
+      }
+
+      writer.write('event: message_stop\n');
+      writer.write(
+        `data: ${JSON.stringify({
+          type: 'message_stop',
           usage: {
             input_tokens: response.usage.prompt_tokens,
-            output_tokens: 0,
-          },
-        },
-      })}\n\n`
-    );
-
-    const textContent = extractTextFromResponseOutput(response.output);
-
-    if (textContent && textContent.length > 0) {
-      writer.write('event: content_block_start\n');
-      writer.write(
-        `data: ${JSON.stringify({
-          type: 'content_block_start',
-          index: 0,
-          content_block: {
-            type: 'text',
-            text: '',
+            output_tokens: response.usage.completion_tokens,
           },
         })}\n\n`
       );
-
-      const chunkSize = Math.max(1, Math.floor(textContent.length / 5));
-      for (let i = 0; i < textContent.length; i += chunkSize) {
-        const chunk = textContent.slice(i, i + chunkSize);
-
-        writer.write('event: content_block_delta\n', simulationOptions);
-        writer.write(
-          `data: ${JSON.stringify({
-            type: 'content_block_delta',
-            index: 0,
-            delta: {
-              type: 'text_delta',
-              text: chunk,
-            },
-          })}\n\n`,
-          simulationOptions
-        );
-
-        await abortableDelay(50, signal, 'Simulated streaming delay aborted');
-        writer.ensureWritable(simulationOptions);
-      }
-
-      writer.write('event: content_block_stop\n');
+    } else {
       writer.write(
         `data: ${JSON.stringify({
-          type: 'content_block_stop',
-          index: 0,
-        })}\n\n`
-      );
-    }
-
-    writer.write('event: message_stop\n');
-    writer.write(
-      `data: ${JSON.stringify({
-        type: 'message_stop',
-        usage: {
-          input_tokens: response.usage.prompt_tokens,
-          output_tokens: response.usage.completion_tokens,
-        },
-      })}\n\n`
-    );
-  } else {
-    writer.write(
-      `data: ${JSON.stringify({
-        id: response.id,
-        object: 'chat.completion.chunk',
-        created: Math.floor(Date.now() / 1000),
-        model: 'gpt-5-codex',
-        choices: [
-          {
-            index: 0,
-            delta: {
-              role: 'assistant',
-            },
-            finish_reason: null,
-          },
-        ],
-      })}\n\n`
-    );
-
-    const textContent = extractTextFromResponseOutput(response.output);
-
-    if (textContent && textContent.length > 0) {
-      const chunkSize = Math.max(1, Math.floor(textContent.length / 5));
-      for (let i = 0; i < textContent.length; i += chunkSize) {
-        const chunk = textContent.slice(i, i + chunkSize);
-
-        writer.write(
-          `data: ${JSON.stringify({
-            id: response.id,
-            object: 'chat.completion.chunk',
-            created: Math.floor(Date.now() / 1000),
-            model: 'gpt-5-codex',
-            choices: [
-              {
-                index: 0,
-                delta: {
-                  content: chunk,
-                },
-                finish_reason: null,
+          id: response.id,
+          object: 'chat.completion.chunk',
+          created: Math.floor(Date.now() / 1000),
+          model: 'gpt-5-codex',
+          choices: [
+            {
+              index: 0,
+              delta: {
+                role: 'assistant',
               },
-            ],
-          })}\n\n`,
-          simulationOptions
-        );
+              finish_reason: null,
+            },
+          ],
+        })}\n\n`
+      );
 
-        await abortableDelay(50, signal, 'Simulated streaming delay aborted');
-        writer.ensureWritable(simulationOptions);
+      const textContent = extractTextFromResponseOutput(response.output);
+
+      if (textContent && textContent.length > 0) {
+        const chunkSize = Math.max(1, Math.floor(textContent.length / 5));
+        for (let i = 0; i < textContent.length; i += chunkSize) {
+          const chunk = textContent.slice(i, i + chunkSize);
+
+          writer.write(
+            `data: ${JSON.stringify({
+              id: response.id,
+              object: 'chat.completion.chunk',
+              created: Math.floor(Date.now() / 1000),
+              model: 'gpt-5-codex',
+              choices: [
+                {
+                  index: 0,
+                  delta: {
+                    content: chunk,
+                  },
+                  finish_reason: null,
+                },
+              ],
+            })}\n\n`,
+            simulationOptions
+          );
+
+          await abortableDelay(50, signal, 'Simulated streaming delay aborted');
+          writer.ensureWritable(simulationOptions);
+        }
       }
+
+      writer.write(
+        `data: ${JSON.stringify({
+          id: response.id,
+          object: 'chat.completion.chunk',
+          created: Math.floor(Date.now() / 1000),
+          model: 'gpt-5-codex',
+          choices: [
+            {
+              index: 0,
+              delta: {},
+              finish_reason: 'stop',
+            },
+          ],
+          usage: {
+            prompt_tokens: response.usage.prompt_tokens,
+            completion_tokens: response.usage.completion_tokens,
+            total_tokens: response.usage.total_tokens,
+          },
+        })}\n\n`
+      );
+
+      writer.write('data: [DONE]\n\n');
     }
 
-    writer.write(
-      `data: ${JSON.stringify({
-        id: response.id,
-        object: 'chat.completion.chunk',
-        created: Math.floor(Date.now() / 1000),
-        model: 'gpt-5-codex',
-        choices: [
-          {
-            index: 0,
-            delta: {},
-            finish_reason: 'stop',
-          },
-        ],
-        usage: {
-          prompt_tokens: response.usage.prompt_tokens,
-          completion_tokens: response.usage.completion_tokens,
-          total_tokens: response.usage.total_tokens,
-        },
-      })}\n\n`
-    );
-
-    writer.write('data: [DONE]\n\n');
-  }
-
-  writer.end();
+    writer.end();
   } catch (error) {
     // If aborted, just end the stream gracefully
     if (isAbortError(error)) {

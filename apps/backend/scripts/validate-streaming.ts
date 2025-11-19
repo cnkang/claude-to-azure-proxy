@@ -1,6 +1,6 @@
 /**
  * Validation Script for Streaming Service
- * 
+ *
  * Tests the SSE streaming functionality to verify:
  * - Streaming chunks are received
  * - Completion message is received
@@ -11,7 +11,8 @@ import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 
 const BASE_URL = 'http://localhost:8080';
-const API_KEY = process.env.PROXY_API_KEY || 'test-api-key-12345678901234567890';
+const API_KEY =
+  process.env.PROXY_API_KEY || 'test-api-key-12345678901234567890';
 
 interface StreamChunk {
   type: 'start' | 'chunk' | 'end' | 'error';
@@ -149,7 +150,9 @@ async function validateStreaming(): Promise<void> {
     console.log(`  ✓ Has chunk events: ${validations.hasChunks ? '✅' : '❌'}`);
     console.log(`  ✓ Has end event: ${validations.hasEnd ? '✅' : '❌'}`);
     console.log(`  ✓ No error events: ${validations.noErrors ? '✅' : '❌'}`);
-    console.log(`  ✓ No duplicate starts: ${validations.noDuplicateStarts ? '✅' : '❌'}`);
+    console.log(
+      `  ✓ No duplicate starts: ${validations.noDuplicateStarts ? '✅' : '❌'}`
+    );
     console.log(`  ✓ Has usage stats: ${validations.hasUsage ? '✅' : '❌'}`);
 
     if (errorEvents.length > 0) {
@@ -170,14 +173,17 @@ async function validateStreaming(): Promise<void> {
     const allPassed = Object.values(validations).every((v) => v === true);
 
     if (allPassed) {
-      console.log('\n🎉 All validations passed! Streaming service is working correctly.');
+      console.log(
+        '\n🎉 All validations passed! Streaming service is working correctly.'
+      );
     } else {
-      console.log('\n⚠️  Some validations failed. Please review the results above.');
+      console.log(
+        '\n⚠️  Some validations failed. Please review the results above.'
+      );
     }
 
     // Close SSE connection
     sseResponse.data.destroy();
-
   } catch (error) {
     console.error('\n❌ Validation failed with error:');
     if (axios.isAxiosError(error)) {
