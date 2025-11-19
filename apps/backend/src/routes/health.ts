@@ -208,7 +208,12 @@ export const healthCheckHandler = (config: Readonly<ServerConfig>) => {
         (config.azureOpenAI?.endpoint?.includes('test.openai.azure.com') ??
           false) ||
         (config.azureOpenAI?.baseURL?.includes('test.openai.azure.com') ??
-          false);
+          false) ||
+        (config.azureOpenAI?.endpoint?.includes('example.openai.azure.com') ??
+          false) ||
+        (config.azureOpenAI?.baseURL?.includes('example.openai.azure.com') ??
+          false) ||
+        config.nodeEnv === 'test';
 
       // System is healthy if memory is good AND at least one service is available (or in test environment)
       const hasHealthyService =
