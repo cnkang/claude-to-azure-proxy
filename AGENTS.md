@@ -1,5 +1,20 @@
 # AI Agent Reference Guide for Claude-to-Azure OpenAI Proxy
 
+## Table of Contents
+
+1. [Project Overview](#project-overview)
+2. [Code Reuse and Architecture Principles](#code-reuse-and-architecture-principles)
+3. [Technology Stack & Architecture](#technology-stack--architecture)
+4. [Agent Workflow Checklist](#agent-workflow-checklist)
+5. [Development Guidelines](#development-guidelines)
+6. [Quality Gate Summary](#quality-gate-summary)
+7. [Testing Requirements](#testing-requirements)
+8. [Monitoring & Observability](#monitoring--observability)
+9. [Deployment](#deployment)
+10. [Business Logic](#business-logic)
+11. [Common Patterns](#common-patterns)
+12. [Best Practices for AI Agents](#best-practices-for-ai-agents)
+
 ## Project Overview
 
 This is a **production-ready TypeScript API proxy server** that seamlessly translates Claude API
@@ -163,6 +178,27 @@ scripts/            # Security and quality assurance scripts
 3. **Utils** → Types only (pure functions, no side effects)
 4. **Config** → Types only (validation and environment setup)
 
+## Agent Workflow Checklist
+
+1. **Intake & Scope**
+   - Confirm environment context (branch, sandbox, permissions).
+   - Capture user goals plus implicit constraints (e.g., reuse policy, heap caps).
+2. **Discovery**
+   - Locate existing code by searching `src/`, `apps/`, and relevant packages before authoring new logic.
+   - Identify impacted layers (routes, middleware, utils) and map dependencies.
+3. **Plan**
+   - Break work into auditable steps; prefer smaller PR-sized commits with meaningful messages.
+   - Document assumptions (e.g., network-disabled) inside commit descriptions or comments when critical.
+4. **Implement**
+   - Follow layering rules, TypeScript strictness, and reuse guidelines.
+   - Update documentation or schemas when behavior or contracts evolve.
+5. **Validate**
+   - Run the narrowest pnpm/vitest suites that give confidence (unit → integration → e2e).
+   - Capture output summaries in the final response; rerun failed checks after fixes.
+6. **Deliver**
+   - Stage logically grouped files; use conventional commits (`feat|fix|chore|docs|test|refactor`).
+   - Provide a concise summary plus explicit next steps/tests for the reviewer.
+
 ## Development Guidelines
 
 ### TypeScript Requirements
@@ -198,6 +234,34 @@ try {
   throw new ApiError('Operation failed', 500);
 }
 ```
+
+### Core Commands Reference
+
+| Purpose                    | Command                                  | Notes                                             |
+| -------------------------- | ---------------------------------------- | ------------------------------------------------- |
+| Install deps               | `pnpm install`                           | Run at repo root                                 |
+| Type check all packages    | `pnpm -r type-check`                     | Uses each package’s TS config                    |
+| Backend unit tests         | `pnpm --filter @repo/backend test`       | Honors NODE_OPTIONS defaults                     |
+| Frontend vitest (no cov)   | `cd apps/frontend && pnpm test:direct`   | Uses 4 GB heap cap                                |
+| Frontend coverage          | `cd apps/frontend && pnpm test:coverage` | NODE_OPTIONS limited to 8 GB (see CI policy)     |
+| Lint all packages          | `pnpm -r lint`                           | Add `:fix` for auto fixes                         |
+| Format                     | `pnpm run format`                        | Handles empty glob folders via `--no-error...`    |
+| Build backend              | `pnpm --filter @repo/backend build`      | Uses optimized Node flags                        |
+| Build frontend             | `pnpm --filter @repo/frontend build`     | Vite production build                            |
+
+> Tip: Always run commands from repo root unless the package-specific README states otherwise.
+
+## Quality Gate Summary
+
+| Category        | Minimum Expectation                                             |
+| --------------- | ---------------------------------------------------------------- |
+| **Type Safety** | TypeScript strict mode + zero implicit `any`s                    |
+| **Testing**     | Vitest suites ≥90% coverage overall; critical flows 100%         |
+| **Linting**     | ESLint security rules clean; run `pnpm lint:fix` before commit   |
+| **Formatting**  | Prettier via `pnpm run format` (root and package scopes)         |
+| **Docs**        | Update READMEs/specs when APIs, env vars, or workflows change    |
+| **Performance** | Respect heap caps (≤8 GB for test coverage) and streaming SLAs   |
+| **Security**    | Authentication on every route (except `/health`), sanitized logs |
 
 ### Naming Conventions
 
