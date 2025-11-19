@@ -19,28 +19,28 @@ export default mergeConfig(
       pool: 'forks',
       poolOptions: {
         forks: {
-          singleFork: true,  // Single fork prevents worker timeout
+          singleFork: true, // Single fork prevents worker timeout
           isolate: true,
-          execArgv: ['--max-old-space-size=24576', '--expose-gc'],
+          execArgv: ['--max-old-space-size=8192', '--expose-gc'],
           maxForks: 1,
           minForks: 1,
         },
       },
-      
+
       // Disable all parallelism for coverage
       fileParallelism: false,
       maxConcurrency: 1,
       maxWorkers: 1,
       minWorkers: 1,
-      
+
       // Increase timeouts for coverage collection
       testTimeout: 120000,
       hookTimeout: 120000,
       teardownTimeout: 180000,
-      
+
       // Disable watch mode
       watch: false,
-      
+
       // Enable coverage
       coverage: {
         enabled: true,
@@ -65,9 +65,7 @@ export default mergeConfig(
           'src/test/app-context-persistence.test.tsx',
           'src/main.tsx',
         ],
-        include: [
-          'src/**/*.{ts,tsx}',
-        ],
+        include: ['src/**/*.{ts,tsx}'],
         all: true,
         thresholds: {
           global: {
