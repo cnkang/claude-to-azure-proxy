@@ -34,9 +34,10 @@ vi.mock('../services/storage', () => ({
 }));
 
 vi.mock('../services/conversation-search', () => ({
-  ConversationSearchService: vi.fn().mockImplementation(() => ({
-    initialize: vi.fn().mockResolvedValue(undefined),
-    search: vi.fn().mockResolvedValue({
+  ConversationSearchService: class MockConversationSearchService {
+    constructor(_storage: unknown) {}
+    initialize = vi.fn().mockResolvedValue(undefined);
+    search = vi.fn().mockResolvedValue({
       results: [],
       pagination: {
         currentPage: 0,
@@ -47,8 +48,8 @@ vi.mock('../services/conversation-search', () => ({
         hasPreviousPage: false,
       },
       searchTime: 50,
-    }),
-  })),
+    });
+  },
 }));
 
 vi.mock('../hooks/useSearchWithPrefetch', () => ({
