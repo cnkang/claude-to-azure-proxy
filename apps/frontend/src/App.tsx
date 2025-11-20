@@ -26,7 +26,33 @@ import { reportAnalyticsException } from './utils/analytics';
 import { frontendLogger } from './utils/logger';
 import { startMemoryMonitoring } from './utils/memoryManager';
 import { IntegrityCheckInitializer } from './components/common/IntegrityCheckInitializer';
+import { getConversationStorage } from './services/storage';
+import { getSessionManager } from './services/session';
 import './App.css';
+
+declare global {
+  interface Window {
+    __E2E_TEST_MODE__?: boolean;
+    __TEST_BRIDGE__?: {
+      getConversationStorage: () => Promise<
+        ReturnType<typeof getConversationStorage>
+      >;
+      getSessionManager: () => ReturnType<typeof getSessionManager>;
+    };
+  }
+}
+
+if (typeof window !== 'undefined' && window.__E2E_TEST_MODE__ === true) {
+  const storage = getConversationStorage();
+  window.__TEST_BRIDGE__ = {
+    getConversationStorage: async () => {
+      // Ensure initialized before use in tests
+      await storage.initialize?.();
+      return storage;
+    },
+    getSessionManager,
+  };
+}
 
 /**
  * Main App component with all providers, error handling, and performance monitoring

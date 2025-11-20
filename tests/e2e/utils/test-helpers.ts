@@ -575,11 +575,13 @@ export class TestHelpers {
       // Update the conversation with test data
       await this.page.evaluate(
         async ({ id, title, messages }) => {
-          // @ts-expect-error - Dynamic import in browser context
-          const { getConversationStorage } = await import(
-            '/src/services/storage.js'
-          );
-          const storage = getConversationStorage();
+          const bridge = (window as any).__TEST_BRIDGE__;
+          const storage = bridge
+            ? await bridge.getConversationStorage()
+            : (
+                await import('/src/services/storage.js')
+              ).getConversationStorage();
+
           await storage.initialize();
 
           // Get the conversation
@@ -623,16 +625,13 @@ export class TestHelpers {
   ): Promise<string> {
     const conversationId = await this.page.evaluate(
       async ({ title, messages }) => {
-        // Import storage and session manager dynamically
-        // @ts-expect-error - Dynamic import in browser context
-        const { getConversationStorage } = await import(
-          '/src/services/storage.js'
-        );
-        // @ts-expect-error - Dynamic import in browser context
-        const { getSessionManager } = await import('/src/services/session.js');
-
-        const storage = getConversationStorage();
-        const sessionManager = getSessionManager();
+        const bridge = (window as any).__TEST_BRIDGE__;
+        const storage = bridge
+          ? await bridge.getConversationStorage()
+          : (await import('/src/services/storage.js')).getConversationStorage();
+        const sessionManager = bridge
+          ? bridge.getSessionManager()
+          : (await import('/src/services/session.js')).getSessionManager();
 
         // Ensure storage is initialized
         await storage.initialize();

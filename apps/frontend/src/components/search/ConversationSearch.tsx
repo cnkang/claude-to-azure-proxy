@@ -44,7 +44,9 @@ export function ConversationSearch({
   const [currentPage, setCurrentPage] = useState(0);
   const [focusedResultIndex, setFocusedResultIndex] = useState(-1);
 
-  const searchServiceRef = useRef<ConversationSearchService | null>(null);
+  const searchServiceRef = useRef<ConversationSearchService | null>(
+    new ConversationSearchService(getConversationStorage())
+  );
   const searchInputRef = useRef<HTMLInputElement>(null);
   const debounceTimerRef = useRef<number | null>(null);
   const resultsContainerRef = useRef<HTMLDivElement>(null);
@@ -53,10 +55,13 @@ export function ConversationSearch({
   useEffect(() => {
     const initializeSearch = async () => {
       try {
-        const storage = getConversationStorage();
-        const service = new ConversationSearchService(storage);
-        await service.initialize();
-        searchServiceRef.current = service;
+        if (searchServiceRef.current === null) {
+          searchServiceRef.current = new ConversationSearchService(
+            getConversationStorage()
+          );
+        }
+
+        await searchServiceRef.current.initialize();
       } catch (err) {
         frontendLogger.error('Failed to initialize search service', {
           error: err instanceof Error ? err : new Error(String(err)),

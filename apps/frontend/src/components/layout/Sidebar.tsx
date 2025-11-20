@@ -361,7 +361,9 @@ export function Sidebar({
     const items = document.querySelectorAll(
       '.conversations-list .conversation-button'
     );
-    if (items.length === 0) {return;}
+    if (items.length === 0) {
+      return;
+    }
 
     const currentElement = document.activeElement as HTMLElement;
     const currentIndex = Array.from(items).indexOf(currentElement);
@@ -467,18 +469,19 @@ export function Sidebar({
         </div>
 
         {/* Search conversations */}
-        {conversationsList.length > 0 && (
-          <div className="conversations-search-section">
-            <ConversationSearch
-              onResultSelect={(conversationId) => {
-                setActiveConversation(conversationId);
-                if (isMobile) {
-                  onClose();
-                }
-              }}
-            />
-          </div>
-        )}
+        <div
+          className="conversations-search-section"
+          data-testid="conversations-search-section"
+        >
+          <ConversationSearch
+            onResultSelect={(conversationId) => {
+              setActiveConversation(conversationId);
+              if (isMobile) {
+                onClose();
+              }
+            }}
+          />
+        </div>
 
         {/* Conversations list */}
         <div className="conversations-section">

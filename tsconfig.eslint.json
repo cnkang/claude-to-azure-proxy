@@ -10,7 +10,8 @@
     "apps/frontend/src/**/*",
     "packages/**/*",
     "scripts/**/*",
-    "tests/**/*"
+    "tests/**/*",
+    "playwright.config.ts"
   ],
   "files": ["eslint.config.ts"]
 }

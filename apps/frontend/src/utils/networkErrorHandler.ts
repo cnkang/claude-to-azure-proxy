@@ -106,6 +106,26 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
   ],
 };
 
+const DEFAULT_API_KEY = 'dev-proxy-key-123456789012345678901234';
+
+const resolveApiKey = (): string | undefined => {
+  if (typeof window !== 'undefined') {
+    const e2eKey = (window as Window & { __E2E_PROXY_API_KEY__?: string })
+      .__E2E_PROXY_API_KEY__;
+    if (typeof e2eKey === 'string' && e2eKey.trim().length > 0) {
+      return e2eKey.trim();
+    }
+  }
+
+  const envKey = (import.meta as unknown as { env?: Record<string, unknown> })
+    .env?.VITE_PROXY_API_KEY;
+  if (typeof envKey === 'string' && envKey.trim().length > 0) {
+    return envKey.trim();
+  }
+
+  return DEFAULT_API_KEY;
+};
+
 /**
  * Network error handler class
  */
@@ -310,6 +330,13 @@ export class NetworkErrorHandler {
     } = {}
   ): Promise<Response> {
     const { timeout = 30000, ...retryOptions } = options;
+    const apiKey = resolveApiKey();
+    const authHeaders: Record<string, string> = apiKey
+      ? {
+          Authorization: `Bearer ${apiKey}`,
+          'x-api-key': apiKey,
+        }
+      : {};
 
     return this.executeWithRetry(async () => {
       // Create abort controller for timeout
@@ -320,6 +347,10 @@ export class NetworkErrorHandler {
         const response = await fetch(url, {
           ...init,
           signal: controller.signal,
+          headers: {
+            ...(init?.headers ?? {}),
+            ...authHeaders,
+          },
         });
 
         clearTimeout(timeoutId);
