@@ -537,6 +537,8 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
         requestSize: Buffer.byteLength(JSON.stringify(req.body), 'utf8'),
       };
 
+      let responsesClient: AzureResponsesClient | null = null;
+
       const abortController = new AbortController();
       let cleanupDone = false;
 
@@ -702,7 +704,7 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
         };
 
         // Create Azure Responses API client
-        const responsesClient = new AzureResponsesClient(azureConfig);
+        responsesClient = new AzureResponsesClient(azureConfig);
 
         // Extract conversation ID for context tracking
         const headerConversationIdRaw =
@@ -1214,6 +1216,22 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
           .json(mappedError.body);
       } finally {
         cleanup();
+        if (responsesClient !== null) {
+          try {
+            await responsesClient[Symbol.asyncDispose]();
+          } catch (disposeError) {
+            logger.warn(
+              'Failed to dispose Azure Responses client',
+              correlationId,
+              {
+                error:
+                  disposeError instanceof Error
+                    ? disposeError.message
+                    : 'Unknown error',
+              }
+            );
+          }
+        }
       }
     }
   );

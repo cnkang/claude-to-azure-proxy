@@ -4,6 +4,7 @@ import type { Request, Response, NextFunction } from 'express';
 import type { IncomingHttpHeaders } from 'http';
 import { v4 as uuidv4 } from 'uuid';
 import type { RateLimitConfig, RequestWithCorrelationId } from '../types/index';
+import config from '../config/index';
 
 /**
  * Security middleware configuration for production-ready Express server
@@ -93,6 +94,32 @@ const rateLimitTimestampStateStore = new WeakMap<
   { last: number; counter: number }
 >();
 const patchedResponses = new WeakSet<Response>();
+
+const configuredCorsOrigins = (config.CORS_ALLOWED_ORIGINS ?? '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter((origin) => origin.length > 0);
+
+const isConfiguredOrigin = (origin: string): boolean => {
+  if (configuredCorsOrigins.length === 0) {
+    return false;
+  }
+
+  return configuredCorsOrigins.includes(origin);
+};
+
+const isDevelopmentOrigin = (origin: string, serverPort: string): boolean => {
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    `http://localhost:${serverPort}`,
+    `http://127.0.0.1:${serverPort}`,
+  ];
+
+  return allowedOrigins.includes(origin);
+};
 
 const resolveRateLimitNamespace = (app: Request['app']): string => {
   let namespace = rateLimitNamespaceStore.get(app);
@@ -473,40 +500,31 @@ export const corsOptions = {
     }
 
     const requestOrigin = origin;
+    const serverPort = process.env.PORT ?? '8080';
 
-    // In development, allow localhost origins
     if (process.env.NODE_ENV === 'development') {
-      const allowedOrigins = [
-        'http://localhost:3000',
-        'http://127.0.0.1:3000',
-        'http://localhost:5173', // Vite default port
-        'http://127.0.0.1:5173',
-      ];
-
-      if (allowedOrigins.includes(requestOrigin)) {
+      if (isDevelopmentOrigin(requestOrigin, serverPort)) {
         return callback(null, true);
       }
     }
 
-    // In production, only allow same-origin requests (served by this server)
-    const url = new URL(requestOrigin);
-    const serverPort = process.env.PORT ?? '8080';
-    const allowedHosts = ['localhost', '127.0.0.1'];
-
     if (process.env.NODE_ENV === 'production') {
-      // Only allow same-origin in production
-      return callback(null, false);
+      if (isConfiguredOrigin(requestOrigin)) {
+        return callback(null, true);
+      }
+
+      // Default: deny in production without allowlist
+      return callback(new Error('Not allowed by CORS'), false);
     }
 
-    // Allow if host and port match development configuration
+    // Non-production fallback: allow configured origins or development defaults
     if (
-      allowedHosts.includes(url.hostname) &&
-      (url.port === '3000' || url.port === '5173' || url.port === serverPort)
+      isConfiguredOrigin(requestOrigin) ||
+      isDevelopmentOrigin(requestOrigin, serverPort)
     ) {
       return callback(null, true);
     }
 
-    // Deny all other origins
     callback(new Error('Not allowed by CORS'), false);
   },
   credentials: true, // Allow credentials for session management
