@@ -43,6 +43,7 @@ interface ConversationListItemProps {
   readonly onDelete: (conversationId: string) => void;
   readonly formatRelativeTime: (date: Date) => string;
   readonly t: ReturnType<typeof useI18n>['t'];
+  readonly index: number;
 }
 
 const ConversationListItem = memo<ConversationListItemProps>(
@@ -60,6 +61,7 @@ const ConversationListItem = memo<ConversationListItemProps>(
     onDelete,
     formatRelativeTime,
     t,
+    index,
   }) => {
     const lastMessage: Message | undefined =
       conversation.messages[conversation.messages.length - 1];
@@ -80,6 +82,7 @@ const ConversationListItem = memo<ConversationListItemProps>(
         ]
           .filter(Boolean)
           .join(' ')}
+        data-index={index}
         role="option"
         tabIndex={0}
         aria-selected={isActive}
@@ -111,6 +114,7 @@ const ConversationListItem = memo<ConversationListItemProps>(
                   }
                 }}
                 aria-label={t('conversation.editTitle', 'Edit title')}
+                data-testid={`conversation-title-input-${conversation.id}`}
               />
             ) : (
               <h3 className="conversation-title">{conversation.title}</h3>
@@ -124,6 +128,7 @@ const ConversationListItem = memo<ConversationListItemProps>(
                     className="conversation-action-btn"
                     onClick={onSaveEdit}
                     aria-label={t('conversation.saveTitle', 'Save title')}
+                    data-testid={`save-title-button-${conversation.id}`}
                   >
                     ✓
                   </button>
@@ -132,6 +137,7 @@ const ConversationListItem = memo<ConversationListItemProps>(
                     className="conversation-action-btn"
                     onClick={onCancelEdit}
                     aria-label={t('conversation.cancelEdit', 'Cancel edit')}
+                    data-testid={`cancel-edit-button-${conversation.id}`}
                   >
                     ✕
                   </button>
@@ -146,6 +152,7 @@ const ConversationListItem = memo<ConversationListItemProps>(
                       onStartEdit(conversation.id, conversation.title);
                     }}
                     aria-label={t('conversation.rename', 'Rename conversation')}
+                    data-testid={`rename-conversation-button-${conversation.id}`}
                   >
                     ✏️
                   </button>
@@ -157,6 +164,7 @@ const ConversationListItem = memo<ConversationListItemProps>(
                       onDelete(conversation.id);
                     }}
                     aria-label={t('conversation.delete', 'Delete conversation')}
+                    data-testid={`delete-conversation-button-${conversation.id}`}
                   >
                     🗑️
                   </button>
@@ -329,7 +337,7 @@ export function OptimizedConversationList({
           setFocusedIndex(nextIndex);
           // Focus the next item
           const nextItem = containerRef.current?.querySelector(
-            `.conversation-list-item:nth-child(${nextIndex + 1})`
+            `.conversation-list-item[data-index="${nextIndex}"]`
           ) as HTMLElement;
           nextItem?.focus();
           // Scroll into view if needed
@@ -342,7 +350,7 @@ export function OptimizedConversationList({
           setFocusedIndex(prevIndex);
           // Focus the previous item
           const prevItem = containerRef.current?.querySelector(
-            `.conversation-list-item:nth-child(${prevIndex + 1})`
+            `.conversation-list-item[data-index="${prevIndex}"]`
           ) as HTMLElement;
           prevItem?.focus();
           // Scroll into view if needed
@@ -400,13 +408,16 @@ export function OptimizedConversationList({
       item,
       style,
       isVisible,
+      index,
     }: {
       item: Conversation;
       style: React.CSSProperties;
       isVisible: boolean;
+      index: number;
     }): React.ReactNode => (
       <div style={style}>
         <ConversationListItem
+          index={index}
           conversation={item}
           isActive={item.id === activeConversation?.id}
           isEditing={editingId === item.id}
@@ -495,11 +506,11 @@ export function OptimizedConversationList({
         tabIndex={0}
         aria-label={t('conversation.conversationList', 'Conversation list')}
         aria-multiselectable="false"
-        aria-activedescendant={
-          activeConversation?.id
-            ? `conversation-${activeConversation.id}-meta`
-            : undefined
-        }
+        {...(activeConversation?.id
+          ? {
+              'aria-activedescendant': `conversation-${activeConversation.id}-meta`,
+            }
+          : {})}
       >
         {state.isLoading && (
           <div className="conversation-list-loading" role="status">
@@ -546,9 +557,10 @@ export function OptimizedConversationList({
               />
             ) : (
               <div className="conversation-items">
-                {conversations.map((conversation) => (
+                {conversations.map((conversation, index) => (
                   <ConversationListItem
                     key={conversation.id}
+                    index={index}
                     conversation={conversation}
                     isActive={conversation.id === activeConversation?.id}
                     isEditing={editingId === conversation.id}

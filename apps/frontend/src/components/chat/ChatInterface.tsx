@@ -713,20 +713,15 @@ export const ChatInterface = memo<ChatInterfaceProps>(
           {/* Chat Header */}
           <header className="chat-header" role="banner">
             <div className="conversation-info">
-              <h1 className="conversation-title" id="conversation-title">
+              <h2 className="conversation-title" id="conversation-title">
                 {conversation.title}
-              </h1>
+              </h2>
               <div
                 className="conversation-meta"
                 role="status"
                 aria-live="polite"
               >
-                <span
-                  className="model-badge"
-                  aria-label={t('chat.currentModel', {
-                    model: conversation.selectedModel,
-                  })}
-                >
+                <span className="model-badge">
                   {conversation.selectedModel}
                 </span>
                 <span

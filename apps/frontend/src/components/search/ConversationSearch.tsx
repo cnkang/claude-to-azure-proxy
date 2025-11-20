@@ -33,6 +33,8 @@ export function ConversationSearch({
   className = '',
 }: ConversationSearchProps): React.ReactElement {
   const { t } = useTranslation();
+  const resultsRegionId = 'search-results';
+  const instructionsId = 'search-instructions';
   const [query, setQuery] = useState('');
   const [searchResponse, setSearchResponse] = useState<SearchResponse | null>(
     null
@@ -260,13 +262,14 @@ export function ConversationSearch({
           className="search-input"
           role="searchbox"
           aria-label={t('search.ariaLabel')}
-          aria-describedby="search-instructions"
-          aria-controls="search-results"
-          aria-activedescendant={
-            focusedResultIndex >= 0
-              ? `result-${searchResponse?.results[focusedResultIndex]?.conversationId}`
-              : undefined
-          }
+          aria-describedby={instructionsId}
+          aria-controls={resultsRegionId}
+          {...(focusedResultIndex >= 0 &&
+          searchResponse?.results[focusedResultIndex]
+            ? {
+                'aria-activedescendant': `result-${searchResponse.results[focusedResultIndex].conversationId}`,
+              }
+            : {})}
           autoComplete="off"
           onKeyDown={handleKeyDown}
           data-testid="search-input"
@@ -284,7 +287,7 @@ export function ConversationSearch({
         )}
 
         {/* Screen reader instructions */}
-        <div id="search-instructions" className="sr-only">
+        <div id={instructionsId} className="sr-only">
           {t('search.instructions')}
         </div>
 
@@ -370,7 +373,7 @@ export function ConversationSearch({
       {hasResults && (
         <>
           <div
-            id="search-results"
+            id={resultsRegionId}
             ref={resultsContainerRef}
             className="search-results"
             role="region"
@@ -404,13 +407,14 @@ export function ConversationSearch({
       )}
 
       {/* No results message (Requirement 8.8) */}
-      {showNoResults && (
+      {showNoResults ? (
         <div
           className="no-results"
           role="status"
           aria-live="polite"
           aria-atomic="true"
           data-testid="search-no-results"
+          id={resultsRegionId}
         >
           <p className="no-results-message">
             {t('search.noResults', { query })}
@@ -425,6 +429,15 @@ export function ConversationSearch({
             </ul>
           </div>
         </div>
+      ) : (
+        <div
+          id={resultsRegionId}
+          className="sr-only"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          aria-hidden="true"
+        />
       )}
     </div>
   );

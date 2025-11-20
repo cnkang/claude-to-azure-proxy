@@ -91,6 +91,7 @@
   gap: var(--spacing-sm);
   transition: background-color var(--transition-fast);
   flex: 1;
+  min-height: 44px; /* ✨ WCAG AAA: Minimum touch target size */
 }
 
 .new-conversation-button:hover:not(:disabled) {
@@ -119,7 +120,11 @@
   font-size: 20px;
   line-height: 1;
   transition: all var(--transition-fast);
+  line-height: 1;
+  transition: all var(--transition-fast);
   display: none;
+  min-width: 44px; /* ✨ WCAG AAA */
+  min-height: 44px; /* ✨ WCAG AAA */
 }
 
 .sidebar.mobile .sidebar-close {
@@ -215,6 +220,7 @@
   position: relative;
   /* Default text color */
   color: var(--color-foreground);
+  min-height: 44px; /* ✨ WCAG AAA: Minimum touch target size */
 }
 
 /* ✨ WCAG 2.2 AAA Compliant Hover State - ENHANCED */
@@ -474,6 +480,7 @@
   transition: opacity var(--transition-fast);
   z-index: 1;
   /* Ensure actions are above button */
+  gap: 8px; /* ✨ WCAG AAA: Minimum spacing 8px */
 }
 
 .conversation-item:hover .conversation-actions,
@@ -495,6 +502,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  min-width: 44px; /* ✨ WCAG AAA */
+  min-height: 44px; /* ✨ WCAG AAA */
 }
 
 /* ✨ WCAG AAA: Action button hover on normal conversation */
@@ -577,6 +586,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 44px; /* ✨ WCAG AAA */
 }
 
 .sidebar-action:hover {

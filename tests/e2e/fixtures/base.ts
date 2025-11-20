@@ -3,7 +3,7 @@ import { TestHelpers } from '../utils/test-helpers.js';
 
 /**
  * Extended test fixtures with clean page state and test helpers
- * 
+ *
  * Provides:
  * - Automatic storage cleanup before each test
  * - TestHelpers instance for common operations
@@ -17,7 +17,7 @@ type TestFixtures = {
 export const test = base.extend<TestFixtures>({
   /**
    * Clean page fixture - ensures storage is cleared and initialized before each test
-   * 
+   *
    * Enhanced with:
    * - Proper storage initialization verification
    * - Storage state verification before tests
@@ -25,21 +25,34 @@ export const test = base.extend<TestFixtures>({
    */
   cleanPage: async ({ page }, use) => {
     const helpers = new TestHelpers(page);
-    
+    // Ensure test mode flag is set before any app scripts run
+    await page.addInitScript(() => {
+      (window as Window & { __E2E_TEST_MODE__?: boolean }).__E2E_TEST_MODE__ =
+        true;
+    });
+
     // Navigate to the app
     await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+    // Set E2E test mode flag to disable integrity checks
+    await page.evaluate(() => {
+      (window as Window & { __E2E_TEST_MODE__?: boolean }).__E2E_TEST_MODE__ =
+        true;
+    });
+
     await helpers.waitForAppReady();
-    
+
     // Enable logging in debug mode
-    if (process.env.DEBUG) {
+    const isDebug = Boolean(process.env.DEBUG);
+    if (isDebug) {
       helpers.enableConsoleLogging();
       helpers.enableErrorLogging();
       await helpers.logStorageState('Before Test');
     }
-    
+
     // Use the clean page
     await use(page);
-    
+
     // Cleanup after test
     try {
       // Close all other pages to release DB locks
@@ -53,22 +66,23 @@ export const test = base.extend<TestFixtures>({
 
       // Wait for any pending storage operations
       await helpers.waitForPendingStorageOperations(1000);
-      
+
       // Clear storage with timeout
       await Promise.race([
         helpers.clearAllStorage(),
-        new Promise((_, reject) => 
+        new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Storage cleanup timeout')), 5000)
         ),
       ]);
     } catch (error) {
-      if (process.env.DEBUG) {
+      if (isDebug) {
+        // eslint-disable-next-line no-console
         console.warn('Storage cleanup failed or timed out:', error);
       }
       // Continue anyway - don't fail the test due to cleanup issues
     }
   },
-  
+
   /**
    * Test helpers fixture - provides common operations
    */

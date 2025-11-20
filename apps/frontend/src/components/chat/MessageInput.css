@@ -77,8 +77,8 @@
 }
 
 .remove-file-button {
-  width: 20px;
-  height: 20px;
+  width: 44px; /* ✨ WCAG AAA */
+  height: 44px; /* ✨ WCAG AAA */
   border: none;
   background: none;
   color: var(--text-secondary);
@@ -156,8 +156,8 @@
 
 /* File Upload Button */
 .file-upload-button {
-  width: 36px;
-  height: 36px;
+  width: 44px; /* ✨ WCAG AAA */
+  height: 44px; /* ✨ WCAG AAA */
   border: none;
   background: none;
   color: var(--text-secondary);
@@ -189,7 +189,7 @@
 /* Message Textarea */
 .message-textarea {
   flex: 1;
-  min-height: 36px;
+  min-height: 44px;
   max-height: 200px;
   border: none;
   background: none;
@@ -213,8 +213,8 @@
 
 /* Send Button */
 .send-button {
-  width: 36px;
-  height: 36px;
+  width: 44px; /* ✨ WCAG AAA */
+  height: 44px; /* ✨ WCAG AAA */
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -310,14 +310,14 @@
 
   .file-upload-button,
   .send-button {
-    width: 32px;
-    height: 32px;
+    width: 44px; /* ✨ WCAG AAA: Keep 44px even on mobile */
+    height: 44px; /* ✨ WCAG AAA */
     font-size: 16px;
   }
 
   .message-textarea {
     font-size: 16px; /* Prevent zoom on iOS */
-    min-height: 32px;
+    min-height: 44px;
   }
 
   .attached-files {

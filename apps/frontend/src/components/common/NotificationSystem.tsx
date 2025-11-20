@@ -342,7 +342,7 @@ function NotificationItem({
     const typeStyles = {
       success: { borderLeftColor: '#10b981', borderLeftWidth: '4px' },
       error: { borderLeftColor: '#ef4444', borderLeftWidth: '4px' },
-      warning: { borderLeftColor: '#f59e0b', borderLeftWidth: '4px' },
+      warning: { borderLeftColor: '#92400e', borderLeftWidth: '4px' },
       info: { borderLeftColor: '#3b82f6', borderLeftWidth: '4px' },
     };
 
@@ -353,7 +353,7 @@ function NotificationItem({
     const colors = {
       success: '#10b981',
       error: '#ef4444',
-      warning: '#f59e0b',
+      warning: '#92400e',
       info: '#3b82f6',
     };
     return colors[notification.type];
@@ -393,7 +393,9 @@ function NotificationItem({
           >
             {getIcon()}
             {notification.title && (
-              <h4
+              <div
+                role="heading"
+                aria-level={2}
                 style={{
                   margin: 0,
                   fontSize: '0.875rem',
@@ -402,7 +404,7 @@ function NotificationItem({
                 }}
               >
                 {notification.title}
-              </h4>
+              </div>
             )}
           </div>
 
@@ -410,7 +412,7 @@ function NotificationItem({
             style={{
               margin: 0,
               fontSize: '0.875rem',
-              color: '#6b7280',
+              color: '#1f2937',
               lineHeight: '1.4',
             }}
           >
@@ -439,7 +441,7 @@ function NotificationItem({
                     backgroundColor: action.primary
                       ? getIconColor()
                       : 'transparent',
-                    color: action.primary ? 'white' : '#374151',
+                    color: action.primary ? 'white' : '#111827',
                     cursor: 'pointer',
                     transition: 'all 0.15s ease-in-out',
                   }}

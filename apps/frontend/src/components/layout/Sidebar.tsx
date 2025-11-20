@@ -105,13 +105,42 @@ export function Sidebar({
 
   const [isCreatingConversation, setIsCreatingConversation] = useState(false);
 
+  const openConversationMenu = (
+    conversationId: string,
+    anchorElement: HTMLElement
+  ): void => {
+    setMenuAnchor(anchorElement);
+    setMenuOpen(conversationId);
+  };
+
   const handleOptionsClick = (
     event: React.MouseEvent,
     conversationId: string
   ): void => {
     event.stopPropagation();
-    setMenuAnchor(event.currentTarget as HTMLElement);
-    setMenuOpen(conversationId);
+    openConversationMenu(conversationId, event.currentTarget as HTMLElement);
+  };
+
+  const handleConversationMenuKeyDown = (
+    event: React.KeyboardEvent<HTMLButtonElement>,
+    conversationId: string
+  ): void => {
+    const isContextMenuTrigger =
+      event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10');
+
+    if (isContextMenuTrigger) {
+      event.preventDefault();
+      event.stopPropagation();
+      openConversationMenu(conversationId, event.currentTarget);
+    }
+  };
+
+  const handleConversationContextMenu = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    conversationId: string
+  ): void => {
+    event.preventDefault();
+    openConversationMenu(conversationId, event.currentTarget);
   };
 
   const handleMenuClose = (): void => {
@@ -327,6 +356,63 @@ export function Sidebar({
     }
   };
 
+  // Handle list keyboard navigation
+  const handleListKeyDown = (event: React.KeyboardEvent) => {
+    const items = document.querySelectorAll(
+      '.conversations-list .conversation-button'
+    );
+    if (items.length === 0) {return;}
+
+    const currentElement = document.activeElement as HTMLElement;
+    const currentIndex = Array.from(items).indexOf(currentElement);
+
+    // If focus is on the container (ul), move to first item on navigation keys
+    if (currentIndex === -1) {
+      if (
+        ['ArrowDown', 'ArrowUp', 'Home', 'End', 'Enter', ' '].includes(
+          event.key
+        )
+      ) {
+        event.preventDefault();
+        // Find the currently selected item or default to first
+        const selected = document.querySelector(
+          '.conversations-list .conversation-button.active'
+        );
+        if (selected) {
+          (selected as HTMLElement).focus();
+        } else {
+          (items[0] as HTMLElement).focus();
+        }
+      }
+      return;
+    }
+
+    let nextIndex = currentIndex;
+
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        nextIndex = Math.min(currentIndex + 1, items.length - 1);
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        nextIndex = Math.max(currentIndex - 1, 0);
+        break;
+      case 'Home':
+        event.preventDefault();
+        nextIndex = 0;
+        break;
+      case 'End':
+        event.preventDefault();
+        nextIndex = items.length - 1;
+        break;
+    }
+
+    if (nextIndex !== currentIndex) {
+      (items[nextIndex] as HTMLElement).focus();
+    }
+  };
+
   const sidebarClasses = [
     'sidebar',
     isOpen ? 'open' : 'closed',
@@ -407,133 +493,160 @@ export function Sidebar({
               </p>
             </div>
           ) : (
-            <ul className="conversations-list" data-testid="conversations-list">
-              {conversationsList.map((conversation: Conversation) => {
-                const isActive = activeConversation?.id === conversation.id;
-                const isMenuOpen = menuOpen === conversation.id;
+            <div
+              className="conversations-list conversation-list"
+              data-testid="conversations-list"
+              role="listbox"
+              aria-label={t('sidebar.conversations')}
+              onKeyDown={handleListKeyDown}
+              tabIndex={0}
+            >
+              {conversationsList.map(
+                (conversation: Conversation, index: number) => {
+                  const isActive = activeConversation?.id === conversation.id;
+                  const isMenuOpen = menuOpen === conversation.id;
 
-                return (
-                  <li
-                    key={conversation.id}
-                    className="conversation-item"
-                    data-testid={`conversation-item-${conversation.id}`}
-                  >
-                    <button
-                      type="button"
-                      className={[
-                        'conversation-button',
-                        isActive ? 'active' : '',
-                      ]
-                        .filter((value): value is string => value.length > 0)
-                        .join(' ')}
-                      onClick={() => handleConversationSelect(conversation.id)}
-                      aria-label={t('sidebar.selectConversation', {
-                        title: conversation.title,
-                      })}
-                      aria-current={isActive ? 'page' : undefined}
-                      data-testid={`conversation-button-${conversation.id}`}
-                    >
-                      <div className="conversation-content">
-                        {renamingId === conversation.id ? (
-                          <input
-                            ref={renameInputRef}
-                            type="text"
-                            className="conversation-title-input"
-                            value={renameValue}
-                            onChange={(e) => setRenameValue(e.target.value)}
-                            onBlur={() =>
-                              void handleRenameSave(conversation.id)
-                            }
-                            onKeyDown={(e) =>
-                              handleRenameKeyDown(e, conversation.id)
-                            }
-                            onClick={(e) => e.stopPropagation()}
-                            maxLength={100}
-                            aria-label={t('sidebar.renameConversation')}
-                            data-testid="conversation-title-input"
-                          />
-                        ) : (
-                          <div
-                            className="conversation-title"
-                            data-testid={`conversation-title-${conversation.id}`}
-                          >
-                            {conversation.title}
-                          </div>
-                        )}
-                        <div className="conversation-meta">
-                          <span className="conversation-model">
-                            {conversation.selectedModel}
-                          </span>
-                          <span className="conversation-time">
-                            {formatRelativeTime(conversation.updatedAt)}
-                          </span>
-                        </div>
-                        {conversation.messages.length > 0 && (
-                          <div className="conversation-preview">
-                            {conversation.messages[
-                              conversation.messages.length - 1
-                            ].content.substring(0, 60)}
-                            {conversation.messages[
-                              conversation.messages.length - 1
-                            ].content.length > 60
-                              ? '...'
-                              : ''}
-                          </div>
-                        )}
-                      </div>
-                    </button>
-
-                    {/* Conversation actions - moved outside button to fix HTML nesting */}
+                  return (
                     <div
-                      className={`conversation-actions ${isMenuOpen ? 'open' : ''}`}
+                      key={conversation.id}
+                      className="conversation-item"
+                      data-testid={`conversation-item-${conversation.id}`}
+                      role="presentation"
                     >
                       <button
                         type="button"
-                        className="conversation-action"
-                        onClick={(event) =>
-                          handleOptionsClick(event, conversation.id)
+                        className={[
+                          'conversation-button',
+                          isActive ? 'active' : '',
+                        ]
+                          .filter((value): value is string => value.length > 0)
+                          .join(' ')}
+                        onClick={() =>
+                          handleConversationSelect(conversation.id)
                         }
-                        aria-label={t('sidebar.conversationOptions')}
-                        aria-expanded={isMenuOpen}
-                        aria-haspopup="menu"
-                        data-testid={`conversation-options-${conversation.id}`}
+                        aria-label={t('sidebar.selectConversation', {
+                          title: conversation.title,
+                        })}
+                        aria-selected={isActive}
+                        role="option"
+                        tabIndex={
+                          isActive ||
+                          (activeConversation === null && index === 0)
+                            ? 0
+                            : -1
+                        }
+                        data-testid={`conversation-button-${conversation.id}`}
+                        onKeyDown={(event) =>
+                          handleConversationMenuKeyDown(event, conversation.id)
+                        }
+                        onContextMenu={(event) =>
+                          handleConversationContextMenu(event, conversation.id)
+                        }
                       >
-                        <span className="action-icon">⋯</span>
+                        <div className="conversation-content">
+                          {renamingId === conversation.id ? (
+                            <input
+                              ref={renameInputRef}
+                              type="text"
+                              className="conversation-title-input"
+                              value={renameValue}
+                              onChange={(e) => setRenameValue(e.target.value)}
+                              onBlur={() =>
+                                void handleRenameSave(conversation.id)
+                              }
+                              onKeyDown={(e) =>
+                                handleRenameKeyDown(e, conversation.id)
+                              }
+                              onClick={(e) => e.stopPropagation()}
+                              maxLength={100}
+                              aria-label={t('sidebar.renameConversation')}
+                              data-testid="conversation-title-input"
+                            />
+                          ) : (
+                            <div
+                              className="conversation-title"
+                              data-testid={`conversation-title-${conversation.id}`}
+                            >
+                              {conversation.title}
+                            </div>
+                          )}
+                          <div className="conversation-meta">
+                            <span className="conversation-model">
+                              {conversation.selectedModel}
+                            </span>
+                            <span className="conversation-time">
+                              {formatRelativeTime(conversation.updatedAt)}
+                            </span>
+                          </div>
+                          {conversation.messages.length > 0 && (
+                            <div className="conversation-preview">
+                              {conversation.messages[
+                                conversation.messages.length - 1
+                              ].content.substring(0, 60)}
+                              {conversation.messages[
+                                conversation.messages.length - 1
+                              ].content.length > 60
+                                ? '...'
+                                : ''}
+                            </div>
+                          )}
+                        </div>
                       </button>
 
-                      {/* Dropdown menu */}
-                      {isMenuOpen && (
-                        <DropdownMenu
-                          isOpen={true}
-                          onClose={handleMenuClose}
-                          anchorElement={menuAnchor}
-                          items={[
-                            {
-                              id: 'rename',
-                              label: t('sidebar.renameConversation'),
-                              icon: '✏️',
-                              onClick: () => {
-                                handleRenameStart(conversation);
+                      {/* Conversation actions - moved outside button to fix HTML nesting */}
+                      <div
+                        className={`conversation-actions ${isMenuOpen ? 'open' : ''}`}
+                      >
+                        <button
+                          type="button"
+                          className="conversation-action"
+                          onClick={(event) =>
+                            handleOptionsClick(event, conversation.id)
+                          }
+                          aria-label={t('sidebar.conversationOptions')}
+                          aria-expanded={isMenuOpen}
+                          aria-haspopup="menu"
+                          aria-hidden="true"
+                          tabIndex={-1}
+                          data-testid={`conversation-options-${conversation.id}`}
+                        >
+                          <span className="action-icon">⋯</span>
+                        </button>
+
+                        {/* Dropdown menu */}
+                        {isMenuOpen && (
+                          <DropdownMenu
+                            isOpen={true}
+                            onClose={handleMenuClose}
+                            anchorElement={menuAnchor}
+                            items={[
+                              {
+                                id: 'rename',
+                                label: t('sidebar.renameConversation'),
+                                icon: '✏️',
+                                onClick: () => {
+                                  handleRenameStart(conversation);
+                                },
                               },
-                            },
-                            {
-                              id: 'delete',
-                              label: t('sidebar.deleteConversation'),
-                              icon: '🗑️',
-                              variant: 'danger',
-                              onClick: () => {
-                                handleDeleteStart(conversation.id);
+                              {
+                                id: 'delete',
+                                label: t('sidebar.deleteConversation'),
+                                icon: '🗑️',
+                                variant: 'danger',
+                                onClick: () => {
+                                  handleDeleteStart(conversation.id);
+                                },
                               },
-                            },
-                          ]}
-                          position="bottom-right"
-                        />
-                      )}
+                            ]}
+                            position="bottom-right"
+                          />
+                        )}
+                      </div>
                     </div>
-                  </li>
-                );
-              })}
-            </ul>
+                  );
+                }
+              )}
+            </div>
           )}
         </div>
 

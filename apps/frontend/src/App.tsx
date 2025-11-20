@@ -156,7 +156,7 @@ function App(): React.JSX.Element {
                   onToggle={() =>
                     setShowPerformanceDashboard(!showPerformanceDashboard)
                   }
-                  position="bottom-right"
+                  position="bottom-left"
                 />
               </NotificationProvider>
             </I18nProvider>

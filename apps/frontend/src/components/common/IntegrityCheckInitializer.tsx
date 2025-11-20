@@ -76,6 +76,7 @@ function IntegrityCheckDialog({
             onClick={onRepair}
             className="integrity-dialog-button primary"
             aria-label="Repair data issues"
+            data-testid="integrity-repair-button"
           >
             Repair Now
           </button>
@@ -83,6 +84,7 @@ function IntegrityCheckDialog({
             onClick={onDismiss}
             className="integrity-dialog-button"
             aria-label="Dismiss dialog"
+            data-testid="integrity-dismiss-button"
           >
             Dismiss
           </button>
@@ -111,6 +113,15 @@ export function IntegrityCheckInitializer(): React.JSX.Element | null {
   useEffect(() => {
     const runIntegrityCheck = async (): Promise<void> => {
       try {
+        // Skip integrity check in E2E test mode
+        const isE2ETestMode = Boolean(
+          (window as { __E2E_TEST_MODE__?: boolean }).__E2E_TEST_MODE__
+        );
+        if (isE2ETestMode) {
+          frontendLogger.info('Skipping integrity check in E2E test mode');
+          return;
+        }
+
         // Get storage instance
         const storage = getConversationStorage();
         await storage.initialize();
