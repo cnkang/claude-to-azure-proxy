@@ -363,11 +363,13 @@ export class ProxyServer {
     // Metrics endpoints for monitoring (Requirement 4.5)
     this.app.get(
       '/metrics',
+      secureAuthenticationMiddleware,
       metricsHandler as unknown as express.RequestHandler
     );
 
     this.app.get(
       '/metrics/detailed',
+      secureAuthenticationMiddleware,
       detailedMetricsHandler as unknown as express.RequestHandler
     );
 
@@ -398,16 +400,19 @@ export class ProxyServer {
     // Enhanced model routing endpoints for frontend
     this.app.get(
       '/api/models',
+      secureAuthenticationMiddleware,
       getModelsHandler as unknown as express.RequestHandler
     );
 
     this.app.get(
       '/api/models/:modelId',
+      secureAuthenticationMiddleware,
       getModelDetailsHandler as unknown as express.RequestHandler
     );
 
     this.app.post(
       '/api/models/:modelId/health',
+      secureAuthenticationMiddleware,
       checkModelHealthHandler as unknown as express.RequestHandler
     );
     this.app.post(
@@ -439,6 +444,7 @@ export class ProxyServer {
     // Configuration endpoint
     this.app.get(
       '/api/config',
+      secureAuthenticationMiddleware,
       getClientConfig as unknown as express.RequestHandler
     );
 
@@ -465,70 +471,82 @@ export class ProxyServer {
     // Session management endpoints (no authentication required for session creation)
     this.app.post(
       '/api/session',
+      secureAuthenticationMiddleware,
       createSessionHandler as unknown as express.RequestHandler[]
     );
 
     this.app.get(
       '/api/session/:sessionId',
+      secureAuthenticationMiddleware,
       getSessionHandler as unknown as express.RequestHandler[]
     );
 
     this.app.get(
       '/api/session-stats',
+      secureAuthenticationMiddleware,
       getSessionStatsHandler as unknown as express.RequestHandler
     );
 
     // Conversation management endpoints (require session validation)
     this.app.get(
       '/api/conversations',
+      secureAuthenticationMiddleware,
       validateSessionMiddleware as unknown as express.RequestHandler,
       getConversationsHandler as unknown as express.RequestHandler[]
     );
 
     this.app.post(
       '/api/conversations',
+      secureAuthenticationMiddleware,
       validateSessionMiddleware as unknown as express.RequestHandler,
       createConversationHandler as unknown as express.RequestHandler[]
     );
 
     this.app.get(
       '/api/conversations/:conversationId',
+      secureAuthenticationMiddleware,
       validateSessionMiddleware as unknown as express.RequestHandler,
       getConversationHandler as unknown as express.RequestHandler[]
     );
 
     this.app.put(
       '/api/conversations/:conversationId',
+      secureAuthenticationMiddleware,
       validateSessionMiddleware as unknown as express.RequestHandler,
       updateConversationHandler as unknown as express.RequestHandler[]
     );
 
     this.app.delete(
       '/api/conversations/:conversationId',
+      secureAuthenticationMiddleware,
       validateSessionMiddleware as unknown as express.RequestHandler,
       deleteConversationHandler as unknown as express.RequestHandler[]
     );
 
     this.app.post(
       '/api/conversations/:conversationId/messages',
+      secureAuthenticationMiddleware,
       validateSessionMiddleware as unknown as express.RequestHandler,
       addMessageHandler as unknown as express.RequestHandler[]
     );
 
     this.app.get(
       '/api/conversation-stats',
+      secureAuthenticationMiddleware,
       getConversationStatsHandler as unknown as express.RequestHandler
     );
 
     // Chat streaming endpoints (require session validation)
     this.app.get(
       '/api/chat/stream/:conversationId',
+      secureAuthenticationMiddleware,
       validateSessionMiddleware as unknown as express.RequestHandler,
       chatSSEHandler as unknown as express.RequestHandler[]
     );
 
     this.app.post(
       '/api/chat/send',
+      secureAuthenticationMiddleware,
       validateSessionMiddleware as unknown as express.RequestHandler,
       sendChatMessageHandler as unknown as express.RequestHandler[]
     );
@@ -536,18 +554,21 @@ export class ProxyServer {
     // Simple chat endpoint (without SSE) for testing
     this.app.post(
       '/api/chat/simple',
+      secureAuthenticationMiddleware,
       validateSessionMiddleware as unknown as express.RequestHandler,
       simpleChatHandler as unknown as express.RequestHandler[]
     );
 
     this.app.get(
       '/api/chat/connections',
+      secureAuthenticationMiddleware,
       validateSessionMiddleware as unknown as express.RequestHandler,
       getConnectionsHandler as unknown as express.RequestHandler
     );
 
     this.app.delete(
       '/api/chat/connections/:connectionId',
+      secureAuthenticationMiddleware,
       validateSessionMiddleware as unknown as express.RequestHandler,
       closeConnectionHandler as unknown as express.RequestHandler[]
     );
@@ -561,30 +582,35 @@ export class ProxyServer {
     // Context management endpoints (require session validation)
     this.app.get(
       '/api/conversations/:conversationId/context',
+      secureAuthenticationMiddleware,
       validateSessionMiddleware as unknown as express.RequestHandler,
       getContextUsageHandler as unknown as express.RequestHandler[]
     );
 
     this.app.post(
       '/api/conversations/:conversationId/extend-context',
+      secureAuthenticationMiddleware,
       validateSessionMiddleware as unknown as express.RequestHandler,
       extendContextHandler as unknown as express.RequestHandler[]
     );
 
     this.app.post(
       '/api/conversations/:conversationId/compress',
+      secureAuthenticationMiddleware,
       validateSessionMiddleware as unknown as express.RequestHandler,
       compressContextHandler as unknown as express.RequestHandler[]
     );
 
     this.app.post(
       '/api/conversations/:conversationId/create-compressed',
+      secureAuthenticationMiddleware,
       validateSessionMiddleware as unknown as express.RequestHandler,
       createCompressedConversationHandler as unknown as express.RequestHandler[]
     );
 
     this.app.get(
       '/api/context-stats',
+      secureAuthenticationMiddleware,
       getContextStatsHandler as unknown as express.RequestHandler
     );
 

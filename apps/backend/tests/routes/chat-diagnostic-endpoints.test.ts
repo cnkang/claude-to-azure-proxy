@@ -14,6 +14,7 @@ import request from 'supertest';
 import type { Express } from 'express';
 import { ProxyServer } from '../../src/index.js';
 import type { ServerConfig } from '../../src/types/index.js';
+import { validApiKey } from '../test-config.js';
 
 // Set rate limit environment variables BEFORE any imports
 process.env.RATE_LIMIT_TEST_WINDOW_MS = '60000';
@@ -26,7 +27,7 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 describe('Chat Diagnostic Endpoints Integration Tests', () => {
   let app: Express;
   let server: ProxyServer;
-  const testApiKey = 'test-api-key-32-characters-long!!';
+  const testApiKey = validApiKey;
   const testSessionId = 'test-session-id-12345678901234567890';
 
   beforeAll(async () => {

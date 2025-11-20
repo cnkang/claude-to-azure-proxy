@@ -104,6 +104,12 @@ export interface Config {
   AZURE_OPENAI_MODEL: string;
 
   /**
+   * Optional CORS allowlist (comma-separated origins) for production deployments.
+   * Example: "https://app.example.com,https://admin.example.com"
+   */
+  CORS_ALLOWED_ORIGINS?: string;
+
+  /**
    * AWS Bedrock available models (optional).
    *
    * Comma-separated list of AWS Bedrock model IDs that should be available.
@@ -345,9 +351,18 @@ const configSchema = Joi.object<Config>({
     // eslint-disable-next-line security/detect-unsafe-regex
     .pattern(/^[a-zA-Z0-9-_.]+(?:,[a-zA-Z0-9-_.]+)*$/)
     .allow('')
+    .optional()
     .default('')
     .description(
-      'Comma-separated list of Azure OpenAI model IDs (e.g., "gpt-4o,gpt-4o-mini,o1-preview,gpt-4.1")'
+      'Comma-separated list of Azure OpenAI model IDs (e.g., "gpt-4o,gpt-4o-mini,o1-preview,gpt-4.1"). Allow empty for Bedrock-only setups.'
+    ),
+
+  // Optional CORS allowlist for production (comma-separated origins)
+  CORS_ALLOWED_ORIGINS: Joi.string()
+    .optional()
+    .allow('')
+    .description(
+      'Comma-separated list of allowed origins for CORS in production (e.g., "https://app.example.com,https://admin.example.com")'
     ),
 
   // AWS Bedrock available models (comma-separated, optional)
@@ -501,6 +516,7 @@ function createConfig(): Readonly<Config> {
     AZURE_OPENAI_ENDPOINT: process.env.AZURE_OPENAI_ENDPOINT,
     AZURE_OPENAI_API_KEY: process.env.AZURE_OPENAI_API_KEY,
     AZURE_OPENAI_MODEL: process.env.AZURE_OPENAI_MODEL,
+    CORS_ALLOWED_ORIGINS: process.env.CORS_ALLOWED_ORIGINS,
     AZURE_OPENAI_TIMEOUT: process.env.AZURE_OPENAI_TIMEOUT,
     AZURE_OPENAI_MAX_RETRIES: process.env.AZURE_OPENAI_MAX_RETRIES,
     DEFAULT_REASONING_EFFORT: process.env.DEFAULT_REASONING_EFFORT,
@@ -615,6 +631,7 @@ function createConfig(): Readonly<Config> {
 export interface SanitizedConfig {
   readonly AZURE_OPENAI_ENDPOINT: string;
   readonly AZURE_OPENAI_MODEL: string;
+  readonly CORS_ALLOWED_ORIGINS?: string;
 
   readonly AZURE_OPENAI_TIMEOUT: number;
   readonly AZURE_OPENAI_MAX_RETRIES: number;
@@ -718,6 +735,17 @@ function assertIsConfig(value: unknown): asserts value is Config {
   if (typeof candidate.ENABLE_CONTENT_SECURITY_VALIDATION !== 'boolean') {
     throw new Error(
       'Configuration key ENABLE_CONTENT_SECURITY_VALIDATION is missing or not a boolean'
+    );
+  }
+
+  if (
+    candidate.CORS_ALLOWED_ORIGINS !== undefined &&
+    typeof candidate.CORS_ALLOWED_ORIGINS !== 'string'
+  ) {
+    throw new ConfigurationError(
+      'Configuration key CORS_ALLOWED_ORIGINS must be a string when provided',
+      'config-validation',
+      'configuration_validation'
     );
   }
 
@@ -835,6 +863,10 @@ function sanitizeConfig(value: Readonly<Config>): SanitizedConfig {
   return {
     AZURE_OPENAI_ENDPOINT: value.AZURE_OPENAI_ENDPOINT,
     AZURE_OPENAI_MODEL: value.AZURE_OPENAI_MODEL,
+    CORS_ALLOWED_ORIGINS:
+      value.CORS_ALLOWED_ORIGINS && value.CORS_ALLOWED_ORIGINS.length > 0
+        ? value.CORS_ALLOWED_ORIGINS
+        : undefined,
 
     AZURE_OPENAI_TIMEOUT: value.AZURE_OPENAI_TIMEOUT,
     AZURE_OPENAI_MAX_RETRIES: value.AZURE_OPENAI_MAX_RETRIES,
@@ -1042,6 +1074,7 @@ export function getConfigurationSummary(): Record<string, unknown> {
     AZURE_OPENAI_ENDPOINT,
     AZURE_OPENAI_API_KEY,
     AZURE_OPENAI_MODEL,
+    CORS_ALLOWED_ORIGINS,
 
     AZURE_OPENAI_TIMEOUT,
     AZURE_OPENAI_MAX_RETRIES,
@@ -1067,6 +1100,7 @@ export function getConfigurationSummary(): Record<string, unknown> {
     hasAzureEndpoint: Boolean(AZURE_OPENAI_ENDPOINT),
     hasAzureApiKey: Boolean(AZURE_OPENAI_API_KEY),
     azureModel: AZURE_OPENAI_MODEL,
+    corsAllowedOrigins: CORS_ALLOWED_ORIGINS,
     azureApiVersion: 'v1',
 
     timeout: AZURE_OPENAI_TIMEOUT,
