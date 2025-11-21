@@ -469,9 +469,17 @@ const configSchema = Joi.object<Config>({
   MEMORY_PRESSURE_THRESHOLD: Joi.number()
     .integer()
     .min(50)
-    .max(95)
-    .default(80)
-    .description('Memory pressure threshold percentage (default: 80)'),
+    .max(98)
+    .default(
+      // Higher threshold in test/dev (95%) to reduce noise, production uses 80%
+      process.env.NODE_ENV === 'test' ||
+        process.env.NODE_ENV === 'development'
+        ? 95
+        : 80
+    )
+    .description(
+      'Memory pressure threshold percentage (default: 95 for test/dev, 80 for production)'
+    ),
 
   ENABLE_AUTO_GC: Joi.boolean()
     .default(true)
