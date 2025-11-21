@@ -55,6 +55,8 @@ jobs:
         run: pnpm test:e2e --project=${{ matrix.browser }}
         env:
           CI: true
+          # Increase Node.js heap size for E2E tests (GitHub Actions has 16GB RAM)
+          NODE_OPTIONS: "--max-old-space-size=4096"
           PROXY_API_KEY: "e2e-proxy-key-123456789012345678901234567890"
           AZURE_OPENAI_ENDPOINT: "https://example.openai.azure.com"
           AZURE_OPENAI_API_KEY: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
