@@ -42,9 +42,9 @@ fi
 
 # Check for TODO/FIXME comments in staged files
 echo "📋 Checking for TODO/FIXME comments..."
-staged_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|js)$')
+staged_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|js)$' || true)
 if [ -n "$staged_files" ]; then
-  todo_count=$(echo "$staged_files" | xargs grep -l "TODO\|FIXME" 2>/dev/null | wc -l)
+  todo_count=$(echo "$staged_files" | xargs grep -l "TODO\|FIXME" 2>/dev/null | wc -l || echo "0")
   if [ "$todo_count" -gt 0 ]; then
     echo "⚠️  Found TODO/FIXME comments in staged files:"
     echo "$staged_files" | xargs grep -n "TODO\|FIXME" 2>/dev/null || true
@@ -53,3 +53,4 @@ if [ -n "$staged_files" ]; then
 fi
 
 echo "✅ All pre-commit checks passed!"
+exit 0
