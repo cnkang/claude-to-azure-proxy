@@ -43,9 +43,17 @@ export interface AuthenticationResponse {
 }
 
 // Rate limiting specifically for authentication attempts
+// More lenient in test/development environments to support E2E testing
+const isTestOrDev = ['test', 'development'].includes(
+  config.NODE_ENV || 'production'
+);
+
 export const authenticationRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 50, // Limit each IP to 50 authentication attempts per windowMs
+  // Higher limit for test/dev environments to support E2E testing
+  // Production: 50 requests per 15 minutes
+  // Test/Dev: 1000 requests per 15 minutes
+  max: isTestOrDev ? 1000 : 50,
   message: {
     error: {
       type: 'auth_rate_limit_exceeded',
@@ -56,6 +64,10 @@ export const authenticationRateLimit = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req: Readonly<Request>) => {
+    // Skip rate limiting for health checks
+    return req.path === '/health';
+  },
   handler: (req: Readonly<Request>, res: Readonly<Response>) => {
     const mutableRequest = req as Mutable<AuthenticationRequest>;
     const correlationId = resolveCorrelationId(
