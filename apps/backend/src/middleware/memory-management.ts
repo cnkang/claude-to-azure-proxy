@@ -49,11 +49,17 @@ export interface MemoryMiddlewareConfig {
 
 /**
  * Default memory middleware configuration.
+ * Higher thresholds in test/dev to reduce noise during E2E tests.
  */
+const isTestOrDev = ['test', 'development'].includes(
+  loadedConfig.NODE_ENV || 'production'
+);
+
 const DEFAULT_CONFIG: MemoryMiddlewareConfig = {
   enablePressureMonitoring: true,
   enableResourceTracking: true,
-  pressureThreshold: 80,
+  // Higher threshold in test/dev (95%) to reduce noise, production uses 80%
+  pressureThreshold: isTestOrDev ? 95 : 80,
   enableGCSuggestions: true,
   logSlowRequestMemory: true,
   slowRequestThreshold: 1000,
