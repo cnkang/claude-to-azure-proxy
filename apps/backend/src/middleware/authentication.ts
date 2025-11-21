@@ -237,7 +237,9 @@ export const authenticationMiddleware = (
       mutableRequest.authResult = AuthenticationResult.MISSING_CREDENTIALS;
 
       // Log authentication attempt (without exposing sensitive data)
-      logger.warn(
+      // Use debug level in test/dev to reduce noise in E2E tests
+      const logLevel = isTestOrDev ? 'debug' : 'warn';
+      logger[logLevel](
         'Authentication failed - missing credentials',
         correlationId,
         {
@@ -273,7 +275,9 @@ export const authenticationMiddleware = (
       mutableRequest.authResult = AuthenticationResult.INVALID_CREDENTIALS;
 
       // Log authentication failure (without exposing sensitive data)
-      logger.warn(
+      // Use debug level in test/dev to reduce noise in E2E tests
+      const logLevel = isTestOrDev ? 'debug' : 'warn';
+      logger[logLevel](
         'Authentication failed - invalid credentials',
         correlationId,
         {
