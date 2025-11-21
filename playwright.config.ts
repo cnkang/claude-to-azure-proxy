@@ -96,7 +96,7 @@ export default defineConfig({
     stderr: 'pipe',
     env: {
       // Increase Node.js heap size for E2E tests (GitHub Actions has 16GB RAM)
-      NODE_OPTIONS: '--max-old-space-size=4096',
+      NODE_OPTIONS: '--max-old-space-size=6144',
       PROXY_API_KEY: resolveEnv(
         process.env.PROXY_API_KEY,
         'dev-proxy-key-123456789012345678901234'
