@@ -48,41 +48,6 @@ jobs:
       - name: Build frontend
         run: pnpm build:frontend
 
-      - name: Start backend API server
-        run: |
-          PROXY_API_KEY="e2e-proxy-key-123456789012345678901234567890" \
-          AZURE_OPENAI_ENDPOINT="https://example.openai.azure.com" \
-          AZURE_OPENAI_API_KEY="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" \
-          AZURE_OPENAI_MODEL="gpt-4o" \
-          PORT=8080 \
-          NODE_ENV=development \
-          pnpm --filter @repo/backend start:prod > backend.log 2>&1 &
-          echo $! > backend.pid
-          echo "Backend started with PID: $(cat backend.pid)"
-          sleep 2
-          if ps -p $(cat backend.pid) > /dev/null; then
-            echo "✅ Backend process is running"
-          else
-            echo "❌ Backend process failed to start"
-            echo "Backend log contents:"
-            cat backend.log || echo "No log file found"
-            exit 1
-          fi
-
-      - name: Wait for backend health
-        run: |
-          echo "Waiting for backend health endpoint..."
-          pnpm dlx wait-on http://127.0.0.1:8080/health --timeout 60000 --interval 1000 --verbose || {
-            echo "❌ Backend health check failed"
-            echo "Backend process status:"
-            ps -p $(cat backend.pid) || echo "Process not running"
-            echo "Backend log contents:"
-            cat backend.log || echo "No log file found"
-            echo "Attempting to curl health endpoint:"
-            curl -v http://127.0.0.1:8080/health || echo "Curl failed"
-            exit 1
-          }
-
       - name: Install Playwright browsers
         run: pnpm playwright:install
 
@@ -90,6 +55,10 @@ jobs:
         run: pnpm test:e2e --project=${{ matrix.browser }}
         env:
           CI: true
+          PROXY_API_KEY: "e2e-proxy-key-123456789012345678901234567890"
+          AZURE_OPENAI_ENDPOINT: "https://example.openai.azure.com"
+          AZURE_OPENAI_API_KEY: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          AZURE_OPENAI_MODEL: "gpt-4o"
 
       - name: Upload test results
         if: always()
@@ -100,13 +69,6 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 7
-
-      - name: Stop backend server
-        if: always()
-        run: |
-          if [ -f backend.pid ]; then
-            kill "$(cat backend.pid)" || true
-          fi
 
       - name: Upload test videos
         if: failure()
