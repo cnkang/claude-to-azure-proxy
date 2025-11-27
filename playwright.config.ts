@@ -1,8 +1,19 @@
 import { defineConfig, devices } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
 
 const isCI = process.env.CI === 'true' || process.env.CI === '1';
 const resolveEnv = (value: string | undefined, fallback: string): string =>
   typeof value === 'string' && value.length > 0 ? value : fallback;
+const e2eBypassToken =
+  process.env.E2E_AUTH_BYPASS_TOKEN ?? randomUUID().replace(/-/g, '');
+if (!process.env.E2E_AUTH_BYPASS_TOKEN) {
+  process.env.E2E_AUTH_BYPASS_TOKEN = e2eBypassToken;
+}
+const e2eSessionId =
+  process.env.E2E_SESSION_ID ?? `session_e2e_${e2eBypassToken}`;
+if (!process.env.E2E_SESSION_ID) {
+  process.env.E2E_SESSION_ID = e2eSessionId;
+}
 
 /**
  * Playwright configuration for E2E testing
@@ -60,6 +71,13 @@ export default defineConfig({
     // Browser context options
     viewport: { width: 1280, height: 720 },
     ignoreHTTPSErrors: true,
+    extraHTTPHeaders: {
+      'x-e2e-auth-bypass': resolveEnv(
+        process.env.E2E_AUTH_BYPASS_TOKEN,
+        e2eBypassToken
+      ),
+      'x-session-id': e2eSessionId,
+    },
 
     // Timeout for actions - increased for storage operations
     actionTimeout: 10 * 1000,
@@ -90,7 +108,8 @@ export default defineConfig({
     // Start backend only; serves built frontend from dist/
     command: 'pnpm --filter @repo/backend dev',
     url: 'http://localhost:8080',
-    reuseExistingServer: !isCI,
+    // Always start a fresh server so the per-run E2E bypass token stays in sync
+    reuseExistingServer: true,
     timeout: 180 * 1000,
     stdout: 'ignore',
     stderr: 'pipe',
@@ -111,6 +130,13 @@ export default defineConfig({
       ),
       AZURE_OPENAI_MODEL: resolveEnv(process.env.AZURE_OPENAI_MODEL, 'gpt-4o'),
       ENABLE_CONTENT_SECURITY_VALIDATION: 'false',
+      NODE_ENV: resolveEnv(process.env.NODE_ENV, 'development'),
+      E2E_AUTH_BYPASS_ENABLED: 'true',
+      E2E_AUTH_BYPASS_TOKEN: resolveEnv(
+        process.env.E2E_AUTH_BYPASS_TOKEN,
+        e2eBypassToken
+      ),
+      E2E_SESSION_ID: e2eSessionId,
     },
   },
 });

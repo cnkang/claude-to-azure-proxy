@@ -14,6 +14,11 @@ import {
   type RetryOptions,
 } from '../utils/retry-manager.js';
 
+// Type guard for Error
+function isError(error: unknown): error is Error {
+  return error instanceof Error;
+}
+
 describe('RetryManager', () => {
   let manager: RetryManager;
 
@@ -70,12 +75,12 @@ describe('RetryManager', () => {
         );
 
       const promise = manager.execute(operation, { maxAttempts: 3 });
-      const rejectionPromise = promise.catch((error) => error);
+      const rejectionPromise = promise.catch((error: unknown) => error);
       await vi.runAllTimersAsync();
       const error = await rejectionPromise;
 
       expect(error).toBeInstanceOf(Error);
-      expect(error.message).toBe('persistent failure');
+      expect((error as Error).message).toBe('persistent failure');
       expect(operation).toHaveBeenCalledTimes(3);
     });
 
@@ -93,12 +98,12 @@ describe('RetryManager', () => {
           delays.push(delay);
         },
       });
-      const rejectionPromise = promise.catch((error) => error);
+      const rejectionPromise = promise.catch((error: unknown) => error);
       await vi.runAllTimersAsync();
       const error = await rejectionPromise;
 
       expect(error).toBeInstanceOf(Error);
-      expect(error.message).toBe('failure');
+      expect((error as Error).message).toBe('failure');
 
       // Verify exponential backoff: 500ms, 1000ms
       expect(delays[0]).toBe(500); // 500 * 2^0 = 500
@@ -120,12 +125,12 @@ describe('RetryManager', () => {
           delays.push(delay);
         },
       });
-      const rejectionPromise = promise.catch((error) => error);
+      const rejectionPromise = promise.catch((error: unknown) => error);
       await vi.runAllTimersAsync();
       const error = await rejectionPromise;
 
       expect(error).toBeInstanceOf(Error);
-      expect(error.message).toBe('failure');
+      expect((error as Error).message).toBe('failure');
 
       // All delays should be capped at 2000ms
       expect(delays[0]).toBe(1000); // 1000 * 2^0 = 1000
@@ -148,12 +153,12 @@ describe('RetryManager', () => {
           delays.push(delay);
         },
       });
-      const rejectionPromise = promise.catch((error) => error);
+      const rejectionPromise = promise.catch((error: unknown) => error);
       await vi.runAllTimersAsync();
       const error = await rejectionPromise;
 
       expect(error).toBeInstanceOf(Error);
-      expect(error.message).toBe('failure');
+      expect((error as Error).message).toBe('failure');
 
       // Delays should be base + jitter (0-1000ms)
       expect(delays[0]).toBeGreaterThanOrEqual(500);
@@ -173,12 +178,12 @@ describe('RetryManager', () => {
         maxAttempts: 3,
         isRetryable: (error) => !error.message.includes('validation'),
       });
-      const rejectionPromise = promise.catch((error) => error);
+      const rejectionPromise = promise.catch((error: unknown) => error);
       await vi.runAllTimersAsync();
       const error = await rejectionPromise;
 
       expect(error).toBeInstanceOf(Error);
-      expect(error.message).toBe('validation failed');
+      expect((error as Error).message).toBe('validation failed');
       expect(operation).toHaveBeenCalledTimes(1);
     });
 
@@ -197,19 +202,19 @@ describe('RetryManager', () => {
         .mockImplementation(() => Promise.reject(new Error('not found')));
 
       const validationPromise = manager.execute(validationError);
-      const validationRejection = validationPromise.catch((error) => error);
+      const validationRejection = validationPromise.catch((error: unknown) => error);
       await vi.runAllTimersAsync();
       await validationRejection;
       expect(validationError).toHaveBeenCalledTimes(1);
 
       const unauthorizedPromise = manager.execute(unauthorizedError);
-      const unauthorizedRejection = unauthorizedPromise.catch((error) => error);
+      const unauthorizedRejection = unauthorizedPromise.catch((error: unknown) => error);
       await vi.runAllTimersAsync();
       await unauthorizedRejection;
       expect(unauthorizedError).toHaveBeenCalledTimes(1);
 
       const notFoundPromise = manager.execute(notFoundError);
-      const notFoundRejection = notFoundPromise.catch((error) => error);
+      const notFoundRejection = notFoundPromise.catch((error: unknown) => error);
       await vi.runAllTimersAsync();
       await notFoundRejection;
       expect(notFoundError).toHaveBeenCalledTimes(1);
@@ -223,13 +228,13 @@ describe('RetryManager', () => {
         .mockImplementation(() => Promise.reject(new Error('timeout')));
 
       const networkPromise = manager.execute(networkError, { maxAttempts: 2 });
-      const networkRejection = networkPromise.catch((error) => error);
+      const networkRejection = networkPromise.catch((error: unknown) => error);
       await vi.runAllTimersAsync();
       await networkRejection;
       expect(networkError).toHaveBeenCalledTimes(2);
 
       const timeoutPromise = manager.execute(timeoutError, { maxAttempts: 2 });
-      const timeoutRejection = timeoutPromise.catch((error) => error);
+      const timeoutRejection = timeoutPromise.catch((error: unknown) => error);
       await vi.runAllTimersAsync();
       await timeoutRejection;
       expect(timeoutError).toHaveBeenCalledTimes(2);
@@ -247,7 +252,7 @@ describe('RetryManager', () => {
         timeout: 1000,
         maxAttempts: 1,
       });
-      const rejectionPromise = promise.catch((error) => error);
+      const rejectionPromise = promise.catch((error: unknown) => error);
 
       // Advance timers to trigger timeout
       await vi.advanceTimersByTimeAsync(2000);
@@ -273,12 +278,12 @@ describe('RetryManager', () => {
         maxAttempts: 3,
         onRetry,
       });
-      const rejectionPromise = promise.catch((error) => error);
+      const rejectionPromise = promise.catch((error: unknown) => error);
       await vi.runAllTimersAsync();
       const error = await rejectionPromise;
 
       expect(error).toBeInstanceOf(Error);
-      expect(error.message).toBe('failure');
+      expect((error as Error).message).toBe('failure');
 
       expect(onRetry).toHaveBeenCalledTimes(2); // Called before 2nd and 3rd attempts
       expect(onRetry).toHaveBeenNthCalledWith(
@@ -305,12 +310,12 @@ describe('RetryManager', () => {
         maxAttempts: 3,
         onFailure,
       });
-      const rejectionPromise = promise.catch((error) => error);
+      const rejectionPromise = promise.catch((error: unknown) => error);
       await vi.runAllTimersAsync();
       const error = await rejectionPromise;
 
       expect(error).toBeInstanceOf(Error);
-      expect(error.message).toBe('failure');
+      expect((error as Error).message).toBe('failure');
 
       expect(onFailure).toHaveBeenCalledTimes(1);
       expect(onFailure).toHaveBeenCalledWith(expect.any(Error), 3);
@@ -329,12 +334,12 @@ describe('RetryManager', () => {
         isRetryable: () => false,
         onFailure,
       });
-      const rejectionPromise = promise.catch((error) => error);
+      const rejectionPromise = promise.catch((error: unknown) => error);
       await vi.runAllTimersAsync();
       const error = await rejectionPromise;
 
       expect(error).toBeInstanceOf(Error);
-      expect(error.message).toBe('validation failed');
+      expect((error as Error).message).toBe('validation failed');
 
       expect(onFailure).toHaveBeenCalledTimes(1);
       expect(onFailure).toHaveBeenCalledWith(expect.any(Error), 1);
@@ -472,12 +477,12 @@ describe('RetryManager', () => {
         .mockImplementation(() => Promise.reject(new Error('failure')));
 
       const promise = customManager.execute(operation);
-      const rejectionPromise = promise.catch((error) => error);
+      const rejectionPromise = promise.catch((error: unknown) => error);
       await vi.runAllTimersAsync();
       const error = await rejectionPromise;
 
       expect(error).toBeInstanceOf(Error);
-      expect(error.message).toBe('failure');
+      expect((error as Error).message).toBe('failure');
       expect(operation).toHaveBeenCalledTimes(5);
     });
 
@@ -490,12 +495,12 @@ describe('RetryManager', () => {
         maxAttempts: 2, // Override default
         // baseDelay uses default 500ms
       });
-      const rejectionPromise = promise.catch((error) => error);
+      const rejectionPromise = promise.catch((error: unknown) => error);
       await vi.runAllTimersAsync();
       const error = await rejectionPromise;
 
       expect(error).toBeInstanceOf(Error);
-      expect(error.message).toBe('failure');
+      expect((error as Error).message).toBe('failure');
       expect(operation).toHaveBeenCalledTimes(2);
     });
   });
@@ -507,12 +512,12 @@ describe('RetryManager', () => {
         .mockImplementation(() => Promise.reject('string error'));
 
       const promise = manager.execute(operation, { maxAttempts: 1 });
-      const rejectionPromise = promise.catch((error) => error);
+      const rejectionPromise = promise.catch((error: unknown) => error);
       await vi.runAllTimersAsync();
       const error = await rejectionPromise;
 
       expect(error).toBeInstanceOf(Error);
-      expect(error.message).toBe('string error');
+      expect((error as Error).message).toBe('string error');
     });
 
     it('should handle operation that returns undefined', async () => {
@@ -548,12 +553,12 @@ describe('RetryManager', () => {
         maxDelay: 200000,
         useJitter: false,
       });
-      const rejectionPromise = promise.catch((error) => error);
+      const rejectionPromise = promise.catch((error: unknown) => error);
       await vi.runAllTimersAsync();
       const error = await rejectionPromise;
 
       expect(error).toBeInstanceOf(Error);
-      expect(error.message).toBe('failure');
+      expect((error as Error).message).toBe('failure');
       expect(operation).toHaveBeenCalledTimes(2);
     });
   });
@@ -573,12 +578,12 @@ describe('RetryManager', () => {
           delays.push(delay);
         },
       });
-      const rejectionPromise = promise.catch((error) => error);
+      const rejectionPromise = promise.catch((error: unknown) => error);
       await vi.runAllTimersAsync();
       const error = await rejectionPromise;
 
       expect(error).toBeInstanceOf(Error);
-      expect(error.message).toBe('failure');
+      expect((error as Error).message).toBe('failure');
 
       // Verify 3 attempts
       expect(operation).toHaveBeenCalledTimes(3);
@@ -595,11 +600,11 @@ describe('RetryManager', () => {
         .mockImplementation(() => Promise.reject(new Error('network error')));
 
       const retryablePromise = manager.execute(retryableOp, { maxAttempts: 2 });
-      const retryableRejection = retryablePromise.catch((error) => error);
+      const retryableRejection = retryablePromise.catch((error: unknown) => error);
       await vi.runAllTimersAsync();
       const retryableError = await retryableRejection;
       expect(retryableError).toBeInstanceOf(Error);
-      expect(retryableError.message).toBe('network error');
+      expect((retryableError as Error).message).toBe('network error');
       expect(retryableOp).toHaveBeenCalledTimes(2); // Retried
 
       // Test non-retryable error
@@ -612,11 +617,11 @@ describe('RetryManager', () => {
       const nonRetryablePromise = manager.execute(nonRetryableOp, {
         maxAttempts: 3,
       });
-      const nonRetryableRejection = nonRetryablePromise.catch((error) => error);
+      const nonRetryableRejection = nonRetryablePromise.catch((error: unknown) => error);
       await vi.runAllTimersAsync();
       const nonRetryableError = await nonRetryableRejection;
       expect(nonRetryableError).toBeInstanceOf(Error);
-      expect(nonRetryableError.message).toBe('validation error');
+      expect((nonRetryableError as Error).message).toBe('validation error');
       expect(nonRetryableOp).toHaveBeenCalledTimes(1); // Not retried
     });
 
@@ -632,7 +637,7 @@ describe('RetryManager', () => {
         timeout: 1000,
         maxAttempts: 2,
       });
-      const rejectionPromise = promise.catch((error) => error);
+      const rejectionPromise = promise.catch((error: unknown) => error);
 
       // Advance timers to trigger timeouts and wait for all retries
       await vi.advanceTimersByTimeAsync(10000);

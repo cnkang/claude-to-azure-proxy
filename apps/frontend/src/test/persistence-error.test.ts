@@ -175,8 +175,8 @@ describe('PersistenceError', () => {
         }
       );
 
-      expect(error.metadata.operation).toBe('updateTitle');
-      expect(error.metadata.conversationId).toBe('conv-123');
+      expect(error.metadata?.operation).toBe('updateTitle');
+      expect(error.metadata?.conversationId).toBe('conv-123');
     });
 
     it('should include storage backend metadata', () => {
@@ -191,7 +191,7 @@ describe('PersistenceError', () => {
         }
       );
 
-      expect(error.metadata.storageBackend).toBe('indexeddb');
+      expect(error.metadata?.storageBackend).toBe('indexeddb');
     });
 
     it('should include quota metadata', () => {
@@ -205,7 +205,7 @@ describe('PersistenceError', () => {
         }
       );
 
-      expect(error.metadata.quota).toEqual(quota);
+      expect(error.metadata?.quota).toEqual(quota);
     });
   });
 
@@ -376,8 +376,8 @@ describe('PersistenceErrorFactory', () => {
       expect(error.type).toBe(PersistenceErrorType.STORAGE_FULL);
       expect(error.retryable).toBe(false);
       expect(error.recoveryStrategy).toBe(RecoveryStrategy.EXPORT_DATA);
-      expect(error.metadata.quota).toBeDefined();
-      expect(error.metadata.quota?.percentage).toBeCloseTo(66.67, 1);
+      expect(error.metadata?.quota).toBeDefined();
+      expect(error.metadata?.quota?.percentage).toBeCloseTo(66.67, 1);
     });
   });
 
@@ -393,8 +393,8 @@ describe('PersistenceErrorFactory', () => {
       expect(error.type).toBe(PersistenceErrorType.INDEXEDDB_ERROR);
       expect(error.retryable).toBe(true);
       expect(error.recoveryStrategy).toBe(RecoveryStrategy.RETRY);
-      expect(error.metadata.storageBackend).toBe('indexeddb');
-      expect(error.metadata.conversationId).toBe('conv-123');
+      expect(error.metadata?.storageBackend).toBe('indexeddb');
+      expect(error.metadata?.conversationId).toBe('conv-123');
       expect(error.originalError).toBe(originalError);
     });
   });
@@ -409,7 +409,7 @@ describe('PersistenceErrorFactory', () => {
 
       expect(error.type).toBe(PersistenceErrorType.LOCALSTORAGE_ERROR);
       expect(error.retryable).toBe(true);
-      expect(error.metadata.storageBackend).toBe('localstorage');
+      expect(error.metadata?.storageBackend).toBe('localstorage');
     });
   });
 
@@ -446,8 +446,8 @@ describe('PersistenceErrorFactory', () => {
 
       expect(error.type).toBe(PersistenceErrorType.VALIDATION_ERROR);
       expect(error.retryable).toBe(false);
-      expect(error.metadata.context?.field).toBe('title');
-      expect(error.metadata.context?.reason).toBe('Title cannot be empty');
+      expect(error.metadata?.context?.field).toBe('title');
+      expect(error.metadata?.context?.reason).toBe('Title cannot be empty');
     });
   });
 
@@ -461,7 +461,7 @@ describe('PersistenceErrorFactory', () => {
 
       expect(error.type).toBe(PersistenceErrorType.DATA_CORRUPTION);
       expect(error.recoveryStrategy).toBe(RecoveryStrategy.CLEAR_AND_RETRY);
-      expect(error.metadata.conversationId).toBe('conv-123');
+      expect(error.metadata?.conversationId).toBe('conv-123');
     });
   });
 
@@ -471,7 +471,7 @@ describe('PersistenceErrorFactory', () => {
 
       expect(error.type).toBe(PersistenceErrorType.NOT_FOUND);
       expect(error.retryable).toBe(false);
-      expect(error.metadata.conversationId).toBe('conv-123');
+      expect(error.metadata?.conversationId).toBe('conv-123');
     });
   });
 
@@ -491,7 +491,7 @@ describe('PersistenceErrorFactory', () => {
 
       expect(error.type).toBe(PersistenceErrorType.TIMEOUT);
       expect(error.retryable).toBe(true);
-      expect(error.metadata.context?.timeout).toBe(5000);
+      expect(error.metadata?.context?.timeout).toBe(5000);
     });
   });
 

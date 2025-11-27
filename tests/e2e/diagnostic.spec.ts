@@ -67,13 +67,25 @@ test.describe('Diagnostic Tests', () => {
   test('should check storage service availability', async ({ cleanPage, helpers }) => {
     await helpers.waitForAppReady();
     
-    // Check if storage service is available
+    // Check if storage service is available via window.__TEST_BRIDGE__
     const storageAvailable = await cleanPage.evaluate(async () => {
       try {
-        // @ts-expect-error - Dynamic import in browser context
-        const { getConversationStorage } = await import('/src/services/storage.js');
-        const storage = getConversationStorage();
-        await storage.initialize();
+        const testBridge = (window as any).__TEST_BRIDGE__;
+        if (!testBridge) {
+          return {
+            available: false,
+            error: 'Test bridge not available',
+          };
+        }
+        
+        const storage = await testBridge.getConversationStorage();
+        if (!storage) {
+          return {
+            available: false,
+            error: 'Storage instance is null',
+          };
+        }
+        
         return { available: true, error: null };
       } catch (error) {
         return { 
@@ -99,12 +111,15 @@ test.describe('Diagnostic Tests', () => {
       
       console.log('Created conversation ID:', conversationId);
       
-      // Check if it's in storage
+      // Check if it's in storage using window.__TEST_BRIDGE__
       const inStorage = await cleanPage.evaluate(async (id) => {
         try {
-          // @ts-expect-error - Dynamic import in browser context
-          const { getConversationStorage } = await import('/src/services/storage.js');
-          const storage = getConversationStorage();
+          const testBridge = (window as any).__TEST_BRIDGE__;
+          if (!testBridge) {
+            return false;
+          }
+          
+          const storage = await testBridge.getConversationStorage();
           const conversation = await storage.getConversation(id);
           return conversation !== null;
         } catch {

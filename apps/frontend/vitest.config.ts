@@ -1,9 +1,28 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
+import type { Plugin } from 'vite';
+
+// Plugin to mock Prism CSS imports in tests
+const mockPrismCss = (): Plugin => ({
+  name: 'mock-prism-css',
+  enforce: 'pre',
+  resolveId(id) {
+    if (id.includes('prismjs/themes/') && id.endsWith('.css')) {
+      return id;
+    }
+    return null;
+  },
+  load(id) {
+    if (id.includes('prismjs/themes/') && id.endsWith('.css')) {
+      return 'export default {}';
+    }
+    return null;
+  },
+});
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [mockPrismCss(), react()],
   test: {
     globals: true,
     environment: 'happy-dom',
