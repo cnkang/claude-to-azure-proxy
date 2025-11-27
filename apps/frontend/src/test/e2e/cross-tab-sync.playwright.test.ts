@@ -56,8 +56,8 @@ test.describe('E2E: Cross-Tab Synchronization with Playwright', () => {
     page2 = await context2.newPage();
 
     // Navigate both pages to the app
-    await page1.goto('http://localhost:5173');
-    await page2.goto('http://localhost:5173');
+    await page1.goto('http://localhost:3000');
+    await page2.goto('http://localhost:3000');
 
     // Wait for pages to load
     await page1.waitForLoadState('networkidle');
@@ -325,7 +325,7 @@ test.describe('E2E: Title Persistence', () => {
   test.beforeEach(async ({ browser }) => {
     context = await browser.newContext();
     page = await context.newPage();
-    await page.goto('http://localhost:5173');
+    await page.goto('http://localhost:3000');
     await page.waitForLoadState('networkidle');
   });
 
@@ -426,7 +426,7 @@ test.describe('E2E: Deletion Cleanup', () => {
   test.beforeEach(async ({ browser }) => {
     context = await browser.newContext();
     page = await context.newPage();
-    await page.goto('http://localhost:5173');
+    await page.goto('http://localhost:3000');
     await page.waitForLoadState('networkidle');
   });
 

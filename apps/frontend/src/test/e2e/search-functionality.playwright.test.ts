@@ -22,7 +22,7 @@ test.describe('E2E: Search Functionality', () => {
   test.beforeEach(async ({ browser }) => {
     context = await browser.newContext();
     page = await context.newPage();
-    await page.goto('http://localhost:5173');
+    await page.goto('http://localhost:3000');
     await page.waitForLoadState('networkidle');
 
     // Create test conversations with varied content
