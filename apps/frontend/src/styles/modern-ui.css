@@ -69,7 +69,9 @@ select {
 input:focus,
 textarea:focus,
 select:focus {
-  border-color: var(--color-accent);
+  outline: 3px solid var(--color-border-focus);
+  outline-offset: 2px;
+  border-color: var(--color-border-focus);
   box-shadow: 0 0 0 4px var(--color-focus);
   transform: translateY(-2px);
 }
@@ -460,6 +462,8 @@ select:focus {
 }
 
 .switch input:focus + .switch-slider {
+  outline: 3px solid var(--color-border-focus);
+  outline-offset: 2px;
   box-shadow: 0 0 0 4px var(--color-focus);
 }
 
