@@ -80,6 +80,7 @@ export default defineConfig({
       'dist/',
       'coverage/',
       '**/*.playwright.test.ts', // Exclude Playwright tests from vitest
+      'src/test/e2e/**', // Exclude all E2E tests from vitest (run with Playwright)
     ],
     coverage: {
       enabled: false, // Disabled by default, enable with --coverage flag
