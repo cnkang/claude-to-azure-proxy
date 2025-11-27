@@ -510,8 +510,8 @@ export class ClaudeToResponsesTransformer {
   /**
    * Validate tool choice structure
    */
-  private validateToolChoice(toolChoice: unknown): ToolChoice | undefined {
-    if (toolChoice === undefined) {
+  private validateToolChoice(toolChoice: unknown): ToolChoice {
+    if (!toolChoice) {
       return undefined;
     }
 

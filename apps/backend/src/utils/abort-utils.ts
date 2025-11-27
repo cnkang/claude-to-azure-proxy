@@ -22,11 +22,11 @@ export const createAbortError = (reason?: unknown): Error => {
     message = reason;
   }
 
-  const abortError = new Error(message);
+  const abortError = new Error(message) as Error & { code: string; cause?: unknown };
   abortError.name = ABORT_ERROR_NAME;
-  (abortError as Error & { code?: string }).code = ABORT_ERROR_CODE;
+  abortError.code = ABORT_ERROR_CODE;
   if (cause !== undefined) {
-    (abortError as Error & { cause?: unknown }).cause = cause;
+    abortError.cause = cause;
     if (cause instanceof Error && typeof cause.stack === 'string') {
       abortError.stack = cause.stack;
     }
@@ -49,14 +49,14 @@ const isAbortErrorInstance = (
     return true;
   }
 
-  const { code } = error as Error & { code?: string };
-  if (typeof code === 'string' && ABORT_ERROR_CODES.has(code)) {
+  const errorWithCode = error as Error & { code?: string };
+  if (typeof errorWithCode.code === 'string' && ABORT_ERROR_CODES.has(errorWithCode.code)) {
     return true;
   }
 
-  const { cause } = error as Error & { cause?: unknown };
-  if (cause instanceof Error) {
-    return isAbortErrorInstance(cause, seen, depth + 1);
+  const errorWithCause = error as Error;
+  if ('cause' in errorWithCause && errorWithCause.cause instanceof Error) {
+    return isAbortErrorInstance(errorWithCause.cause, seen, depth + 1);
   }
 
   return false;

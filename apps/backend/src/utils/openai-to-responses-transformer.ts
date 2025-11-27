@@ -561,8 +561,8 @@ export class OpenAIToResponsesTransformer {
   /**
    * Validate tool choice configuration
    */
-  private validateToolChoice(toolChoice: unknown): ToolChoice | undefined {
-    if (toolChoice === undefined) {
+  private validateToolChoice(toolChoice: unknown): ToolChoice {
+    if (!toolChoice) {
       return undefined;
     }
 
@@ -598,8 +598,8 @@ export class OpenAIToResponsesTransformer {
    */
   private validateResponseFormat(
     responseFormat: unknown
-  ): ResponseFormat | undefined {
-    if (responseFormat === undefined) {
+  ): ResponseFormat {
+    if (!responseFormat) {
       return undefined;
     }
 
