@@ -4,14 +4,24 @@ This directory contains end-to-end tests for the conversation persistence featur
 
 ## Test Files
 
+### UI-Based Tests (Using Real User Interactions)
+
+These tests interact with the application through the UI, simulating real user behavior:
+
+- **cross-tab-sync.spec.ts** - Tests for cross-tab synchronization using storage events
+- **search-functionality.spec.ts** - Tests for search functionality with keyword highlighting and pagination
 - **title-persistence.spec.ts** - Tests for conversation title persistence across browser refresh
-- **cross-tab-sync.spec.ts** - Tests for cross-tab synchronization
-- **deletion-cleanup.spec.ts** - Tests for conversation deletion and cleanup
-- **search-functionality.spec.ts** - Tests for search functionality
-- **error-recovery.spec.ts** - Tests for error handling and recovery
+- **deletion-cleanup.spec.ts** - Tests for conversation deletion and complete cleanup
+
+### Other E2E Tests
+
 - **accessibility.spec.ts** - Tests for WCAG 2.2 AAA accessibility compliance
 - **performance.spec.ts** - Tests for performance metrics and monitoring
 - **browser-compatibility.spec.ts** - Tests for cross-browser compatibility
+- **app-context-persistence.spec.ts** - Tests for application context persistence
+- **component-rendering-order.spec.ts** - Tests for component rendering order
+- **layout-rendering.spec.ts** - Tests for layout rendering
+- **diagnostic.spec.ts** - Diagnostic tests for troubleshooting
 
 ## Setup
 
@@ -142,6 +152,24 @@ JSON report is automatically generated at `playwright-report/results.json`
 ### JUnit Report
 
 JUnit XML report is automatically generated at `playwright-report/junit.xml` for CI/CD integration.
+
+## Testing Approach
+
+### UI-Based Testing
+
+The E2E tests follow a UI-based testing approach that simulates real user interactions rather than directly manipulating storage or internal APIs. This approach:
+
+- **Increases test reliability** - Tests verify the complete user experience, not just internal state
+- **Catches UI bugs** - Tests interact with actual UI elements, catching rendering and interaction issues
+- **Reflects real usage** - Tests simulate how users actually interact with the application
+- **Reduces brittleness** - Tests are less coupled to internal implementation details
+
+### Key Principles
+
+1. **Use UI interactions** - Click buttons, type in inputs, navigate through menus
+2. **Wait for UI updates** - Use Playwright's built-in waiting mechanisms for elements to appear
+3. **Verify through UI** - Check that changes are visible in the UI, not just in storage
+4. **Avoid direct storage access** - Only access storage when absolutely necessary for test setup
 
 ## Test Structure
 
