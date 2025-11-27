@@ -146,9 +146,18 @@ export default {
     },
   },
   welcome: {
-    title: '欢迎使用 AI 聊天助手',
-    description: '与我们的 AI 助手开始对话，获得编程、写作、分析等方面的帮助。',
+    title: '欢迎使用',
+    description: '与我们的 AI 助手开始对话，获取编程、写作、分析等方面的帮助。点击下方按钮立即开始。',
     startChat: '开始聊天',
+    orTry: '或试试：',
+    youCanTry: '你可以试试：',
+    suggestion: '建议',
+    suggestions: {
+      introduceYourself: '介绍一下你自己',
+      writeCode: '帮我写一段代码',
+      translateText: '翻译一段文本',
+      explainConcept: '解释一个概念',
+    },
   },
   settings: {
     title: '设置',

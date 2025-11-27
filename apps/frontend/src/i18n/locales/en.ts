@@ -153,10 +153,19 @@ export default {
     },
   },
   welcome: {
-    title: 'Welcome to AI Chat Assistant',
+    title: 'Welcome to',
     description:
-      'Start a conversation with our AI assistant to get help with coding, writing, analysis, and more.',
+      'Start a conversation with our AI assistant to get help with coding, writing, analysis, and more. Click the button below to begin.',
     startChat: 'Start Chatting',
+    orTry: 'or try:',
+    youCanTry: 'You can try:',
+    suggestion: 'Suggestion',
+    suggestions: {
+      introduceYourself: 'Introduce yourself',
+      writeCode: 'Help me write some code',
+      translateText: 'Translate a text',
+      explainConcept: 'Explain a concept',
+    },
   },
   settings: {
     title: 'Settings',

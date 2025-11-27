@@ -116,7 +116,6 @@ export function I18nProvider({
 
         setIsInitialized(true);
       } catch (_error) {
-        // console.error('Failed to initialize language:', error);
         setIsInitialized(true);
       }
     };
@@ -152,7 +151,6 @@ export function I18nProvider({
           setIsChanging(false);
         });
       } catch (_error) {
-        // console.error('Failed to change language:', error);
         setIsChanging(false);
       }
     })();

@@ -204,7 +204,6 @@ export const i18nUtils = {
     try {
       await i18n.changeLanguage(language);
     } catch (error) {
-      // console.error('Failed to change language:', error);
       throw error;
     }
   },
