@@ -21,6 +21,7 @@ import {
   NetworkError,
   networkErrorHandler,
   networkUtils,
+  getAuthHeaders,
 } from '../utils/networkErrorHandler.js';
 import {
   isMemoryHigh,
@@ -221,6 +222,7 @@ export class ChatSSEClient {
     this.setConnectionState('connecting');
 
     const sessionId = this.sessionManager.getSessionId();
+    const authHeaders = getAuthHeaders();
     if (!sessionId) {
       const networkError = new NetworkError(
         'No active session',
@@ -241,6 +243,7 @@ export class ChatSSEClient {
     fetchEventSource(url, {
       method: 'GET',
       headers: {
+        ...authHeaders,
         'x-session-id': sessionId,
       },
       signal: this.abortController.signal,
@@ -283,23 +286,10 @@ export class ChatSSEClient {
       },
 
       onmessage: (event) => {
-        // Task 9.1: Add comprehensive logging for SSE message handling
-        frontendLogger.log('🔵 [SSE] Raw message received:', event);
-        frontendLogger.log('🔵 [SSE] Data:', event.data);
-        frontendLogger.log('🔵 [SSE] Type:', typeof event.data);
-
         try {
           const data = JSON.parse(event.data) as StreamChunk;
-          frontendLogger.log('🔵 [SSE] Parsed data:', data);
-          frontendLogger.log('🔵 [SSE] Chunk type:', data.type);
-          frontendLogger.log('🔵 [SSE] Message ID:', data.messageId);
-          frontendLogger.log('🔵 [SSE] Content:', data.content);
-
           this.handleStreamChunk(data);
-
-          frontendLogger.log('🔵 [SSE] handleStreamChunk completed');
         } catch (error) {
-          frontendLogger.error('🔴 [SSE] Parse error:', error);
           frontendLogger.error('Failed to parse SSE message', {
             metadata: {
               conversationId: this.conversationId,
@@ -519,91 +509,51 @@ export class ChatSSEClient {
   /**
    * Handle incoming stream chunks
    *
-   * Task 6.1: Handle heartbeat messages
-   * Task 6.2: Update lastMessageTimestamp on every message
-   * Task 9.1: Add comprehensive logging for message flow
+   * Processes different types of SSE messages (start, chunk, end, error, heartbeat)
+   * and dispatches them to registered event listeners.
+   * Updates lastMessageTimestamp on every message to track connection health.
    */
   private handleStreamChunk(chunk: StreamChunk): void {
     // Task 6.2: Update timestamp on every message received
     this.lastMessageTimestamp = new Date();
 
-    // Task 9.1: Log chunk handling
-    frontendLogger.log('🔵 [SSE] handleStreamChunk called with:', chunk);
-    frontendLogger.log(
-      '🔵 [SSE] Event listeners registered:',
-      Object.keys(this.eventListeners)
-    );
-
     switch (chunk.type) {
       case 'start':
-        frontendLogger.log('🔵 [SSE] Handling START event');
-        frontendLogger.log(
-          '🔵 [SSE] messageStart listener exists:',
-          !!this.eventListeners.messageStart
-        );
         this.eventListeners.messageStart?.({
           messageId: chunk.messageId ?? '',
           correlationId: chunk.correlationId,
         });
-        frontendLogger.log('🔵 [SSE] messageStart callback invoked');
         break;
 
       case 'chunk':
-        frontendLogger.log('🔵 [SSE] Handling CHUNK event');
-        frontendLogger.log(
-          '🔵 [SSE] messageChunk listener exists:',
-          !!this.eventListeners.messageChunk
-        );
-        frontendLogger.log('🔵 [SSE] Chunk content:', chunk.content);
         this.eventListeners.messageChunk?.({
           content: chunk.content ?? '',
           messageId: chunk.messageId ?? '',
           correlationId: chunk.correlationId,
         });
-        frontendLogger.log('🔵 [SSE] messageChunk callback invoked');
         break;
 
       case 'end':
-        frontendLogger.log('🔵 [SSE] Handling END event');
-        frontendLogger.log(
-          '🔵 [SSE] messageEnd listener exists:',
-          !!this.eventListeners.messageEnd
-        );
         this.eventListeners.messageEnd?.({
           messageId: chunk.messageId ?? '',
           correlationId: chunk.correlationId,
         });
-        frontendLogger.log('🔵 [SSE] messageEnd callback invoked');
         break;
 
       case 'error':
-        frontendLogger.log('🔵 [SSE] Handling ERROR event');
-        frontendLogger.log(
-          '🔵 [SSE] messageError listener exists:',
-          !!this.eventListeners.messageError
-        );
         this.eventListeners.messageError?.({
           _error: chunk.content ?? 'Unknown error',
           correlationId: chunk.correlationId,
         });
-        frontendLogger.log('🔵 [SSE] messageError callback invoked');
         break;
 
       case 'heartbeat':
         // Task 6.1: Handle heartbeat messages
         // Heartbeat messages keep the connection alive and update lastMessageTimestamp
         // No need to emit events for heartbeats
-        frontendLogger.log('🔵 [SSE] Handling HEARTBEAT event');
-        frontendLogger.log('Heartbeat received', {
-          metadata: {
-            conversationId: this.conversationId,
-            timestamp: chunk.timestamp,
-          },
-        });
         break;
 
       default:
-        frontendLogger.warn('🟡 [SSE] Unknown stream chunk type:', chunk.type);
         frontendLogger.warn('Unknown stream chunk type', {
           metadata: {
             conversationId: this.conversationId,

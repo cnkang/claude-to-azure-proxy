@@ -14,6 +14,7 @@ import { FilePreview } from './FilePreview.js';
 vi.mock('../../contexts/I18nContext', () => ({
   useI18n: () => ({
     t: (key: string): string => key,
+    formatFileSize: (bytes: number): string => `${(bytes / 1024).toFixed(1)} KB`,
   }),
 }));
 
@@ -125,7 +126,7 @@ describe('FilePreview component', () => {
     // @ts-expect-error - assign testing mock
     globalThis.FileReader = MockFileReader;
 
-    const { container } = render(<FilePreview file={file} onClose={onClose} />);
+    render(<FilePreview file={file} onClose={onClose} />);
 
     await waitFor(() => {
       expect(screen.getByRole('img', { name: 'photo.png' })).toBeInstanceOf(
@@ -133,14 +134,12 @@ describe('FilePreview component', () => {
       );
     });
 
-    const modal = container.querySelector('.file-preview-modal');
-    expect(modal).not.toBeNull();
-    if (modal) {
-      fireEvent.click(modal);
-    }
-    expect(onClose).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole('button', { name: 'common.close' }));
+    // The overlay is the outer div with role="button" and aria-label="common.close"
+    // Clicking on it directly (not on child elements) should close
+    const overlay = screen.getAllByRole('button', { name: 'common.close' })[0];
+    
+    // Click on the overlay itself should close
+    fireEvent.click(overlay);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 

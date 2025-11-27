@@ -7,9 +7,9 @@
  */
 
 import React, { memo, useCallback, useState, useEffect } from 'react';
-import { useI18n } from '../../contexts/I18nContext';
-import { frontendLogger } from '../../utils/logger';
-import './FilePreview.css';
+import { useI18n } from '../../contexts/I18nContext.js';
+import { frontendLogger } from '../../utils/logger.js';
+import { Glass, cn } from '../ui/Glass.js';
 
 interface FilePreviewProps {
   readonly file: File;
@@ -54,7 +54,7 @@ const readFileAsDataURL = (targetFile: File): Promise<string> => {
 };
 
 export const FilePreview = memo<FilePreviewProps>(({ file, onClose }) => {
-  const { t } = useI18n();
+  const { t, formatFileSize } = useI18n();
   const [content, setContent] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -159,23 +159,6 @@ export const FilePreview = memo<FilePreviewProps>(({ file, onClose }) => {
   }, [getFileExtension]);
 
   /**
-   * Format file size
-   */
-  const formatFileSize = useCallback((bytes: number): string => {
-    if (bytes === 0) {
-      return '0 Bytes';
-    }
-
-    const k = 1024;
-    const rawIndex = Math.floor(Math.log(bytes) / Math.log(k));
-    const index = Math.min(Math.max(rawIndex, 0), 3);
-    const formattedValue = parseFloat((bytes / Math.pow(k, index)).toFixed(2));
-    const unit =
-      index === 0 ? 'Bytes' : index === 1 ? 'KB' : index === 2 ? 'MB' : 'GB';
-    return `${formattedValue} ${unit}`;
-  }, []);
-
-  /**
    * Copy content to clipboard
    */
   const copyToClipboard = useCallback((): void => {
@@ -235,41 +218,42 @@ export const FilePreview = memo<FilePreviewProps>(({ file, onClose }) => {
 
   return (
     <div
-      className="file-preview-overlay"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200"
       role="button"
       tabIndex={0}
       aria-label={t('common.close')}
       onClick={handleOverlayClick}
       onKeyDown={handleOverlayKeyDown}
     >
-      <div className="file-preview-modal">
+      <Glass className="w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl" intensity="high" border={true}>
         {/* Header */}
-        <div className="preview-header">
-          <div className="file-info">
-            <h3 className="file-name">{file.name}</h3>
-            <div className="file-meta">
-              <span className="file-size">{formatFileSize(file.size)}</span>
-              <span className="file-type">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 backdrop-blur-md">
+          <div className="flex flex-col gap-1">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate max-w-md">{file.name}</h3>
+            <div className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
+              <span className="font-mono">{formatFileSize(file.size)}</span>
+              <span>•</span>
+              <span className="uppercase">
                 {file.type || t('fileUpload.preview.unknownType')}
               </span>
             </div>
           </div>
 
-          <div className="preview-actions">
-            {fileType === 'code' || fileType === 'text' ? (
+          <div className="flex items-center gap-2">
+            {(fileType === 'code' || fileType === 'text') && (
               <button
                 type="button"
-                className="action-button copy-button"
+                className="p-2 text-gray-700 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                 onClick={copyToClipboard}
                 title={t('fileUpload.preview.copyContent')}
               >
                 📋
               </button>
-            ) : null}
+            )}
 
             <button
               type="button"
-              className="action-button close-button"
+              className="p-2 text-gray-700 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               onClick={onClose}
               title={t('common.close')}
             >
@@ -279,20 +263,20 @@ export const FilePreview = memo<FilePreviewProps>(({ file, onClose }) => {
         </div>
 
         {/* Content */}
-        <div className="preview-content">
+        <div className="flex-1 overflow-auto p-6 bg-white dark:bg-gray-900 min-h-[300px]">
           {isLoading && (
-            <div className="preview-loading">
-              <div className="loading-spinner" />
-              <p>{t('fileUpload.preview.loading')}</p>
+            <div className="flex flex-col items-center justify-center h-full text-gray-700 gap-3">
+              <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              <p className="text-sm font-medium">{t('fileUpload.preview.loading')}</p>
             </div>
           )}
 
           {error !== null && (
-            <div className="preview-error">
-              <p>{error}</p>
+            <div className="flex flex-col items-center justify-center h-full text-red-700 gap-4">
+              <p className="text-lg font-medium">{error}</p>
               <button
                 type="button"
-                className="retry-button"
+                className="px-4 py-2 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 rounded-lg text-sm font-medium transition-colors"
                 onClick={() => {
                   loadFileContent().catch(() => undefined);
                 }}
@@ -305,28 +289,28 @@ export const FilePreview = memo<FilePreviewProps>(({ file, onClose }) => {
           {!isLoading && error === null && (
             <>
               {fileType === 'image' && (
-                <div className="image-preview">
+                <div className="flex items-center justify-center h-full">
                   <img
                     src={content}
                     alt={file.name}
-                    className="preview-image"
+                    className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
                   />
                 </div>
               )}
 
               {(fileType === 'code' || fileType === 'text') && (
-                <div className="text-preview">
-                  <pre className={`code-content ${getSyntaxClass()}`}>
+                <div className="h-full">
+                  <pre className={cn("p-4 rounded-lg bg-gray-50 dark:bg-gray-800 overflow-auto text-sm font-mono h-full", getSyntaxClass())}>
                     <code>{content}</code>
                   </pre>
                 </div>
               )}
 
               {fileType === 'unknown' && (
-                <div className="unsupported-preview">
-                  <div className="unsupported-icon">📄</div>
-                  <p>{t('fileUpload.preview.unsupportedType')}</p>
-                  <p className="file-info-text">
+                <div className="flex flex-col items-center justify-center h-full text-gray-700 gap-4">
+                  <div className="text-6xl opacity-50">📄</div>
+                  <p className="text-lg font-medium">{t('fileUpload.preview.unsupportedType')}</p>
+                  <p className="text-sm text-center max-w-md">
                     {t('fileUpload.preview.fileInfo', {
                       name: file.name,
                       size: formatFileSize(file.size),
@@ -338,7 +322,7 @@ export const FilePreview = memo<FilePreviewProps>(({ file, onClose }) => {
             </>
           )}
         </div>
-      </div>
+      </Glass>
     </div>
   );
 });

@@ -14,7 +14,7 @@ import {
 } from '../../hooks/useConversations.js';
 import { useI18n } from '../../contexts/I18nContext.js';
 import { ConversationList } from './ConversationList.js';
-import './ConversationManager.css';
+import { Glass, cn } from '../ui/Glass.js';
 
 /**
  * Conversation filter panel props
@@ -99,29 +99,29 @@ function ConversationFilterPanel({
   };
 
   return (
-    <div className="conversation-filter-panel">
-      <div className="filter-panel-header">
-        <h3>{t('conversation.filters')}</h3>
+    <Glass intensity="low" border={true} className="p-4 mb-4">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-gray-800 dark:text-gray-100">{t('conversation.filters')}</h3>
         <button
           type="button"
           onClick={onClose}
-          className="filter-panel-close"
+          className="p-1 text-gray-700 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-200"
           aria-label={t('common.close')}
         >
-          <span className="icon-close">✕</span>
+          <span className="text-lg">✕</span>
         </button>
       </div>
 
-      <div className="filter-panel-content">
-        <div className="filter-group">
-          <label htmlFor="sort-select" className="filter-label">
+      <div className="space-y-4">
+        <div className="flex flex-col gap-1">
+          <label htmlFor="sort-select" className="text-sm font-medium text-gray-700 dark:text-gray-300">
             {t('conversation.sortBy')}
           </label>
           <select
             id="sort-select"
             value={`${sortBy}-${sortOrder}`}
             onChange={handleSortChange}
-            className="filter-select"
+            className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm"
           >
             <option value="updatedAt-desc">
               {t('conversation.sortUpdatedDesc')}
@@ -142,15 +142,15 @@ function ConversationFilterPanel({
           </select>
         </div>
 
-        <div className="filter-group">
-          <label htmlFor="model-filter" className="filter-label">
+        <div className="flex flex-col gap-1">
+          <label htmlFor="model-filter" className="text-sm font-medium text-gray-700 dark:text-gray-300">
             {t('conversation.filterByModel')}
           </label>
           <select
             id="model-filter"
             value={modelFilter ?? ''}
             onChange={handleModelFilterChange}
-            className="filter-select"
+            className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm"
           >
             <option value="">{t('conversation.allModels')}</option>
             {availableModels.map((model) => (
@@ -161,11 +161,11 @@ function ConversationFilterPanel({
           </select>
         </div>
 
-        <div className="filter-group">
-          <label className="filter-label">{t('conversation.dateRange')}</label>
-          <div className="date-range-inputs">
-            <div className="date-input-group">
-              <label htmlFor="date-start" className="date-label">
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('conversation.dateRange')}</label>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="date-start" className="text-xs text-gray-700 dark:text-gray-300">
                 {t('conversation.from')}
               </label>
               <input
@@ -177,11 +177,11 @@ function ConversationFilterPanel({
                     : ''
                 }
                 onChange={(e) => handleDateRangeChange('start', e.target.value)}
-                className="date-input"
+                className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm"
               />
             </div>
-            <div className="date-input-group">
-              <label htmlFor="date-end" className="date-label">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="date-end" className="text-xs text-gray-700 dark:text-gray-300">
                 {t('conversation.to')}
               </label>
               <input
@@ -193,23 +193,23 @@ function ConversationFilterPanel({
                     : ''
                 }
                 onChange={(e) => handleDateRangeChange('end', e.target.value)}
-                className="date-input"
+                className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm"
               />
             </div>
           </div>
         </div>
 
-        <div className="filter-actions">
+        <div className="pt-2">
           <button
             type="button"
             onClick={clearAllFilters}
-            className="clear-filters-btn"
+            className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-colors"
           >
             {t('conversation.clearFilters')}
           </button>
         </div>
       </div>
-    </div>
+    </Glass>
   );
 }
 
@@ -283,7 +283,7 @@ export function ConversationManager({
         await deleteMultipleConversations(Array.from(selectedConversations));
         handleClearSelection();
       } catch (_error) {
-        // console.error('Failed to delete conversations:', error);
+        // Failed to delete conversations
       }
     }
   }, [
@@ -316,7 +316,7 @@ export function ConversationManager({
 
       handleClearSelection();
     } catch (_error) {
-      // console.error('Failed to export conversations:', error);
+      // Failed to export conversations
     }
   }, [selectedConversations, exportConversations, handleClearSelection]);
 
@@ -329,31 +329,27 @@ export function ConversationManager({
     [conversations, filteredConversations, selectedConversations]
   );
 
-  const managerClassName = useMemo(
-    () =>
-      ['conversation-manager', compactMode ? 'compact' : '', className]
-        .filter((value): value is string => Boolean(value && value.length > 0))
-        .join(' '),
-    [className, compactMode]
-  );
-
   return (
-    <div className={managerClassName}>
+    <div className={cn(
+      "flex flex-col h-full",
+      compactMode ? "text-sm" : "",
+      className
+    )}>
       {showHeader ? (
-        <div className="conversation-manager-header">
-          <div className="conversation-stats">
-            <span className="stat-item">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
+          <div className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
+            <span className="font-medium">
               {t('conversation.totalCount', { count: conversationStats.total })}
             </span>
             {conversationStats.filtered !== conversationStats.total && (
-              <span className="stat-item">
+              <span className="text-gray-700">
                 {t('conversation.filteredCount', {
                   count: conversationStats.filtered,
                 })}
               </span>
             )}
             {conversationStats.selected > 0 ? (
-              <span className="stat-item selected">
+              <span className="text-blue-700 dark:text-blue-200 font-medium">
                 {t('conversation.selectedCount', {
                   count: conversationStats.selected,
                 })}
@@ -361,84 +357,96 @@ export function ConversationManager({
             ) : null}
           </div>
 
-          <div className="conversation-actions">
+          <div className="flex items-center gap-2">
             {showFilters ? (
               <button
                 type="button"
                 onClick={handleToggleFilterPanel}
-                className={`filter-toggle-btn ${showFilterPanel ? 'active' : ''}`}
+                className={cn(
+                  "p-2 rounded-lg transition-colors",
+                  showFilterPanel 
+                    ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200" 
+                    : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700"
+                )}
                 aria-label={t('conversation.toggleFilters')}
                 title={t('conversation.toggleFilters')}
               >
-                <span className="icon-filter">🔽</span>
+                <span className="text-lg">🔽</span>
               </button>
             ) : null}
 
             <button
               type="button"
               onClick={() => setShowBulkActions((prev) => !prev)}
-              className={`bulk-actions-toggle ${showBulkActions ? 'active' : ''}`}
+              className={cn(
+                "p-2 rounded-lg transition-colors",
+                showBulkActions 
+                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200" 
+                  : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700"
+              )}
               aria-label={t('conversation.toggleBulkActions')}
               title={t('conversation.toggleBulkActions')}
             >
-              <span className="icon-select">☑️</span>
+              <span className="text-lg">☑️</span>
             </button>
           </div>
         </div>
       ) : null}
 
       {showBulkActions ? (
-        <div className="bulk-actions-panel">
-          <div className="bulk-actions-header">
-            <div className="bulk-selection-controls">
+        <Glass intensity="low" border={true} className="m-4 p-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={handleSelectAllConversations}
-                className="select-all-btn"
+                className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded text-sm font-medium transition-colors"
               >
                 {t('conversation.selectAll')}
               </button>
               <button
                 type="button"
                 onClick={handleClearSelection}
-                className="clear-selection-btn"
+                className="px-3 py-1.5 bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-sm text-gray-700 transition-colors"
               >
                 {t('conversation.clearSelection')}
               </button>
             </div>
 
             {selectedConversations.size > 0 ? (
-              <div className="bulk-actions">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={handleBulkExport}
-                  className="bulk-action-btn export"
+                  className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-200 rounded text-sm font-medium transition-colors"
                 >
-                  <span className="icon-export">📤</span>
+                  <span>📤</span>
                   {t('conversation.exportSelected')}
                 </button>
                 <button
                   type="button"
                   onClick={handleBulkDelete}
-                  className="bulk-action-btn delete"
+                  className="flex items-center gap-2 px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 text-red-700 dark:text-red-200 rounded text-sm font-medium transition-colors"
                 >
-                  <span className="icon-delete">🗑️</span>
+                  <span>🗑️</span>
                   {t('conversation.deleteSelected')}
                 </button>
               </div>
             ) : null}
           </div>
-        </div>
+        </Glass>
       ) : null}
 
       {showFilters && showFilterPanel ? (
-        <ConversationFilterPanel onClose={handleCloseFilterPanel} />
+        <div className="px-4">
+          <ConversationFilterPanel onClose={handleCloseFilterPanel} />
+        </div>
       ) : null}
 
-      <div className="conversation-manager-content">
+      <div className="flex-1 overflow-hidden relative">
         {state.error && (
-          <div className="conversation-manager-error" role="alert">
-            <span className="error-icon">⚠️</span>
+          <div className="absolute top-0 left-0 right-0 z-10 p-4 m-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-200 text-sm flex items-center gap-2" role="alert">
+            <span className="text-lg">⚠️</span>
             <span>{state.error}</span>
           </div>
         )}

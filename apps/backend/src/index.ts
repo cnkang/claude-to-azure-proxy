@@ -28,6 +28,8 @@ import {
 import {
   enhancedErrorHandler,
   memoryManagementMiddleware,
+  responseGuard,
+  loadShedding,
 } from './middleware/index';
 import { secureAuthenticationMiddleware } from './middleware/authentication';
 import {
@@ -107,6 +109,10 @@ import {
   cleanupGlobalPerformanceAlerts,
   type PerformanceAlert,
 } from './monitoring/performance-alerts';
+import {
+  getServerHealthMonitor,
+  cleanupServerHealthMonitor,
+} from './monitoring/server-health';
 
 /**
  * @fileoverview Main application entry point for the Claude-to-Azure OpenAI Proxy Server.
@@ -263,6 +269,13 @@ export class ProxyServer {
 
     // Request processing middleware
     this.app.use(correlationIdMiddleware);
+    
+    // Response guard middleware to prevent duplicate header sends (Requirement 8.2)
+    this.app.use(responseGuard);
+    
+    // Load shedding middleware for graceful degradation (Requirement 8.4)
+    this.app.use(loadShedding);
+    
     const configuredTimeout = this.config.azureOpenAI?.timeout;
     const timeoutMs =
       typeof configuredTimeout === 'number'
@@ -822,6 +835,10 @@ export class ProxyServer {
     this.app.use((req: Request, res: Response, next: () => void) => {
       const startTime = performance.now();
       const { correlationId } = req as RequestWithCorrelationId;
+      
+      // Track request in server health monitor (Requirement 8)
+      const serverHealthMonitor = getServerHealthMonitor();
+      serverHealthMonitor.recordRequest();
 
       res.on('finish', () => {
         const duration = performance.now() - startTime;
@@ -1132,12 +1149,17 @@ export class ProxyServer {
         this.server = serverInstance;
         this.configureServerOptimizations(serverInstance);
 
+        // Start server health monitoring (Requirement 8)
+        const serverHealthMonitor = getServerHealthMonitor();
+        serverHealthMonitor.startMonitoring(serverInstance);
+
         serverInstance.on('error', (error: Readonly<Error>) => {
           logger.error('Server error', '', {
             error: error.message,
             stack: error.stack,
             nodeVersion: process.version,
           });
+          serverHealthMonitor.recordError(error);
           reject(error);
         });
 
@@ -1326,6 +1348,7 @@ export class ProxyServer {
       cleanupGlobalHTTPClient();
       cleanupGlobalSSEHandler();
       cleanupGlobalPerformanceAlerts();
+      cleanupServerHealthMonitor();
 
       // Clear performance monitoring data
       performanceMonitor.clear();

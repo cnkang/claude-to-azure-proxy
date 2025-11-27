@@ -11,7 +11,7 @@ import React, { memo, useState, useRef, useEffect } from 'react';
 import type { JSX } from 'react';
 import { MessageItem } from './MessageItem.js';
 import type { Message } from '../../types/index.js';
-import './StreamingMessage.css';
+import { cn } from '../ui/Glass.js';
 
 interface StreamingMessageProps {
   readonly message: Partial<Message>;
@@ -119,7 +119,10 @@ const StreamingMessageComponent = ({
   };
 
   return (
-    <div className={`streaming-message ${isTyping ? 'typing' : 'complete'}`}>
+    <div className={cn(
+      "relative transition-all duration-200",
+      isTyping ? "opacity-100" : "opacity-100"
+    )}>
       <MessageItem
         message={displayMessage}
         isStreaming={isTyping}
@@ -128,9 +131,9 @@ const StreamingMessageComponent = ({
 
       {/* Streaming status indicator */}
       {isTyping ? (
-        <div className="streaming-status">
-          <div className="streaming-pulse" />
-          <span className="streaming-text">Streaming...</span>
+        <div className="absolute -bottom-6 left-16 flex items-center gap-2 text-xs text-blue-700 dark:text-blue-200 font-medium">
+          <div className="w-2 h-2 rounded-full bg-blue-500 dark:bg-blue-400 animate-ping" />
+          <span>Streaming...</span>
         </div>
       ) : null}
     </div>

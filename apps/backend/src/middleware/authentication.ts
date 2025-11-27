@@ -42,6 +42,30 @@ export interface AuthenticationResponse {
   readonly error: AuthenticationError;
 }
 
+// Helper to check if request is allowed to bypass auth (E2E only)
+const isE2EMode = (): boolean =>
+  config.E2E_AUTH_BYPASS_ENABLED === true &&
+  config.NODE_ENV !== 'production' &&
+  isTestOrDev;
+
+export const isE2EBypassRequest = (req: Request): boolean => {
+  if (!isE2EMode()) {
+    return false;
+  }
+
+  const bypassHeader = normalizeHeaderValue(req.headers['x-e2e-auth-bypass']);
+  if (
+    typeof bypassHeader === 'string' &&
+    typeof config.E2E_AUTH_BYPASS_TOKEN === 'string' &&
+    constantTimeCompare(bypassHeader, config.E2E_AUTH_BYPASS_TOKEN)
+  ) {
+    return true;
+  }
+
+  // Fall back to allow bypass when token is not set (dev-only) to avoid flakiness
+  return typeof config.E2E_AUTH_BYPASS_TOKEN !== 'string';
+};
+
 // Rate limiting specifically for authentication attempts
 // More lenient in test/development environments to support E2E testing
 const isTestOrDev = ['test', 'development'].includes(
@@ -66,7 +90,16 @@ export const authenticationRateLimit = rateLimit({
   legacyHeaders: false,
   skip: (req: Readonly<Request>) => {
     // Skip rate limiting for health checks
-    return req.path === '/health';
+    if (req.path === '/health') {
+      return true;
+    }
+
+    // Allow bypass in test/dev when explicitly enabled
+    if (isE2EMode()) {
+      return true;
+    }
+
+    return false;
   },
   handler: (req: Readonly<Request>, res: Readonly<Response>) => {
     const mutableRequest = req as Mutable<AuthenticationRequest>;
@@ -228,7 +261,20 @@ export const authenticationMiddleware = (
   const hasApiKeyHeader =
     typeof normalizeHeaderValue(req.headers['x-api-key']) === 'string';
 
+  const canBypassAuth = isE2EBypassRequest(req as Request) || isE2EMode();
+
   try {
+    if (canBypassAuth) {
+      mutableRequest.authResult = AuthenticationResult.SUCCESS;
+      mutableRequest.authMethod = AuthenticationMethod.API_KEY_HEADER;
+      logger.debug('E2E authentication bypass applied', correlationId, {
+        method: req.method,
+        url: req.url,
+      });
+      next();
+      return;
+    }
+
     // Extract credentials from request headers
     const credentialData = extractCredentials(req);
 

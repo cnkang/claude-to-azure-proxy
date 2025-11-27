@@ -88,7 +88,7 @@ export function useSession(): UseSessionReturn {
       }, 100);
 
       if (import.meta.env.DEV) {
-        // console.warn('Session invalidated:', _event.detail);
+        // Session invalidated
       }
     },
     [initializeSession]

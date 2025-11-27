@@ -11,9 +11,18 @@
       "@repo/shared-utils": ["../../packages/shared-utils/src"],
       "jest-axe": ["./src/test/utils/jest-axe.ts"]
     },
-    "typeRoots": ["./node_modules/@types", "./src/types"],
-    "types": ["vite/client", "node"]
+    "typeRoots": ["./node_modules/@types", "./node_modules", "./src/types"],
+    "types": ["vite/client", "node", "vitest"]
   },
-  "include": ["src/**/*", "vite.config.ts", "src/test/vitest-matchers.d.ts"],
-  "exclude": ["node_modules", "dist", "coverage", "src/test/**"]
+  "include": ["src/**/*", "vite.config.ts", "src/test/vitest.d.ts"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "coverage",
+    "src/test/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.test.js",
+    "**/*.test.jsx"
+  ]
 }

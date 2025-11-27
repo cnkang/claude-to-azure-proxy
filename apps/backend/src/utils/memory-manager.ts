@@ -148,28 +148,20 @@ export interface MemoryManagerConfig {
 
 /**
  * Default memory manager configuration.
- * Higher thresholds in test/dev to reduce noise during E2E tests.
+ *
+ * Use a single set of thresholds across environments so tests and runtime
+ * share the same pressure semantics. This keeps memory pressure detection
+ * consistent and avoids test-only behaviour.
  */
-const isTestOrDev =
-  process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development';
-
 const DEFAULT_CONFIG: MemoryManagerConfig = {
   maxSamples: 100,
   sampleInterval: 5000, // 5 seconds
   maxGCEvents: 50,
-  pressureThresholds: isTestOrDev
-    ? {
-        // Higher thresholds for test/dev to reduce noise
-        medium: 85,
-        high: 95,
-        critical: 98,
-      }
-    : {
-        // Production thresholds
-        medium: 70,
-        high: 85,
-        critical: 95,
-      },
+  pressureThresholds: {
+    medium: 70,
+    high: 85,
+    critical: 95,
+  },
   enableGCSuggestions: true,
   enableLeakDetection: true,
 };

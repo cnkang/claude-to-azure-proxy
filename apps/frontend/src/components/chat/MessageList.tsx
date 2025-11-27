@@ -10,13 +10,14 @@ import React, {
   useState,
 } from 'react';
 import type { JSX } from 'react';
+import { useTranslation } from 'react-i18next';
 import { List } from 'react-window';
 import { MessageItem } from './MessageItem.js';
 import { TypingIndicator } from './TypingIndicator.js';
 import { StreamingMessage } from './StreamingMessage.js';
 import { WelcomeMessage } from './WelcomeMessage.js';
 import type { Message } from '../../types/index.js';
-import './MessageList.css';
+import { Glass } from '../ui/Glass.js';
 
 export interface MessageListProps {
   readonly messages: Message[];
@@ -68,7 +69,7 @@ const VirtualizedRow = memo<VirtualizedRowProps>(({ index, style, data }) => {
 
   return (
     <div style={style}>
-      <div className="virtualized-message">
+      <div className="px-4 py-2">
         <MessageItem
           message={message}
           onCopyCode={data.onCopyCode}
@@ -101,6 +102,7 @@ const MessageListComponent = forwardRef<MessageListHandle, MessageListProps>(
     }: MessageListProps,
     ref
   ): JSX.Element => {
+    const { t } = useTranslation();
     const containerRef = useRef<HTMLDivElement>(null);
     const listRef = useRef<List>(null);
     const [autoScroll, setAutoScroll] = useState(true);
@@ -265,7 +267,7 @@ const MessageListComponent = forwardRef<MessageListHandle, MessageListProps>(
 
     return (
       <div
-        className="message-list-container"
+        className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent p-4 pb-20"
         ref={containerRef}
         onScroll={shouldUseVirtualScrolling ? undefined : handleScroll}
       >
@@ -296,7 +298,7 @@ const MessageListComponent = forwardRef<MessageListHandle, MessageListProps>(
               {VirtualizedRow}
             </List>
           ) : (
-            <div className="message-list">
+            <div className="flex flex-col gap-6 max-w-4xl mx-auto">
               {messages.map((message) => (
                 <MessageItem
                   key={message.id}
@@ -312,24 +314,35 @@ const MessageListComponent = forwardRef<MessageListHandle, MessageListProps>(
 
         {/* Task 15.3: Only show streaming message if appropriate */}
         {shouldShowStreaming ? (
-          <StreamingMessage
-            message={streamingMessage}
-            onCopyCode={onCopyCode}
-          />
+          <div className="max-w-4xl mx-auto mt-6">
+            <StreamingMessage
+              message={streamingMessage}
+              onCopyCode={onCopyCode}
+            />
+          </div>
         ) : null}
 
-        {isLoading ? <TypingIndicator /> : null}
+        {isLoading ? (
+          <div className="max-w-4xl mx-auto mt-6">
+            <TypingIndicator />
+          </div>
+        ) : null}
 
         {showScrollButton ? (
-          <button
-            className="scroll-to-bottom"
-            onClick={handleScrollButtonClick}
-            type="button"
-            aria-label="Scroll to bottom"
+          <Glass 
+            intensity="low"
+            className="fixed bottom-24 right-8 z-20 rounded-full cursor-pointer hover:scale-110 transition-transform duration-200"
           >
-            <span className="scroll-icon">↓</span>
-            <span className="scroll-text">回到底部</span>
-          </button>
+            <button
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200"
+              onClick={handleScrollButtonClick}
+              type="button"
+              aria-label={t('chat.scrollToBottom')}
+            >
+              <span className="text-lg">↓</span>
+              <span>{t('chat.scrollToBottom')}</span>
+            </button>
+          </Glass>
         ) : null}
       </div>
     );

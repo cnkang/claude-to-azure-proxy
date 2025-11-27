@@ -15,6 +15,8 @@ import { ValidationError } from '../errors/index.js';
 import { logger } from '../middleware/logging.js';
 import type { RequestWithCorrelationId } from '../types/index.js';
 import { isValidSessionId } from '../utils/validation.js';
+import config from '../config/index.js';
+import { isE2EBypassRequest } from '../middleware/authentication.js';
 
 // Session storage (in-memory for now, could be Redis in production)
 interface SessionData {
@@ -328,9 +330,33 @@ export const validateSessionMiddleware = async (
   next: () => void
 ): Promise<void> => {
   const correlationId = (req as RequestWithCorrelationId).correlationId;
-  const sessionId = req.headers['x-session-id'] as string;
+  const sessionIdHeader = req.headers['x-session-id'];
+  const sessionId = typeof sessionIdHeader === 'string' ? sessionIdHeader : '';
+  const bypassHeader = req.headers['x-e2e-auth-bypass'];
+  const bypassToken = config.E2E_AUTH_BYPASS_TOKEN;
+  const e2eSessionIdFromEnv =
+    process.env.E2E_SESSION_ID ?? `session_e2e_${Date.now()}`;
+  const isBypassMode =
+    config.NODE_ENV !== 'production' &&
+    config.E2E_AUTH_BYPASS_ENABLED === true &&
+    (typeof bypassHeader === 'string'
+      ? typeof bypassToken === 'string'
+        ? bypassHeader === bypassToken
+        : true
+      : false ||
+        isE2EBypassRequest(
+          req as unknown as Request & { headers: Record<string, string> }
+        ));
 
-  if (!sessionId) {
+  // In E2E bypass mode, auto-generate a session ID if none or invalid is provided
+  const effectiveSessionId =
+    sessionId && isValidSessionId(sessionId)
+      ? sessionId
+      : isBypassMode
+        ? e2eSessionIdFromEnv
+        : `session_${Date.now()}_${uuidv4()}`;
+
+  if (!sessionId && !isBypassMode) {
     res.status(400).json({
       error: {
         type: 'missing_session',
@@ -342,7 +368,7 @@ export const validateSessionMiddleware = async (
   }
 
   // Validate session ID format
-  if (!isValidSessionId(sessionId)) {
+  if (!isBypassMode && !isValidSessionId(sessionId)) {
     res.status(400).json({
       error: {
         type: 'invalid_session_format',
@@ -357,26 +383,33 @@ export const validateSessionMiddleware = async (
   const fingerprint = generateBrowserFingerprint(req);
 
   // Validate session access or create new session if not exists
-  let session = validateSessionAccess(sessionId, fingerprint, correlationId);
+  let session: SessionData | null = null;
+
+  if (!isBypassMode) {
+    session = validateSessionAccess(effectiveSessionId, fingerprint, correlationId);
+  }
 
   if (!session) {
-    // Auto-create session if it doesn't exist (for frontend-generated session IDs)
-    logger.info(
-      'Auto-creating session for frontend-generated session ID',
-      correlationId,
-      {
-        sessionId,
-      }
-    );
+    // Auto-create session if it doesn't exist
+    if (!isBypassMode) {
+      logger.info(
+        'Auto-creating session for frontend-generated session ID',
+        correlationId,
+        {
+          sessionId: effectiveSessionId,
+          isBypassMode,
+        }
+      );
+    }
 
     const newSession: SessionData = {
-      id: sessionId,
+      id: effectiveSessionId,
       fingerprint,
       createdAt: new Date(),
       lastAccessed: new Date(),
     };
 
-    sessions.set(sessionId, newSession);
+    sessions.set(effectiveSessionId, newSession);
     session = newSession;
   }
 
@@ -385,10 +418,10 @@ export const validateSessionMiddleware = async (
     ...session,
     lastAccessed: new Date(),
   };
-  sessions.set(sessionId, updatedSession);
+  sessions.set(effectiveSessionId, updatedSession);
 
   // Add session info to request for downstream handlers
-  (req as any).sessionId = sessionId;
+  (req as any).sessionId = effectiveSessionId;
   (req as any).sessionData = updatedSession;
 
   next();

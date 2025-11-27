@@ -72,6 +72,7 @@ export class EnhancedErrorHandler {
 
   /**
    * Main error handling middleware with Node.js 24 enhancements
+   * Implements Requirement 8.3: Log errors with correlation IDs and continue serving
    */
   public handleError = async (
     error: Readonly<Error>,
@@ -85,20 +86,26 @@ export class EnhancedErrorHandler {
       // Check memory state during error handling
       const memoryInfo = this.gatherMemoryInfo(req);
 
-      // Log the error with memory context
+      // Log the error with memory context and correlation ID (Requirement 8.3)
       if (this.config.logErrors) {
         this.logErrorWithMemoryContext(error, context, memoryInfo);
       }
 
-      // Check if response was already sent
+      // Check if response was already sent (Requirement 8.2)
       if (res.headersSent) {
+        // Log but don't throw - continue serving requests (Requirement 8.3)
+        logger.warn('Response already sent, cannot send error response', context.correlationId, {
+          url: req.url,
+          method: req.method,
+          errorMessage: error.message,
+        });
         return next(error);
       }
 
       // Handle different error types
       const errorResponse = await this.processError(error, context);
 
-      // Send error response
+      // Send error response (Requirement 8.2 - send once)
       res.status(errorResponse.statusCode).json(errorResponse.body);
 
       // Trigger health monitoring alerts if enabled
@@ -118,6 +125,7 @@ export class EnhancedErrorHandler {
       }
     } catch (handlingError) {
       // Error occurred while handling the original error
+      // Log with correlation ID and continue serving (Requirement 8.3)
       logger.critical(
         'Error handler failed',
         context.correlationId,
@@ -132,16 +140,19 @@ export class EnhancedErrorHandler {
         handlingError as Error
       );
 
-      // Send minimal error response
+      // Send minimal error response without exposing internals (Requirement 8.3)
       if (!res.headersSent) {
         res.status(500).json({
           error: {
             type: 'internal_server_error',
             message: 'An unexpected error occurred',
             correlationId: context.correlationId,
+            timestamp: new Date().toISOString(),
           },
         });
       }
+      
+      // Continue serving requests - don't crash the server (Requirement 8.3)
     }
   };
 

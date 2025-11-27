@@ -57,6 +57,16 @@ export {
   withErrorBoundary,
 } from './error-handler';
 
+// Response guard middleware (Requirement 8.2)
+export { responseGuard } from './response-guard';
+
+// Load shedding middleware (Requirement 8.4)
+export {
+  loadShedding,
+  getActiveRequestCount,
+  resetActiveRequestCount,
+} from './load-shedding';
+
 // Static assets middleware
 export {
   createStaticAssetsMiddleware,

@@ -8,42 +8,13 @@
  */
 
 import type { ModelInfo, ClientConfig } from '../types/index.js';
+import {
+  getAuthHeaders,
+} from '../utils/networkErrorHandler.js';
 
 // API endpoints
 const MODELS_ENDPOINT = '/api/models';
 const CONFIG_ENDPOINT = '/api/config';
-
-const DEFAULT_API_KEY = 'dev-proxy-key-123456789012345678901234';
-
-const resolveApiKey = (): string | undefined => {
-  if (typeof window !== 'undefined') {
-    const e2eKey = (window as Window & { __E2E_PROXY_API_KEY__?: string })
-      .__E2E_PROXY_API_KEY__;
-    if (typeof e2eKey === 'string' && e2eKey.trim().length > 0) {
-      return e2eKey.trim();
-    }
-  }
-
-  const envKey = (import.meta as unknown as { env?: Record<string, unknown> })
-    .env?.VITE_PROXY_API_KEY;
-  if (typeof envKey === 'string' && envKey.trim().length > 0) {
-    return envKey.trim();
-  }
-
-  return DEFAULT_API_KEY;
-};
-
-const getAuthHeaders = (): Record<string, string> => {
-  const apiKey = resolveApiKey();
-  if (!apiKey) {
-    return {};
-  }
-
-  return {
-    Authorization: `Bearer ${apiKey}`,
-    'x-api-key': apiKey,
-  };
-};
 
 /**
  * Model categories for UI organization
@@ -205,7 +176,7 @@ export class ModelService {
       return models;
     } catch (_error) {
       if (import.meta.env.DEV) {
-        // console.error('Failed to fetch models:', error);
+        // Failed to fetch models
       }
 
       // Return cached data if available, otherwise return default models
@@ -256,7 +227,7 @@ export class ModelService {
       return config;
     } catch (_error) {
       if (import.meta.env.DEV) {
-        // console.error('Failed to fetch config:', error);
+        // Failed to fetch config
       }
 
       // Return cached data if available, otherwise return default config

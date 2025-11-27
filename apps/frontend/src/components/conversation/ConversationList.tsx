@@ -15,7 +15,7 @@ export interface ConversationListProps {
   readonly compactMode?: boolean;
 }
 
-export function ConversationList({
+const ConversationListComponent = function ConversationList({
   className,
   onConversationSelect,
   showSearch = true,
@@ -30,4 +30,6 @@ export function ConversationList({
       showSearch={showSearch}
     />
   );
-}
+};
+
+export const ConversationList = React.memo(ConversationListComponent);

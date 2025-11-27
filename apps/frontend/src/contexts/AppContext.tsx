@@ -25,6 +25,7 @@ import { useSessionContext } from './SessionContext';
 import { getCrossTabSyncService } from '../services/cross-tab-sync.js';
 import type { SyncEvent } from '../services/cross-tab-sync.js';
 import { getSessionManager } from '../services/session.js';
+import { getConversationStorage } from '../services/storage.js';
 import { frontendLogger } from '../utils/logger.js';
 
 /**
@@ -413,9 +414,6 @@ export function AppProvider({ children }: AppProviderProps): React.JSX.Element {
   useEffect(() => {
     const loadConversations = async (): Promise<void> => {
       try {
-        const { getConversationStorage } = await import(
-          '../services/storage.js'
-        );
         const storage = getConversationStorage();
 
         // Initialize storage
@@ -606,24 +604,20 @@ export function AppProvider({ children }: AppProviderProps): React.JSX.Element {
             });
           } else {
             // Fallback to storage if data is incomplete
-            import('../services/storage.js')
-              .then(({ getConversationStorage }) => {
-                const storage = getConversationStorage();
-                storage
-                  .getConversation(event.conversationId)
-                  .then((conversation) => {
-                    if (conversation) {
-                      dispatch({
-                        type: 'ADD_CONVERSATION',
-                        payload: conversation,
-                      });
-                    }
-                  })
-                  .catch(() => {
-                    // Failed to load conversation - error handled silently
+            const storage = getConversationStorage();
+            storage
+              .getConversation(event.conversationId)
+              .then((conversation) => {
+                if (conversation) {
+                  dispatch({
+                    type: 'ADD_CONVERSATION',
+                    payload: conversation,
                   });
+                }
               })
-              .catch(() => undefined);
+              .catch(() => {
+                // Failed to load conversation - error handled silently
+              });
           }
         }
       }
@@ -717,7 +711,6 @@ export function AppProvider({ children }: AppProviderProps): React.JSX.Element {
     );
 
     try {
-      const { getConversationStorage } = await import('../services/storage.js');
       const storage = getConversationStorage();
       await storage.initialize();
       await storage.storeConversation(normalizedConversation);
@@ -747,14 +740,10 @@ export function AppProvider({ children }: AppProviderProps): React.JSX.Element {
         updatedAt: new Date(),
       };
 
-      import('../services/storage.js')
-        .then(({ getConversationStorage }) => {
-          const storage = getConversationStorage();
-          storage.storeConversation(updatedConversation).catch(() => {
-            // Failed to update conversation in storage - error handled silently
-          });
-        })
-        .catch(() => undefined);
+      const storage = getConversationStorage();
+      storage.storeConversation(updatedConversation).catch(() => {
+        // Failed to update conversation in storage - error handled silently
+      });
 
       // Broadcast to other tabs (Requirement 4.2)
       const syncService = syncServiceRef.current;
@@ -766,14 +755,10 @@ export function AppProvider({ children }: AppProviderProps): React.JSX.Element {
     dispatch({ type: 'DELETE_CONVERSATION', payload: id });
 
     // Delete from storage
-    import('../services/storage.js')
-      .then(({ getConversationStorage }) => {
-        const storage = getConversationStorage();
-        storage.deleteConversation(id).catch(() => {
-          // Failed to delete conversation from storage - error handled silently
-        });
-      })
-      .catch(() => undefined);
+    const storage = getConversationStorage();
+    storage.deleteConversation(id).catch(() => {
+      // Failed to delete conversation from storage - error handled silently
+    });
 
     // Broadcast to other tabs (Requirement 4.2)
     const syncService = syncServiceRef.current;

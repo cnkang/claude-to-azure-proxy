@@ -12,8 +12,9 @@ import type { JSX } from 'react';
 import { useI18n } from '../../contexts/I18nContext.js';
 import { FileUpload } from './FileUpload.js';
 import { frontendLogger } from '../../utils/logger.js';
+import { Glass } from '../ui/Glass.js';
+import { cn } from '../ui/Glass.js';
 // import type { FileInfo } from '../../types/index';
-import './MessageInput.css';
 
 interface MessageInputProps {
   readonly onSendMessage: (
@@ -214,30 +215,33 @@ const MessageInputComponent = ({
   const isNearLimit = characterCount > maxLength * 0.8;
 
   return (
-    <div className="message-input-container">
+    <div className="w-full max-w-4xl mx-auto px-4 pb-4">
       {/* Attached Files */}
       {attachedFiles.length > 0 && (
-        <div className="attached-files">
-          <div className="attached-files-header">
-            <span className="attached-files-title">
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
               {t('chat.attachedFiles', { count: attachedFiles.length })}
             </span>
           </div>
 
-          <div className="attached-files-list">
+          <div className="flex flex-wrap gap-2">
             {attachedFiles.map((file, index) => (
-              <div key={`${file.name}-${index}`} className="attached-file">
-                <div className="file-info">
-                  <span className="file-icon">📎</span>
-                  <span className="file-name">{file.name}</span>
-                  <span className="file-size">
+              <div 
+                key={`${file.name}-${index}`} 
+                className="flex items-center gap-2 px-3 py-1.5 bg-white/10 border border-white/20 rounded-lg text-sm text-gray-700 dark:text-gray-300"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">📎</span>
+                  <span className="truncate max-w-[150px]">{file.name}</span>
+                  <span className="text-xs opacity-70">
                     ({formatFileSize(file.size)})
                   </span>
                 </div>
 
                 <button
                   type="button"
-                  className="remove-file-button"
+                  className="p-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
                   onClick={() => removeAttachedFile(file.name)}
                   aria-label={t('chat.removeFile', { name: file.name })}
                 >
@@ -251,7 +255,7 @@ const MessageInputComponent = ({
 
       {/* File Upload */}
       {showFileUpload && (
-        <div className="file-upload-panel" ref={fileUploadRef}>
+        <div className="mb-4" ref={fileUploadRef}>
           <FileUpload
             acceptedTypes={acceptedFileTypes}
             maxSize={maxFileSize}
@@ -265,25 +269,35 @@ const MessageInputComponent = ({
 
       {/* Error Message */}
       {error !== null && (
-        <div className="input-error" role="alert">
-          <span className="error-icon">⚠️</span>
-          <span className="error-text">{error}</span>
+        <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-200 flex items-center gap-2" role="alert">
+          <span className="text-lg">⚠️</span>
+          <span className="text-sm font-medium">{error}</span>
         </div>
       )}
 
       {/* Input Area */}
-      <div className={`message-input-area ${disabled ? 'disabled' : ''}`}>
-        <div className="input-wrapper">
+      <Glass 
+        intensity="medium"
+        border={true}
+        className={cn(
+          "relative rounded-2xl transition-all duration-200",
+          disabled && "opacity-60 cursor-not-allowed"
+        )}
+      >
+        <div className="flex items-end gap-2 p-2">
           {/* File Upload Button */}
           <button
             type="button"
-            className={`file-upload-button ${showFileUpload ? 'active' : ''}`}
+            className={cn(
+              "p-3 rounded-xl hover:bg-white/10 transition-colors text-gray-700 dark:text-gray-300",
+              showFileUpload && "bg-white/10 text-blue-700 dark:text-blue-200"
+            )}
             onClick={toggleFileUpload}
             disabled={disabled}
             aria-label={t('chat.attachFile')}
             title={t('chat.attachFile')}
           >
-            📎
+            <span className="text-xl">📎</span>
           </button>
 
           {/* Message Textarea */}
@@ -294,7 +308,7 @@ const MessageInputComponent = ({
             onKeyDown={handleKeyDown}
             placeholder={placeholder ?? t('chat.inputPlaceholder')}
             disabled={disabled}
-            className="message-textarea"
+            className="flex-1 bg-transparent border-none outline-none resize-none py-3 px-2 max-h-[200px] text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
             rows={1}
             maxLength={maxLength}
             aria-label={t('chat.messageInput')}
@@ -303,34 +317,38 @@ const MessageInputComponent = ({
           {/* Send Button */}
           <button
             type="button"
-            className={`send-button ${canSend ? 'enabled' : 'disabled'}`}
+            className={cn(
+              "p-3 rounded-xl transition-all duration-200",
+              canSend 
+                ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 active:scale-95" 
+                : "bg-gray-200 dark:bg-gray-700 text-gray-700 cursor-not-allowed"
+            )}
             onClick={handleSendMessage}
             disabled={!canSend}
             aria-label={t('chat.sendMessage')}
             title={t('chat.sendMessage')}
           >
-            <span className="send-icon">→</span>
+            <span className="text-xl">→</span>
           </button>
         </div>
 
-        {/* Character Count */}
-        {isNearLimit && (
-          <div className="character-count">
-            <span
-              className={
-                characterCount >= maxLength ? 'over-limit' : 'near-limit'
-              }
-            >
-              {characterCount}/{maxLength}
-            </span>
+        {/* Footer info */}
+        <div className="px-4 pb-2 flex justify-between items-center text-xs text-gray-700 dark:text-gray-300">
+          <div className="flex-1 text-center">
+            {t('chat.keyboardHint')}
           </div>
-        )}
-
-        {/* Keyboard Hint */}
-        <div className="keyboard-hint">
-          <span className="hint-text">{t('chat.keyboardHint')}</span>
+          
+          {/* Character Count */}
+          {isNearLimit && (
+            <div className={cn(
+              "font-mono",
+              characterCount >= maxLength ? "text-red-700" : "text-yellow-700"
+            )}>
+              {characterCount}/{maxLength}
+            </div>
+          )}
         </div>
-      </div>
+      </Glass>
     </div>
   );
 };

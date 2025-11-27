@@ -24,9 +24,13 @@ function ChatPage(): React.JSX.Element {
     activeConversationId,
     conversations,
     createConversation,
+    setActiveConversation,
   } = useConversations();
   const { t } = useI18n();
   const [config, setConfig] = useState<ClientConfig | null>(null);
+  const [isBootstrappingConversation, setIsBootstrappingConversation] =
+    useState(false);
+  const hasBootstrappedRef = React.useRef(false);
 
   // Cache the active conversation to prevent flickering during updates
   // This handles the case where activeConversation becomes null briefly during a sync update
@@ -54,16 +58,42 @@ function ChatPage(): React.JSX.Element {
   const hasNoConversations = conversations.length === 0;
 
   /**
+   * Automatically bootstrap a new conversation when none exist.
+   */
+  useEffect(() => {
+    if (hasBootstrappedRef.current || conversations.length > 0) {
+      return;
+    }
+
+    hasBootstrappedRef.current = true;
+    setIsBootstrappingConversation(true);
+    void createConversation()
+      .then((conversation) => {
+        setActiveConversation(conversation.id);
+      })
+      .catch((_error) => {
+        // If creation fails, allow retry by clearing the flag
+        hasBootstrappedRef.current = false;
+      })
+      .finally(() => {
+        setIsBootstrappingConversation(false);
+      });
+  }, [conversations.length, createConversation, setActiveConversation]);
+
+  /**
    * Load client configuration
    */
   useEffect(() => {
+    if (config) {
+      return;
+    }
+
     const loadConfig = async (): Promise<void> => {
       try {
         const modelService = getModelService();
         const clientConfig = await modelService.fetchConfig();
         setConfig(clientConfig);
       } catch (_error) {
-        // console.error('Failed to load client config:', error);
         // Use default config as fallback
         setConfig({
           maxFileSize: 10 * 1024 * 1024, // 10MB
@@ -87,15 +117,36 @@ function ChatPage(): React.JSX.Element {
       }
     };
 
-    loadConfig();
-  }, []);
+    // Add timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      if (!config) {
+        // If config hasn't loaded after 3 seconds, use default
+        setConfig({
+          maxFileSize: 10 * 1024 * 1024,
+          supportedFileTypes: ['.txt', '.md', '.js', '.ts', '.py', '.java'],
+          availableModels: [],
+          features: {
+            fileUpload: true,
+            imageUpload: false,
+            codeHighlighting: true,
+            streamingResponses: true,
+          },
+          maxConversations: 100,
+          maxMessagesPerConversation: 1000,
+          defaultModel: 'gpt-4',
+          modelCategories: {
+            general: ['gpt-4'],
+            coding: [],
+            reasoning: [],
+          },
+        });
+      }
+    }, 3000);
 
-  /**
-   * Handle starting a new conversation
-   */
-  const handleStartNewConversation = (): void => {
-    createConversation();
-  };
+    loadConfig();
+    
+    return () => clearTimeout(timeoutId);
+  }, [config]);
 
   // Show loading if config is not loaded yet
   if (!config) {
@@ -115,19 +166,11 @@ function ChatPage(): React.JSX.Element {
     <LayoutContainer className="chat-page" maxWidth="full" padding="none">
       {hasActiveConversation && displayConversation !== null ? (
         <ChatInterface conversation={displayConversation} config={config} />
-      ) : hasNoConversations ? (
-        <div className="welcome-screen">
-          <div className="welcome-content">
-            <div className="welcome-icon">🤖</div>
-            <h1 className="welcome-title">{t('welcome.title')}</h1>
-            <p className="welcome-description">{t('welcome.description')}</p>
-            <button
-              type="button"
-              className="welcome-button"
-              onClick={handleStartNewConversation}
-            >
-              {t('welcome.startChat')}
-            </button>
+      ) : isBootstrappingConversation || hasNoConversations ? (
+        <div className="loading-screen">
+          <div className="loading-content">
+            <div className="loading-spinner">🤖</div>
+            <p className="loading-text">{t('common.loading')}</p>
           </div>
         </div>
       ) : (

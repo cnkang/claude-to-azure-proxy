@@ -108,6 +108,7 @@ export interface DeleteResult {
 export class ConversationStorage {
   private static instance: ConversationStorage | null = null;
   private db: IDBDatabase | null = null;
+  private encryptionAvailable = true;
   private encryptionKey: CryptoKey | null = null;
   private keyId: string | null = null;
   private isIndexedDBAvailable = true;
@@ -144,7 +145,12 @@ export class ConversationStorage {
       await this.initializeEncryption();
 
       // Check if IndexedDB is available
-      if (!this.isIndexedDBSupported()) {
+      const forceLocalStorage =
+        typeof window !== 'undefined' &&
+        (window as Window & { __E2E_USE_LOCAL_STORAGE__?: boolean })
+          .__E2E_USE_LOCAL_STORAGE__ === true;
+
+      if (!this.isIndexedDBSupported() || forceLocalStorage) {
         this.isIndexedDBAvailable = false;
         frontendLogger.warn(
           'IndexedDB not available, falling back to localStorage'
@@ -178,9 +184,34 @@ export class ConversationStorage {
   }
 
   /**
+   * Check if WebCrypto encryption is available (requires secure context)
+   */
+  private isEncryptionAvailable(): boolean {
+    try {
+      return (
+        typeof window !== 'undefined' &&
+        Boolean(window.isSecureContext) &&
+        typeof crypto !== 'undefined' &&
+        typeof crypto.subtle !== 'undefined'
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Initialize encryption key
    */
   private async initializeEncryption(): Promise<void> {
+    if (!this.isEncryptionAvailable()) {
+      this.encryptionAvailable = false;
+      this.encryptionKey = null;
+      frontendLogger.warn(
+        'Encryption not available in this context; falling back to plaintext storage for this session'
+      );
+      return;
+    }
+
     try {
       const sessionId = this.sessionManager.getSessionId();
       if (!sessionId) {
@@ -350,8 +381,14 @@ export class ConversationStorage {
    * Encrypt data using Web Crypto API
    */
   private async encryptData(data: string): Promise<EncryptedData> {
-    if (!this.encryptionKey) {
-      throw new Error('Encryption key not initialized');
+    if (!this.encryptionAvailable || !this.encryptionKey) {
+      const encoder = new TextEncoder();
+      return {
+        data: encoder.encode(data).buffer,
+        iv: new ArrayBuffer(0),
+        compressed: false,
+        timestamp: Date.now(),
+      };
     }
 
     try {
@@ -426,8 +463,9 @@ export class ConversationStorage {
    * Decrypt data using Web Crypto API
    */
   private async decryptData(encryptedData: EncryptedData): Promise<string> {
-    if (!this.encryptionKey) {
-      throw new Error('Encryption key not initialized');
+    if (!this.encryptionAvailable || !this.encryptionKey) {
+      const decoder = new TextDecoder();
+      return decoder.decode(encryptedData.data);
     }
 
     try {
@@ -654,7 +692,7 @@ export class ConversationStorage {
           sessionId: conversation.sessionId,
           createdAt: conversation.createdAt.getTime(),
           updatedAt: conversation.updatedAt.getTime(),
-          encryptedData: encryptedConversation,
+          encryptedData: this.serializeEncryptedData(encryptedConversation),
         })
       );
 
@@ -668,7 +706,7 @@ export class ConversationStorage {
             id: message.id,
             conversationId: conversation.id,
             timestamp: message.timestamp.getTime(),
-            encryptedData: encryptedMessage,
+            encryptedData: this.serializeEncryptedData(encryptedMessage),
           })
         );
       }
@@ -1155,7 +1193,7 @@ export class ConversationStorage {
           sessionId: existingRecord.sessionId,
           createdAt: existingRecord.createdAt,
           updatedAt: conversationData.updatedAt,
-          encryptedData: encryptedConversation,
+          encryptedData: this.serializeEncryptedData(encryptedConversation),
         })
       );
 

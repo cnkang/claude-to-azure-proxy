@@ -207,24 +207,7 @@ export default defineConfig(({ mode }) => {
     // CSS optimization
     css: {
       devSourcemap: !isProduction,
-      postcss: {
-        plugins: isProduction
-          ? [
-              autoprefixer(),
-              cssnano({
-                preset: [
-                  'default',
-                  {
-                    discardComments: { removeAll: true },
-                    normalizeWhitespace: true,
-                    reduceIdents: false, // Keep CSS custom properties
-                    zindex: false, // Don't optimize z-index values
-                  },
-                ],
-              }),
-            ]
-          : [],
-      },
+      postcss: './postcss.config.js', // Use PostCSS config file
     },
     // Experimental features for better performance
     experimental: {

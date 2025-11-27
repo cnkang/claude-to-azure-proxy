@@ -108,7 +108,7 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
 
 const DEFAULT_API_KEY = 'dev-proxy-key-123456789012345678901234';
 
-const resolveApiKey = (): string | undefined => {
+export const resolveApiKey = (): string | undefined => {
   if (typeof window !== 'undefined') {
     const e2eKey = (window as Window & { __E2E_PROXY_API_KEY__?: string })
       .__E2E_PROXY_API_KEY__;
@@ -124,6 +124,18 @@ const resolveApiKey = (): string | undefined => {
   }
 
   return DEFAULT_API_KEY;
+};
+
+export const getAuthHeaders = (): Record<string, string> => {
+  const apiKey = resolveApiKey();
+  if (!apiKey) {
+    return {};
+  }
+
+  return {
+    Authorization: `Bearer ${apiKey}`,
+    'x-api-key': apiKey,
+  };
 };
 
 /**
@@ -330,13 +342,7 @@ export class NetworkErrorHandler {
     } = {}
   ): Promise<Response> {
     const { timeout = 30000, ...retryOptions } = options;
-    const apiKey = resolveApiKey();
-    const authHeaders: Record<string, string> = apiKey
-      ? {
-          Authorization: `Bearer ${apiKey}`,
-          'x-api-key': apiKey,
-        }
-      : {};
+    const authHeaders = getAuthHeaders();
 
     return this.executeWithRetry(async () => {
       // Create abort controller for timeout

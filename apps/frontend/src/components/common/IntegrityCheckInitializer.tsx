@@ -13,7 +13,7 @@ import { getDataIntegrityService } from '../../services/data-integrity.js';
 import type { IntegrityReport } from '../../services/data-integrity';
 import { useNotifications } from './NotificationSystem';
 import { frontendLogger } from '../../utils/logger';
-import './IntegrityCheckDialog.css';
+import { Glass } from '../ui/Glass.js';
 
 /**
  * Dialog component for integrity check results
@@ -31,13 +31,13 @@ function IntegrityCheckDialog({
 }: IntegrityCheckDialogProps): React.JSX.Element {
   return (
     <div
-      className="integrity-check-dialog"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200"
       role="dialog"
       aria-labelledby="integrity-dialog-title"
       aria-describedby="integrity-dialog-description"
     >
       <div
-        className="integrity-dialog-overlay"
+        className="absolute inset-0"
         onClick={onDismiss}
         onKeyDown={(e) => {
           if (e.key === 'Escape') {
@@ -48,17 +48,26 @@ function IntegrityCheckDialog({
         tabIndex={0}
         aria-label="Close dialog"
       />
-      <div className="integrity-dialog-content">
-        <h2 id="integrity-dialog-title">Data Integrity Check</h2>
-        <div id="integrity-dialog-description">
-          <p>
+      <Glass 
+        className="relative w-full max-w-md flex flex-col shadow-2xl animate-in zoom-in-95 duration-200" 
+        intensity="high"
+        border={true}
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 backdrop-blur-md">
+          <h2 id="integrity-dialog-title" className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Data Integrity Check
+          </h2>
+        </div>
+
+        <div id="integrity-dialog-description" className="p-6 space-y-4 bg-white dark:bg-gray-900">
+          <p className="text-sm text-gray-700 dark:text-gray-300">
             Found{' '}
             {report.orphanedMessages +
               report.corruptedConversations +
               report.missingReferences}{' '}
             issues in your conversation data:
           </p>
-          <ul>
+          <ul className="list-disc list-inside space-y-1 text-sm text-gray-700 dark:text-gray-300">
             {report.orphanedMessages > 0 && (
               <li>{report.orphanedMessages} orphaned messages</li>
             )}
@@ -69,27 +78,30 @@ function IntegrityCheckDialog({
               <li>{report.missingReferences} missing references</li>
             )}
           </ul>
-          <p>Would you like to automatically repair these issues?</p>
+          <p className="text-sm text-gray-700 dark:text-gray-300">
+            Would you like to automatically repair these issues?
+          </p>
         </div>
-        <div className="integrity-dialog-actions">
-          <button
-            onClick={onRepair}
-            className="integrity-dialog-button primary"
-            aria-label="Repair data issues"
-            data-testid="integrity-repair-button"
-          >
-            Repair Now
-          </button>
+
+        <div className="flex items-center justify-end gap-3 p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
           <button
             onClick={onDismiss}
-            className="integrity-dialog-button"
+            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             aria-label="Dismiss dialog"
             data-testid="integrity-dismiss-button"
           >
             Dismiss
           </button>
+          <button
+            onClick={onRepair}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+            aria-label="Repair data issues"
+            data-testid="integrity-repair-button"
+          >
+            Repair Now
+          </button>
         </div>
-      </div>
+      </Glass>
     </div>
   );
 }

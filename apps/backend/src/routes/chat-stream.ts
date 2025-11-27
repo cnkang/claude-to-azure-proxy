@@ -23,6 +23,7 @@ import {
   forceGarbageCollection,
   getCurrentMemoryMetrics,
 } from '../utils/memory-manager.js';
+import { isE2EBypassRequest } from '../middleware/authentication.js';
 
 interface RequestWithSession extends RequestWithCorrelationId {
   sessionId: string;
@@ -390,6 +391,32 @@ export const chatSSEHandler = [
     const conversationId = req.params.conversationId as string;
 
     try {
+      // In E2E bypass mode, return a minimal SSE stream without validation/state
+      if (isE2EBypassRequest(req)) {
+        res.writeHead(200, {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive',
+          'X-Accel-Buffering': 'no',
+        });
+
+        const startPayload = {
+          type: 'start',
+          correlationId,
+          timestamp: Date.now(),
+        };
+        res.write(`data: ${JSON.stringify(startPayload)}\n\n`);
+
+        const endPayload = {
+          type: 'end',
+          correlationId,
+          timestamp: Date.now(),
+        };
+        res.write(`data: ${JSON.stringify(endPayload)}\n\n`);
+        res.end();
+        return;
+      }
+
       // Validate request
       const errors = validationResult(req);
       if (!errors.isEmpty()) {

@@ -167,6 +167,18 @@ export interface Config {
   ENABLE_CONTENT_SECURITY_VALIDATION: boolean;
 
   /**
+   * Enable authentication bypass for automated E2E tests.
+   * When true, requests with the correct bypass header token skip auth.
+   */
+  E2E_AUTH_BYPASS_ENABLED: boolean;
+
+  /**
+   * Shared secret token for the E2E auth bypass header.
+   * Only used when E2E_AUTH_BYPASS_ENABLED is true.
+   */
+  E2E_AUTH_BYPASS_TOKEN?: string;
+
+  /**
    * Server port number for HTTP connections.
    *
    * The port on which the proxy server will listen for incoming requests.
@@ -403,6 +415,22 @@ const configSchema = Joi.object<Config>({
     .description(
       'Enable content security validation (disable for code review scenarios)'
     ),
+  // E2E authentication bypass (guarded by shared secret header)
+  E2E_AUTH_BYPASS_ENABLED: Joi.boolean()
+    .default(false)
+    .description('Enable authentication bypass for E2E tests'),
+  E2E_AUTH_BYPASS_TOKEN: Joi.string()
+    .min(8)
+    .max(256)
+    .allow('')
+    .optional()
+    .when('E2E_AUTH_BYPASS_ENABLED', {
+      is: true,
+      then: Joi.string().min(8).max(256).required(),
+    })
+    .description(
+      'Secret token required in x-e2e-auth-bypass header when bypass is enabled'
+    ),
 
   // Optional port with default value and range validation
   PORT: Joi.number()
@@ -530,6 +558,8 @@ function createConfig(): Readonly<Config> {
     DEFAULT_REASONING_EFFORT: process.env.DEFAULT_REASONING_EFFORT,
     ENABLE_CONTENT_SECURITY_VALIDATION:
       process.env.ENABLE_CONTENT_SECURITY_VALIDATION,
+    E2E_AUTH_BYPASS_ENABLED: process.env.E2E_AUTH_BYPASS_ENABLED,
+    E2E_AUTH_BYPASS_TOKEN: process.env.E2E_AUTH_BYPASS_TOKEN,
     PORT: process.env.PORT,
     NODE_ENV: process.env.NODE_ENV,
     AWS_BEDROCK_API_KEY: process.env.AWS_BEDROCK_API_KEY,
@@ -596,6 +626,8 @@ function createConfig(): Readonly<Config> {
       '  - AZURE_OPENAI_MAX_RETRIES: Max retry attempts (0-10, default: 3)',
       '  - DEFAULT_REASONING_EFFORT: Default reasoning effort (minimal|low|medium|high, default: medium)',
       '  - ENABLE_CONTENT_SECURITY_VALIDATION: Enable content security validation (true|false, default: true)',
+      '  - E2E_AUTH_BYPASS_ENABLED: Enable E2E auth bypass (true|false, default: false)',
+      '  - E2E_AUTH_BYPASS_TOKEN: Secret token for E2E auth bypass (required when bypass is enabled)',
       '  - PORT: Server port number (1024-65535, default: 8080)',
       '  - NODE_ENV: Node.js environment (development|production|test, default: production)',
       '  - AWS_BEDROCK_API_KEY: AWS Bedrock API key (optional, 16-256 characters)',
@@ -632,6 +664,18 @@ function createConfig(): Readonly<Config> {
   assertIsConfig(validatedValueRaw);
   const validatedValue: Config = validatedValueRaw;
 
+  // Disallow E2E bypass in production for safety
+  if (
+    validatedValue.NODE_ENV === 'production' &&
+    validatedValue.E2E_AUTH_BYPASS_ENABLED === true
+  ) {
+    throw new ConfigurationError(
+      'E2E authentication bypass cannot be enabled in production',
+      'config-validation',
+      'configuration_validation'
+    );
+  }
+
   // Freeze configuration to prevent runtime modifications
   return Object.freeze(validatedValue);
 }
@@ -645,6 +689,8 @@ export interface SanitizedConfig {
   readonly AZURE_OPENAI_MAX_RETRIES: number;
   readonly DEFAULT_REASONING_EFFORT: 'minimal' | 'low' | 'medium' | 'high';
   readonly ENABLE_CONTENT_SECURITY_VALIDATION: boolean;
+  readonly E2E_AUTH_BYPASS_ENABLED: boolean;
+  readonly E2E_AUTH_BYPASS_TOKEN?: '[REDACTED]';
   readonly PORT: number;
   readonly NODE_ENV: 'development' | 'production' | 'test';
   readonly PROXY_API_KEY: '[REDACTED]';
@@ -743,6 +789,24 @@ function assertIsConfig(value: unknown): asserts value is Config {
   if (typeof candidate.ENABLE_CONTENT_SECURITY_VALIDATION !== 'boolean') {
     throw new Error(
       'Configuration key ENABLE_CONTENT_SECURITY_VALIDATION is missing or not a boolean'
+    );
+  }
+
+  if (typeof candidate.E2E_AUTH_BYPASS_ENABLED !== 'boolean') {
+    throw new Error(
+      'Configuration key E2E_AUTH_BYPASS_ENABLED is missing or not a boolean'
+    );
+  }
+
+  if (
+    candidate.E2E_AUTH_BYPASS_TOKEN !== undefined &&
+    candidate.E2E_AUTH_BYPASS_TOKEN !== null &&
+    typeof candidate.E2E_AUTH_BYPASS_TOKEN !== 'string'
+  ) {
+    throw new ConfigurationError(
+      'Configuration key E2E_AUTH_BYPASS_TOKEN must be a string when provided',
+      'config-validation',
+      'configuration_validation'
     );
   }
 
@@ -881,6 +945,9 @@ function sanitizeConfig(value: Readonly<Config>): SanitizedConfig {
     DEFAULT_REASONING_EFFORT: value.DEFAULT_REASONING_EFFORT,
     ENABLE_CONTENT_SECURITY_VALIDATION:
       value.ENABLE_CONTENT_SECURITY_VALIDATION,
+    E2E_AUTH_BYPASS_ENABLED: value.E2E_AUTH_BYPASS_ENABLED,
+    E2E_AUTH_BYPASS_TOKEN:
+      value.E2E_AUTH_BYPASS_TOKEN !== undefined ? '[REDACTED]' : undefined,
     PORT: value.PORT,
     NODE_ENV: value.NODE_ENV,
     PROXY_API_KEY: '[REDACTED]',

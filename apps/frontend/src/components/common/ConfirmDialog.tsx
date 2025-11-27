@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import './ConfirmDialog.css';
+import { createPortal } from 'react-dom';
+import { Glass, cn } from '../ui/Glass.js';
 
 export interface ConfirmDialogProps {
   readonly isOpen: boolean;
@@ -81,33 +82,38 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
     return null;
   }
 
-  return (
-    <div className="confirm-dialog-overlay" role="presentation">
-      <div
+  const dialogContent = (
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200" 
+      role="presentation"
+    >
+      <Glass
         ref={dialogRef}
-        className="confirm-dialog"
+        className="w-full max-w-md flex flex-col shadow-2xl animate-in zoom-in-95 duration-200"
+        intensity="high"
+        border={true}
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
         aria-describedby="confirm-dialog-message"
         data-testid="confirm-dialog"
       >
-        <div className="confirm-dialog-header">
-          <h2 id="confirm-dialog-title" className="confirm-dialog-title">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 backdrop-blur-md">
+          <h2 id="confirm-dialog-title" className="text-lg font-semibold text-gray-900 dark:text-gray-100">
             {title}
           </h2>
         </div>
 
-        <div className="confirm-dialog-body">
-          <p id="confirm-dialog-message" className="confirm-dialog-message">
+        <div className="flex-1 p-6 bg-white dark:bg-gray-900">
+          <p id="confirm-dialog-message" className="text-sm text-gray-700 dark:text-gray-300">
             {message}
           </p>
         </div>
 
-        <div className="confirm-dialog-footer">
+        <div className="flex items-center justify-end gap-3 p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
           <button
             type="button"
-            className="confirm-dialog-button cancel"
+            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             onClick={onCancel}
             aria-label={cancelLabel}
             data-testid="cancel-button"
@@ -117,7 +123,12 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           <button
             ref={confirmButtonRef}
             type="button"
-            className={`confirm-dialog-button confirm ${variant}`}
+            className={cn(
+              "px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors",
+              variant === 'danger' 
+                ? "bg-red-600 hover:bg-red-700" 
+                : "bg-blue-600 hover:bg-blue-700"
+            )}
             onClick={onConfirm}
             aria-label={confirmLabel}
             data-testid="confirm-button"
@@ -125,7 +136,10 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             {confirmLabel}
           </button>
         </div>
-      </div>
+      </Glass>
     </div>
   );
+
+  // Render dialog at document root using Portal to avoid z-index stacking context issues
+  return createPortal(dialogContent, document.body);
 };

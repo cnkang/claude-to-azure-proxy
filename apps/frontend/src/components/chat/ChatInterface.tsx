@@ -9,25 +9,25 @@ import { logger } from '../../utils/logger.js';
  */
 
 import React, { memo, useCallback, useState, useRef, useEffect } from 'react';
-import { useI18n } from '../../contexts/I18nContext';
-import { useConversations } from '../../hooks/useConversations';
+import { useI18n } from '../../contexts/I18nContext.js';
+import { useConversations } from '../../hooks/useConversations.js';
 import {
   getChatService,
   chatUtils,
   type SSEConnectionState,
-} from '../../services/chat';
-import { OptimizedMessageList } from './OptimizedMessageList';
-import { MessageInput } from './MessageInput';
-import { TypingIndicator } from './TypingIndicator';
-import { useScreenReaderAnnouncer, KeyboardNavigation } from '../accessibility';
-import { frontendLogger } from '../../utils/logger';
+} from '../../services/chat.js';
+import { OptimizedMessageList } from './OptimizedMessageList.js';
+import { MessageInput } from './MessageInput.js';
+import { TypingIndicator } from './TypingIndicator.js';
+import { useScreenReaderAnnouncer, KeyboardNavigation } from '../accessibility/index.js';
+import { frontendLogger } from '../../utils/logger.js';
 import type {
   Conversation,
   Message,
   FileInfo,
   ClientConfig,
-} from '../../types/index';
-import './ChatInterface.css';
+} from '../../types/index.js';
+import { Glass, cn } from '../ui/Glass.js';
 
 interface ChatInterfaceProps {
   readonly conversation: Conversation;
@@ -677,27 +677,29 @@ export const ChatInterface = memo<ChatInterfaceProps>(
         onEscape={() => {
           // Handle escape key - could close modals, clear input, etc.
         }}
-        className="chat-interface"
+        className="h-full flex flex-col"
       >
         <div
-          className="chat-interface-content"
+          className="flex-1 flex flex-col h-full overflow-hidden relative"
           role="main"
           aria-label={t('accessibility.chatInterface')}
         >
           {/* Connection Error Banner */}
           {connectionError !== null ? (
             <div
-              className="connection-error"
+              className="bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800 p-3 flex items-center justify-between text-sm text-red-700 dark:text-red-200"
               role="alert"
               aria-live="assertive"
             >
-              <span className="error-icon" aria-hidden="true">
-                ⚠️
-              </span>
-              <span className="error-message">{connectionError}</span>
+              <div className="flex items-center gap-2">
+                <span aria-hidden="true">
+                  ⚠️
+                </span>
+                <span>{connectionError}</span>
+              </div>
               <button
                 type="button"
-                className="retry-button"
+                className="px-3 py-1 bg-red-100 dark:bg-red-800/30 hover:bg-red-200 dark:hover:bg-red-800/50 rounded text-xs font-medium transition-colors"
                 onClick={(): void => {
                   setConnectionError(null);
                   sseConnectionRef.current.connect();
@@ -711,21 +713,20 @@ export const ChatInterface = memo<ChatInterfaceProps>(
           ) : null}
 
           {/* Chat Header */}
-          <header className="chat-header" role="banner">
-            <div className="conversation-info">
-              <h2 className="conversation-title" id="conversation-title">
+          <Glass intensity="low" border={true} className="flex-none p-4 border-b border-gray-200 dark:border-gray-800 z-10" role="banner">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate" id="conversation-title">
                 {conversation.title}
               </h2>
               <div
-                className="conversation-meta"
+                className="flex items-center gap-3 text-xs text-gray-700 dark:text-gray-300"
                 role="status"
                 aria-live="polite"
               >
-                <span className="model-badge">
+                <span className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full font-medium">
                   {conversation.selectedModel}
                 </span>
                 <span
-                  className="message-count"
                   aria-label={t('chat.messageCount', {
                     count: conversation.messages.length,
                   })}
@@ -736,7 +737,12 @@ export const ChatInterface = memo<ChatInterfaceProps>(
                 </span>
                 {conversation.contextUsage ? (
                   <span
-                    className="context-usage"
+                    className={cn(
+                      "font-mono",
+                      (conversation.contextUsage.currentTokens / conversation.contextUsage.maxTokens) > 0.8 
+                        ? "text-amber-600 dark:text-amber-400" 
+                        : "text-gray-700 dark:text-gray-300"
+                    )}
                     aria-label={t('context.usage.tooltip', {
                       current: conversation.contextUsage.currentTokens,
                       max: conversation.contextUsage.maxTokens,
@@ -757,18 +763,18 @@ export const ChatInterface = memo<ChatInterfaceProps>(
                 ) : null}
               </div>
             </div>
-          </header>
+          </Glass>
 
           {/* Keyword Navigation Controls (Task 6.4) */}
           {highlightKeywords &&
             highlightKeywords.length > 0 &&
             totalOccurrences > 0 && (
               <div
-                className="keyword-navigation"
+                className="absolute top-20 right-4 z-20 flex items-center gap-2 bg-white dark:bg-gray-800 shadow-lg rounded-full px-3 py-1.5 border border-gray-200 dark:border-gray-700"
                 role="toolbar"
                 aria-label={t('chat.keywordNavigation')}
               >
-                <span className="occurrence-counter" aria-live="polite">
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-300 mr-2" aria-live="polite">
                   {t('chat.occurrenceCounter', {
                     current: currentOccurrenceIndex,
                     total: totalOccurrences,
@@ -776,7 +782,7 @@ export const ChatInterface = memo<ChatInterfaceProps>(
                 </span>
                 <button
                   type="button"
-                  className="nav-button nav-previous"
+                  className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-700 dark:text-gray-300 disabled:opacity-30"
                   onClick={() => navigateToOccurrence('previous')}
                   aria-label={t('chat.previousOccurrence')}
                   disabled={totalOccurrences === 0}
@@ -785,7 +791,7 @@ export const ChatInterface = memo<ChatInterfaceProps>(
                 </button>
                 <button
                   type="button"
-                  className="nav-button nav-next"
+                  className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-700 dark:text-gray-300 disabled:opacity-30"
                   onClick={() => navigateToOccurrence('next')}
                   aria-label={t('chat.nextOccurrence')}
                   disabled={totalOccurrences === 0}
@@ -798,7 +804,7 @@ export const ChatInterface = memo<ChatInterfaceProps>(
           {/* Message List */}
           <section
             ref={messagesContainerRef}
-            className="chat-messages"
+            className="flex-1 overflow-y-auto min-h-0 relative"
             role="log"
             aria-live="polite"
             aria-atomic="false"
@@ -817,10 +823,10 @@ export const ChatInterface = memo<ChatInterfaceProps>(
               autoScroll={true}
               modelName={conversation.selectedModel}
               suggestions={[
-                '介绍一下你自己',
-                '帮我写一段代码',
-                '翻译一段文本',
-                '解释一个概念',
+                t('welcome.suggestions.introduceYourself'),
+                t('welcome.suggestions.writeCode'),
+                t('welcome.suggestions.translateText'),
+                t('welcome.suggestions.explainConcept'),
               ]}
               onSuggestionClick={handleSendMessage}
               highlightKeywords={highlightKeywords}
@@ -829,7 +835,7 @@ export const ChatInterface = memo<ChatInterfaceProps>(
 
           {/* Loading Indicator */}
           {isLoading && !streamingMessage ? (
-            <div className="chat-loading" role="status" aria-live="polite">
+            <div className="flex justify-center p-2" role="status" aria-live="polite">
               <TypingIndicator />
               <span className="sr-only">{t('chat.aiTyping')}</span>
             </div>
@@ -838,7 +844,7 @@ export const ChatInterface = memo<ChatInterfaceProps>(
           {/* Message Input */}
           <section
             ref={inputAreaRef}
-            className="chat-input"
+            className="flex-none p-4 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm border-t border-gray-200 dark:border-gray-800"
             role="form"
             aria-label={t('chat.messageInput')}
           >

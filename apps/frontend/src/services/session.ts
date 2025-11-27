@@ -165,7 +165,7 @@ export class SessionManager {
     } catch (_error) {
       // Log error in development but continue with new session
       if (import.meta.env.DEV) {
-        // console.warn('Failed to restore session from storage:', error);
+        // Failed to restore session from storage
       }
     }
 
@@ -289,7 +289,7 @@ export class SessionManager {
       }
     } catch (_error) {
       if (import.meta.env.DEV) {
-        // console.warn('Failed to load preferences:', error);
+        // Failed to load preferences
       }
     }
 
@@ -320,7 +320,7 @@ export class SessionManager {
       );
     } catch (_error) {
       if (import.meta.env.DEV) {
-        // console.error('Failed to persist session:', error);
+        // Failed to persist session
       }
     }
   }
@@ -340,7 +340,7 @@ export class SessionManager {
       );
     } catch (_error) {
       if (import.meta.env.DEV) {
-        // console.error('Failed to persist preferences:', error);
+        // Failed to persist preferences
       }
     }
   }
@@ -388,7 +388,7 @@ export class SessionManager {
       );
     } catch (_error) {
       if (import.meta.env.DEV) {
-        // console.error('Session validation failed:', error);
+        // Session validation failed
       }
       this.invalidateSession();
     }
@@ -420,7 +420,7 @@ export class SessionManager {
       localStorage.removeItem(SHARED_SESSION_VALIDATION_KEY);
     } catch (_error) {
       if (import.meta.env.DEV) {
-        // console.error('Failed to clear session storage:', error);
+        // Failed to clear session storage
       }
     }
   }
@@ -604,7 +604,7 @@ export const sessionUtils = {
       keysToRemove.forEach((key) => localStorage.removeItem(key));
     } catch (_error) {
       if (import.meta.env.DEV) {
-        // console.error('Failed to clear session data:', error);
+        // Failed to clear session data
       }
     }
   },

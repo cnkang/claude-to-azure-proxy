@@ -49,14 +49,14 @@
   /* Border colors with subtle gradients */
   --color-border: #e5e7eb;
   --color-border-secondary: #d1d5db;
-  --color-border-focus: #3b82f6;
+  --color-border-focus: #1e3a8a; /* AAA compliant focus color */
 
   /* Modern accent colors with AAA compliance */
-  --color-accent: #1e40af; /* 8.6:1 contrast ratio - WCAG AAA compliant */
-  --color-accent-hover: #1e3a8a; /* 10.8:1 contrast ratio - WCAG AAA compliant */
+  --color-accent: #1e3a8a; /* 10.8:1 contrast ratio - WCAG AAA compliant */
+  --color-accent-hover: #1e40af; /* 8.6:1 contrast ratio - WCAG AAA compliant */
   --color-accent-light: #dbeafe;
   --color-accent-text: #ffffff; /* 15.8:1 contrast on accent */
-  --color-accent-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  --color-accent-gradient: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
 
   /* Semantic colors with AAA compliance */
   --color-success: #059669; /* 7.2:1 contrast ratio */
@@ -120,14 +120,14 @@
   /* Border colors with subtle glow */
   --color-border: #334155;
   --color-border-secondary: #1e293b;
-  --color-border-focus: #60a5fa;
+  --color-border-focus: #93c5fd; /* AAA compliant focus color for dark mode */
 
   /* Modern accent colors with AAA compliance */
-  --color-accent: #60a5fa; /* 8.2:1 contrast ratio */
-  --color-accent-hover: #93c5fd; /* 10.5:1 contrast ratio */
+  --color-accent: #93c5fd; /* 10.5:1 contrast ratio - WCAG AAA compliant */
+  --color-accent-hover: #bfdbfe; /* 12.8:1 contrast ratio - WCAG AAA compliant */
   --color-accent-light: #1e3a8a;
   --color-accent-text: #0f172a; /* 15.8:1 contrast on accent */
-  --color-accent-gradient: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+  --color-accent-gradient: linear-gradient(135deg, #93c5fd 0%, #60a5fa 100%);
 
   /* Semantic colors with AAA compliance */
   --color-success: #34d399; /* 7.8:1 contrast ratio */
@@ -210,9 +210,9 @@
 
 /* Theme-specific component styles */
 
-/* Focus indicators with enhanced visibility */
+/* Focus indicators with enhanced visibility - WCAG AAA compliant (3:1 minimum) */
 :focus-visible {
-  outline: 2px solid var(--color-border-focus);
+  outline: 3px solid var(--color-border-focus);
   outline-offset: 2px;
   border-radius: 4px;
 }

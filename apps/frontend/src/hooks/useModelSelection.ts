@@ -174,7 +174,6 @@ export function useModelSelection(
         isLoading: false,
         error: errorMessage,
       }));
-      // console.error('Failed to load models:', err);
     }
   }, [modelService, criteria, enableRecommendations, sessionManager]);
 
@@ -194,14 +193,14 @@ export function useModelSelection(
         const model = state.models.find((item) => item.id === modelId);
         if (!model) {
           if (import.meta.env.DEV) {
-            // console.error(`Model not found: ${modelId}`);
+            // Model not found
           }
           return false;
         }
 
         if (!model.isAvailable) {
           if (import.meta.env.DEV) {
-            // console.error(`Model not available: ${modelId}`);
+            // Model not available
           }
           return false;
         }
@@ -215,7 +214,7 @@ export function useModelSelection(
         return true;
       } catch (_error) {
         if (import.meta.env.DEV) {
-          // console.error('Failed to select model:', caughtError);
+          // Failed to select model
         }
         return false;
       }
@@ -266,7 +265,7 @@ export function useModelSelection(
         };
       } catch (_error) {
         if (import.meta.env.DEV) {
-          // console.error('Model switch validation failed:', _error);
+          // Model switch validation failed
         }
         return {
           compatible: false,
@@ -448,7 +447,7 @@ export function useModelSelection(
         const errorMessage =
           _error instanceof Error ? _error.message : 'Failed to switch model';
         if (import.meta.env.DEV) {
-          // console.error('Model switch failed:', _error);
+          // Model switch failed
         }
         return { success: false, error: errorMessage };
       }

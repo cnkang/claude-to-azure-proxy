@@ -5,7 +5,8 @@ import React, {
   useState,
   useLayoutEffect,
 } from 'react';
-import './DropdownMenu.css';
+import { createPortal } from 'react-dom';
+import { Glass, cn } from '../ui/Glass.js';
 
 export interface DropdownMenuItem {
   readonly id: string;
@@ -182,10 +183,12 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
     return null;
   }
 
-  return (
-    <div
+  const menuContent = (
+    <Glass
       ref={menuRef}
-      className="dropdown-menu"
+      className="min-w-[200px] py-1 z-50 shadow-xl animate-in fade-in zoom-in-95 duration-150"
+      intensity="high"
+      border={true}
       role="menu"
       aria-orientation="vertical"
       tabIndex={-1}
@@ -196,9 +199,14 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
           key={item.id}
           role="menuitem"
           tabIndex={-1}
-          className={`dropdown-menu-item ${item.variant === 'danger' ? 'danger' : ''} ${
-            index === focusedIndex ? 'focused' : ''
-          } ${item.disabled ? 'disabled' : ''}`}
+          className={cn(
+            "flex items-center gap-2 px-3 py-2 text-sm cursor-pointer transition-colors",
+            item.disabled && "opacity-50 cursor-not-allowed",
+            !item.disabled && index === focusedIndex && "bg-blue-50 dark:bg-blue-900/20",
+            !item.disabled && item.variant === 'danger' 
+              ? "text-red-700 dark:text-red-200 hover:bg-red-50 dark:hover:bg-red-900/20"
+              : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+          )}
           data-testid={`dropdown-item-${item.id}`}
           onClick={() => {
             if (!item.disabled) {
@@ -217,11 +225,14 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
           aria-disabled={item.disabled}
         >
           {item.icon && (
-            <span className="dropdown-menu-item-icon">{item.icon}</span>
+            <span className="text-base">{item.icon}</span>
           )}
-          <span className="dropdown-menu-item-label">{item.label}</span>
+          <span className="flex-1">{item.label}</span>
         </div>
       ))}
-    </div>
+    </Glass>
   );
+
+  // Use portal to render dropdown at document.body level to avoid transform context issues
+  return createPortal(menuContent, document.body);
 };

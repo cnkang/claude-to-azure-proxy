@@ -65,7 +65,13 @@ export const createStaticAssetsMiddleware = (
     etag: finalConfig.enableETag,
     lastModified: true,
     immutable: true, // Assets are immutable (have hash in filename)
+    fallthrough: true, // Allow other middleware to handle if file not found
     setHeaders: (res: Response, filePath: string) => {
+      // Check if headers already sent to prevent errors
+      if (res.headersSent) {
+        return;
+      }
+
       // Add security headers
       if (finalConfig.customHeaders) {
         Object.entries(finalConfig.customHeaders).forEach(([key, value]) => {
@@ -114,7 +120,27 @@ export const createStaticAssetsMiddleware = (
     },
   });
 
-  return staticMiddleware;
+  // Wrap the static middleware to prevent calling next() after response is sent
+  return (req: Request, res: Response, next: NextFunction): void => {
+    // Track if response was sent by this middleware
+    const originalEnd = res.end.bind(res);
+    let responseSent = false;
+
+    // Override res.end to track when response is sent
+    res.end = function (this: Response, ...args: unknown[]): Response {
+      responseSent = true;
+      // @ts-expect-error - originalEnd has complex overloads
+      return originalEnd(...args);
+    };
+
+    // Call the static middleware
+    staticMiddleware(req, res, (err?: any) => {
+      // Only call next if response wasn't sent
+      if (!responseSent && !res.headersSent && !res.finished) {
+        next(err);
+      }
+    });
+  };
 };
 
 /**
@@ -138,6 +164,11 @@ export const createSPAFallbackMiddleware = (
     next: NextFunction
   ): Promise<void> => {
     const { correlationId } = req as RequestWithCorrelationId;
+
+    // Avoid double-processing if headers already sent or response finished
+    if (res.headersSent || res.finished) {
+      return;
+    }
 
     try {
       // Skip if this is an API request
@@ -186,6 +217,18 @@ export const createSPAFallbackMiddleware = (
         indexPath,
       });
 
+      // Double-check headers not sent before setting them
+      if (res.headersSent || res.finished) {
+        logger.debug(
+          'Headers already sent, skipping SPA fallback',
+          correlationId,
+          {
+            requestPath: req.path,
+          }
+        );
+        return;
+      }
+
       // Set appropriate headers for HTML
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.setHeader('Cache-Control', 'public, max-age=300, must-revalidate');
@@ -212,14 +255,30 @@ export const createSPAFallbackMiddleware = (
           "form-action 'self'"
       );
 
-      res.sendFile(indexPath);
+      res.sendFile(indexPath, (err) => {
+        if (err) {
+          logger.error('Error sending index.html', correlationId, {
+            error: err instanceof Error ? err.message : 'Unknown error',
+            requestPath: req.path,
+            indexPath,
+            headersSent: res.headersSent,
+          });
+          // Only call next if headers haven't been sent yet
+          if (!res.headersSent && !res.finished) {
+            next(err);
+          }
+        }
+      });
     } catch (error) {
       logger.error('Error serving SPA fallback', correlationId, {
         error: error instanceof Error ? error.message : 'Unknown error',
         requestPath: req.path,
         indexPath,
       });
-      next(error);
+      // Only call next if response not started
+      if (!res.headersSent && !res.finished) {
+        next(error);
+      }
     }
   };
 };
@@ -235,6 +294,11 @@ export const createSPAFallbackMiddleware = (
 export const createDevelopmentProxyMiddleware = (): express.RequestHandler => {
   return (req: Request, res: Response, next: NextFunction): void => {
     const { correlationId } = req as RequestWithCorrelationId;
+
+    if (res.headersSent) {
+      next();
+      return;
+    }
 
     // Only apply in development mode
     if (process.env.NODE_ENV !== 'development') {

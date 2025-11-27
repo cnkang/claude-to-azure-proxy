@@ -16,7 +16,8 @@ import {
   type SecurityScanResult,
 } from '../../utils/security.js';
 import { frontendLogger } from '../../utils/logger.js';
-import './FileUpload.css';
+import { Glass } from '../ui/Glass.js';
+import { cn } from '../ui/Glass.js';
 
 interface FileUploadProps {
   readonly acceptedTypes: string[];
@@ -458,7 +459,7 @@ const FileUploadComponent = ({
   }, []);
 
   return (
-    <div className="file-upload-container">
+    <div className="w-full">
       {/* Hidden file input */}
       <input
         ref={fileInputRef}
@@ -466,13 +467,21 @@ const FileUploadComponent = ({
         multiple
         accept={acceptedTypes.join(',')}
         onChange={handleFileInputChange}
-        className="file-input-hidden"
+        className="hidden"
         disabled={disabled}
       />
 
       {/* Drop zone */}
-      <div
-        className={`file-drop-zone ${isDragOver ? 'drag-over' : ''} ${disabled ? 'disabled' : ''}`}
+      <Glass
+        intensity="low"
+        border={true}
+        className={cn(
+          "relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer",
+          isDragOver 
+            ? "border-blue-500 bg-blue-50/20 dark:bg-blue-900/20 scale-[1.02]" 
+            : "border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 hover:bg-white/5 dark:hover:bg-white/5",
+          disabled && "opacity-50 cursor-not-allowed hover:border-gray-300 dark:hover:border-gray-600 hover:bg-transparent"
+        )}
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
@@ -481,23 +490,23 @@ const FileUploadComponent = ({
         role="button"
         tabIndex={disabled ? -1 : 0}
         aria-label={t('fileUpload.dropZoneLabel')}
-        onKeyDown={(e) => {
+        onKeyDown={(e: React.KeyboardEvent) => {
           if ((e.key === 'Enter' || e.key === ' ') && !disabled) {
             e.preventDefault();
             openFileDialog();
           }
         }}
       >
-        <div className="drop-zone-content">
-          <div className="drop-zone-icon">{isDragOver ? '📁' : '📎'}</div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="text-4xl">{isDragOver ? '📁' : '📎'}</div>
 
-          <div className="drop-zone-text">
-            <p className="drop-zone-primary">
+          <div className="flex flex-col gap-1">
+            <p className="text-base font-medium text-gray-700 dark:text-gray-200">
               {isDragOver
                 ? t('fileUpload.dropFiles')
                 : t('fileUpload.dragOrClick')}
             </p>
-            <p className="drop-zone-secondary">
+            <p className="text-sm text-gray-700 dark:text-gray-300">
               {t('fileUpload.supportedTypes', {
                 types: acceptedTypes.join(', '),
                 maxSize: formatFileSize(maxSize),
@@ -505,12 +514,12 @@ const FileUploadComponent = ({
             </p>
           </div>
         </div>
-      </div>
+      </Glass>
 
       {/* Upload progress */}
       {uploadingFiles.length > 0 && (
-        <div className="upload-progress">
-          <h4 className="progress-title">
+        <div className="mt-4 space-y-3">
+          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
             {uploadingFiles.some((f) => f.status === 'scanning')
               ? t('fileUpload.scanning')
               : t('fileUpload.uploading')}
@@ -534,16 +543,18 @@ const FileUploadComponent = ({
                 : null;
 
             return (
-              <div key={uploadingFile.id} className="upload-item">
-                <div className="upload-info">
-                  <span className="file-name">{uploadingFile.file.name}</span>
-                  <span className="file-size">
-                    {formatFileSize(uploadingFile.file.size)}
-                  </span>
+              <Glass key={uploadingFile.id} intensity="low" border={true} className="p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <span className="font-medium truncate max-w-[200px]">{uploadingFile.file.name}</span>
+                    <span className="text-xs text-gray-700 dark:text-gray-300">
+                      {formatFileSize(uploadingFile.file.size)}
+                    </span>
+                  </div>
                   {showPreview && uploadingFile.status === 'success' && (
                     <button
                       type="button"
-                      className="preview-button"
+                      className="p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
                       onClick={() => handlePreviewFile(uploadingFile.file)}
                       aria-label={t('fileUpload.previewFile', {
                         name: uploadingFile.file.name,
@@ -554,12 +565,12 @@ const FileUploadComponent = ({
                   )}
                 </div>
 
-                <div className="upload-status">
+                <div className="flex items-center gap-3">
                   {(uploadingFile.status === 'uploading' ||
                     uploadingFile.status === 'scanning') && (
-                    <div className="progress-bar">
+                    <div className="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                       <div
-                        className="progress-fill"
+                        className="h-full bg-blue-500 transition-all duration-300"
                         style={{ width: `${uploadingFile.progress}%` }}
                       />
                     </div>
@@ -567,7 +578,7 @@ const FileUploadComponent = ({
 
                   {uploadingFile.status === 'success' && (
                     <div
-                      className="status-icon success"
+                      className="text-green-700"
                       title={t('fileUpload.uploadSuccess')}
                     >
                       ✓
@@ -576,7 +587,7 @@ const FileUploadComponent = ({
 
                   {uploadingFile.status === 'error' && (
                     <div
-                      className="status-icon error"
+                      className="text-red-700"
                       title={t('fileUpload.uploadError')}
                     >
                       ✗
@@ -585,7 +596,7 @@ const FileUploadComponent = ({
 
                   {uploadingFile.status === 'scanning' && (
                     <div
-                      className="status-icon scanning"
+                      className="text-blue-700 animate-pulse"
                       title={t('fileUpload.securityScanning')}
                     >
                       🔍
@@ -594,13 +605,13 @@ const FileUploadComponent = ({
                 </div>
 
                 {errorMessage !== null && (
-                  <div className="upload-error">{errorMessage}</div>
+                  <div className="mt-2 text-xs text-red-700">{errorMessage}</div>
                 )}
 
                 {uploadingFile.securityScan?.safe === true && (
-                  <div className="security-status safe">
-                    <span className="security-icon">🛡️</span>
-                    <span className="security-text">
+                  <div className="mt-2 flex items-center gap-1.5 text-xs text-green-700 dark:text-green-200">
+                    <span>🛡️</span>
+                    <span>
                       {t('fileUpload.security.safe')}
                       {hasConfidence
                         ? ` (${Math.round(confidence * 100)}%)`
@@ -611,21 +622,21 @@ const FileUploadComponent = ({
 
                 {previewContent !== null &&
                   uploadingFile.status === 'success' && (
-                    <div className="file-preview-thumbnail">
+                    <div className="mt-2 p-2 bg-black/5 dark:bg-white/5 rounded-lg overflow-hidden">
                       {uploadingFile.file.type.startsWith('image/') ? (
                         <img
                           src={previewContent}
                           alt={t('fileUpload.previewAlt', {
                             name: uploadingFile.file.name,
                           })}
-                          className="preview-image"
+                          className="max-h-32 rounded object-contain"
                         />
                       ) : (
-                        <pre className="preview-text">{previewContent}</pre>
+                        <pre className="text-xs font-mono overflow-x-auto p-1">{previewContent}</pre>
                       )}
                     </div>
                   )}
-              </div>
+              </Glass>
             );
           })}
         </div>

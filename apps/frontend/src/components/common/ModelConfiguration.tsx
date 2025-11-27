@@ -9,9 +9,9 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { ModelConfiguration as ModelConfig } from '../../services/models';
-import type { EnhancedModelInfo } from '../../services/models';
-import './ModelConfiguration.css';
+import type { ModelConfiguration as ModelConfig } from '../../services/models.js';
+import type { EnhancedModelInfo } from '../../services/models.js';
+import { cn } from '../ui/Glass.js';
 
 export interface ModelConfigurationProps {
   /** Model information */
@@ -92,17 +92,17 @@ export const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
     value: number,
     description?: string
   ) => (
-    <div className="config-parameter">
-      <div className="parameter-header">
-        <label className="parameter-label" htmlFor={`${parameter}-slider`}>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-200" htmlFor={`${parameter}-slider`}>
           {label}
         </label>
-        <span className="parameter-value">{value}</span>
+        <span className="text-sm font-mono text-gray-700 dark:text-gray-300">{value}</span>
       </div>
-      {description !== null && description !== undefined && (
-        <p className="parameter-description">{description}</p>
+      {description && (
+        <p className="text-xs text-gray-700 dark:text-gray-300">{description}</p>
       )}
-      <div className="slider-container">
+      <div className="space-y-1">
         <input
           id={`${parameter}-slider`}
           type="range"
@@ -114,19 +114,13 @@ export const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
             handleParameterChange(parameter, parseFloat(e.target.value))
           }
           disabled={disabled}
-          className="parameter-slider"
+          className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
           aria-label={`${label}: ${value}`}
         />
-        <div className="slider-track">
-          <div
-            className="slider-fill"
-            style={{ width: `${((value - min) / (max - min)) * 100}%` }}
-          />
+        <div className="flex justify-between text-xs text-gray-700 dark:text-gray-300 font-mono">
+          <span>{min}</span>
+          <span>{max}</span>
         </div>
-      </div>
-      <div className="slider-labels">
-        <span className="slider-label-min">{min}</span>
-        <span className="slider-label-max">{max}</span>
       </div>
     </div>
   );
@@ -142,12 +136,12 @@ export const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
     max?: number,
     description?: string
   ) => (
-    <div className="config-parameter">
-      <label className="parameter-label" htmlFor={`${parameter}-input`}>
+    <div className="space-y-2">
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200" htmlFor={`${parameter}-input`}>
         {label}
       </label>
-      {description !== null && description !== undefined && (
-        <p className="parameter-description">{description}</p>
+      {description && (
+        <p className="text-xs text-gray-700 dark:text-gray-300">{description}</p>
       )}
       <input
         id={`${parameter}-input`}
@@ -159,7 +153,7 @@ export const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
           handleParameterChange(parameter, parseInt(e.target.value, 10))
         }
         disabled={disabled}
-        className="parameter-input"
+        className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
         aria-label={label}
       />
     </div>
@@ -169,11 +163,11 @@ export const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
    * Render text area for stop sequences
    */
   const renderStopSequences = () => (
-    <div className="config-parameter">
-      <label className="parameter-label" htmlFor="stop-sequences">
+    <div className="space-y-2">
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200" htmlFor="stop-sequences">
         {t('model.config.stopSequences')}
       </label>
-      <p className="parameter-description">
+      <p className="text-xs text-gray-700 dark:text-gray-300">
         {t('model.config.stopSequences.description')}
       </p>
       <textarea
@@ -187,7 +181,7 @@ export const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
           handleParameterChange('stopSequences', sequences);
         }}
         disabled={disabled}
-        className="parameter-textarea"
+        className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm font-mono"
         placeholder={t('model.config.stopSequences.placeholder')}
         rows={3}
         aria-label={t('model.config.stopSequences')}
@@ -199,11 +193,11 @@ export const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
    * Render system prompt input
    */
   const renderSystemPrompt = () => (
-    <div className="config-parameter">
-      <label className="parameter-label" htmlFor="system-prompt">
+    <div className="space-y-2">
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200" htmlFor="system-prompt">
         {t('model.config.systemPrompt')}
       </label>
-      <p className="parameter-description">
+      <p className="text-xs text-gray-700 dark:text-gray-300">
         {t('model.config.systemPrompt.description')}
       </p>
       <textarea
@@ -211,7 +205,7 @@ export const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
         value={localConfig.systemPrompt ?? ''}
         onChange={(e) => handleParameterChange('systemPrompt', e.target.value)}
         disabled={disabled}
-        className="parameter-textarea"
+        className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm font-mono"
         placeholder={t('model.config.systemPrompt.placeholder')}
         rows={4}
         aria-label={t('model.config.systemPrompt')}
@@ -227,17 +221,19 @@ export const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
   };
 
   return (
-    <div
-      className={`model-configuration ${compact ? 'compact' : ''} ${disabled ? 'disabled' : ''}`}
-    >
-      <div className="config-header">
-        <h3 className="config-title">
+    <div className={cn(
+      "flex flex-col gap-6",
+      compact ? "p-4" : "p-6",
+      disabled && "opacity-50 pointer-events-none"
+    )}>
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
           {t('model.config.title', { modelName: model.name })}
         </h3>
-        <div className="config-actions">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
-            className="toggle-advanced-button"
+            className="text-sm text-blue-700 dark:text-blue-200 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
             aria-expanded={showAdvancedSettings}
           >
             {showAdvancedSettings
@@ -247,47 +243,53 @@ export const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
           <button
             onClick={handleReset}
             disabled={disabled}
-            className="reset-button"
+            className="text-sm text-gray-700 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-200"
           >
             {t('model.config.reset')}
           </button>
         </div>
       </div>
 
-      <div className="config-content">
+      <div className="space-y-8">
         {/* Basic Parameters */}
-        <div className="config-section">
-          <h4 className="section-title">{t('model.config.basic')}</h4>
+        <div className="space-y-4">
+          <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
+            {t('model.config.basic')}
+          </h4>
 
-          {renderSlider(
-            'temperature',
-            t('model.config.temperature'),
-            0,
-            2,
-            0.1,
-            localConfig.temperature ?? 0.7,
-            t('model.config.temperature.description')
-          )}
+          <div className="grid gap-6">
+            {renderSlider(
+              'temperature',
+              t('model.config.temperature'),
+              0,
+              2,
+              0.1,
+              localConfig.temperature ?? 0.7,
+              t('model.config.temperature.description')
+            )}
 
-          {renderNumberInput(
-            'maxTokens',
-            t('model.config.maxTokens'),
-            localConfig.maxTokens ?? getRecommendedMaxTokens(),
-            1,
-            Math.min(8192, model.contextLength),
-            t('model.config.maxTokens.description', {
-              recommended: getRecommendedMaxTokens(),
-              max: Math.min(8192, model.contextLength),
-            })
-          )}
+            {renderNumberInput(
+              'maxTokens',
+              t('model.config.maxTokens'),
+              localConfig.maxTokens ?? getRecommendedMaxTokens(),
+              1,
+              Math.min(8192, model.contextLength),
+              t('model.config.maxTokens.description', {
+                recommended: getRecommendedMaxTokens(),
+                max: Math.min(8192, model.contextLength),
+              })
+            )}
+          </div>
         </div>
 
         {/* Advanced Parameters */}
-        {showAdvancedSettings !== null &&
-          showAdvancedSettings !== undefined && (
-            <div className="config-section">
-              <h4 className="section-title">{t('model.config.advanced')}</h4>
+        {showAdvancedSettings && (
+          <div className="space-y-4 animate-in slide-in-from-top-2 duration-200">
+            <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
+              {t('model.config.advanced')}
+            </h4>
 
+            <div className="grid gap-6">
               {renderSlider(
                 'topP',
                 t('model.config.topP'),
@@ -321,47 +323,53 @@ export const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
               {renderStopSequences()}
               {renderSystemPrompt()}
             </div>
-          )}
+          </div>
+        )}
 
         {/* Model Information */}
-        <div className="config-section">
-          <h4 className="section-title">{t('model.config.modelInfo')}</h4>
+        <div className="space-y-4">
+          <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
+            {t('model.config.modelInfo')}
+          </h4>
 
-          <div className="model-info-grid">
-            <div className="info-item">
-              <span className="info-label">{t('model.contextLimit')}:</span>
-              <span className="info-value">{model.contextLimitFormatted}</span>
+          <div className="grid grid-cols-2 gap-4 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-gray-700 dark:text-gray-300 uppercase tracking-wider">{t('model.contextLimit')}</span>
+              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{model.contextLimitFormatted}</span>
             </div>
 
-            <div className="info-item">
-              <span className="info-label">{t('model.provider')}:</span>
-              <span className="info-value">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-gray-700 dark:text-gray-300 uppercase tracking-wider">{t('model.provider')}</span>
+              <span className="text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center gap-1">
                 {model.providerInfo.icon} {model.providerInfo.name}
               </span>
             </div>
 
-            <div className="info-item">
-              <span className="info-label">{t('model.category')}:</span>
-              <span className="info-value">{model.categoryLabel}</span>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-gray-700 dark:text-gray-300 uppercase tracking-wider">{t('model.category')}</span>
+              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{model.categoryLabel}</span>
             </div>
 
-            <div className="info-item">
-              <span className="info-label">{t('model.performance')}:</span>
-              <span
-                className={`info-value performance-${model.performanceRating}`}
-              >
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-gray-700 dark:text-gray-300 uppercase tracking-wider">{t('model.performance')}</span>
+              <span className={cn(
+                "font-medium",
+                model.performanceRating === 'high' ? "text-green-700 dark:text-green-200" :
+                model.performanceRating === 'medium' ? "text-blue-700 dark:text-blue-200" :
+                "text-amber-600 dark:text-amber-400"
+              )}>
                 {t(`model.performance.${model.performanceRating}`)}
               </span>
             </div>
           </div>
 
-          <div className="capabilities-section">
-            <span className="capabilities-label">
+          <div className="space-y-2">
+            <span className="text-xs text-gray-700 dark:text-gray-300 uppercase tracking-wider">
               {t('model.capabilities')}:
             </span>
-            <div className="capabilities-list">
+            <div className="flex flex-wrap gap-2">
               {model.capabilities.map((capability) => (
-                <span key={capability} className="capability-tag">
+                <span key={capability} className="px-2 py-1 text-xs font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-full border border-blue-100 dark:border-blue-800">
                   {t(`model.capability.${capability}`, capability)}
                 </span>
               ))}
@@ -370,16 +378,18 @@ export const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
         </div>
 
         {/* Configuration Summary */}
-        {!compact !== null && compact !== undefined && (
-          <div className="config-section">
-            <h4 className="section-title">{t('model.config.summary')}</h4>
+        {!compact && (
+          <div className="space-y-4">
+            <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
+              {t('model.config.summary')}
+            </h4>
 
-            <div className="config-summary">
-              <div className="summary-item">
-                <span className="summary-label">
-                  {t('model.config.creativity')}:
+            <div className="grid grid-cols-3 gap-4 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+              <div className="flex flex-col items-center text-center gap-1">
+                <span className="text-xs text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  {t('model.config.creativity')}
                 </span>
-                <span className="summary-value">
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                   {localConfig.temperature && localConfig.temperature > 1.0
                     ? t('model.config.creativity.high')
                     : localConfig.temperature && localConfig.temperature > 0.5
@@ -388,22 +398,22 @@ export const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
                 </span>
               </div>
 
-              <div className="summary-item">
-                <span className="summary-label">
-                  {t('model.config.responseLength')}:
+              <div className="flex flex-col items-center text-center gap-1">
+                <span className="text-xs text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  {t('model.config.responseLength')}
                 </span>
-                <span className="summary-value">
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                   {t('model.config.responseLength.tokens', {
                     tokens: localConfig.maxTokens?.toLocaleString() ?? '0',
                   })}
                 </span>
               </div>
 
-              <div className="summary-item">
-                <span className="summary-label">
-                  {t('model.config.diversity')}:
+              <div className="flex flex-col items-center text-center gap-1">
+                <span className="text-xs text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  {t('model.config.diversity')}
                 </span>
-                <span className="summary-value">
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                   {localConfig.topP && localConfig.topP < 0.5
                     ? t('model.config.diversity.low')
                     : localConfig.topP && localConfig.topP < 0.9
