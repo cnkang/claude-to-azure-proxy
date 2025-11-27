@@ -42,15 +42,13 @@ vi.mock('../../src/middleware/logging.js', () => ({
 describe('MemoryManager', () => {
   let manager: MemoryManager;
   let originalGC: typeof global.gc | undefined;
-  let originalMemoryUsage: typeof process.memoryUsage;
 
   beforeEach(() => {
     // Store original functions
     originalGC = typeof global.gc === 'function' ? global.gc : undefined;
-    originalMemoryUsage = process.memoryUsage;
 
     // Mock process.memoryUsage
-    process.memoryUsage = vi.fn().mockReturnValue({
+    vi.spyOn(process, 'memoryUsage').mockReturnValue({
       rss: 100 * 1024 * 1024, // 100MB
       heapTotal: 80 * 1024 * 1024, // 80MB
       heapUsed: 40 * 1024 * 1024, // 40MB (50% usage)
@@ -76,7 +74,6 @@ describe('MemoryManager', () => {
     } else {
       delete (global as { gc?: typeof global.gc }).gc;
     }
-    process.memoryUsage = originalMemoryUsage;
 
     // Stop monitoring
     manager.stopMonitoring();
