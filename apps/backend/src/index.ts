@@ -1478,15 +1478,18 @@ export async function createServer(
       })
     : createServerConfig(loadedConfig);
 
-  let mergedAzureConfig: ServerConfig['azureOpenAI'] | undefined;
+  let mergedAzureConfig: ServerConfig['azureOpenAI'];
   if (baseConfig.azureOpenAI) {
-    mergedAzureConfig = {
-      ...baseConfig.azureOpenAI,
-      ...(options?.serverConfigOverride?.azureOpenAI ?? {}),
-      apiKey:
-        options?.serverConfigOverride?.azureOpenAI?.apiKey ??
-        baseConfig.azureOpenAI.apiKey,
-    };
+    const overrideConfig = options?.serverConfigOverride?.azureOpenAI;
+    if (overrideConfig) {
+      mergedAzureConfig = {
+        ...baseConfig.azureOpenAI,
+        ...overrideConfig,
+        apiKey: overrideConfig.apiKey ?? baseConfig.azureOpenAI.apiKey,
+      };
+    } else {
+      mergedAzureConfig = baseConfig.azureOpenAI;
+    }
   } else if (options?.serverConfigOverride?.azureOpenAI) {
     const overrideAzure = options.serverConfigOverride.azureOpenAI;
     if (!overrideAzure.apiKey) {
