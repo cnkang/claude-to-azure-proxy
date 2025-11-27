@@ -82,7 +82,7 @@
   - Ensure all tests pass, ask the user if questions arise.
   - _Requirements: 11.1-11.5_//
 
-- [ ] 11. Commit changes in logical batches
+- [x] 11. Commit changes in logical batches
   - Batch 1: `test: add UI-based E2E test helpers` (UIActions, TestSetup, Assertions)
   - Batch 2: `test: rewrite cross-tab sync tests to use UI interactions`
   - Batch 3: `test: rewrite search functionality tests to use UI interactions`
