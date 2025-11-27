@@ -408,23 +408,40 @@ describe('ConversationSearchService', () => {
         'Updated Title',
         [{ role: 'user', content: 'Updated message' }]
       );
+      
+      // Mock both getConversation and getAllConversations to return updated data
       vi.mocked(mockStorage.getConversation).mockResolvedValue(
         updatedConversation
       );
+      vi.mocked(mockStorage.getAllConversations).mockResolvedValue([
+        updatedConversation,
+      ]);
 
+      // Update the index
       await searchService.updateIndex('conv-1');
 
-      // Search should find updated content
+      // Search should find updated content (after index rebuild)
       const results = await searchService.search('Updated');
       expect(results.results.length).toBe(1);
       expect(results.results[0].conversationTitle).toBe('Updated Title');
+      
+      // Should not find old content
+      const oldResults = await searchService.search('Original');
+      expect(oldResults.results.length).toBe(0);
     });
 
     it('should remove conversation from index on deletion', async () => {
+      // Verify conversation exists before removal
+      const beforeResults = await searchService.search('Original');
+      expect(beforeResults.results.length).toBe(1);
+      
       // Remove from index
       await searchService.removeFromIndex('conv-1');
+      
+      // Update mock to return empty array (simulating deletion from storage)
+      vi.mocked(mockStorage.getAllConversations).mockResolvedValue([]);
 
-      // Search should not find removed conversation
+      // Search should not find removed conversation (after index rebuild)
       const results = await searchService.search('Original');
       expect(results.results.length).toBe(0);
     });

@@ -11,7 +11,7 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import './SearchPagination.css';
+import { cn } from '../ui/Glass.js';
 
 interface SearchPaginationProps {
   currentPage: number;
@@ -64,93 +64,97 @@ export function SearchPagination({
     }
   };
 
+  const buttonClass = "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed";
+  const activeClass = "bg-blue-600 text-white shadow-sm";
+  const inactiveClass = "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700";
+
   return (
     <nav
-      className="search-pagination"
+      className="flex flex-col items-center gap-4 py-4"
       role="navigation"
       aria-label={t('search.paginationLabel')}
     >
-      {/* Previous Button */}
-      <button
-        className="pagination-button pagination-prev"
-        onClick={() => onPageChange(currentPage - 1)}
-        disabled={!hasPreviousPage}
-        aria-label={t('search.previousPage')}
-        aria-disabled={!hasPreviousPage}
-      >
-        <span aria-hidden="true">‹</span>
-        <span className="button-text">{t('search.previous')}</span>
-      </button>
-
-      {/* First Page (if not in range) */}
-      {pageNumbers[0] > 0 && (
-        <>
-          <button
-            className="pagination-button pagination-number"
-            onClick={() => onPageChange(0)}
-            onKeyDown={(e) => handleKeyDown(e, 0)}
-            aria-label={t('search.goToPage', { page: 1 })}
-          >
-            1
-          </button>
-          {pageNumbers[0] > 1 && (
-            <span className="pagination-ellipsis" aria-hidden="true">
-              …
-            </span>
-          )}
-        </>
-      )}
-
-      {/* Page Numbers */}
-      {pageNumbers.map((page) => (
+      <div className="flex items-center gap-2">
+        {/* Previous Button */}
         <button
-          key={page}
-          className={`pagination-button pagination-number ${
-            page === currentPage ? 'active' : ''
-          }`}
-          onClick={() => onPageChange(page)}
-          onKeyDown={(e) => handleKeyDown(e, page)}
-          aria-label={t('search.goToPage', { page: page + 1 })}
-          aria-current={page === currentPage ? 'page' : undefined}
-          disabled={page === currentPage}
+          className={cn(buttonClass, inactiveClass)}
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={!hasPreviousPage}
+          aria-label={t('search.previousPage')}
+          aria-disabled={!hasPreviousPage}
         >
-          {page + 1}
+          <span aria-hidden="true" className="mr-1">‹</span>
+          <span>{t('search.previous')}</span>
         </button>
-      ))}
 
-      {/* Last Page (if not in range) */}
-      {pageNumbers[pageNumbers.length - 1] < totalPages - 1 && (
-        <>
-          {pageNumbers[pageNumbers.length - 1] < totalPages - 2 && (
-            <span className="pagination-ellipsis" aria-hidden="true">
-              …
-            </span>
-          )}
+        {/* First Page (if not in range) */}
+        {pageNumbers[0] > 0 && (
+          <>
+            <button
+              className={cn(buttonClass, inactiveClass)}
+              onClick={() => onPageChange(0)}
+              onKeyDown={(e) => handleKeyDown(e, 0)}
+              aria-label={t('search.goToPage', { page: 1 })}
+            >
+              1
+            </button>
+            {pageNumbers[0] > 1 && (
+              <span className="text-gray-700 px-1" aria-hidden="true">
+                …
+              </span>
+            )}
+          </>
+        )}
+
+        {/* Page Numbers */}
+        {pageNumbers.map((page) => (
           <button
-            className="pagination-button pagination-number"
-            onClick={() => onPageChange(totalPages - 1)}
-            onKeyDown={(e) => handleKeyDown(e, totalPages - 1)}
-            aria-label={t('search.goToPage', { page: totalPages })}
+            key={page}
+            className={cn(buttonClass, page === currentPage ? activeClass : inactiveClass)}
+            onClick={() => onPageChange(page)}
+            onKeyDown={(e) => handleKeyDown(e, page)}
+            aria-label={t('search.goToPage', { page: page + 1 })}
+            aria-current={page === currentPage ? 'page' : undefined}
+            disabled={page === currentPage}
           >
-            {totalPages}
+            {page + 1}
           </button>
-        </>
-      )}
+        ))}
 
-      {/* Next Button */}
-      <button
-        className="pagination-button pagination-next"
-        onClick={() => onPageChange(currentPage + 1)}
-        disabled={!hasNextPage}
-        aria-label={t('search.nextPage')}
-        aria-disabled={!hasNextPage}
-      >
-        <span className="button-text">{t('search.next')}</span>
-        <span aria-hidden="true">›</span>
-      </button>
+        {/* Last Page (if not in range) */}
+        {pageNumbers[pageNumbers.length - 1] < totalPages - 1 && (
+          <>
+            {pageNumbers[pageNumbers.length - 1] < totalPages - 2 && (
+              <span className="text-gray-700 px-1" aria-hidden="true">
+                …
+              </span>
+            )}
+            <button
+              className={cn(buttonClass, inactiveClass)}
+              onClick={() => onPageChange(totalPages - 1)}
+              onKeyDown={(e) => handleKeyDown(e, totalPages - 1)}
+              aria-label={t('search.goToPage', { page: totalPages })}
+            >
+              {totalPages}
+            </button>
+          </>
+        )}
+
+        {/* Next Button */}
+        <button
+          className={cn(buttonClass, inactiveClass)}
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={!hasNextPage}
+          aria-label={t('search.nextPage')}
+          aria-disabled={!hasNextPage}
+        >
+          <span>{t('search.next')}</span>
+          <span aria-hidden="true" className="ml-1">›</span>
+        </button>
+      </div>
 
       {/* Page Info */}
-      <div className="pagination-info" aria-live="polite" aria-atomic="true">
+      <div className="pagination-info text-xs text-gray-700 dark:text-gray-300" aria-live="polite" aria-atomic="true">
         {t('search.pageInfo', { current: currentPage + 1, total: totalPages })}
       </div>
     </nav>
