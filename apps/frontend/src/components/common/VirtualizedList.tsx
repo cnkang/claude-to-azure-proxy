@@ -17,7 +17,8 @@ import React, {
   forwardRef,
   useImperativeHandle,
 } from 'react';
-import { useThrottledCallback } from '../../utils/performance';
+import { useThrottledCallback } from '../../utils/performance.js';
+import { cn } from '../ui/Glass.js';
 
 /**
  * Item renderer function type
@@ -331,12 +332,10 @@ const VirtualizedListComponent = <T,>(
   return (
     <div
       ref={containerRef}
-      className={`virtualized-list ${className}`}
+      className={cn("overflow-auto relative custom-scrollbar", className)}
       style={{
         height,
         width,
-        overflow: 'auto',
-        position: 'relative',
       }}
       onScroll={handleScroll}
       role="list"
@@ -349,7 +348,6 @@ const VirtualizedListComponent = <T,>(
           width: '100%',
           position: 'relative',
         }}
-        className="virtualized-list__inner"
       >
         {visibleItems}
       </div>
@@ -357,19 +355,7 @@ const VirtualizedListComponent = <T,>(
       {/* Scrolling indicator */}
       {isScrolling && (
         <div
-          className="virtualized-list-scrolling-indicator"
-          style={{
-            position: 'absolute',
-            top: 8,
-            right: 8,
-            background: 'rgba(0, 0, 0, 0.7)',
-            color: 'white',
-            padding: '4px 8px',
-            borderRadius: '4px',
-            fontSize: '12px',
-            pointerEvents: 'none',
-            zIndex: 1000,
-          }}
+          className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs pointer-events-none z-50"
         >
           Scrolling...
         </div>

@@ -146,7 +146,7 @@ export class IndexedDBOptimizer {
       transaction.oncomplete = () => {
         const duration = performance.now() - startTime;
         if (duration > 100) {
-          // console.warn(`Slow IndexedDB transaction: ${duration.toFixed(2)}ms`);
+          // Slow transaction detected
         }
       };
 

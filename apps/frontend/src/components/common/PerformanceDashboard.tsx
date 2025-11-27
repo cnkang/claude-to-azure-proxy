@@ -11,14 +11,15 @@ import React, { useState, memo, useEffect } from 'react';
 import {
   useGlobalPerformanceMonitoring,
   type PerformanceMetrics,
-} from '../../hooks/usePerformanceMonitoring';
-import { getMemoryUsage } from '../../utils/performance';
-import { indexedDBOptimizer } from '../../services/indexeddb-optimization';
+} from '../../hooks/usePerformanceMonitoring.js';
+import { getMemoryUsage } from '../../utils/performance.js';
+import { indexedDBOptimizer } from '../../services/indexeddb-optimization.js';
 import {
   getPerformanceMetrics,
   OperationType,
   type MetricStats,
-} from '../../utils/performance-metrics';
+} from '../../utils/performance-metrics.js';
+import { Glass, cn } from '../ui/Glass.js';
 
 interface IndexedDbStats {
   conversationCount: number;
@@ -45,9 +46,14 @@ const MetricsDisplay = memo<{
   unit?: string;
   status?: 'good' | 'warning' | 'critical';
 }>(({ title, value, unit = '', status = 'good' }) => (
-  <div className={`metric ${status}`}>
-    <div className="metric-title">{title}</div>
-    <div className="metric-value">
+  <div className={cn(
+    "p-2 rounded-lg text-center border",
+    status === 'good' && "bg-green-500/20 border-green-500/30 text-green-100",
+    status === 'warning' && "bg-amber-500/20 border-amber-500/30 text-amber-100",
+    status === 'critical' && "bg-red-500/20 border-red-500/30 text-red-100"
+  )}>
+    <div className="text-[10px] opacity-80 mb-0.5">{title}</div>
+    <div className="text-xs font-bold">
       {value}
       {unit}
     </div>
@@ -62,21 +68,19 @@ MetricsDisplay.displayName = 'MetricsDisplay';
 const ComponentPerformanceList = memo<{
   metrics: Map<string, PerformanceMetrics>;
 }>(({ metrics }) => (
-  <div className="component-list">
-    <h4>Component Performance</h4>
-    <div className="component-items">
+  <div className="space-y-2">
+    <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider">Component Performance</h4>
+    <div className="space-y-1 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
       {Array.from(metrics.entries()).map(([name, metric]) => (
-        <div key={name} className="component-item">
-          <div className="component-name">{name}</div>
-          <div className="component-stats">
-            <span className="render-count">Renders: {metric.renderCount}</span>
-            <span
-              className={`render-time ${metric.averageRenderTime > 16 ? 'slow' : 'fast'}`}
-            >
+        <div key={name} className="py-1 border-b border-gray-700 last:border-0">
+          <div className="text-xs font-bold mb-0.5">{name}</div>
+          <div className="flex items-center gap-3 text-[10px] opacity-80">
+            <span>Renders: {metric.renderCount}</span>
+            <span className={cn(metric.averageRenderTime > 16 ? "text-amber-400" : "text-green-400")}>
               Avg: {metric.averageRenderTime.toFixed(2)}ms
             </span>
             {metric.slowRenders > 0 && (
-              <span className="slow-renders warning">
+              <span className="text-red-400">
                 Slow: {metric.slowRenders}
               </span>
             )}
@@ -98,10 +102,10 @@ const MemoryChart = memo<{
   const maxUsage = Math.max(...memoryHistory.map((h) => h.usage), 50);
 
   return (
-    <div className="memory-chart">
-      <h4>Memory Usage History</h4>
-      <div className="chart-container">
-        <svg width="200" height="60" viewBox="0 0 200 60">
+    <div className="space-y-2">
+      <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider">Memory Usage History</h4>
+      <div className="relative h-[60px] w-full bg-gray-900/50 rounded border border-gray-700">
+        <svg width="100%" height="100%" viewBox="0 0 200 60" preserveAspectRatio="none">
           <polyline
             points={memoryHistory
               .map(
@@ -112,9 +116,10 @@ const MemoryChart = memo<{
             fill="none"
             stroke="#4CAF50"
             strokeWidth="2"
+            vectorEffect="non-scaling-stroke"
           />
         </svg>
-        <div className="chart-labels">
+        <div className="absolute inset-0 flex justify-between items-end px-1 pb-0.5 text-[9px] text-gray-700 pointer-events-none">
           <span>0%</span>
           <span>{maxUsage.toFixed(0)}%</span>
         </div>
@@ -156,29 +161,32 @@ const PersistenceMetrics = memo(() => {
     OperationType.INTEGRITY_CHECK,
   ];
 
-  const getStatusColor = (latency: number, target: number): string => {
+  const getStatusColorClass = (latency: number, target: number): string => {
     if (latency <= target) {
-      return '#4CAF50';
+      return 'text-green-400';
     } // Green - good
     if (latency <= target * 1.5) {
-      return '#FF9800';
+      return 'text-amber-400';
     } // Orange - warning
-    return '#F44336'; // Red - critical
+    return 'text-red-400'; // Red - critical
+  };
+
+  const getStatusBgClass = (latency: number, target: number): string => {
+    if (latency <= target) {
+      return 'bg-green-500/20 text-green-300';
+    }
+    if (latency <= target * 1.5) {
+      return 'bg-amber-500/20 text-amber-300';
+    }
+    return 'bg-red-500/20 text-red-300';
   };
 
   return (
-    <div className="persistence-metrics" style={{ marginBottom: '16px' }}>
-      <h4 style={{ margin: '0 0 8px 0', fontSize: '12px' }}>
+    <div className="space-y-2 mb-4">
+      <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider">
         Persistence Performance
       </h4>
-      <div
-        className="metrics-grid"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr',
-          gap: '8px',
-        }}
-      >
+      <div className="grid grid-cols-1 gap-2">
         {persistenceOperations.map((opType) => {
           const stats = persistenceStats.get(opType);
           if (!stats || stats.total === 0) {
@@ -195,99 +203,42 @@ const PersistenceMetrics = memo(() => {
             [OperationType.STORAGE_WRITE]: 200,
             [OperationType.ENCRYPTION]: 50,
             [OperationType.DECRYPTION]: 50,
-          }[opType];
+          }[opType] || 500;
 
-          const statusColor = getStatusColor(stats.p95Latency, target);
+          const statusColorClass = getStatusColorClass(stats.p95Latency, target);
+          const statusBgClass = getStatusBgClass(stats.p95Latency, target);
 
           return (
             <div
               key={opType}
-              className="persistence-metric-card"
-              style={{
-                background: 'rgba(255, 255, 255, 0.05)',
-                padding: '8px',
-                borderRadius: '4px',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-              }}
+              className="bg-white/5 p-2 rounded border border-white/10"
             >
-              <div
-                className="metric-header"
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '8px',
-                }}
-              >
-                <span
-                  className="metric-name"
-                  style={{ fontSize: '11px', fontWeight: 'bold' }}
-                >
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-[10px] font-bold">
                   {opType.replace(/_/g, ' ').toUpperCase()}
                 </span>
-                <span
-                  className="metric-badge"
-                  style={{
-                    backgroundColor: statusColor,
-                    padding: '2px 6px',
-                    borderRadius: '3px',
-                    fontSize: '10px',
-                  }}
-                >
+                <span className={cn("px-1.5 py-0.5 rounded text-[9px]", statusBgClass)}>
                   {stats.successRate.toFixed(1)}%
                 </span>
               </div>
-              <div className="metric-details">
-                <div
-                  className="metric-row"
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    fontSize: '10px',
-                    marginBottom: '4px',
-                  }}
-                >
+              <div className="space-y-1 text-[10px] opacity-80">
+                <div className="flex justify-between">
                   <span>Avg:</span>
                   <span>{stats.averageLatency.toFixed(0)}ms</span>
                 </div>
-                <div
-                  className="metric-row"
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    fontSize: '10px',
-                    marginBottom: '4px',
-                  }}
-                >
+                <div className="flex justify-between">
                   <span>P95:</span>
-                  <span style={{ color: statusColor }}>
+                  <span className={statusColorClass}>
                     {stats.p95Latency.toFixed(0)}ms
                   </span>
                 </div>
-                <div
-                  className="metric-row"
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    fontSize: '10px',
-                    marginBottom: '4px',
-                  }}
-                >
+                <div className="flex justify-between">
                   <span>Total:</span>
                   <span>{stats.total}</span>
                 </div>
-                <div
-                  className="metric-row"
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    fontSize: '10px',
-                  }}
-                >
+                <div className="flex justify-between">
                   <span>Failed:</span>
-                  <span
-                    style={{ color: stats.failed > 0 ? '#F44336' : '#4CAF50' }}
-                  >
+                  <span className={stats.failed > 0 ? 'text-red-400' : 'text-green-400'}>
                     {stats.failed}
                   </span>
                 </div>
@@ -342,7 +293,7 @@ export const PerformanceDashboard = memo<PerformanceDashboardProps>(
           const stats = await indexedDBOptimizer.getStats();
           setDbStats(stats);
         } catch (_error) {
-          // console.error('Failed to get DB stats:', error);
+          // Failed to get DB stats
         }
       };
 
@@ -368,87 +319,44 @@ export const PerformanceDashboard = memo<PerformanceDashboardProps>(
         {/* Toggle button */}
         <button
           type="button"
-          className={`performance-toggle ${position}`}
           onClick={onToggle}
           title="Toggle Performance Dashboard"
-          style={{
-            position: 'fixed',
-            zIndex: 10000,
-            padding: '8px',
-            background: '#333',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontSize: '12px',
-            ...(position.includes('top')
-              ? { top: '10px' }
-              : { bottom: '10px' }),
-            ...(position.includes('left')
-              ? { left: '10px' }
-              : { right: '10px' }),
-          }}
+          className={cn(
+            "fixed z-[10000] px-2 py-1 bg-gray-800 text-white border border-gray-700 rounded shadow-lg text-xs font-mono hover:bg-gray-700 transition-colors",
+            position.includes('top') ? 'top-2.5' : 'bottom-2.5',
+            position.includes('left') ? 'left-2.5' : 'right-2.5'
+          )}
         >
           📊 Perf
         </button>
 
         {/* Dashboard panel */}
         {isVisible && (
-          <div
-            className={`performance-dashboard ${position}`}
-            style={{
-              position: 'fixed',
-              zIndex: 9999,
-              background: 'rgba(0, 0, 0, 0.9)',
-              color: 'white',
-              padding: '16px',
-              borderRadius: '8px',
-              fontSize: '12px',
-              fontFamily: 'monospace',
-              maxWidth: '400px',
-              maxHeight: '80vh',
-              overflow: 'auto',
-              ...(position.includes('top')
-                ? { top: '50px' }
-                : { bottom: '50px' }),
-              ...(position.includes('left')
-                ? { left: '10px' }
-                : { right: '10px' }),
-            }}
+          <Glass
+            className={cn(
+              "fixed z-[9999] p-4 text-xs font-mono w-[400px] max-h-[80vh] overflow-auto flex flex-col gap-4 shadow-2xl",
+              position.includes('top') ? 'top-[50px]' : 'bottom-[50px]',
+              position.includes('left') ? 'left-2.5' : 'right-2.5'
+            )}
+            intensity="high"
+            border={true}
           >
-            <div className="dashboard-header">
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '14px' }}>
+            <div className="flex items-center justify-between border-b border-gray-700 pb-2">
+              <h3 className="text-sm font-bold text-white">
                 Performance Dashboard
               </h3>
-              <div className="dashboard-controls">
+              <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => setIsExpanded(!isExpanded)}
-                  style={{
-                    background: 'transparent',
-                    color: 'white',
-                    border: '1px solid #666',
-                    padding: '4px 8px',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '10px',
-                    marginRight: '8px',
-                  }}
+                  className="px-2 py-1 bg-transparent border border-gray-600 rounded text-[10px] text-gray-300 hover:bg-white/10 transition-colors"
                 >
                   {isExpanded ? 'Collapse' : 'Expand'}
                 </button>
                 <button
                   type="button"
                   onClick={clearMetrics}
-                  style={{
-                    background: 'transparent',
-                    color: 'white',
-                    border: '1px solid #666',
-                    padding: '4px 8px',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '10px',
-                  }}
+                  className="px-2 py-1 bg-transparent border border-gray-600 rounded text-[10px] text-gray-300 hover:bg-white/10 transition-colors"
                 >
                   Clear
                 </button>
@@ -456,15 +364,7 @@ export const PerformanceDashboard = memo<PerformanceDashboardProps>(
             </div>
 
             {/* Summary metrics */}
-            <div
-              className="metrics-grid"
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '8px',
-                marginBottom: '16px',
-              }}
-            >
+            <div className="grid grid-cols-2 gap-2">
               <MetricsDisplay
                 title="Components"
                 value={totalComponents}
@@ -510,57 +410,61 @@ export const PerformanceDashboard = memo<PerformanceDashboardProps>(
             </div>
 
             {isExpanded && (
-              <>
+              <div className="space-y-4 animate-in slide-in-from-bottom-2 duration-200">
                 {/* Persistence metrics - Task 9.3 */}
-                <div style={{ marginBottom: '16px' }}>
-                  <PersistenceMetrics />
-                </div>
+                <PersistenceMetrics />
 
                 {/* Memory chart */}
                 {memoryHistory.length > 1 && (
-                  <div style={{ marginBottom: '16px' }}>
-                    <MemoryChart memoryHistory={memoryHistory} />
-                  </div>
+                  <MemoryChart memoryHistory={memoryHistory} />
                 )}
 
                 {/* Worst performers */}
                 {worstPerformers.length > 0 && (
-                  <div style={{ marginBottom: '16px' }}>
-                    <h4 style={{ margin: '0 0 8px 0', fontSize: '12px' }}>
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider">
                       Worst Performers
                     </h4>
-                    {worstPerformers.slice(0, 3).map((metric) => (
-                      <div
-                        key={metric.componentName}
-                        style={{ marginBottom: '4px' }}
-                      >
-                        <span style={{ color: '#ff9800' }}>
-                          {metric.componentName}
-                        </span>
-                        <span style={{ float: 'right' }}>
-                          {metric.averageRenderTime.toFixed(2)}ms
-                        </span>
-                      </div>
-                    ))}
+                    <div className="space-y-1">
+                      {worstPerformers.slice(0, 3).map((metric) => (
+                        <div
+                          key={metric.componentName}
+                          className="flex justify-between text-[10px]"
+                        >
+                          <span className="text-amber-400 font-medium">
+                            {metric.componentName}
+                          </span>
+                          <span className="text-gray-300">
+                            {metric.averageRenderTime.toFixed(2)}ms
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
                 {/* Database stats */}
                 {dbStats && (
-                  <div style={{ marginBottom: '16px' }}>
-                    <h4 style={{ margin: '0 0 8px 0', fontSize: '12px' }}>
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider">
                       Database Stats
                     </h4>
-                    <div style={{ fontSize: '10px' }}>
-                      <div>Conversations: {dbStats.conversationCount}</div>
-                      <div>Messages: {dbStats.messageCount}</div>
-                      <div>
-                        Cache Hit Rate:{' '}
-                        {(dbStats.cacheHitRate * 100).toFixed(1)}%
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px] text-gray-300">
+                      <div className="flex justify-between">
+                        <span>Conversations:</span>
+                        <span>{dbStats.conversationCount}</span>
                       </div>
-                      <div>
-                        Storage:{' '}
-                        {(dbStats.storageUsed / 1024 / 1024).toFixed(1)}MB
+                      <div className="flex justify-between">
+                        <span>Messages:</span>
+                        <span>{dbStats.messageCount}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Cache Hit Rate:</span>
+                        <span>{(dbStats.cacheHitRate * 100).toFixed(1)}%</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Storage:</span>
+                        <span>{(dbStats.storageUsed / 1024 / 1024).toFixed(1)}MB</span>
                       </div>
                     </div>
                   </div>
@@ -570,71 +474,10 @@ export const PerformanceDashboard = memo<PerformanceDashboardProps>(
                 {metrics.size > 0 && (
                   <ComponentPerformanceList metrics={metrics} />
                 )}
-              </>
+              </div>
             )}
-          </div>
+          </Glass>
         )}
-
-        {/* Styles */}
-        <style>{`
-        .metric {
-          padding: 8px;
-          border-radius: 4px;
-          text-align: center;
-        }
-        .metric.good { background: rgba(76, 175, 80, 0.2); }
-        .metric.warning { background: rgba(255, 152, 0, 0.2); }
-        .metric.critical { background: rgba(244, 67, 54, 0.2); }
-        
-        .metric-title {
-          font-size: 10px;
-          opacity: 0.8;
-          margin-bottom: 2px;
-        }
-        
-        .metric-value {
-          font-size: 12px;
-          font-weight: bold;
-        }
-        
-        .component-item {
-          padding: 4px 0;
-          border-bottom: 1px solid #333;
-        }
-        
-        .component-name {
-          font-weight: bold;
-          margin-bottom: 2px;
-        }
-        
-        .component-stats {
-          font-size: 10px;
-          opacity: 0.8;
-        }
-        
-        .component-stats span {
-          margin-right: 8px;
-        }
-        
-        .render-time.slow {
-          color: #ff9800;
-        }
-        
-        .slow-renders.warning {
-          color: #f44336;
-        }
-        
-        .chart-container {
-          position: relative;
-        }
-        
-        .chart-labels {
-          display: flex;
-          justify-content: space-between;
-          font-size: 10px;
-          opacity: 0.6;
-        }
-      `}</style>
       </>
     );
   }

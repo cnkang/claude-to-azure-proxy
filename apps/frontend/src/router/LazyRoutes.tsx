@@ -249,7 +249,6 @@ export const lazyLoadingMetrics = {
    */
   trackLoadTime: (componentName: string, startTime: number) => {
     const loadTime = performance.now() - startTime;
-    // console.log(`Lazy component ${componentName} loaded in ${loadTime.toFixed(2)}ms`);
 
     // Report to analytics if available
     sendAnalyticsEvent('lazy_component_load', {
@@ -262,8 +261,6 @@ export const lazyLoadingMetrics = {
    * Track preload effectiveness
    */
   trackPreloadHit: (componentName: string) => {
-    // console.log(`Preload hit for ${componentName}`);
-
     sendAnalyticsEvent('preload_hit', {
       component_name: componentName,
     });
@@ -273,8 +270,6 @@ export const lazyLoadingMetrics = {
    * Track preload miss (component loaded without preload)
    */
   trackPreloadMiss: (componentName: string) => {
-    // console.log(`Preload miss for ${componentName}`);
-
     sendAnalyticsEvent('preload_miss', {
       component_name: componentName,
     });

@@ -91,10 +91,6 @@ export function usePerformanceMonitoring(
       slowRenders.current += 1;
 
       if (logSlowRenders) {
-        // console.warn(
-        //   `Slow render detected in ${componentName}: ${renderTime.toFixed(2)}ms ` +
-        //   `(threshold: ${slowRenderThreshold}ms)`
-        // );
       }
     }
   });
@@ -112,10 +108,6 @@ export function usePerformanceMonitoring(
 
         // Warn about high memory usage
         if (memory.percentage > 80) {
-          // console.warn(
-          //   `High memory usage detected: ${memory.percentage.toFixed(1)}% ` +
-          //   `(${(memory.used / 1024 / 1024).toFixed(1)}MB used)`
-          // );
         }
       }
     };
@@ -162,7 +154,6 @@ export function useAsyncPerformanceMonitoring() {
   const endOperation = useCallback((operationId: string): number => {
     const startTime = activeOperations.current.get(operationId);
     if (startTime === undefined) {
-      // console.warn(`No active operation found for ID: ${operationId}`);
       return 0;
     }
 
@@ -228,13 +219,9 @@ export function useRerenderTracking(
       });
 
       if (changedProps.length > 0) {
-        // console.log(
-        //   `${componentName} re-rendered (${renderCount.current}) due to props: ${changedProps.join(', ')}`
-        // );
+        // Props changed
       } else {
-        // console.log(
-        //   `${componentName} re-rendered (${renderCount.current}) - no prop changes detected`
-        // );
+        // No prop changes detected
       }
     }
 
