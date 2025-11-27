@@ -81,7 +81,7 @@ export const SkipLink: React.FC<SkipLinkProps> = ({
   return (
     <a
       href={`#${targetId}`}
-      className={`skip-link ${className}`.trim()}
+      className={`absolute -top-10 left-4 z-50 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium shadow-lg focus:top-4 focus:outline-none focus:ring-4 focus:ring-blue-500 transition-all ${className}`.trim()}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
     >

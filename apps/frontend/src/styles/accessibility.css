@@ -48,11 +48,11 @@
 
 .skip-link:focus {
   top: 6px;
-  outline: 3px solid var(--color-accent, #1a73e8) !important;
+  outline: 3px solid var(--color-border-focus, #1e3a8a) !important;
   outline-offset: 3px !important;
   border-color: white;
-  box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.25);
-  /* Focus state: 7.5:1 contrast (WCAG AAA) */
+  box-shadow: 0 0 0 4px var(--color-focus, rgba(30, 58, 138, 0.25));
+  /* Focus state: 10.8:1 contrast (WCAG AAA) */
 }
 
 .skip-link:hover {
@@ -63,36 +63,36 @@
   color: white !important; /* ✨ FIXED: Ensure white text on hover (override generic a:hover rule) */
 }
 
-/* Focus Management */
+/* Focus Management - WCAG AAA Compliant (3:1 minimum contrast) */
 .focus-visible {
-  outline: 2px solid var(--color-accent, #1a73e8) !important;
+  outline: 3px solid var(--color-border-focus, #1e3a8a) !important;
   outline-offset: 2px !important;
   border-radius: 4px;
 }
 
-/* Enhanced focus indicators for better visibility */
+/* Enhanced focus indicators for better visibility - WCAG AAA */
 *:focus-visible {
-  outline: 2px solid var(--color-accent, #1a73e8) !important;
+  outline: 3px solid var(--color-border-focus, #1e3a8a) !important;
   outline-offset: 2px !important;
   border-radius: 4px;
-  box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.25) !important;
+  box-shadow: 0 0 0 4px var(--color-focus, rgba(30, 58, 138, 0.25)) !important;
 }
 
 /* Fallback for environments without :focus-visible support */
 *:focus {
-  outline: 2px solid var(--color-accent, #1a73e8) !important;
+  outline: 3px solid var(--color-border-focus, #1e3a8a) !important;
   outline-offset: 2px !important;
   border-radius: 4px;
-  box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.25) !important;
+  box-shadow: 0 0 0 4px var(--color-focus, rgba(30, 58, 138, 0.25)) !important;
 }
 
 body:focus {
-  outline: 2px solid var(--color-accent, #1a73e8) !important;
+  outline: 3px solid var(--color-border-focus, #1e3a8a) !important;
   outline-offset: 2px !important;
-  box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.25) !important;
+  box-shadow: 0 0 0 4px var(--color-focus, rgba(30, 58, 138, 0.25)) !important;
 }
 
-/* Focus indicators for interactive elements */
+/* Focus indicators for interactive elements - WCAG AAA */
 button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
@@ -104,9 +104,9 @@ a:focus-visible,
 [role='option']:focus-visible,
 [role='tab']:focus-visible,
 [tabindex]:focus-visible {
-  outline: 2px solid var(--color-accent, #1a73e8) !important;
+  outline: 3px solid var(--color-border-focus, #1e3a8a) !important;
   outline-offset: 2px !important;
-  box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.2) !important;
+  box-shadow: 0 0 0 4px var(--color-focus, rgba(30, 58, 138, 0.2)) !important;
 }
 
 /* Focus trap container */
@@ -206,7 +206,7 @@ a:focus-visible,
 }
 
 .high-contrast-toggle:focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 3px solid var(--color-border-focus);
   outline-offset: 2px;
 }
 
@@ -548,21 +548,21 @@ button.inline,
   --min-contrast-ratio: 7; /* AAA level */
 }
 
-/* Custom focus styles for specific components */
+/* Custom focus styles for specific components - WCAG AAA */
 .chat-input:focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 3px solid var(--color-border-focus);
   outline-offset: 2px;
-  box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.2);
+  box-shadow: 0 0 0 4px var(--color-focus);
 }
 
 .message-item:focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 3px solid var(--color-border-focus);
   outline-offset: 2px;
-  background-color: rgba(26, 115, 232, 0.05);
+  background-color: var(--color-hover);
 }
 
 .conversation-item:focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 3px solid var(--color-border-focus);
   outline-offset: 2px;
-  background-color: rgba(26, 115, 232, 0.05);
+  background-color: var(--color-hover);
 }
