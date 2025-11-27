@@ -19,7 +19,8 @@ import type { Conversation } from '../../types/index.js';
 import { DropdownMenu } from '../common/DropdownMenu.js';
 import { ConfirmDialog } from '../common/ConfirmDialog.js';
 import { ConversationSearch } from '../search/ConversationSearch.js';
-import './Sidebar.css';
+import { Glass } from '../ui/Glass.js';
+import { cn } from '../ui/Glass.js';
 
 /**
  * Sidebar props
@@ -415,41 +416,41 @@ export function Sidebar({
     }
   };
 
-  const sidebarClasses = [
-    'sidebar',
-    isOpen ? 'open' : 'closed',
-    isMobile ? 'mobile' : 'desktop',
-  ]
-    .filter((value): value is string => value.length > 0)
-    .join(' ');
-
   return (
     <aside
       ref={sidebarRef}
       id="sidebar"
-      className={sidebarClasses}
+      className={cn(
+        "fixed inset-y-0 left-0 z-40 w-80 transform transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:h-full md:w-80 md:flex-shrink-0 md:border-r md:border-white/20 dark:md:border-white/10",
+        isOpen ? "translate-x-0" : "-translate-x-full",
+        isMobile && "shadow-2xl"
+      )}
       role="navigation"
       aria-label={t('sidebar.navigation')}
       aria-hidden={!isOpen}
       tabIndex={-1}
       data-testid="sidebar"
     >
-      <div className="sidebar-content">
+      <Glass 
+        intensity="high"
+        border={true}
+        className="h-full flex flex-col rounded-none border-y-0 border-l-0 border-r-0 md:border-r"
+      >
         {/* Sidebar header */}
-        <div className="sidebar-header">
+        <div className="p-4 border-b border-white/10 flex items-center justify-between gap-2">
           <button
             type="button"
-            className="new-conversation-button"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
             onClick={handleNewConversation}
             disabled={isCreatingConversation}
             aria-label={t('sidebar.newConversation')}
             aria-busy={isCreatingConversation}
             data-testid="new-conversation-button"
           >
-            <span className="new-conversation-icon">
+            <span className="text-xl leading-none">
               {isCreatingConversation ? '⏳' : '+'}
             </span>
-            <span className="new-conversation-text">
+            <span className="text-sm">
               {isCreatingConversation
                 ? t('sidebar.creatingConversation')
                 : t('sidebar.newConversation')}
@@ -459,18 +460,18 @@ export function Sidebar({
           {isMobile !== null && isMobile !== undefined && (
             <button
               type="button"
-              className="sidebar-close"
+              className="p-2 rounded-lg hover:bg-white/10 text-gray-700 dark:text-gray-300 transition-colors"
               onClick={onClose}
               aria-label={t('sidebar.close')}
             >
-              <span className="close-icon">×</span>
+              <span className="text-xl leading-none">×</span>
             </button>
           )}
         </div>
 
         {/* Search conversations */}
         <div
-          className="conversations-search-section"
+          className="p-4 pb-2"
           data-testid="conversations-search-section"
         >
           <ConversationSearch
@@ -484,20 +485,22 @@ export function Sidebar({
         </div>
 
         {/* Conversations list */}
-        <div className="conversations-section">
-          <h2 className="conversations-title">{t('sidebar.conversations')}</h2>
+        <div className="flex-1 overflow-y-auto px-3 py-2 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
+          <h2 className="px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+            {t('sidebar.conversations')}
+          </h2>
 
           {conversationsList.length === 0 ? (
-            <div className="empty-conversations">
-              <div className="empty-icon">💬</div>
-              <p className="empty-text">{t('sidebar.noConversations')}</p>
-              <p className="empty-hint">
+            <div className="flex flex-col items-center justify-center h-40 text-center p-4 text-gray-700 dark:text-gray-300">
+              <div className="text-4xl mb-3 opacity-50">💬</div>
+              <p className="text-sm font-medium mb-1">{t('sidebar.noConversations')}</p>
+              <p className="text-xs opacity-70">
                 {t('sidebar.startFirstConversation')}
               </p>
             </div>
           ) : (
             <div
-              className="conversations-list conversation-list"
+              className="conversations-list space-y-1"
               data-testid="conversations-list"
               role="listbox"
               aria-label={t('sidebar.conversations')}
@@ -512,18 +515,18 @@ export function Sidebar({
                   return (
                     <div
                       key={conversation.id}
-                      className="conversation-item"
+                      className="group relative"
                       data-testid={`conversation-item-${conversation.id}`}
                       role="presentation"
                     >
                       <button
                         type="button"
-                        className={[
-                          'conversation-button',
-                          isActive ? 'active' : '',
-                        ]
-                          .filter((value): value is string => value.length > 0)
-                          .join(' ')}
+                        className={cn(
+                          "w-full text-left p-3 rounded-xl transition-all duration-200 group-hover:bg-white/5 outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50",
+                          isActive 
+                            ? "bg-white/10 dark:bg-white/5 shadow-sm border border-white/10" 
+                            : "border border-transparent"
+                        )}
                         onClick={() =>
                           handleConversationSelect(conversation.id)
                         }
@@ -546,12 +549,12 @@ export function Sidebar({
                           handleConversationContextMenu(event, conversation.id)
                         }
                       >
-                        <div className="conversation-content">
+                        <div className="flex flex-col gap-1">
                           {renamingId === conversation.id ? (
                             <input
                               ref={renameInputRef}
                               type="text"
-                              className="conversation-title-input"
+                              className="w-full bg-white/10 border border-blue-500/50 rounded px-2 py-1 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                               value={renameValue}
                               onChange={(e) => setRenameValue(e.target.value)}
                               onBlur={() =>
@@ -567,22 +570,25 @@ export function Sidebar({
                             />
                           ) : (
                             <div
-                              className="conversation-title"
+                              className={cn(
+                                "text-sm font-medium truncate pr-6",
+                                isActive ? "text-gray-900 dark:text-white" : "text-gray-700 dark:text-gray-300"
+                              )}
                               data-testid={`conversation-title-${conversation.id}`}
                             >
                               {conversation.title}
                             </div>
                           )}
-                          <div className="conversation-meta">
-                            <span className="conversation-model">
+                          <div className="flex items-center justify-between text-xs text-gray-700 dark:text-gray-300">
+                            <span className="truncate max-w-[60%] opacity-80">
                               {conversation.selectedModel}
                             </span>
-                            <span className="conversation-time">
+                            <span className="opacity-60">
                               {formatRelativeTime(conversation.updatedAt)}
                             </span>
                           </div>
                           {conversation.messages.length > 0 && (
-                            <div className="conversation-preview">
+                            <div className="text-xs text-gray-700 dark:text-gray-300 truncate mt-0.5 opacity-70">
                               {conversation.messages[
                                 conversation.messages.length - 1
                               ].content.substring(0, 60)}
@@ -596,13 +602,16 @@ export function Sidebar({
                         </div>
                       </button>
 
-                      {/* Conversation actions - moved outside button to fix HTML nesting */}
+                      {/* Conversation actions */}
                       <div
-                        className={`conversation-actions ${isMenuOpen ? 'open' : ''}`}
+                        className={cn(
+                          "absolute right-2 top-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200",
+                          (isMenuOpen || isActive) && "opacity-100"
+                        )}
                       >
                         <button
                           type="button"
-                          className="conversation-action"
+                          className="p-1 rounded-md hover:bg-gray-200/50 dark:hover:bg-gray-700/50 text-gray-700 transition-colors"
                           onClick={(event) =>
                             handleOptionsClick(event, conversation.id)
                           }
@@ -613,38 +622,38 @@ export function Sidebar({
                           tabIndex={-1}
                           data-testid={`conversation-options-${conversation.id}`}
                         >
-                          <span className="action-icon">⋯</span>
+                          <span className="text-lg leading-none">⋯</span>
                         </button>
-
-                        {/* Dropdown menu */}
-                        {isMenuOpen && (
-                          <DropdownMenu
-                            isOpen={true}
-                            onClose={handleMenuClose}
-                            anchorElement={menuAnchor}
-                            items={[
-                              {
-                                id: 'rename',
-                                label: t('sidebar.renameConversation'),
-                                icon: '✏️',
-                                onClick: () => {
-                                  handleRenameStart(conversation);
-                                },
-                              },
-                              {
-                                id: 'delete',
-                                label: t('sidebar.deleteConversation'),
-                                icon: '🗑️',
-                                variant: 'danger',
-                                onClick: () => {
-                                  handleDeleteStart(conversation.id);
-                                },
-                              },
-                            ]}
-                            position="bottom-right"
-                          />
-                        )}
                       </div>
+
+                      {/* Dropdown menu */}
+                      {isMenuOpen && menuOpen === conversation.id && (
+                        <DropdownMenu
+                          isOpen={true}
+                          onClose={handleMenuClose}
+                          anchorElement={menuAnchor}
+                          items={[
+                            {
+                              id: 'rename',
+                              label: t('sidebar.renameConversation'),
+                              icon: '✏️',
+                              onClick: () => {
+                                handleRenameStart(conversation);
+                              },
+                            },
+                            {
+                              id: 'delete',
+                              label: t('sidebar.deleteConversation'),
+                              icon: '🗑️',
+                              variant: 'danger',
+                              onClick: () => {
+                                handleDeleteStart(conversation.id);
+                              },
+                            },
+                          ]}
+                          position="bottom-right"
+                        />
+                      )}
                     </div>
                   );
                 }
@@ -654,40 +663,42 @@ export function Sidebar({
         </div>
 
         {/* Sidebar footer */}
-        <div className="sidebar-footer">
-          <div className="session-info">
-            <div className="session-label">{t('sidebar.session')}</div>
-            <div
-              className="session-id"
-              title={isNonEmptyString(sessionId) ? sessionId : ''}
-            >
-              {isNonEmptyString(sessionId)
-                ? `${sessionId.substring(0, 8)}...`
-                : 'N/A'}
+        <div className="p-4 border-t border-white/10 bg-white/5 backdrop-blur-sm">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between text-xs text-gray-700 dark:text-gray-300">
+              <div className="font-medium">{t('sidebar.session')}</div>
+              <div
+                className="font-mono bg-black/5 dark:bg-white/5 px-2 py-0.5 rounded"
+                title={isNonEmptyString(sessionId) ? sessionId : ''}
+              >
+                {isNonEmptyString(sessionId)
+                  ? `${sessionId.substring(0, 8)}...`
+                  : 'N/A'}
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="flex-1 flex items-center justify-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-all duration-200 text-sm text-gray-700 dark:text-gray-300"
+                aria-label={t('sidebar.settings')}
+                title={t('sidebar.settings')}
+              >
+                <span className="text-base">⚙️</span>
+              </button>
+
+              <button
+                type="button"
+                className="flex-1 flex items-center justify-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-all duration-200 text-sm text-gray-700 dark:text-gray-300"
+                aria-label={t('sidebar.help')}
+                title={t('sidebar.help')}
+              >
+                <span className="text-base">❓</span>
+              </button>
             </div>
           </div>
-
-          <div className="sidebar-actions">
-            <button
-              type="button"
-              className="sidebar-action"
-              aria-label={t('sidebar.settings')}
-              title={t('sidebar.settings')}
-            >
-              <span className="action-icon">⚙️</span>
-            </button>
-
-            <button
-              type="button"
-              className="sidebar-action"
-              aria-label={t('sidebar.help')}
-              title={t('sidebar.help')}
-            >
-              <span className="action-icon">❓</span>
-            </button>
-          </div>
         </div>
-      </div>
+      </Glass>
 
       {/* Delete confirmation dialog */}
       <ConfirmDialog

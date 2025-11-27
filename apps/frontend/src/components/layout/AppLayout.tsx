@@ -7,7 +7,7 @@
  * Requirements: 5.1, 5.2, 5.3, 10.1
  */
 
-import React, { useState, useEffect, type ReactNode } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import { isNonEmptyString } from '@repo/shared-utils';
 import { useAppContext } from '../../contexts/AppContext.js';
 import { useTheme } from '../../contexts/ThemeContext.js';
@@ -16,7 +16,19 @@ import { Sidebar } from './Sidebar.js';
 import { Header } from './Header.js';
 import { ErrorBoundary } from '../common/ErrorBoundary.js';
 import { AccessibilityProvider, SkipLink } from '../accessibility/index.js';
-import './AppLayout.css';
+import { cn } from '../ui/Glass.js';
+import { debounce } from '../../utils/performance.js';
+
+/**
+ * Responsive breakpoints (in pixels)
+ * Mobile: < 768px
+ * Tablet: 768px - 1024px
+ * Desktop: > 1024px
+ */
+const BREAKPOINTS = {
+  MOBILE: 768,
+  TABLET: 1024,
+} as const;
 
 /**
  * App layout props
@@ -34,32 +46,52 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
   const { isRTL, t } = useI18n();
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const [isTablet, setIsTablet] = useState<boolean>(false);
+  const prevIsMobileRef = useRef<boolean>(false);
+
+  // Check screen size and update responsive state
+  const checkScreenSize = useCallback((): void => {
+    const width = window.innerWidth;
+    const newIsMobile = width < BREAKPOINTS.MOBILE;
+    const newIsTablet = width >= BREAKPOINTS.MOBILE && width < BREAKPOINTS.TABLET;
+    
+    setIsMobile(newIsMobile);
+    setIsTablet(newIsTablet);
+  }, []);
+
+  // Create debounced version of checkScreenSize for performance
+  const debouncedCheckScreenSize = useMemo(
+    () => debounce(checkScreenSize, 300),
+    [checkScreenSize]
+  );
 
   // Detect screen size for responsive behavior
   useEffect(() => {
-    const checkScreenSize = (): void => {
-      const width = window.innerWidth;
-      setIsMobile(width < 768);
-      setIsTablet(width >= 768 && width < 1024);
-    };
-
-    // Initial check
+    // Initial check (not debounced for immediate feedback)
     checkScreenSize();
 
-    // Listen for resize events
-    window.addEventListener('resize', checkScreenSize);
+    // Listen for resize and orientation change events (debounced)
+    window.addEventListener('resize', debouncedCheckScreenSize);
+    window.addEventListener('orientationchange', debouncedCheckScreenSize);
 
     return (): void => {
-      window.removeEventListener('resize', checkScreenSize);
+      window.removeEventListener('resize', debouncedCheckScreenSize);
+      window.removeEventListener('orientationchange', debouncedCheckScreenSize);
     };
-  }, []);
+  }, [checkScreenSize, debouncedCheckScreenSize]);
 
-  // Auto-close sidebar on mobile when screen size changes
+  // Auto-close sidebar when transitioning TO mobile (not when already mobile)
   useEffect(() => {
-    if (isMobile && state.ui.sidebarOpen) {
+    // Only close sidebar when transitioning from non-mobile to mobile
+    if (isMobile && !prevIsMobileRef.current && state.ui.sidebarOpen) {
       setSidebarOpen(false);
     }
-  }, [isMobile, setSidebarOpen, state.ui.sidebarOpen]);
+    
+    // Update previous mobile state
+    prevIsMobileRef.current = isMobile;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMobile, setSidebarOpen]);
+  // Note: state.ui.sidebarOpen is intentionally excluded to prevent infinite loops
+  // We only want to close the sidebar when transitioning TO mobile, not when it opens/closes
 
   // Handle sidebar overlay click on mobile
   const handleOverlayClick = (): void => {
@@ -83,24 +115,17 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
     };
   }, [isMobile, state.ui.sidebarOpen, setSidebarOpen]);
 
-  const layoutClasses = [
-    'app-layout',
-    `theme-${resolvedTheme}`,
-    isRTL ? 'rtl' : 'ltr',
-    isMobile ? 'mobile' : '',
-    isTablet ? 'tablet' : '',
-    state.ui.sidebarOpen ? 'sidebar-open' : 'sidebar-closed',
-  ]
-    .filter((value): value is string => value.length > 0)
-    .join(' ');
-
   const hasUiError = isNonEmptyString(state.ui.error);
   const currentErrorMessage = hasUiError ? state.ui.error : undefined;
 
   return (
     <AccessibilityProvider wcagLevel="AAA">
       <div
-        className={layoutClasses}
+        className={cn(
+          "flex flex-col h-screen w-full overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-black text-gray-900 dark:text-gray-100 transition-colors duration-300",
+          resolvedTheme === 'dark' ? 'dark' : '',
+          isRTL ? 'rtl' : 'ltr'
+        )}
         dir={isRTL ? 'rtl' : 'ltr'}
         data-testid="app-container"
       >
@@ -110,46 +135,53 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
           text={t('accessibility.skipToMain')}
         />
 
-        {/* Header */}
-        <Header isMobile={isMobile} isTablet={isTablet} />
-
-        {/* Sidebar */}
-        <Sidebar
-          isOpen={state.ui.sidebarOpen}
-          isMobile={isMobile}
-          onClose={() => setSidebarOpen(false)}
-        />
-
-        {/* Sidebar overlay for mobile */}
-        {isMobile && state.ui.sidebarOpen && (
-          <div
-            className="sidebar-overlay"
-            onClick={handleOverlayClick}
-            aria-hidden="true"
+        <div className="flex flex-1 overflow-hidden relative">
+          {/* Sidebar */}
+          <Sidebar
+            isOpen={state.ui.sidebarOpen}
+            isMobile={isMobile}
+            onClose={() => setSidebarOpen(false)}
           />
-        )}
 
-        {/* Main content area */}
-        <main
-          id="main-content"
-          className="main-content"
-          role="main"
-          aria-label={t('accessibility.chatInterface')}
-        >
-          <ErrorBoundary>{children}</ErrorBoundary>
-        </main>
+          {/* Sidebar overlay for mobile */}
+          {isMobile && state.ui.sidebarOpen && (
+            <div
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity duration-300"
+              onClick={handleOverlayClick}
+              aria-hidden="true"
+            />
+          )}
+
+          {/* Main content area with header */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Header - only in main content area */}
+            <Header isMobile={isMobile} isTablet={isTablet} />
+
+            {/* Main content */}
+            <main
+              id="main-content"
+              className="flex-1 relative z-10 overflow-y-auto scroll-smooth"
+              role="main"
+              aria-label={t('accessibility.chatInterface')}
+            >
+              <div className="min-h-full p-4 md:p-6 max-w-7xl mx-auto w-full">
+                <ErrorBoundary>{children}</ErrorBoundary>
+              </div>
+            </main>
+          </div>
+        </div>
 
         {/* Loading overlay */}
         {state.ui.isLoading && (
           <div
-            className="loading-overlay"
+            className="fixed inset-0 bg-white/50 dark:bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center"
             role="status"
             aria-live="polite"
             data-testid="loading-spinner"
           >
-            <div className="loading-spinner">
-              <div className="spinner" />
-              <span className="loading-text">{t('loading.default')}</span>
+            <div className="flex flex-col items-center gap-4 p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
+              <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              <span className="text-lg font-medium text-gray-700 dark:text-gray-200">{t('loading.default')}</span>
             </div>
           </div>
         )}
@@ -157,17 +189,17 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
         {/* Error notification */}
         {hasUiError && currentErrorMessage !== undefined && (
           <div
-            className="error-notification"
+            className="fixed bottom-4 right-4 z-50 animate-slide-up"
             role="alert"
             aria-live="assertive"
             data-testid="error-message"
           >
-            <div className="error-content">
-              <span className="error-icon">⚠️</span>
-              <span className="error-message">{currentErrorMessage}</span>
+            <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl shadow-lg text-red-700 dark:text-red-300 max-w-md">
+              <span className="text-xl">⚠️</span>
+              <span className="flex-1 text-sm font-medium">{currentErrorMessage}</span>
               <button
                 type="button"
-                className="error-close"
+                className="p-1 hover:bg-red-100 dark:hover:bg-red-800/30 rounded-full transition-colors"
                 onClick={() => setError(null)}
                 aria-label={t('accessibility.closeError')}
               >
@@ -197,16 +229,31 @@ export function LayoutContainer({
   maxWidth = 'full',
   padding = 'md',
 }: LayoutContainerProps): React.JSX.Element {
-  const containerClasses = [
-    'layout-container',
-    `max-width-${maxWidth}`,
-    `padding-${padding}`,
-    className,
-  ]
-    .filter(Boolean)
-    .join(' ');
+  const maxWidthClasses = {
+    sm: 'max-w-sm',
+    md: 'max-w-md',
+    lg: 'max-w-lg',
+    xl: 'max-w-xl',
+    full: 'max-w-full',
+  };
 
-  return <div className={containerClasses}>{children}</div>;
+  const paddingClasses = {
+    none: 'p-0',
+    sm: 'p-2',
+    md: 'p-4',
+    lg: 'p-6',
+  };
+
+  return (
+    <div className={cn(
+      "mx-auto w-full",
+      maxWidthClasses[maxWidth],
+      paddingClasses[padding],
+      className
+    )}>
+      {children}
+    </div>
+  );
 }
 
 /**
@@ -229,18 +276,30 @@ export function ResponsiveGrid({
   columns = { mobile: 1, tablet: 2, desktop: 3 },
   gap = 'md',
 }: ResponsiveGridProps): React.JSX.Element {
-  const gridClasses = ['responsive-grid', `gap-${gap}`, className]
-    .filter(Boolean)
-    .join(' ');
+  const gapClasses = {
+    sm: 'gap-2',
+    md: 'gap-4',
+    lg: 'gap-6',
+  };
 
   const gridStyle = {
-    '--grid-columns-mobile': columns.mobile ?? 1,
-    '--grid-columns-tablet': columns.tablet ?? 2,
-    '--grid-columns-desktop': columns.desktop ?? 3,
+    '--grid-cols-mobile': columns.mobile ?? 1,
+    '--grid-cols-tablet': columns.tablet ?? 2,
+    '--grid-cols-desktop': columns.desktop ?? 3,
   } as React.CSSProperties;
 
   return (
-    <div className={gridClasses} style={gridStyle}>
+    <div 
+      className={cn(
+        "grid",
+        "grid-cols-[repeat(var(--grid-cols-mobile),minmax(0,1fr))]",
+        "md:grid-cols-[repeat(var(--grid-cols-tablet),minmax(0,1fr))]",
+        "lg:grid-cols-[repeat(var(--grid-cols-desktop),minmax(0,1fr))]",
+        gapClasses[gap],
+        className
+      )} 
+      style={gridStyle}
+    >
       {children}
     </div>
   );

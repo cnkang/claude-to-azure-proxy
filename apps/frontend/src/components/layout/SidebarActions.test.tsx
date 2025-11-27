@@ -87,6 +87,26 @@ vi.mock('../search/ConversationSearch.js', () => ({
   ConversationSearch: () => <div data-testid="conversation-search-mock" />,
 }));
 
+vi.mock('../common/DropdownMenu.js', () => ({
+  DropdownMenu: ({ isOpen, items }: { isOpen: boolean; items: Array<{ id: string; label: string; onClick: () => void }> }) => (
+    isOpen ? (
+      <div data-testid="dropdown-menu">
+        {items.map(item => (
+          <button key={item.id} data-testid={`dropdown-item-${item.id}`} onClick={item.onClick}>
+            {item.label}
+          </button>
+        ))}
+      </div>
+    ) : null
+  ),
+}));
+
+vi.mock('../common/ConfirmDialog.js', () => ({
+  ConfirmDialog: ({ isOpen }: { isOpen: boolean }) => (
+    isOpen ? <div data-testid="confirm-dialog">Confirm Dialog</div> : null
+  ),
+}));
+
 describe('Sidebar conversation actions menu', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -99,12 +119,18 @@ describe('Sidebar conversation actions menu', () => {
     const optionsButton = screen.getByTestId(
       `conversation-options-${baseConversation.id}`
     );
+    
+    // Initially, dropdown should not be visible
+    expect(screen.queryByTestId('dropdown-menu')).not.toBeInTheDocument();
+    
+    // Click the options button
     fireEvent.click(optionsButton);
 
-    expect(optionsButton.parentElement?.classList.contains('open')).toBe(true);
-
-    // Dropdown items should become visible
-    expect(screen.getByTestId('dropdown-item-rename')).toBeTruthy();
-    expect(screen.getByTestId('dropdown-item-delete')).toBeTruthy();
+    // Dropdown menu should now be visible
+    expect(screen.getByTestId('dropdown-menu')).toBeInTheDocument();
+    
+    // Dropdown items should be visible
+    expect(screen.getByTestId('dropdown-item-rename')).toBeInTheDocument();
+    expect(screen.getByTestId('dropdown-item-delete')).toBeInTheDocument();
   });
 });

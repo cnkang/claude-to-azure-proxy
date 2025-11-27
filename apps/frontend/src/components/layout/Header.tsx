@@ -12,7 +12,8 @@ import { useAppContext } from '../../contexts/AppContext';
 import { ThemeToggle } from '../../contexts/ThemeContext';
 import { LanguageSelector } from '../../contexts/I18nContext';
 import { useI18n } from '../../contexts/I18nContext';
-import './Header.css';
+import { Glass } from '../ui/Glass';
+import { cn } from '../ui/Glass';
 
 /**
  * Header props
@@ -35,14 +36,14 @@ export function Header({ isMobile, isTablet }: HeaderProps): React.JSX.Element {
   };
 
   return (
-    <header className="app-header" role="banner">
-      <div className="header-content">
+    <header className="sticky top-0 z-30 w-full px-4 py-3" role="banner">
+      <Glass intensity="medium" border={true} className="px-4 py-3 flex items-center justify-between">
         {/* Left section - Menu button and title */}
-        <div className="header-left">
+        <div className="flex items-center gap-4">
           {(isMobile || isTablet) && (
             <button
               type="button"
-              className="menu-toggle"
+              className="p-2 -ml-2 rounded-lg hover:bg-white/10 text-gray-700 dark:text-gray-200 transition-colors"
               onClick={handleMenuToggle}
               aria-label={
                 isSidebarOpen
@@ -52,29 +53,33 @@ export function Header({ isMobile, isTablet }: HeaderProps): React.JSX.Element {
               aria-expanded={isSidebarOpen}
               aria-controls="sidebar"
             >
-              <span className="menu-icon">
-                <span className="menu-line" />
-                <span className="menu-line" />
-                <span className="menu-line" />
-              </span>
+              <div className="flex flex-col gap-1.5 w-6">
+                <span className="block w-full h-0.5 bg-current rounded-full" />
+                <span className="block w-full h-0.5 bg-current rounded-full" />
+                <span className="block w-full h-0.5 bg-current rounded-full" />
+              </div>
             </button>
           )}
 
-          <div className="header-title">
-            <h1 className="app-title">{t('app.title')}</h1>
-            {!isMobile !== null && isMobile !== undefined && (
-              <span className="app-subtitle">{t('app.subtitle')}</span>
+          <div className="flex flex-col">
+            <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">
+              {t('app.title')}
+            </h1>
+            {!isMobile && (
+              <span className="text-xs text-gray-700 dark:text-gray-300 font-medium">
+                {t('app.subtitle')}
+              </span>
             )}
           </div>
         </div>
 
         {/* Right section - Controls */}
-        <div className="header-right">
+        <div className="flex items-center gap-3">
           {/* Language selector */}
-          {!isMobile !== null && isMobile !== undefined && (
-            <div className="header-control">
+          {!isMobile && (
+            <div className="hidden sm:block">
               <LanguageSelector
-                className="language-selector"
+                className="bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-sm hover:bg-white/20 transition-colors"
                 showFlag={true}
                 showNativeName={false}
               />
@@ -82,35 +87,37 @@ export function Header({ isMobile, isTablet }: HeaderProps): React.JSX.Element {
           )}
 
           {/* Theme toggle */}
-          <div className="header-control">
-            <ThemeToggle className="theme-toggle" showLabel={!isMobile} />
+          <div>
+            <ThemeToggle className="p-2 rounded-lg hover:bg-white/10 transition-colors" showLabel={!isMobile} />
           </div>
 
           {/* Settings button */}
-          <div className="header-control">
+          <div>
             <button
               type="button"
-              className="settings-button"
+              className="flex items-center gap-2 p-2 rounded-lg hover:bg-white/10 text-gray-700 dark:text-gray-200 transition-colors"
               aria-label={t('header.settings')}
               title={t('header.settings')}
             >
-              <span className="settings-icon">⚙️</span>
-              {!isMobile !== null && isMobile !== undefined && (
-                <span className="settings-label">{t('header.settings')}</span>
+              <span className="text-lg">⚙️</span>
+              {!isMobile && (
+                <span className="text-sm font-medium">{t('header.settings')}</span>
               )}
             </button>
           </div>
         </div>
-      </div>
+      </Glass>
 
       {/* Mobile language selector */}
-      {isMobile !== null && isMobile !== undefined && (
-        <div className="header-mobile-controls">
-          <LanguageSelector
-            className="mobile-language-selector"
-            showFlag={true}
-            showNativeName={true}
-          />
+      {isMobile && (
+        <div className="mt-2 flex justify-end">
+          <Glass intensity="low" border={true} className="inline-block">
+            <LanguageSelector
+              className="px-3 py-1.5 text-sm"
+              showFlag={true}
+              showNativeName={true}
+            />
+          </Glass>
         </div>
       )}
     </header>
@@ -132,31 +139,32 @@ export function Breadcrumb({ items }: BreadcrumbProps): React.JSX.Element {
   const { t } = useI18n();
 
   return (
-    <nav className="breadcrumb" aria-label={t('navigation.breadcrumb')}>
-      <ol className="breadcrumb-list">
+    <nav className="flex" aria-label={t('navigation.breadcrumb')}>
+      <ol className="flex items-center space-x-2">
         {items.map((item, index) => {
           const isActive = item.active === true;
           const href = item.href ?? '';
           const hasHref = href.length > 0;
-          const itemClasses = ['breadcrumb-item'];
-          if (isActive === true) {
-            itemClasses.push('active');
-          }
 
           return (
             <li
               key={`breadcrumb-${index}-${item.label}`}
-              className={itemClasses.join(' ')}
+              className={cn(
+                "flex items-center text-sm",
+                isActive 
+                  ? "font-semibold text-gray-900 dark:text-white" 
+                  : "text-gray-700 dark:text-gray-300"
+              )}
             >
               {hasHref && !isActive ? (
-                <a href={href} className="breadcrumb-link">
+                <a href={href} className="hover:text-blue-700 dark:hover:text-blue-400 transition-colors">
                   {item.label}
                 </a>
               ) : (
-                <span className="breadcrumb-text">{item.label}</span>
+                <span>{item.label}</span>
               )}
-              {index < items.length - 1 !== null && undefined !== 1 && (
-                <span className="breadcrumb-separator" aria-hidden="true">
+              {index < items.length - 1 && (
+                <span className="mx-2 text-gray-700 dark:text-gray-300" aria-hidden="true">
                   /
                 </span>
               )}
@@ -188,30 +196,26 @@ export function HeaderAction({
   disabled = false,
   className = '',
 }: HeaderActionProps): React.JSX.Element {
-  const actionClasses = ['header-action'];
-  if (active === true) {
-    actionClasses.push('active');
-  }
-  if (disabled === true) {
-    actionClasses.push('disabled');
-  }
-  if (className.length > 0) {
-    actionClasses.push(className);
-  }
-
   return (
     <button
       type="button"
-      className={actionClasses.join(' ')}
+      className={cn(
+        "flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-200",
+        active 
+          ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300" 
+          : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300",
+        disabled && "opacity-50 cursor-not-allowed",
+        className
+      )}
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
       title={label}
     >
-      <span className="action-icon" role="img" aria-hidden="true">
+      <span className="text-lg" role="img" aria-hidden="true">
         {icon}
       </span>
-      <span className="action-label">{label}</span>
+      <span className="text-sm font-medium">{label}</span>
     </button>
   );
 }
