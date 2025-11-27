@@ -54,7 +54,7 @@ const isAbortErrorInstance = (
     return true;
   }
 
-  const errorWithCause = error as Error;
+  const errorWithCause = error;
   if ('cause' in errorWithCause && errorWithCause.cause instanceof Error) {
     return isAbortErrorInstance(errorWithCause.cause, seen, depth + 1);
   }

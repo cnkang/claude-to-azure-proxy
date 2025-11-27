@@ -41,7 +41,7 @@ vi.mock('../../src/middleware/logging.js', () => ({
 
 describe('MemoryManager', () => {
   let manager: MemoryManager;
-  let originalGC: typeof global.gc | undefined;
+  let originalGC: typeof global.gc;
 
   beforeEach(() => {
     // Store original functions
