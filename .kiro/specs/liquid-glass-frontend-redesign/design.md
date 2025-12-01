@@ -693,15 +693,61 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 export interface SidebarProps {
   isOpen: boolean;
   isMobile: boolean;
+  isDesktop: boolean;  // NEW: For conditional rendering
   onClose: () => void;
 }
 
 export function Sidebar(props: SidebarProps): React.JSX.Element;
 ```
 
+**Conditional Rendering Strategy:**
+
+The Sidebar component implements viewport-specific rendering to meet Requirements 1.2, 1.3, 1.5, and 1.6:
+
+**Desktop Mode (> 1024px):**
+- Uses static positioning within flex layout (NOT Sheet component)
+- Renders as a regular `<div>` with fixed width (320px)
+- Positioned as first child in flex container
+- Main content area adjusts width based on Sidebar state
+- No overlay or modal behavior
+- Smooth CSS transitions for expand/collapse
+
+**Mobile/Tablet Mode (≤ 1024px):**
+- Uses shadcn/ui Sheet component (Modal positioning)
+- Fixed positioning with overlay backdrop
+- Slides in from left with animation
+- Closes on backdrop click or navigation
+- Prevents body scroll when open
+
+**Implementation Pattern:**
+```typescript
+export function Sidebar({ isOpen, isMobile, isDesktop, onClose }: SidebarProps) {
+  // Desktop: Static sidebar with flex layout
+  if (isDesktop) {
+    return (
+      <aside className={cn(
+        "h-full border-r transition-all duration-300",
+        isOpen ? "w-80" : "w-0"
+      )}>
+        {isOpen && <SidebarContent />}
+      </aside>
+    );
+  }
+  
+  // Mobile/Tablet: Sheet modal
+  return (
+    <Sheet open={isOpen} onOpenChange={onClose}>
+      <SheetContent side="left" className="w-80">
+        <SidebarContent />
+      </SheetContent>
+    </Sheet>
+  );
+}
+```
+
 **shadcn/ui Components Used:**
-- `Sheet`: For the sliding sidebar panel with overlay
-- `SheetContent`: For the sidebar content container
+- `Sheet`: For the sliding sidebar panel with overlay (mobile/tablet only)
+- `SheetContent`: For the sidebar content container (mobile/tablet only)
 - `Button`: For new conversation and action buttons
 - `Input`: For the conversation search input
 - `ScrollArea`: For the scrollable conversation list
@@ -1038,6 +1084,14 @@ interface UIState {
 ### Property 50: Sidebar Button Screen Reader Support
 *For any* hamburger menu button or floating action button, the button SHALL have an aria-label attribute that clearly describes its purpose to screen reader users.
 **Validates: Requirements 21.10**
+
+### Property 51: Desktop Sidebar Static Layout
+*For any* desktop viewport (> 1024px), when the Sidebar is rendered, it SHALL use static positioning within a flex layout container (not Sheet component) with a fixed width of 320px, and the main content area SHALL be visible alongside the Sidebar without overlap.
+**Validates: Requirements 1.2, 1.3, 1.5**
+
+### Property 52: Mobile Sidebar Modal Layout
+*For any* mobile or tablet viewport (≤ 1024px), when the Sidebar is rendered, it SHALL use the Sheet component with fixed positioning and overlay backdrop, and SHALL not affect the main content area's layout.
+**Validates: Requirements 1.6**
 
 ## Error Handling
 

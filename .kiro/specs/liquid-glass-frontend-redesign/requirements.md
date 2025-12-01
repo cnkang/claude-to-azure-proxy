@@ -28,10 +28,11 @@ This specification defines the requirements for migrating the frontend applicati
 #### Acceptance Criteria
 
 1. WHEN the application loads THEN the Header SHALL display at the top with proper alignment and spacing
-2. WHEN the Sidebar is opened THEN the Sidebar SHALL display with correct width (320px) and proper glass effect styling
-3. WHEN viewing the main content area THEN the content SHALL not overlap with Header or Sidebar components
+2. WHEN the Sidebar is opened on desktop THEN the Sidebar SHALL display with correct width (320px) using static positioning within flex layout
+3. WHEN viewing the main content area on desktop THEN the content SHALL not overlap with Header or Sidebar components and SHALL adjust width based on Sidebar state
 4. WHEN resizing the browser window THEN all layout components SHALL maintain proper responsive behavior
-5. WHEN the Sidebar is closed on desktop THEN the main content area SHALL expand to fill available space
+5. WHEN the Sidebar is closed on desktop THEN the main content area SHALL expand to fill available space with smooth transition
+6. WHEN the Sidebar is opened on mobile or tablet THEN the Sidebar SHALL use Modal positioning (fixed) and overlay the content with backdrop
 
 ### Requirement 2: Implement Consistent Glass Component Styling with shadcn/ui
 
