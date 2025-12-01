@@ -8,12 +8,30 @@
  */
 
 import React from 'react';
+import { motion } from 'framer-motion';
 import { useAppContext } from '../../contexts/AppContext';
 import { ThemeToggle } from '../../contexts/ThemeContext';
 import { LanguageSelector } from '../../contexts/I18nContext';
 import { useI18n } from '../../contexts/I18nContext';
-import { Glass } from '../ui/Glass';
-import { cn } from '../ui/Glass';
+import { GlassCard } from '../ui/GlassCard';
+import { Button } from '../ui/button';
+import {
+  Breadcrumb as ShadcnBreadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '../ui/breadcrumb';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '../ui/tooltip';
+import { cn } from '@/lib/utils';
+import { useAccessibleAnimation, useAccessibleGestures } from '../../hooks/useAccessibleAnimation';
+import { useScrollBehavior } from '../../hooks/useScrollBehavior';
 
 /**
  * Header props
@@ -30,35 +48,89 @@ export function Header({ isMobile, isTablet }: HeaderProps): React.JSX.Element {
   const { state, setSidebarOpen } = useAppContext();
   const { t } = useI18n();
   const isSidebarOpen = state.ui.sidebarOpen === true;
+  
+  // Get accessible animation configuration with bouncy spring for quick feedback
+  const animation = useAccessibleAnimation('bouncy');
+  const gestures = useAccessibleGestures();
+  
+  // Get scroll behavior for dynamic header height
+  const { isCollapsed } = useScrollBehavior();
+  
+  // Use gentle spring for smooth header transitions
+  const headerAnimation = useAccessibleAnimation('gentle');
 
   const handleMenuToggle = (): void => {
     setSidebarOpen(!isSidebarOpen);
   };
 
   return (
-    <header className="sticky top-0 z-30 w-full px-4 py-3" role="banner">
-      <Glass intensity="medium" border={true} className="px-4 py-3 flex items-center justify-between">
+    <motion.header 
+      className="sticky top-0 z-30 w-full" 
+      role="banner" 
+      style={{ paddingInline: 'clamp(1rem, 3vw, 2rem)' }}
+      // Animate padding based on collapsed state
+      animate={{ 
+        paddingBlock: isCollapsed ? 'clamp(0.5rem, 1.5vw, 0.75rem)' : 'clamp(0.75rem, 2vw, 1rem)'
+      }}
+      transition={headerAnimation}
+    >
+      <GlassCard intensity="medium" border={true} className="flex items-center justify-between" style={{ paddingInline: 'clamp(1rem, 3vw, 2rem)', paddingBlock: 'clamp(0.75rem, 2vw, 1rem)', gap: 'clamp(0.75rem, 2vw, 1.5rem)' }}>
         {/* Left section - Menu button and title */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center" style={{ gap: 'clamp(0.75rem, 2vw, 1.5rem)' }}>
           {(isMobile || isTablet) && (
-            <button
-              type="button"
-              className="p-2 -ml-2 rounded-lg hover:bg-white/10 text-gray-700 dark:text-gray-200 transition-colors"
-              onClick={handleMenuToggle}
-              aria-label={
-                isSidebarOpen
-                  ? t('header.closeSidebar')
-                  : t('header.openSidebar')
-              }
-              aria-expanded={isSidebarOpen}
-              aria-controls="sidebar"
-            >
-              <div className="flex flex-col gap-1.5 w-6">
-                <span className="block w-full h-0.5 bg-current rounded-full" />
-                <span className="block w-full h-0.5 bg-current rounded-full" />
-                <span className="block w-full h-0.5 bg-current rounded-full" />
-              </div>
-            </button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleMenuToggle}
+                    aria-label={
+                      isSidebarOpen
+                        ? t('header.closeSidebar')
+                        : t('header.openSidebar')
+                    }
+                    aria-expanded={isSidebarOpen}
+                    aria-controls="sidebar"
+                    className={cn(
+                      "text-gray-700 dark:text-gray-200",
+                      "hover:bg-blue-100 dark:hover:bg-blue-900/30",
+                      "hover:text-blue-600 dark:hover:text-blue-400",
+                      "ring-2 ring-transparent hover:ring-blue-200 dark:hover:ring-blue-800",
+                      "transition-all duration-200"
+                    )}
+                    asChild
+                  >
+                    <motion.button
+                      type="button"
+                      transition={animation}
+                      {...gestures}
+                    >
+                      <div className="flex flex-col gap-1.5 w-6">
+                        <motion.span 
+                          className="block w-full h-0.5 bg-current rounded-full"
+                          animate={{ rotate: isSidebarOpen ? 45 : 0, y: isSidebarOpen ? 6 : 0 }}
+                          transition={animation}
+                        />
+                        <motion.span 
+                          className="block w-full h-0.5 bg-current rounded-full"
+                          animate={{ opacity: isSidebarOpen ? 0 : 1 }}
+                          transition={animation}
+                        />
+                        <motion.span 
+                          className="block w-full h-0.5 bg-current rounded-full"
+                          animate={{ rotate: isSidebarOpen ? -45 : 0, y: isSidebarOpen ? -6 : 0 }}
+                          transition={animation}
+                        />
+                      </div>
+                    </motion.button>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" align="start">
+                  <p>{isSidebarOpen ? t('header.closeSidebar') : t('header.openSidebar')}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
 
           <div className="flex flex-col">
@@ -74,7 +146,7 @@ export function Header({ isMobile, isTablet }: HeaderProps): React.JSX.Element {
         </div>
 
         {/* Right section - Controls */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center" style={{ gap: 'clamp(0.5rem, 1.5vw, 1rem)' }}>
           {/* Language selector */}
           {!isMobile && (
             <div className="hidden sm:block">
@@ -92,40 +164,52 @@ export function Header({ isMobile, isTablet }: HeaderProps): React.JSX.Element {
           </div>
 
           {/* Settings button */}
-          <div>
-            <button
+          <Button
+            variant="ghost"
+            size={isMobile ? "icon" : "default"}
+            aria-label={t('header.settings')}
+            title={t('header.settings')}
+            className="text-gray-700 dark:text-gray-200"
+            asChild
+          >
+            <motion.button
               type="button"
-              className="flex items-center gap-2 p-2 rounded-lg hover:bg-white/10 text-gray-700 dark:text-gray-200 transition-colors"
-              aria-label={t('header.settings')}
-              title={t('header.settings')}
+              transition={animation}
+              {...gestures}
             >
-              <span className="text-lg">⚙️</span>
+              <motion.span 
+                className="text-lg"
+                whileHover={{ rotate: 90 }}
+                transition={animation}
+              >
+                ⚙️
+              </motion.span>
               {!isMobile && (
-                <span className="text-sm font-medium">{t('header.settings')}</span>
+                <span className="text-sm font-medium" style={{ marginInlineStart: '0.5rem' }}>{t('header.settings')}</span>
               )}
-            </button>
-          </div>
+            </motion.button>
+          </Button>
         </div>
-      </Glass>
+      </GlassCard>
 
       {/* Mobile language selector */}
       {isMobile && (
-        <div className="mt-2 flex justify-end">
-          <Glass intensity="low" border={true} className="inline-block">
+        <div className="flex justify-end" style={{ marginBlockStart: '0.5rem' }}>
+          <GlassCard intensity="low" border={true} className="inline-block">
             <LanguageSelector
               className="px-3 py-1.5 text-sm"
               showFlag={true}
               showNativeName={true}
             />
-          </Glass>
+          </GlassCard>
         </div>
       )}
-    </header>
+    </motion.header>
   );
 }
 
 /**
- * Header breadcrumb component
+ * Header breadcrumb component using shadcn/ui Breadcrumb
  */
 export interface BreadcrumbProps {
   items: Array<{
@@ -139,40 +223,30 @@ export function Breadcrumb({ items }: BreadcrumbProps): React.JSX.Element {
   const { t } = useI18n();
 
   return (
-    <nav className="flex" aria-label={t('navigation.breadcrumb')}>
-      <ol className="flex items-center space-x-2">
+    <ShadcnBreadcrumb aria-label={t('navigation.breadcrumb')}>
+      <BreadcrumbList>
         {items.map((item, index) => {
           const isActive = item.active === true;
           const href = item.href ?? '';
           const hasHref = href.length > 0;
 
           return (
-            <li
-              key={`breadcrumb-${index}-${item.label}`}
-              className={cn(
-                "flex items-center text-sm",
-                isActive 
-                  ? "font-semibold text-gray-900 dark:text-white" 
-                  : "text-gray-700 dark:text-gray-300"
-              )}
-            >
-              {hasHref && !isActive ? (
-                <a href={href} className="hover:text-blue-700 dark:hover:text-blue-400 transition-colors">
-                  {item.label}
-                </a>
-              ) : (
-                <span>{item.label}</span>
-              )}
-              {index < items.length - 1 && (
-                <span className="mx-2 text-gray-700 dark:text-gray-300" aria-hidden="true">
-                  /
-                </span>
-              )}
-            </li>
+            <React.Fragment key={`breadcrumb-${index}-${item.label}`}>
+              <BreadcrumbItem>
+                {hasHref && !isActive ? (
+                  <BreadcrumbLink href={href}>
+                    {item.label}
+                  </BreadcrumbLink>
+                ) : (
+                  <BreadcrumbPage>{item.label}</BreadcrumbPage>
+                )}
+              </BreadcrumbItem>
+              {index < items.length - 1 && <BreadcrumbSeparator />}
+            </React.Fragment>
           );
         })}
-      </ol>
-    </nav>
+      </BreadcrumbList>
+    </ShadcnBreadcrumb>
   );
 }
 
@@ -197,25 +271,27 @@ export function HeaderAction({
   className = '',
 }: HeaderActionProps): React.JSX.Element {
   return (
-    <button
+    <Button
       type="button"
-      className={cn(
-        "flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-200",
-        active 
-          ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300" 
-          : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300",
-        disabled && "opacity-50 cursor-not-allowed",
-        className
-      )}
+      variant={active ? "secondary" : "ghost"}
+      size="default"
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
       title={label}
+      className={cn(
+        "flex items-center",
+        active 
+          ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300" 
+          : "text-gray-700 dark:text-gray-300",
+        className
+      )}
+      style={{ gap: '0.5rem' }}
     >
       <span className="text-lg" role="img" aria-hidden="true">
         {icon}
       </span>
       <span className="text-sm font-medium">{label}</span>
-    </button>
+    </Button>
   );
 }

@@ -362,7 +362,8 @@ describe('Breadcrumb Component', () => {
     );
 
     // Should have 2 separators for 3 items
-    const separators = container.querySelectorAll('[aria-hidden="true"]');
+    // Note: shadcn/ui Breadcrumb also adds aria-hidden to the separator icons
+    const separators = container.querySelectorAll('[role="presentation"]');
     expect(separators.length).toBe(2);
   });
 });
