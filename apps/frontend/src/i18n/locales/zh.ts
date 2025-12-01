@@ -35,6 +35,13 @@ export default {
     closeSidebar: '关闭侧边栏',
     settings: '设置',
   },
+  onboarding: {
+    sidebar: {
+      title: '侧边栏已关闭',
+      description: '要重新打开侧边栏，请点击右下角的浮动按钮或使用顶部的菜单按钮。',
+      dismiss: '知道了',
+    },
+  },
   sidebar: {
     navigation: '主导航',
     newConversation: '新对话',

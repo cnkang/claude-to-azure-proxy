@@ -35,6 +35,14 @@ export default {
     closeSidebar: 'Close sidebar',
     settings: 'Settings',
   },
+  onboarding: {
+    sidebar: {
+      title: 'Sidebar Closed',
+      description:
+        'To reopen the sidebar, tap the floating button in the bottom-right corner or use the menu button at the top.',
+      dismiss: 'Got it',
+    },
+  },
   sidebar: {
     navigation: 'Main navigation',
     newConversation: 'New Conversation',

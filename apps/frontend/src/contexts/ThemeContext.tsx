@@ -14,7 +14,9 @@ import React, {
   useState,
   type ReactNode,
 } from 'react';
+import { motion } from 'framer-motion';
 import { useAppContext } from './AppContext.js';
+import { useAccessibleAnimation, useAccessibleGestures } from '../hooks/useAccessibleAnimation';
 
 /**
  * Theme types
@@ -318,6 +320,10 @@ export function ThemeToggle({
   size = 'md',
 }: ThemeToggleProps): React.JSX.Element {
   const { resolvedTheme, themeMode, setThemeMode, isAutoMode } = useTheme();
+  
+  // Get accessible animation configuration with bouncy spring for quick feedback
+  const animation = useAccessibleAnimation('bouncy');
+  const gestures = useAccessibleGestures();
 
   const getThemeIcon = (): string => {
     if (isAutoMode === true) {
@@ -377,18 +383,27 @@ export function ThemeToggle({
   }
 
   return (
-    <button
+    <motion.button
       type="button"
       onClick={handleToggle}
       className={baseClasses}
       aria-label={`Switch theme. Current: ${getThemeLabel()}, Next: ${getNextTheme()}`}
       title={`Current theme: ${getThemeLabel()}. Click to cycle through themes.`}
+      transition={animation}
+      {...gestures}
     >
-      <span className="theme-toggle-icon" role="img" aria-hidden="true">
+      <motion.span 
+        className="theme-toggle-icon" 
+        role="img" 
+        aria-hidden="true"
+        animate={{ rotate: [0, 10, -10, 0] }}
+        transition={{ duration: 0.3, ease: 'easeInOut' }}
+        key={resolvedTheme} // Re-animate when theme changes
+      >
         {getThemeIcon()}
-      </span>
+      </motion.span>
       {showLabel && <span className="theme-label">{getThemeLabel()}</span>}
-    </button>
+    </motion.button>
   );
 }
 

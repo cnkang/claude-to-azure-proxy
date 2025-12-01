@@ -27,6 +27,7 @@ import type { SyncEvent } from '../services/cross-tab-sync.js';
 import { getSessionManager } from '../services/session.js';
 import { getConversationStorage } from '../services/storage.js';
 import { frontendLogger } from '../utils/logger.js';
+import { BREAKPOINTS } from '../constants/breakpoints.js';
 
 /**
  * App actions
@@ -120,7 +121,8 @@ const createInitialState = (): AppState => ({
   ui: {
     theme: 'auto',
     language: 'en',
-    sidebarOpen: true,
+    // Requirement 21.1: Sidebar open by default on desktop (> 1024px), closed on mobile/tablet (≤ 1024px)
+    sidebarOpen: typeof window !== 'undefined' ? window.innerWidth > BREAKPOINTS.TABLET : false,
     isLoading: false,
     error: undefined,
   },
