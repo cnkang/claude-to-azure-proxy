@@ -22,6 +22,7 @@ import { ConfirmDialog } from '../common/ConfirmDialog.js';
 import { ConversationSearch } from '../search/ConversationSearch.js';
 import { Sheet, SheetContent, SheetTitle } from '../ui/sheet';
 import { GlassSheetContent } from '../ui/GlassSheet';
+import { Glass } from '../ui/Glass';
 import { ScrollArea } from '../ui/scroll-area';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
@@ -34,6 +35,7 @@ export interface SidebarProps {
   isOpen: boolean;
   isMobile: boolean;
   isTablet?: boolean;
+  isDesktop?: boolean;
   onClose: () => void;
 }
 
@@ -44,6 +46,7 @@ export function Sidebar({
   isOpen,
   isMobile,
   isTablet = false,
+  isDesktop = false,
   onClose,
 }: SidebarProps): React.JSX.Element {
   const {
@@ -428,32 +431,9 @@ export function Sidebar({
     }
   };
 
-  return (
-    <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent
-        ref={sidebarRef}
-        side="left"
-        id="sidebar"
-        className="w-80 p-0"
-        data-testid="sidebar"
-        role="navigation"
-        aria-label={t('sidebar.navigation')}
-        style={{
-          height: '100dvh',
-        }}
-      >
-        {/* Hidden title for accessibility */}
-        <SheetTitle className="sr-only">{t('sidebar.navigation')}</SheetTitle>
-        
-        <div className="h-full">
-        <GlassSheetContent 
-          intensity="high"
-          border={true}
-          className="h-full flex flex-col rounded-none border-y-0 border-l-0 p-0"
-          style={{
-            gap: 'clamp(0.5rem, 1.5vw, 1rem)',
-          }}
-        >
+  // Sidebar inner content (the actual UI elements)
+  const sidebarInnerContent = (
+    <>
           {/* Sidebar header */}
           <div className="border-b border-white/10 flex items-center justify-between" style={{ padding: 'clamp(0.75rem, 2vw, 1rem)', gap: '0.5rem' }}>
             <Button
@@ -487,23 +467,17 @@ export function Sidebar({
             </Button>
 
             {(isMobile || isTablet) && (
-              <Button
-                variant="ghost"
-                size="icon"
+              <motion.button
+                type="button"
                 onClick={onClose}
                 aria-label={t('sidebar.close')}
-                className="text-gray-700 dark:text-gray-300"
+                className="min-w-[44px] min-h-[44px] w-11 h-11 p-2 rounded-lg hover:bg-white/10 text-gray-700 dark:text-gray-300 transition-colors flex items-center justify-center"
                 data-testid="sidebar-close-button"
-                asChild
+                transition={animation}
+                {...gestures}
               >
-                <motion.button
-                  type="button"
-                  transition={animation}
-                  {...gestures}
-                >
-                  <span className="text-xl leading-none">×</span>
-                </motion.button>
-              </Button>
+                <span className="text-xl leading-none">×</span>
+              </motion.button>
             )}
           </div>
 
@@ -744,8 +718,40 @@ export function Sidebar({
               </div>
             </div>
           </div>
-        </GlassSheetContent>
-        </div>
+    </>
+  );
+
+  // Desktop: Static sidebar with flex layout
+  if (isDesktop) {
+    return (
+      <>
+        <aside
+          ref={sidebarRef}
+          id="sidebar"
+          className={cn(
+            "h-full border-r border-white/10 transition-all duration-300 overflow-hidden",
+            isOpen ? "w-80" : "w-0"
+          )}
+          data-testid="sidebar"
+          role="navigation"
+          aria-label={t('sidebar.navigation')}
+          aria-hidden={!isOpen}
+          inert={!isOpen ? true : undefined}
+          style={{
+            height: '100dvh',
+          }}
+        >
+          <Glass
+            intensity="high"
+            border={false}
+            className="h-full flex flex-col rounded-none p-0"
+            style={{
+              gap: 'clamp(0.5rem, 1.5vw, 1rem)',
+            }}
+          >
+            {sidebarInnerContent}
+          </Glass>
+        </aside>
 
         {/* Delete confirmation dialog */}
         <ConfirmDialog
@@ -758,7 +764,57 @@ export function Sidebar({
           onCancel={handleDeleteCancel}
           variant="danger"
         />
-      </SheetContent>
-    </Sheet>
+      </>
+    );
+  }
+
+  // Mobile/Tablet: Sheet modal with overlay
+  return (
+    <>
+      <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <SheetContent
+          ref={sidebarRef}
+          side="left"
+          id="sidebar-sheet"
+          className="w-80 p-0"
+          data-testid="sidebar"
+          role="navigation"
+          aria-label={t('sidebar.navigation')}
+          aria-hidden={!isOpen}
+          inert={!isOpen ? true : undefined}
+          style={{
+            height: '100dvh',
+          }}
+        >
+          {/* Hidden title for accessibility */}
+          <SheetTitle className="sr-only">{t('sidebar.navigation')}</SheetTitle>
+          
+          <div className="h-full" inert={!isOpen ? true : undefined}>
+            <GlassSheetContent 
+              intensity="high"
+              border={true}
+              className="h-full flex flex-col rounded-none border-y-0 border-l-0 p-0"
+              style={{
+                gap: 'clamp(0.5rem, 1.5vw, 1rem)',
+              }}
+            >
+              {sidebarInnerContent}
+            </GlassSheetContent>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Delete confirmation dialog */}
+      <ConfirmDialog
+        isOpen={deleteConfirmOpen}
+        title={t('sidebar.confirmDelete')}
+        message={t('sidebar.confirmDeleteMessage')}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+        variant="danger"
+      />
+    </>
   );
 }
