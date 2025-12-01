@@ -336,14 +336,25 @@ export interface LanguageSelectorProps {
   className?: string;
   showFlag?: boolean;
   showNativeName?: boolean;
+  compact?: boolean;
 }
 
 export function LanguageSelector({
   className,
   showFlag = true,
   showNativeName = false,
+  compact = false,
 }: LanguageSelectorProps): React.JSX.Element {
   const { language, supportedLanguages, setLanguage, t } = useI18n();
+
+  // Get display text for current language
+  const getDisplayText = (lang: typeof supportedLanguages[0]): string => {
+    if (compact) {
+      // In compact mode, just show the flag (which is already short: "EN", "中")
+      return lang.flag;
+    }
+    return `${showFlag ? `${lang.flag} ` : ''}${showNativeName ? lang.nativeName : lang.name}`;
+  };
 
   return (
     <select
@@ -354,8 +365,7 @@ export function LanguageSelector({
     >
       {supportedLanguages.map((lang) => (
         <option key={lang.code} value={lang.code}>
-          {showFlag && `${lang.flag} `}
-          {showNativeName ? lang.nativeName : lang.name}
+          {getDisplayText(lang)}
         </option>
       ))}
     </select>
