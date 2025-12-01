@@ -45,29 +45,29 @@
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "express-rate-limit": "^8.2.1",
-    "express-validator": "^7.3.0",
+    "express-validator": "^7.3.1",
     "helmet": "^8.1.0",
-    "joi": "^18.0.1",
+    "joi": "^18.0.2",
     "multer": "2.0.2",
-    "openai": "^6.8.1",
+    "openai": "^6.9.1",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@repo/shared-config": "workspace:*",
     "@swc/cli": "^0.7.9",
-    "@swc/core": "^1.15.0",
+    "@swc/core": "^1.15.3",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",
     "@types/multer": "^2.0.0",
-    "@types/node": "^24.10.0",
+    "@types/node": "^24.10.1",
     "@types/superagent": "^8.1.9",
     "@types/supertest": "^6.0.3",
-    "@vitest/coverage-v8": "^4.0.7",
-    "@vitest/ui": "^4.0.7",
+    "@vitest/coverage-v8": "^4.0.14",
+    "@vitest/ui": "^4.0.14",
     "supertest": "^7.1.4",
     "tsx": "^4.20.6",
-    "typescript": "^5.6.0",
-    "vitest": "^4.0.7"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.14"
   },
   "engines": {
     "node": ">=24.0.0"

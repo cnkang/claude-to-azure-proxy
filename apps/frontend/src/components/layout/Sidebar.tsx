@@ -8,6 +8,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
 import { isNonEmptyString } from '@repo/shared-utils';
 import { useConversations } from '../../contexts/AppContext.js';
 import { useI18n } from '../../contexts/I18nContext.js';
@@ -19,8 +20,12 @@ import type { Conversation } from '../../types/index.js';
 import { DropdownMenu } from '../common/DropdownMenu.js';
 import { ConfirmDialog } from '../common/ConfirmDialog.js';
 import { ConversationSearch } from '../search/ConversationSearch.js';
-import { Glass } from '../ui/Glass.js';
-import { cn } from '../ui/Glass.js';
+import { Sheet, SheetContent, SheetTitle } from '../ui/sheet';
+import { GlassSheetContent } from '../ui/GlassSheet';
+import { ScrollArea } from '../ui/scroll-area';
+import { Button } from '../ui/button';
+import { cn } from '@/lib/utils';
+import { useAccessibleAnimation, useAccessibleGestures } from '../../hooks/useAccessibleAnimation';
 
 /**
  * Sidebar props
@@ -28,6 +33,7 @@ import { cn } from '../ui/Glass.js';
 export interface SidebarProps {
   isOpen: boolean;
   isMobile: boolean;
+  isTablet?: boolean;
   onClose: () => void;
 }
 
@@ -37,6 +43,7 @@ export interface SidebarProps {
 export function Sidebar({
   isOpen,
   isMobile,
+  isTablet = false,
   onClose,
 }: SidebarProps): React.JSX.Element {
   const {
@@ -50,8 +57,12 @@ export function Sidebar({
   const { t, formatRelativeTime } = useI18n();
   const { session } = useSessionContext();
   const sessionManagerRef = useRef(getSessionManager());
-  const sidebarRef = useRef<HTMLElement>(null);
+  const sidebarRef = useRef<HTMLDivElement>(null);
   const sessionId = session?.sessionId ?? '';
+  
+  // Get accessible animation configuration
+  const animation = useAccessibleAnimation('bouncy');
+  const gestures = useAccessibleGestures();
 
   // State for dropdown menu
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
@@ -98,8 +109,9 @@ export function Sidebar({
   const handleConversationSelect = (conversationId: string): void => {
     setActiveConversation(conversationId);
 
-    // Close sidebar on mobile after selection
-    if (isMobile === true) {
+    // Close sidebar on mobile/tablet after selection to show the conversation
+    // Keep it open on desktop for better UX (side-by-side view)
+    if (isMobile === true || isTablet === true) {
       onClose();
     }
   };
@@ -341,8 +353,8 @@ export function Sidebar({
         },
       });
 
-      // Close sidebar on mobile
-      if (isMobile === true) {
+      // Close sidebar on mobile/tablet
+      if (isMobile === true || isTablet === true) {
         onClose();
       }
     } catch (error) {
@@ -417,75 +429,102 @@ export function Sidebar({
   };
 
   return (
-    <aside
-      ref={sidebarRef}
-      id="sidebar"
-      className={cn(
-        "fixed inset-y-0 left-0 z-40 w-80 transform transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:h-full md:w-80 md:flex-shrink-0 md:border-r md:border-white/20 dark:md:border-white/10",
-        isOpen ? "translate-x-0" : "-translate-x-full",
-        isMobile && "shadow-2xl"
-      )}
-      role="navigation"
-      aria-label={t('sidebar.navigation')}
-      aria-hidden={!isOpen}
-      tabIndex={-1}
-      data-testid="sidebar"
-    >
-      <Glass 
-        intensity="high"
-        border={true}
-        className="h-full flex flex-col rounded-none border-y-0 border-l-0 border-r-0 md:border-r"
+    <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <SheetContent
+        ref={sidebarRef}
+        side="left"
+        id="sidebar"
+        className="w-80 p-0"
+        data-testid="sidebar"
+        role="navigation"
+        aria-label={t('sidebar.navigation')}
+        style={{
+          height: '100dvh',
+        }}
       >
-        {/* Sidebar header */}
-        <div className="p-4 border-b border-white/10 flex items-center justify-between gap-2">
-          <button
-            type="button"
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
-            onClick={handleNewConversation}
-            disabled={isCreatingConversation}
-            aria-label={t('sidebar.newConversation')}
-            aria-busy={isCreatingConversation}
-            data-testid="new-conversation-button"
-          >
-            <span className="text-xl leading-none">
-              {isCreatingConversation ? '⏳' : '+'}
-            </span>
-            <span className="text-sm">
-              {isCreatingConversation
-                ? t('sidebar.creatingConversation')
-                : t('sidebar.newConversation')}
-            </span>
-          </button>
-
-          {isMobile !== null && isMobile !== undefined && (
-            <button
-              type="button"
-              className="p-2 rounded-lg hover:bg-white/10 text-gray-700 dark:text-gray-300 transition-colors"
-              onClick={onClose}
-              aria-label={t('sidebar.close')}
-            >
-              <span className="text-xl leading-none">×</span>
-            </button>
-          )}
-        </div>
-
-        {/* Search conversations */}
-        <div
-          className="p-4 pb-2"
-          data-testid="conversations-search-section"
+        {/* Hidden title for accessibility */}
+        <SheetTitle className="sr-only">{t('sidebar.navigation')}</SheetTitle>
+        
+        <div className="h-full">
+        <GlassSheetContent 
+          intensity="high"
+          border={true}
+          className="h-full flex flex-col rounded-none border-y-0 border-l-0 p-0"
+          style={{
+            gap: 'clamp(0.5rem, 1.5vw, 1rem)',
+          }}
         >
-          <ConversationSearch
-            onResultSelect={(conversationId) => {
-              setActiveConversation(conversationId);
-              if (isMobile) {
-                onClose();
-              }
-            }}
-          />
-        </div>
+          {/* Sidebar header */}
+          <div className="border-b border-white/10 flex items-center justify-between" style={{ padding: 'clamp(0.75rem, 2vw, 1rem)', gap: '0.5rem' }}>
+            <Button
+              className="flex-1 flex items-center justify-center bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 disabled:opacity-70"
+              onClick={handleNewConversation}
+              disabled={isCreatingConversation}
+              aria-label={t('sidebar.newConversation')}
+              aria-busy={isCreatingConversation}
+              data-testid="new-conversation-button"
+              style={{ gap: '0.5rem' }}
+              asChild
+            >
+              <motion.button
+                type="button"
+                transition={animation}
+                {...gestures}
+              >
+                <motion.span 
+                  className="text-xl leading-none"
+                  animate={{ rotate: isCreatingConversation ? 360 : 0 }}
+                  transition={{ duration: 1, repeat: isCreatingConversation ? Infinity : 0, ease: 'linear' }}
+                >
+                  {isCreatingConversation ? '⏳' : '+'}
+                </motion.span>
+                <span className="text-sm">
+                  {isCreatingConversation
+                    ? t('sidebar.creatingConversation')
+                    : t('sidebar.newConversation')}
+                </span>
+              </motion.button>
+            </Button>
 
-        {/* Conversations list */}
-        <div className="flex-1 overflow-y-auto px-3 py-2 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
+            {(isMobile || isTablet) && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onClose}
+                aria-label={t('sidebar.close')}
+                className="text-gray-700 dark:text-gray-300"
+                data-testid="sidebar-close-button"
+                asChild
+              >
+                <motion.button
+                  type="button"
+                  transition={animation}
+                  {...gestures}
+                >
+                  <span className="text-xl leading-none">×</span>
+                </motion.button>
+              </Button>
+            )}
+          </div>
+
+          {/* Search conversations */}
+          <div
+            data-testid="conversations-search-section"
+            style={{ paddingInline: 'clamp(0.75rem, 2vw, 1rem)', paddingBlock: '0.5rem' }}
+          >
+            <ConversationSearch
+              onResultSelect={(conversationId) => {
+                setActiveConversation(conversationId);
+                // Close sidebar on mobile/tablet after search result selection
+                if (isMobile || isTablet) {
+                  onClose();
+                }
+              }}
+            />
+          </div>
+
+          {/* Conversations list */}
+          <ScrollArea className="flex-1" style={{ paddingInline: 'clamp(0.5rem, 1.5vw, 0.75rem)', paddingBlock: '0.5rem' }}>
           <h2 className="px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
             {t('sidebar.conversations')}
           </h2>
@@ -519,7 +558,7 @@ export function Sidebar({
                       data-testid={`conversation-item-${conversation.id}`}
                       role="presentation"
                     >
-                      <button
+                      <motion.button
                         type="button"
                         className={cn(
                           "w-full text-left p-3 rounded-xl transition-all duration-200 group-hover:bg-white/5 outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50",
@@ -548,6 +587,9 @@ export function Sidebar({
                         onContextMenu={(event) =>
                           handleConversationContextMenu(event, conversation.id)
                         }
+                        transition={animation}
+                        whileHover={{ scale: 1.01, x: 2 }}
+                        whileTap={{ scale: 0.99 }}
                       >
                         <div className="flex flex-col gap-1">
                           {renamingId === conversation.id ? (
@@ -600,7 +642,7 @@ export function Sidebar({
                             </div>
                           )}
                         </div>
-                      </button>
+                      </motion.button>
 
                       {/* Conversation actions */}
                       <div
@@ -609,12 +651,14 @@ export function Sidebar({
                           (isMenuOpen || isActive) && "opacity-100"
                         )}
                       >
-                        <button
+                        <motion.button
                           type="button"
                           className="p-1 rounded-md hover:bg-gray-200/50 dark:hover:bg-gray-700/50 text-gray-700 transition-colors"
                           onClick={(event) =>
                             handleOptionsClick(event, conversation.id)
                           }
+                          transition={animation}
+                          {...gestures}
                           aria-label={t('sidebar.conversationOptions')}
                           aria-expanded={isMenuOpen}
                           aria-haspopup="menu"
@@ -623,7 +667,7 @@ export function Sidebar({
                           data-testid={`conversation-options-${conversation.id}`}
                         >
                           <span className="text-lg leading-none">⋯</span>
-                        </button>
+                        </motion.button>
                       </div>
 
                       {/* Dropdown menu */}
@@ -660,57 +704,61 @@ export function Sidebar({
               )}
             </div>
           )}
-        </div>
+          </ScrollArea>
 
-        {/* Sidebar footer */}
-        <div className="p-4 border-t border-white/10 bg-white/5 backdrop-blur-sm">
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between text-xs text-gray-700 dark:text-gray-300">
-              <div className="font-medium">{t('sidebar.session')}</div>
-              <div
-                className="font-mono bg-black/5 dark:bg-white/5 px-2 py-0.5 rounded"
-                title={isNonEmptyString(sessionId) ? sessionId : ''}
-              >
-                {isNonEmptyString(sessionId)
-                  ? `${sessionId.substring(0, 8)}...`
-                  : 'N/A'}
+          {/* Sidebar footer */}
+          <div className="border-t border-white/10 bg-white/5 backdrop-blur-sm" style={{ padding: 'clamp(0.75rem, 2vw, 1rem)' }}>
+            <div className="flex flex-col" style={{ gap: 'clamp(0.5rem, 1.5vw, 0.75rem)' }}>
+              <div className="flex items-center justify-between text-xs text-gray-700 dark:text-gray-300">
+                <div className="font-medium">{t('sidebar.session')}</div>
+                <div
+                  className="font-mono bg-black/5 dark:bg-white/5 px-2 py-0.5 rounded"
+                  title={isNonEmptyString(sessionId) ? sessionId : ''}
+                >
+                  {isNonEmptyString(sessionId)
+                    ? `${sessionId.substring(0, 8)}...`
+                    : 'N/A'}
+                </div>
+              </div>
+
+              <div className="flex" style={{ gap: '0.5rem' }}>
+                <Button
+                  variant="outline"
+                  size="default"
+                  className="flex-1 bg-white/5 hover:bg-white/10 border-white/10 text-gray-700 dark:text-gray-300"
+                  aria-label={t('sidebar.settings')}
+                  title={t('sidebar.settings')}
+                >
+                  <span className="text-base">⚙️</span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="default"
+                  className="flex-1 bg-white/5 hover:bg-white/10 border-white/10 text-gray-700 dark:text-gray-300"
+                  aria-label={t('sidebar.help')}
+                  title={t('sidebar.help')}
+                >
+                  <span className="text-base">❓</span>
+                </Button>
               </div>
             </div>
-
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className="flex-1 flex items-center justify-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-all duration-200 text-sm text-gray-700 dark:text-gray-300"
-                aria-label={t('sidebar.settings')}
-                title={t('sidebar.settings')}
-              >
-                <span className="text-base">⚙️</span>
-              </button>
-
-              <button
-                type="button"
-                className="flex-1 flex items-center justify-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-all duration-200 text-sm text-gray-700 dark:text-gray-300"
-                aria-label={t('sidebar.help')}
-                title={t('sidebar.help')}
-              >
-                <span className="text-base">❓</span>
-              </button>
-            </div>
           </div>
+        </GlassSheetContent>
         </div>
-      </Glass>
 
-      {/* Delete confirmation dialog */}
-      <ConfirmDialog
-        isOpen={deleteConfirmOpen}
-        title={t('sidebar.confirmDelete')}
-        message={t('sidebar.confirmDeleteMessage')}
-        confirmLabel={t('common.delete')}
-        cancelLabel={t('common.cancel')}
-        onConfirm={handleDeleteConfirm}
-        onCancel={handleDeleteCancel}
-        variant="danger"
-      />
-    </aside>
+        {/* Delete confirmation dialog */}
+        <ConfirmDialog
+          isOpen={deleteConfirmOpen}
+          title={t('sidebar.confirmDelete')}
+          message={t('sidebar.confirmDeleteMessage')}
+          confirmLabel={t('common.delete')}
+          cancelLabel={t('common.cancel')}
+          onConfirm={handleDeleteConfirm}
+          onCancel={handleDeleteCancel}
+          variant="danger"
+        />
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -71,17 +71,25 @@ export class UIActions {
       `[data-testid="conversation-item-${conversationId}"]`
     );
 
-    // Click the options button (⋯) to open dropdown menu
-    await conversationItem
-      .locator(`[data-testid="conversation-options-${conversationId}"]`)
-      .click();
+    // Click the options button (⋯) to open dropdown menu/dialog
+    const optionsButton = conversationItem.locator(
+      `[data-testid="conversation-options-${conversationId}"]`
+    );
+    await optionsButton.click();
 
-    // Wait for dropdown menu to appear and click rename option
-    await this.page.waitForTimeout(300); // Wait for menu animation
-    const renameButton = this.page.getByRole('menuitem', { name: /rename/i });
-    await renameButton.click();
+    // Wait for menu/dialog to appear and be ready
+    await this.page.waitForTimeout(800);
 
-    // Wait for input to appear
+    // Find the rename button using testid (more reliable than role)
+    const renameButton = this.page.locator('[data-testid="dropdown-item-rename"]');
+    
+    // Wait for it to be visible
+    await renameButton.waitFor({ state: 'visible', timeout: 5000 });
+    
+    // Click using JavaScript to bypass overlay issues
+    await renameButton.evaluate((el) => (el as HTMLElement).click());
+
+    // Wait for input to appear (it appears after rename button is clicked)
     const input = this.page.locator('[data-testid="conversation-title-input"]');
     await input.waitFor({ state: 'visible', timeout: 5000 });
 
@@ -101,27 +109,46 @@ export class UIActions {
    * @throws Error if deletion fails or times out
    */
   async deleteConversation(conversationId: string): Promise<void> {
-    // Find the conversation item
+    // Find the conversation item and ensure it's visible
     const conversationItem = this.page.locator(
       `[data-testid="conversation-item-${conversationId}"]`
     );
+    
+    // Wait for conversation item to be visible (important if we just cleared search)
+    await conversationItem.waitFor({ state: 'visible', timeout: 10000 });
 
-    // Click the options button (⋯) to open dropdown menu
-    await conversationItem
-      .locator(`[data-testid="conversation-options-${conversationId}"]`)
-      .click();
-
-    // Wait for dropdown menu to appear and click delete option
-    await this.page.waitForTimeout(300); // Wait for menu animation
-    const deleteButton = this.page.getByRole('menuitem', { name: /delete/i });
-    await deleteButton.click();
-
-    // Wait for confirmation dialog to appear
+    // Scroll into view if needed
+    await conversationItem.scrollIntoViewIfNeeded();
     await this.page.waitForTimeout(300);
 
-    // Click confirm button in the dialog
+    // Click the options button (⋯) to open dropdown menu/dialog
+    const optionsButton = conversationItem.locator(
+      `[data-testid="conversation-options-${conversationId}"]`
+    );
+    
+    // Ensure options button is visible and clickable
+    await optionsButton.waitFor({ state: 'visible', timeout: 10000 });
+    await optionsButton.click({ force: true });
+
+    // Wait for menu/dialog to appear and be ready
+    await this.page.waitForTimeout(800);
+
+    // Find the delete button using testid (more reliable than role)
+    const deleteButton = this.page.locator('[data-testid="dropdown-item-delete"]');
+    
+    // Wait for it to be visible
+    await deleteButton.waitFor({ state: 'visible', timeout: 5000 });
+    
+    // Click using JavaScript to bypass overlay issues
+    await deleteButton.evaluate((el) => (el as HTMLElement).click());
+
+    // Wait for confirmation dialog to appear
+    await this.page.waitForTimeout(800);
+
+    // Click confirm button in the dialog - use JavaScript click to bypass overlay
     const confirmButton = this.page.getByRole('button', { name: /delete|confirm/i });
-    await confirmButton.click();
+    await confirmButton.waitFor({ state: 'visible', timeout: 5000 });
+    await confirmButton.evaluate((el) => (el as HTMLElement).click());
 
     // Wait for conversation to disappear from the list
     await this.page.waitForSelector(

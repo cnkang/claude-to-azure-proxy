@@ -175,6 +175,13 @@ describe('AppContext', () => {
   });
 
   it('updates configuration and resets state', () => {
+    // Set desktop viewport width (> 1024px) for sidebar to be open by default
+    Object.defineProperty(window, 'innerWidth', {
+      writable: true,
+      configurable: true,
+      value: 1920,
+    });
+
     const { result } = renderAppAndConfig();
 
     act(() => {
@@ -195,6 +202,7 @@ describe('AppContext', () => {
     expect(result.current.app.state.ui.error).toBeUndefined();
     expect(result.current.app.state.ui.isLoading).toBe(false);
     expect(result.current.app.state.conversations.conversations.size).toBe(0);
+    // Sidebar should be open on desktop (> 1024px) after reset
     expect(result.current.app.state.ui.sidebarOpen).toBe(true);
   });
 });

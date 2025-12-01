@@ -18,17 +18,9 @@ import { ErrorBoundary } from '../common/ErrorBoundary.js';
 import { AccessibilityProvider, SkipLink } from '../accessibility/index.js';
 import { cn } from '../ui/Glass.js';
 import { debounce } from '../../utils/performance.js';
-
-/**
- * Responsive breakpoints (in pixels)
- * Mobile: < 768px
- * Tablet: 768px - 1024px
- * Desktop: > 1024px
- */
-const BREAKPOINTS = {
-  MOBILE: 768,
-  TABLET: 1024,
-} as const;
+import { BREAKPOINTS } from '../../constants/breakpoints.js';
+import { FloatingActionButton } from '../ui/floating-action-button.js';
+import { OnboardingMessage } from '../ui/onboarding-message.js';
 
 /**
  * App layout props
@@ -47,6 +39,10 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const [isTablet, setIsTablet] = useState<boolean>(false);
   const prevIsMobileRef = useRef<boolean>(false);
+  
+  // Onboarding state (Requirement 21.5, 21.6)
+  const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
+  const [hasShownOnboarding, setHasShownOnboarding] = useState<boolean>(false);
 
   // Check screen size and update responsive state
   const checkScreenSize = useCallback((): void => {
@@ -100,6 +96,32 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
     }
   };
 
+  // Floating button visibility logic (Requirement 21.2, 21.7)
+  // Show floating button only on mobile/tablet when sidebar is closed
+  const showFloatingButton = (isMobile || isTablet) && !state.ui.sidebarOpen;
+
+  // Handle floating button click
+  const handleFloatingButtonClick = (): void => {
+    setSidebarOpen(true);
+  };
+
+  // Chat bubbles icon for floating button
+  const chatBubblesIcon = (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="w-6 h-6"
+      aria-hidden="true"
+    >
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+
   // Handle escape key to close sidebar on mobile
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
@@ -114,6 +136,38 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isMobile, state.ui.sidebarOpen, setSidebarOpen]);
+
+  // Onboarding logic (Requirement 21.5, 21.6)
+  // Show onboarding message after first-time Sidebar close on mobile/tablet
+  useEffect(() => {
+    // Check if onboarding has been shown before
+    const onboardingSeen = localStorage.getItem('sidebar-onboarding-seen');
+    if (onboardingSeen === 'true') {
+      setHasShownOnboarding(true);
+      return undefined;
+    }
+
+    // Show onboarding after 1 second when:
+    // 1. On mobile or tablet
+    // 2. Sidebar is closed
+    // 3. Haven't shown onboarding yet
+    if ((isMobile || isTablet) && !state.ui.sidebarOpen && !hasShownOnboarding) {
+      const timer = setTimeout(() => {
+        setShowOnboarding(true);
+        setHasShownOnboarding(true);
+      }, 1000);
+
+      return () => clearTimeout(timer);
+    }
+
+    return undefined;
+  }, [isMobile, isTablet, state.ui.sidebarOpen, hasShownOnboarding]);
+
+  // Handle onboarding dismiss
+  const handleOnboardingDismiss = (): void => {
+    setShowOnboarding(false);
+    localStorage.setItem('sidebar-onboarding-seen', 'true');
+  };
 
   const hasUiError = isNonEmptyString(state.ui.error);
   const currentErrorMessage = hasUiError ? state.ui.error : undefined;
@@ -140,6 +194,7 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
           <Sidebar
             isOpen={state.ui.sidebarOpen}
             isMobile={isMobile}
+            isTablet={isTablet}
             onClose={() => setSidebarOpen(false)}
           />
 
@@ -167,6 +222,14 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
               <div className="min-h-full p-4 md:p-6 max-w-7xl mx-auto w-full">
                 <ErrorBoundary>{children}</ErrorBoundary>
               </div>
+
+              {/* Floating Action Button (Requirement 21.2, 21.7) */}
+              <FloatingActionButton
+                onClick={handleFloatingButtonClick}
+                label={t('header.openSidebar')}
+                icon={chatBubblesIcon}
+                visible={showFloatingButton}
+              />
             </main>
           </div>
         </div>
@@ -208,6 +271,15 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
             </div>
           </div>
         )}
+
+        {/* Onboarding Message (Requirement 21.5, 21.6) */}
+        <OnboardingMessage
+          visible={showOnboarding}
+          onDismiss={handleOnboardingDismiss}
+          title={t('onboarding.sidebar.title')}
+          description={t('onboarding.sidebar.description')}
+          dismissLabel={t('onboarding.sidebar.dismiss')}
+        />
       </div>
     </AccessibilityProvider>
   );
