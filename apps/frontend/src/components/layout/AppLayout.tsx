@@ -38,7 +38,11 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
   const { isRTL, t } = useI18n();
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const [isTablet, setIsTablet] = useState<boolean>(false);
+  const [isLandscape, setIsLandscape] = useState<boolean>(false);
   const prevIsMobileRef = useRef<boolean>(false);
+  
+  // Calculate desktop viewport (Requirement 1.2, 1.3, 1.5, 1.6)
+  const isDesktop = !isMobile && !isTablet;
   
   // Onboarding state (Requirement 21.5, 21.6)
   const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
@@ -47,11 +51,15 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
   // Check screen size and update responsive state
   const checkScreenSize = useCallback((): void => {
     const width = window.innerWidth;
+    const height = window.innerHeight;
     const newIsMobile = width < BREAKPOINTS.MOBILE;
     const newIsTablet = width >= BREAKPOINTS.MOBILE && width < BREAKPOINTS.TABLET;
+    // Detect landscape mode: width > height and height < 500px
+    const newIsLandscape = width > height && height < 500;
     
     setIsMobile(newIsMobile);
     setIsTablet(newIsTablet);
+    setIsLandscape(newIsLandscape);
   }, []);
 
   // Create debounced version of checkScreenSize for performance
@@ -88,6 +96,15 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
   }, [isMobile, setSidebarOpen]);
   // Note: state.ui.sidebarOpen is intentionally excluded to prevent infinite loops
   // We only want to close the sidebar when transitioning TO mobile, not when it opens/closes
+
+  // Open sidebar by default on desktop (Requirement 21.1)
+  useEffect(() => {
+    // Only open sidebar on desktop if it's currently closed
+    // This respects user's manual close action
+    if (isDesktop && !state.ui.sidebarOpen) {
+      setSidebarOpen(true);
+    }
+  }, [isDesktop, state.ui.sidebarOpen, setSidebarOpen]);
 
   // Handle sidebar overlay click on mobile
   const handleOverlayClick = (): void => {
@@ -195,6 +212,7 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
             isOpen={state.ui.sidebarOpen}
             isMobile={isMobile}
             isTablet={isTablet}
+            isDesktop={isDesktop}
             onClose={() => setSidebarOpen(false)}
           />
 
@@ -210,7 +228,7 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
           {/* Main content area with header */}
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Header - only in main content area */}
-            <Header isMobile={isMobile} isTablet={isTablet} />
+            <Header isMobile={isMobile} isTablet={isTablet} isLandscape={isLandscape} />
 
             {/* Main content */}
             <main
