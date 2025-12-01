@@ -94,7 +94,10 @@ FROM base AS runner
 WORKDIR /app
 
 # Install security updates and create non-root user
-RUN apk update && apk upgrade && \
+# Update ssl_client to fix CVE-2024-58251 (MEDIUM severity)
+RUN apk update && \
+    apk upgrade --no-cache && \
+    apk add --no-cache --upgrade ssl_client && \
     rm -rf /var/cache/apk/* && \
     addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 appuser

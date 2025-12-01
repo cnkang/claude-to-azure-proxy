@@ -38,6 +38,12 @@ RUN pnpm --filter @repo/frontend build
 # Production stage - serve with nginx
 FROM nginx:alpine AS runner
 
+# Install security updates including ssl_client fix for CVE-2024-58251
+RUN apk update && \
+    apk upgrade --no-cache && \
+    apk add --no-cache --upgrade ssl_client && \
+    rm -rf /var/cache/apk/*
+
 # Copy nginx configuration
 COPY --from=builder /app/apps/frontend/dist /usr/share/nginx/html
 

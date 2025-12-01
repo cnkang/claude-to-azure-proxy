@@ -50,7 +50,11 @@ RUN pnpm install --prod
 FROM base AS runner
 WORKDIR /app
 
-RUN apk update && apk upgrade && \
+# Install security updates and create non-root user
+# Update ssl_client to fix CVE-2024-58251 (MEDIUM severity)
+RUN apk update && \
+    apk upgrade --no-cache && \
+    apk add --no-cache --upgrade ssl_client && \
     rm -rf /var/cache/apk/* && \
     addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 appuser
