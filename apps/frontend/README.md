@@ -4,12 +4,16 @@ React frontend for the Claude-to-Azure OpenAI proxy service.
 
 ## Tech Stack
 
-- **React 19.2** - Modern React with latest features
+- **React 19.2** - Modern React with concurrent features, use() hook, and enhanced Suspense
+- **shadcn/ui** - Accessible, customizable component library built with Radix UI and Tailwind CSS
+- **Tailwind CSS 4.1** - Native cascade layers, container queries, and improved JIT compilation
 - **TypeScript 5.3+** - Type safety and developer experience
+- **framer-motion** - Spring physics-based fluid animations
 - **Vite** - Fast build tool and development server
 - **i18next** - Internationalization (English and Chinese)
 - **React Router DOM** - Client-side routing
 - **Vitest + happy-dom** - Testing framework with fast DOM environment
+- **Playwright** - E2E testing with cross-browser support
 - **ESLint + Prettier** - Code quality and formatting
 
 ## Development
@@ -84,6 +88,297 @@ src/
 - 🔍 **Full-Text Search** - Fast local search with keyword highlighting
 - 🛡️ **Data Integrity** - Automatic orphan detection and cleanup
 - ⚡ **Performance Monitoring** - Built-in metrics and profiling
+- 🪟 **Liquid Glass Design** - Modern frosted glass UI with dynamic optical effects
+- 🎭 **Fluid Animations** - Spring physics-based organic motion
+- 📜 **Dynamic Scroll Behavior** - Adaptive header that responds to scroll direction
+- 🎯 **In-Place Interactions** - Dialogs expand from trigger elements
+- 📱 **Mobile Optimizations** - Bottom search positioning for thumb reachability
+- 🎨 **Modern CSS Features** - Container queries, logical properties, clamp(), dvh units
+
+## Liquid Glass Design System
+
+### Overview
+
+The application features a modern "Liquid Glass" design inspired by Apple's macOS 26 and iOS 26 design language. This creates a sophisticated, translucent interface with frosted-glass effects, fluid animations, and dynamic optical adaptation.
+
+### Key Features
+
+#### Glass Components (shadcn/ui)
+
+All UI components use shadcn/ui as the foundation, enhanced with glass effect styling:
+
+- **Accessible by Default**: Built with Radix UI primitives meeting WCAG AAA standards
+- **Customizable**: Full control over styling with Tailwind CSS 4.1
+- **Three Intensity Levels**:
+  - **Low**: Subtle transparency (bg-white/10, backdrop-blur-md)
+  - **Medium**: Balanced visibility (bg-white/40, backdrop-blur-xl)
+  - **High**: Strong frosted effect (bg-white/70, backdrop-blur-2xl)
+
+```typescript
+// Example: Using Glass components
+import { GlassCard } from '@/components/ui/glass-card';
+
+<GlassCard intensity="medium" border>
+  Content with glass effect
+</GlassCard>
+```
+
+#### Fluid Animation System
+
+Spring physics-based animations that feel organic and alive:
+
+- **Spring Presets**: Gentle, default, bouncy, and gel configurations
+- **Accessibility**: Respects `prefers-reduced-motion` preference
+- **Performance**: GPU-accelerated with transform and opacity
+- **Gesture-Driven**: Responds to user input velocity and direction
+
+```typescript
+// Example: Using accessible animations
+import { useAccessibleAnimation } from '@/hooks/useAccessibleAnimation';
+
+function Button() {
+  const animation = useAccessibleAnimation('bouncy');
+  
+  return (
+    <motion.button
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      transition={animation}
+    >
+      Click me
+    </motion.button>
+  );
+}
+```
+
+#### Dynamic Scroll Behavior
+
+Header adapts to scroll direction for optimal space usage:
+
+- **Collapse on Scroll Down**: Reduces height from 64px to 48px
+- **Expand on Scroll Up**: Returns to full height
+- **Essential Controls**: Always visible when collapsed
+- **Smooth Transitions**: Spring physics for natural motion
+
+```typescript
+// Example: Using scroll behavior
+import { useScrollBehavior } from '@/hooks/useScrollBehavior';
+
+function Header() {
+  const { isCollapsed, scrollDirection } = useScrollBehavior();
+  
+  return (
+    <motion.header
+      animate={{ height: isCollapsed ? '48px' : '64px' }}
+      transition={useAccessibleAnimation('gentle')}
+    >
+      Header content
+    </motion.header>
+  );
+}
+```
+
+#### In-Place Dialog Expansion
+
+Dialogs expand from their trigger elements for connected interactions:
+
+- **Transform Origin**: Set to trigger button's center coordinates
+- **Scale Animation**: Grows from 0 to 1 with spring physics
+- **Focus Management**: Returns focus to trigger on close
+- **Backdrop Blur**: Synchronized with dialog animation
+
+```typescript
+// Example: In-place dialog
+import { useInPlaceDialog } from '@/hooks/useInPlaceDialog';
+
+function Component() {
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const { transformOrigin } = useInPlaceDialog(triggerRef, isOpen);
+  
+  return (
+    <>
+      <button ref={triggerRef}>Open Dialog</button>
+      <Dialog>
+        <DialogContent style={{ transformOrigin }}>
+          Content
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+```
+
+#### Mobile Touch Reachability
+
+Search positioned in thumb zone on mobile devices:
+
+- **Bottom 20% Positioning**: Easy one-handed access
+- **Keyboard Detection**: Adjusts when keyboard appears
+- **44x44px Touch Targets**: Meets accessibility requirements
+- **Responsive**: Adapts to portrait and landscape
+
+```typescript
+// Example: Mobile search positioning
+import { useMobileSearchPosition } from '@/hooks/useMobileSearchPosition';
+
+function MobileSearch() {
+  const { style, isMobileBottom } = useMobileSearchPosition();
+  
+  return (
+    <div style={style}>
+      <Input placeholder="Search..." />
+    </div>
+  );
+}
+```
+
+#### Scroll Edge Visual Feedback
+
+Subtle indicators when reaching scroll boundaries:
+
+- **Top/Bottom Indicators**: Gradient overlays at edges
+- **Opacity-Based**: Fades based on distance from edge
+- **Smooth Transitions**: Respects reduced motion preference
+- **Screen Reader Support**: Announces "End of content"
+
+```typescript
+// Example: Scroll edge indicators
+import { useScrollEdge } from '@/hooks/useScrollEdge';
+
+function ScrollableContent() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { isNearTop, isNearBottom, topOpacity, bottomOpacity } = useScrollEdge(containerRef);
+  
+  return (
+    <div ref={containerRef} className="overflow-y-auto">
+      {isNearTop && <div style={{ opacity: topOpacity }} className="edge-indicator-top" />}
+      Content
+      {isNearBottom && <div style={{ opacity: bottomOpacity }} className="edge-indicator-bottom" />}
+    </div>
+  );
+}
+```
+
+### Modern CSS Features
+
+The design system leverages cutting-edge CSS features:
+
+#### Responsive Typography with clamp()
+
+```css
+/* Fluid typography that scales with viewport */
+font-size: clamp(1rem, 2vw + 0.5rem, 2rem);
+padding: clamp(1rem, 3vw, 3rem);
+```
+
+#### Container Queries
+
+```css
+/* Component-level responsiveness */
+@container (min-width: 400px) {
+  .card-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+```
+
+#### CSS Logical Properties
+
+```css
+/* Better internationalization support */
+padding-inline: 1rem;  /* Instead of padding-left/right */
+margin-block: 2rem;    /* Instead of margin-top/bottom */
+```
+
+#### Dynamic Viewport Units
+
+```css
+/* Accounts for mobile browser UI */
+height: 100dvh;  /* Dynamic viewport height */
+min-height: 100lvh;  /* Large viewport height */
+```
+
+#### Modern Selectors
+
+```css
+/* Parent-based styling */
+.card:has(img) {
+  padding: 0;
+}
+
+/* Grouping selectors */
+:is(h1, h2, h3) {
+  font-weight: bold;
+}
+```
+
+### Accessibility (WCAG 2.2 AAA)
+
+All Liquid Glass features maintain strict accessibility compliance:
+
+#### Contrast Ratios
+
+- **Normal Text**: 7:1 minimum contrast ratio
+- **Large Text**: 4.5:1 minimum contrast ratio
+- **Focus Indicators**: 3:1 minimum contrast ratio
+- **Continuous Validation**: Real-time contrast checking
+
+#### Motion Preferences
+
+- **Reduced Motion**: Instant transitions when `prefers-reduced-motion` is enabled
+- **Smooth Animations**: Spring physics when motion is preferred
+- **User Control**: All animations respect user preferences
+
+#### Keyboard Navigation
+
+- **Full Access**: All features accessible via keyboard
+- **Visible Focus**: 3px outline with 3:1 contrast
+- **No Traps**: Can always escape with Escape key
+- **Logical Order**: Intuitive tab navigation
+
+#### Screen Reader Support
+
+- **ARIA Labels**: Comprehensive labeling for all elements
+- **Live Regions**: Dynamic content announced
+- **State Changes**: Animations and transitions announced
+- **Semantic HTML**: Proper heading hierarchy and landmarks
+
+### Browser Compatibility
+
+#### Supported Browsers
+
+- Chrome/Edge 90+ (full support)
+- Firefox 88+ (with backdrop-filter fallback)
+- Safari 14+ (with WebKit optimizations)
+- Mobile Safari 14+ (with touch optimizations)
+
+#### Fallback Strategies
+
+- **Backdrop Filter**: Solid backgrounds when unsupported
+- **Container Queries**: Media query fallbacks
+- **CSS Variables**: Static color values as fallback
+- **Modern Selectors**: Progressive enhancement
+
+### Performance
+
+#### Optimization Techniques
+
+- **GPU Acceleration**: Transform and opacity for animations
+- **React.memo**: Expensive components wrapped
+- **Virtualization**: Lists > 50 items use react-window
+- **Code Splitting**: Lazy loading for non-critical components
+- **Debouncing**: 300ms for search and resize handlers
+
+#### Performance Targets
+
+| Metric | Target |
+|--------|--------|
+| Initial Render | <2s |
+| Animation Frame Rate | 60fps |
+| Scroll Performance | 60fps |
+| Memory Usage | <100MB |
+| Bundle Size | <500KB (gzipped) |
 
 ## Conversation Persistence
 

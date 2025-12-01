@@ -2,9 +2,212 @@
 
 ## Overview
 
-This design document outlines the architecture and implementation strategy for migrating the frontend application to a modern "liquid glass" design style. The migration focuses on fixing critical layout issues, implementing consistent visual styling, maintaining WCAG AAA accessibility standards, and ensuring comprehensive test coverage with zero errors and warnings.
+This design document outlines the architecture and implementation strategy for migrating the frontend application to a modern "liquid glass" design style inspired by Apple's latest design language. The migration focuses on fixing critical layout issues, implementing advanced optical effects using shadcn/ui components, creating fluid animations, maintaining WCAG 2.2 AAA accessibility standards, and ensuring comprehensive test coverage with zero errors and warnings.
 
-The design leverages Tailwind CSS for utility-first styling, React 19 for component architecture, and TypeScript 5.3+ for type safety. The liquid glass aesthetic is achieved through backdrop blur effects, semi-transparent backgrounds, subtle borders, and layered depth perception.
+The design leverages cutting-edge technologies:
+
+**React 19.2 Features:**
+- **Concurrent Rendering**: Improved performance with automatic batching and transitions
+- **Server Components**: Enhanced code splitting and reduced bundle size
+- **use() Hook**: Simplified data fetching and resource management
+- **Enhanced Suspense**: Better loading state management
+- **Automatic Batching**: Optimized re-renders across async boundaries
+
+**shadcn/ui Component Library:**
+- **Accessible by Default**: All components built with Radix UI primitives meeting WCAG standards
+- **Customizable**: Full control over styling with Tailwind CSS
+- **Composable**: Build complex UIs from simple, reusable components
+- **Type-Safe**: Full TypeScript support with comprehensive type definitions
+- **Key Components**: Card, Sheet, Dialog, Button, Input, Select, Dropdown Menu, Tabs, Accordion, and more
+
+**Tailwind CSS 4.1 Features:**
+- **Native CSS Cascade Layers**: Better style organization with @layer directives
+- **Container Queries**: Responsive components based on parent container size (@container)
+- **Enhanced JIT Compilation**: Faster build times and smaller CSS bundles
+- **Native CSS Nesting**: Cleaner, more maintainable styles
+- **Improved Dark Mode**: Better theme switching with CSS variables
+- **Modern CSS Functions**: Support for clamp(), min(), max(), color-mix()
+- **New Viewport Units**: Support for dvh, lvh, svh
+- **Logical Properties**: Support for padding-inline, margin-block, etc.
+
+**Modern CSS Features (Mandatory):**
+- **clamp(), min(), max()**: For responsive typography and spacing
+- **Container Queries**: For component-level responsive design
+- **CSS Logical Properties**: For better internationalization (padding-inline, margin-block)
+- **Subgrid**: For nested grid layouts
+- **:has() Selector**: For parent-based styling
+- **color-mix()**: For dynamic color generation
+- **New Viewport Units**: dvh, lvh, svh for better mobile support
+- **aspect-ratio**: For maintaining aspect ratios
+- **flex gap**: For cleaner flex layouts
+
+**Animation & Motion:**
+- **framer-motion**: Spring physics-based animations for organic, fluid motion
+- **React Spring**: Alternative for complex physics simulations
+- **CSS Transitions**: GPU-accelerated transforms for performance
+
+**Development Tools:**
+- **shadcn MCP**: Component discovery, search, and installation commands
+- **Playwright MCP**: Automated browser testing and E2E verification
+- **Chrome DevTools MCP**: Real-time debugging, contrast checking, and performance profiling
+- **Sequential Thinking MCP**: Problem-solving and architectural planning
+- **Serena MCP**: Code analysis, refactoring, and symbol management
+
+The liquid glass aesthetic is achieved through shadcn/ui components enhanced with advanced backdrop blur effects, dynamic optical adaptation, semi-transparent backgrounds with real-time contrast validation, subtle borders, layered depth perception, and fluid spring-based animations.
+
+## Modern CSS Principles (Mandatory)
+
+All styling in this project MUST follow these modern CSS principles:
+
+### 1. Responsive Typography and Spacing with clamp()
+
+```css
+/* ✅ GOOD: Fluid typography */
+font-size: clamp(1rem, 2vw + 0.5rem, 2rem);
+padding: clamp(1rem, 3vw, 3rem);
+
+/* ❌ BAD: Fixed breakpoints */
+@media (min-width: 768px) {
+  font-size: 1.5rem;
+}
+```
+
+### 2. Container Queries for Component-Level Responsiveness
+
+```css
+/* ✅ GOOD: Container queries */
+@container (min-width: 400px) {
+  .card-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ❌ BAD: Media queries for component styling */
+@media (min-width: 768px) {
+  .card-content {
+    display: grid;
+  }
+}
+```
+
+### 3. CSS Logical Properties for Internationalization
+
+```css
+/* ✅ GOOD: Logical properties */
+padding-inline: 1rem;
+margin-block: 2rem;
+border-inline-start: 1px solid;
+
+/* ❌ BAD: Physical properties */
+padding-left: 1rem;
+padding-right: 1rem;
+margin-top: 2rem;
+margin-bottom: 2rem;
+```
+
+### 4. Modern Selectors (:has, :is, :where)
+
+```css
+/* ✅ GOOD: :has() for parent styling */
+.card:has(img) {
+  padding: 0;
+}
+
+.form:has(:invalid) {
+  border-color: red;
+}
+
+/* ✅ GOOD: :is() for grouping */
+:is(h1, h2, h3) {
+  font-weight: bold;
+}
+```
+
+### 5. Modern Color Functions
+
+```css
+/* ✅ GOOD: color-mix() for dynamic colors */
+background: color-mix(in srgb, var(--primary) 80%, white);
+
+/* ✅ GOOD: lch() for perceptually uniform colors */
+color: lch(50% 50 200);
+```
+
+### 6. New Viewport Units
+
+```css
+/* ✅ GOOD: Dynamic viewport units */
+height: 100dvh; /* Dynamic viewport height */
+min-height: 100lvh; /* Large viewport height */
+max-height: 100svh; /* Small viewport height */
+
+/* ❌ BAD: Fixed viewport units */
+height: 100vh; /* Doesn't account for mobile browser UI */
+```
+
+### 7. Subgrid for Nested Layouts
+
+```css
+/* ✅ GOOD: Subgrid */
+.parent {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.child {
+  display: grid;
+  grid-template-columns: subgrid;
+}
+```
+
+### 8. aspect-ratio for Maintaining Proportions
+
+```css
+/* ✅ GOOD: aspect-ratio */
+.image-container {
+  aspect-ratio: 16 / 9;
+}
+
+/* ❌ BAD: Padding hack */
+.image-container {
+  padding-bottom: 56.25%;
+}
+```
+
+### 9. flex gap for Cleaner Layouts
+
+```css
+/* ✅ GOOD: flex gap */
+.actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* ❌ BAD: Margin on children */
+.actions > * {
+  margin-right: 0.5rem;
+}
+```
+
+### 10. Cascade Layers for Style Organization
+
+```css
+/* ✅ GOOD: Cascade layers */
+@layer reset, base, components, utilities;
+
+@layer components {
+  .button {
+    /* Component styles */
+  }
+}
+
+@layer utilities {
+  .text-center {
+    text-align: center;
+  }
+}
+```
 
 ## Architecture
 
@@ -67,11 +270,196 @@ All Glass components include:
 - Rounded corners: `rounded-2xl`
 - Smooth transitions: `transition-all duration-300`
 
-## Components and Interfaces
+### Animation System Architecture
 
-### Glass Component
+The application uses a sophisticated animation system based on spring physics to achieve fluid, organic motion:
+
+```
+AnimationSystem
+├── SpringPhysics Engine (framer-motion)
+│   ├── Default Spring Config: { damping: 0.7, stiffness: 100 }
+│   ├── Gentle Spring: { damping: 0.8, stiffness: 80 }
+│   └── Bouncy Spring: { damping: 0.6, stiffness: 120 }
+├── Gesture Recognition
+│   ├── Tap/Click
+│   ├── Drag
+│   └── Scroll
+└── Animation Orchestration
+    ├── Sequence Animations
+    ├── Parallel Animations
+    └── Stagger Animations
+```
+
+**Key Animation Principles:**
+1. **Spring Physics**: All animations use spring-based easing for natural motion
+2. **Gesture-Driven**: Animations respond to user input velocity and direction
+3. **Interruptible**: Animations can be interrupted and redirected smoothly
+4. **Performance**: Use transform and opacity for GPU acceleration
+
+### Scroll Behavior Management
+
+Dynamic scroll behavior is managed through a centralized system:
 
 ```typescript
+interface ScrollBehavior {
+  direction: 'up' | 'down' | 'none';
+  position: number;
+  velocity: number;
+  isAtTop: boolean;
+  isAtBottom: boolean;
+  isNearEdge: boolean;
+}
+
+interface ScrollEffects {
+  headerHeight: number;
+  showScrollEdge: boolean;
+  edgeOpacity: number;
+}
+```
+
+**Scroll Detection Strategy:**
+1. Use Intersection Observer for edge detection (performance-optimized)
+2. Use scroll event with throttling (16ms) for position tracking
+3. Calculate velocity using requestAnimationFrame
+4. Apply effects using CSS custom properties for smooth transitions
+
+### Optical Effects System
+
+Advanced optical effects are achieved through layered CSS filters and dynamic adjustments:
+
+```typescript
+interface OpticalEffects {
+  blur: number;           // backdrop-blur intensity (0-40px)
+  brightness: number;     // brightness adjustment (0.8-1.2)
+  contrast: number;       // contrast adjustment (0.9-1.1)
+  saturation: number;     // saturation adjustment (0.9-1.1)
+  refraction: number;     // simulated refraction (0-1)
+}
+
+interface AdaptiveGlass {
+  backgroundBrightness: number;  // Detected from content behind
+  opacity: number;               // Dynamically adjusted (0.1-0.7)
+  blurIntensity: number;        // Dynamically adjusted (10-40px)
+}
+```
+
+**Optical Effect Implementation:**
+1. Detect background brightness using canvas sampling
+2. Adjust Glass opacity inversely to background brightness
+3. Apply layered filters for depth perception
+4. Use CSS mix-blend-mode for realistic light interaction
+5. **Continuously validate WCAG AAA contrast ratios** during optical adjustments
+6. **Provide fallback solid backgrounds** when contrast cannot be maintained
+
+### Accessibility Preservation System
+
+All advanced Liquid Glass features must maintain WCAG 2.2 AAA compliance:
+
+```typescript
+interface AccessibilityGuards {
+  contrastValidation: {
+    minimumNormalText: 7.0;      // WCAG AAA for normal text
+    minimumLargeText: 4.5;       // WCAG AAA for large text
+    minimumFocusIndicator: 3.0;  // WCAG AAA for focus indicators
+    continuousMonitoring: boolean;
+  };
+  
+  motionPreferences: {
+    respectReducedMotion: boolean;
+    fallbackToInstant: boolean;
+    maxAnimationDuration: number;  // 300ms when reduced motion
+  };
+  
+  keyboardAccessibility: {
+    maintainFocusOrder: boolean;
+    visibleFocusIndicators: boolean;
+    noKeyboardTraps: boolean;
+    skipLinks: boolean;
+  };
+  
+  screenReaderSupport: {
+    ariaLiveRegions: boolean;
+    properLabeling: boolean;
+    stateAnnouncements: boolean;
+    roleAttributes: boolean;
+  };
+}
+```
+
+**Accessibility Implementation Strategy:**
+
+1. **Contrast Monitoring**: Real-time contrast ratio calculation during optical effects
+2. **Motion Reduction**: Detect `prefers-reduced-motion` and disable/reduce animations
+3. **Focus Management**: Maintain visible focus indicators throughout all animations
+4. **Screen Reader Announcements**: Use ARIA live regions for dynamic content changes
+5. **Keyboard Navigation**: Ensure all interactive elements remain keyboard accessible
+6. **Touch Target Size**: Maintain minimum 44x44px touch targets on mobile
+7. **Fallback Mechanisms**: Provide accessible alternatives when advanced features fail
+
+**Contrast Validation Algorithm:**
+
+```typescript
+function validateAndAdjustContrast(
+  foreground: Color,
+  background: Color,
+  minimumRatio: number
+): { isValid: boolean; adjustedBackground?: Color } {
+  const currentRatio = calculateContrastRatio(foreground, background);
+  
+  if (currentRatio >= minimumRatio) {
+    return { isValid: true };
+  }
+  
+  // Adjust background opacity/brightness to meet minimum ratio
+  const adjustedBackground = adjustBackgroundForContrast(
+    foreground,
+    background,
+    minimumRatio
+  );
+  
+  return {
+    isValid: false,
+    adjustedBackground
+  };
+}
+```
+
+## Components and Interfaces
+
+### shadcn/ui Component Mapping
+
+The following shadcn/ui components will be used throughout the application:
+
+| UI Element | shadcn/ui Component | Purpose |
+|------------|---------------------|---------|
+| Sidebar Panel | Sheet, SheetContent | Sliding sidebar with overlay |
+| Header Actions | Button | Icon buttons for menu, settings, theme |
+| Dropdown Menus | DropdownMenu, DropdownMenuItem | Settings, language selection |
+| Navigation | Breadcrumb, BreadcrumbItem | Page navigation |
+| Search Input | Input | Conversation search |
+| Conversation List | ScrollArea | Scrollable list container |
+| Conversation Items | Card | Individual conversation cards |
+| Dialogs | Dialog, DialogContent | Modal dialogs |
+| Alerts | Alert, AlertDescription | Error and info messages |
+| Loading States | Skeleton | Loading placeholders |
+| Tabs | Tabs, TabsList, TabsTrigger | Tab navigation |
+| Tooltips | Tooltip, TooltipContent | Hover information |
+| Switches | Switch | Toggle controls |
+| Select Dropdowns | Select, SelectContent, SelectItem | Dropdown selections |
+
+**Installation Strategy:**
+1. Use shadcn MCP to search for required components
+2. Use shadcn MCP to get installation commands
+3. Install components using `npx shadcn@latest add <component>`
+4. Customize components with glass effect styling
+5. Ensure all components maintain WCAG AAA compliance
+
+### Glass Component (React 19.2 + shadcn/ui + Tailwind CSS 4.1)
+
+```typescript
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
+
 type GlassIntensity = 'low' | 'medium' | 'high';
 
 type GlassProps<T extends React.ElementType> = {
@@ -79,10 +467,144 @@ type GlassProps<T extends React.ElementType> = {
   intensity?: GlassIntensity;
   border?: boolean;
   children?: React.ReactNode;
+  adaptive?: boolean;  // Enable dynamic optical adaptation
+  variant?: 'card' | 'sheet' | 'custom';  // shadcn/ui component variant
 } & React.ComponentPropsWithoutRef<T>;
 
 export const Glass: React.ForwardRefExoticComponent<GlassProps<React.ElementType>>;
 export function cn(...inputs: ClassValue[]): string;
+```
+
+**Implementation Strategy:**
+- Use shadcn/ui Card component as base for static glass panels
+- Use shadcn/ui Sheet component as base for sliding glass panels (Sidebar)
+- Extend shadcn/ui components with glass effect styling
+- Maintain shadcn/ui's accessibility features (ARIA attributes, keyboard navigation)
+
+**React 19.2 Features Used:**
+- `use()` hook for background brightness detection
+- Automatic batching for smooth opacity transitions
+- Concurrent rendering for non-blocking optical calculations
+
+**shadcn/ui Integration:**
+```typescript
+// Glass component wrapping shadcn/ui Card
+export const GlassCard = React.forwardRef<HTMLDivElement, GlassProps<'div'>>(
+  ({ intensity = 'medium', children, className, ...props }, ref) => {
+    return (
+      <Card
+        ref={ref}
+        className={cn(
+          'backdrop-blur-xl border-white/20 dark:border-white/10',
+          intensity === 'low' && 'bg-white/10 dark:bg-black/10',
+          intensity === 'medium' && 'bg-white/40 dark:bg-black/40',
+          intensity === 'high' && 'bg-white/70 dark:bg-black/70',
+          className
+        )}
+        {...props}
+      >
+        {children}
+      </Card>
+    );
+  }
+);
+
+// Glass component wrapping shadcn/ui Sheet
+export const GlassSheet = React.forwardRef<HTMLDivElement, GlassProps<'div'>>(
+  ({ intensity = 'high', children, className, ...props }, ref) => {
+    return (
+      <Sheet>
+        <SheetContent
+          ref={ref}
+          className={cn(
+            'backdrop-blur-2xl border-white/20 dark:border-white/10',
+            intensity === 'low' && 'bg-white/10 dark:bg-black/10',
+            intensity === 'medium' && 'bg-white/40 dark:bg-black/40',
+            intensity === 'high' && 'bg-white/70 dark:bg-black/70',
+            className
+          )}
+          {...props}
+        >
+          {children}
+        </SheetContent>
+      </Sheet>
+    );
+  }
+);
+```
+
+**Modern CSS Features Used:**
+```css
+/* Using native CSS cascade layers */
+@layer components {
+  .glass-low {
+    @apply bg-white/10 dark:bg-black/10 backdrop-blur-md;
+  }
+  
+  .glass-medium {
+    @apply bg-white/40 dark:bg-black/40 backdrop-blur-xl;
+  }
+  
+  .glass-high {
+    @apply bg-white/70 dark:bg-black/70 backdrop-blur-2xl;
+  }
+}
+
+/* Using container queries for responsive glass effects */
+@container (min-width: 768px) {
+  .glass-adaptive {
+    backdrop-filter: blur(20px);
+  }
+}
+
+/* Using native CSS nesting */
+.glass-component {
+  &:hover {
+    @apply bg-white/50 dark:bg-black/50;
+  }
+  
+  &:focus-visible {
+    @apply ring-2 ring-blue-500;
+  }
+}
+
+/* Using clamp() for responsive sizing */
+.glass-header {
+  height: clamp(3rem, 5vw, 4rem);
+  padding-inline: clamp(1rem, 3vw, 2rem);
+}
+
+/* Using :has() selector for conditional styling */
+.glass-card:has(img) {
+  padding-block: 0;
+}
+
+/* Using color-mix() for dynamic colors */
+.glass-overlay {
+  background: color-mix(in srgb, var(--glass-base) 80%, transparent);
+}
+
+/* Using new viewport units */
+.glass-sidebar {
+  height: 100dvh; /* Dynamic viewport height */
+}
+
+/* Using logical properties for better i18n */
+.glass-content {
+  padding-inline: 1rem;
+  margin-block: 2rem;
+}
+
+/* Using aspect-ratio */
+.glass-image-container {
+  aspect-ratio: 16 / 9;
+}
+
+/* Using flex gap */
+.glass-actions {
+  display: flex;
+  gap: 0.5rem;
+}
 ```
 
 ### AppLayout Component
@@ -117,9 +639,13 @@ export interface ResponsiveGridProps {
 export function ResponsiveGrid(props: ResponsiveGridProps): React.JSX.Element;
 ```
 
-### Header Component
+### Header Component (with shadcn/ui)
 
 ```typescript
+import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
+
 export interface HeaderProps {
   isMobile: boolean;
   isTablet: boolean;
@@ -135,7 +661,8 @@ export interface BreadcrumbProps {
   }>;
 }
 
-export function Breadcrumb(props: BreadcrumbProps): React.JSX.Element;
+// Use shadcn/ui Breadcrumb component
+export function AppBreadcrumb(props: BreadcrumbProps): React.JSX.Element;
 
 export interface HeaderActionProps {
   icon: string;
@@ -146,12 +673,23 @@ export interface HeaderActionProps {
   className?: string;
 }
 
+// Use shadcn/ui Button component
 export function HeaderAction(props: HeaderActionProps): React.JSX.Element;
 ```
 
-### Sidebar Component
+**shadcn/ui Components Used:**
+- `Button`: For all header actions (menu, settings, theme toggle)
+- `DropdownMenu`: For settings and language selection menus
+- `Breadcrumb`: For navigation breadcrumbs
+
+### Sidebar Component (with shadcn/ui)
 
 ```typescript
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+
 export interface SidebarProps {
   isOpen: boolean;
   isMobile: boolean;
@@ -160,6 +698,72 @@ export interface SidebarProps {
 
 export function Sidebar(props: SidebarProps): React.JSX.Element;
 ```
+
+**shadcn/ui Components Used:**
+- `Sheet`: For the sliding sidebar panel with overlay
+- `SheetContent`: For the sidebar content container
+- `Button`: For new conversation and action buttons
+- `Input`: For the conversation search input
+- `ScrollArea`: For the scrollable conversation list
+
+### Floating Action Button Component (with shadcn/ui)
+
+```typescript
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { motion, AnimatePresence } from 'framer-motion';
+
+export interface FloatingActionButtonProps {
+  onClick: () => void;
+  label: string;
+  icon: React.ReactNode;
+  visible: boolean;
+}
+
+export function FloatingActionButton(props: FloatingActionButtonProps): React.JSX.Element;
+```
+
+**Implementation Details:**
+- Position: `fixed bottom-6 right-6 z-50`
+- Size: `w-14 h-14` (56px, exceeds 44px minimum)
+- Shape: `rounded-full`
+- Colors: `bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600`
+- Shadow: `shadow-lg hover:shadow-xl`
+- Animation: Spring physics with framer-motion
+- Visibility: Only shown on mobile/tablet when Sidebar is closed
+
+**shadcn/ui Components Used:**
+- `Button`: For the floating action button
+- `Tooltip`: For hover/focus tooltip
+- `TooltipProvider`, `TooltipTrigger`, `TooltipContent`: For tooltip functionality
+
+### Onboarding Message Component (with shadcn/ui)
+
+```typescript
+import { Button } from '@/components/ui/button';
+import { motion, AnimatePresence } from 'framer-motion';
+
+export interface OnboardingMessageProps {
+  visible: boolean;
+  onDismiss: () => void;
+  title: string;
+  description: string;
+  dismissLabel: string;
+}
+
+export function OnboardingMessage(props: OnboardingMessageProps): React.JSX.Element;
+```
+
+**Implementation Details:**
+- Position: `fixed inset-0 z-[60]` (above floating button)
+- Backdrop: `bg-black/50 backdrop-blur-sm`
+- Card: `bg-white dark:bg-gray-800 rounded-lg p-6 max-w-sm`
+- Animation: Scale and fade with framer-motion
+- Persistence: Uses localStorage key `sidebar-onboarding-seen`
+- Delay: Shows 1 second after Sidebar closes for first time
+
+**shadcn/ui Components Used:**
+- `Button`: For the dismiss button
 
 ## Data Models
 
@@ -174,7 +778,39 @@ interface ThemeContext {
   resolvedTheme: ResolvedTheme;
   setTheme: (theme: Theme) => void;
 }
+
+interface ThemeColors {
+  light: {
+    background: string;      // #FFFFFF
+    text: string;            // #000000 (21:1 contrast)
+    textSecondary: string;   // #333333 (12.6:1 contrast)
+    primary: string;         // #0066CC (7.5:1 contrast)
+    border: string;          // #CCCCCC (3:1 contrast)
+    glassBase: string;       // white with 10-70% opacity
+  };
+  dark: {
+    background: string;      // #000000
+    text: string;            // #FFFFFF (21:1 contrast)
+    textSecondary: string;   // #CCCCCC (12.6:1 contrast)
+    primary: string;         // #66B3FF (7.5:1 contrast)
+    border: string;          // #333333 (3:1 contrast)
+    glassBase: string;       // black with 10-70% opacity
+  };
+}
 ```
+
+**WCAG AAA Contrast Requirements:**
+- Normal text: 7:1 minimum contrast ratio
+- Large text (18pt+ or 14pt+ bold): 4.5:1 minimum contrast ratio
+- Focus indicators: 3:1 minimum contrast ratio
+- UI components: 3:1 minimum contrast ratio
+
+**Theme Implementation Strategy:**
+1. Use Tailwind CSS dark mode with class strategy
+2. Validate all color combinations with Chrome DevTools MCP
+3. Test both modes with automated contrast checking
+4. Provide high contrast mode as additional option
+5. Persist theme preference to localStorage
 
 ### Responsive State
 
@@ -239,65 +875,169 @@ interface UIState {
 *For any* Glass component with border enabled, the border SHALL use semi-transparent white with opacity 0.2 in light mode and 0.1 in dark mode.
 **Validates: Requirements 2.5**
 
-### Property 10: Mobile Scroll Lock
+### Property 10: Light Mode Contrast Compliance
+*For any* text element in light mode, the contrast ratio between text color and background color SHALL meet or exceed 7:1 for normal text and 4.5:1 for large text (WCAG AAA).
+**Validates: Requirements 3.3**
+
+### Property 11: Dark Mode Contrast Compliance
+*For any* text element in dark mode, the contrast ratio between text color and background color SHALL meet or exceed 7:1 for normal text and 4.5:1 for large text (WCAG AAA).
+**Validates: Requirements 3.4**
+
+### Property 12: Light Mode Glass Opacity
+*For any* Glass component in light mode, the background opacity SHALL be within the range of 10% to 70% (bg-white/10 to bg-white/70) while maintaining text readability.
+**Validates: Requirements 3.5**
+
+### Property 13: Dark Mode Glass Opacity
+*For any* Glass component in dark mode, the background opacity SHALL be within the range of 10% to 70% (bg-black/10 to bg-black/70) while maintaining text readability.
+**Validates: Requirements 3.6**
+
+### Property 14: Theme Persistence
+*For any* theme change, the system SHALL persist the user's preference to localStorage and restore it on subsequent sessions.
+**Validates: Requirements 3.9**
+
+### Property 15: Mobile Scroll Lock
 *For any* mobile viewport (< 768px), when the Sidebar is open, the main content area SHALL have overflow hidden to prevent scrolling.
 **Validates: Requirements 3.4**
 
-### Property 11: Orientation Change Adaptation
+### Property 16: Orientation Change Adaptation
 *For any* device orientation change, the layout SHALL re-evaluate responsive breakpoints and apply appropriate styling without breaking the visual structure.
 **Validates: Requirements 3.5**
 
-### Property 12: Text Contrast Ratio Compliance
+### Property 17: Text Contrast Ratio Compliance
 *For any* text element in the interface, the contrast ratio between text color and background color SHALL meet or exceed 7:1 for normal text and 4.5:1 for large text (WCAG AAA).
 **Validates: Requirements 4.1**
 
-### Property 13: Keyboard Navigation Completeness
+### Property 18: Keyboard Navigation Completeness
 *For any* interactive element in the interface, the element SHALL be reachable via Tab key navigation and SHALL display a visible focus indicator with minimum 3:1 contrast ratio.
 **Validates: Requirements 4.2, 4.4**
 
-### Property 14: ARIA Attribute Completeness
+### Property 19: ARIA Attribute Completeness
 *For any* component in the interface, the component SHALL have appropriate ARIA labels, roles, and live regions as required by its semantic purpose.
 **Validates: Requirements 4.3**
 
-### Property 15: Language Switch Completeness
+### Property 20: Language Switch Completeness
 *For any* UI text element with a translation key, when the language is switched, the element SHALL update to display the text in the new language without page reload.
 **Validates: Requirements 5.2**
 
-### Property 16: Locale-Specific Date Formatting
+### Property 21: Locale-Specific Date Formatting
 *For any* date or time value displayed in the interface, the formatting SHALL match the selected locale's conventions (date order, time format, separators).
 **Validates: Requirements 5.3**
 
-### Property 17: Text Direction Layout Adaptation
+### Property 22: Text Direction Layout Adaptation
 *For any* language with RTL text direction, the layout SHALL apply dir="rtl" attribute and mirror the horizontal layout appropriately.
 **Validates: Requirements 5.4**
 
-### Property 18: Large List Virtualization
+### Property 23: Large List Virtualization
 *For any* conversation list or message list exceeding 50 items, the rendering SHALL use virtualization to render only visible items plus a buffer.
 **Validates: Requirements 6.5**
 
-### Property 19: Search Result Keyword Highlighting
+### Property 24: Search Result Keyword Highlighting
 *For any* search query, all matching results SHALL display with the search keywords highlighted using appropriate HTML markup and styling.
 **Validates: Requirements 8.1**
 
-### Property 20: Search Pagination Navigation
+### Property 25: Search Pagination Navigation
 *For any* search result set exceeding the page size (20 items), pagination controls SHALL be displayed and allow navigation to previous/next pages.
 **Validates: Requirements 8.2**
 
-### Property 21: Search Result Navigation
+### Property 26: Search Result Navigation
 *For any* search result item, clicking the item SHALL navigate to the corresponding conversation and close the search interface.
 **Validates: Requirements 8.3**
 
-### Property 22: Search Result ARIA Announcements
+### Property 27: Search Result ARIA Announcements
 *For any* search result update, the change SHALL be announced to screen readers via ARIA live regions with appropriate politeness level.
 **Validates: Requirements 8.4**
 
-### Property 23: Search Keyboard Navigation
+### Property 28: Search Keyboard Navigation
 *For any* search result set, arrow keys SHALL move focus between results, Home/End SHALL jump to first/last result, and Enter SHALL select the focused result.
 **Validates: Requirements 8.5**
 
-### Property 24: ClassName Utility Consistency
+### Property 29: ClassName Utility Consistency
 *For any* component requiring className merging, the cn() utility SHALL be used to properly merge Tailwind classes with conflict resolution.
 **Validates: Requirements 9.5**
+
+### Property 30: Dynamic Toolbar Scroll Behavior
+*For any* scroll event in the main content area, when scrolling down beyond 50px, the Header SHALL reduce its height smoothly, and when scrolling up, the Header SHALL expand to full height.
+**Validates: Requirements 15.1, 15.2**
+
+### Property 31: Fluid Animation Spring Physics
+*For any* interactive element (button, switch, slider), when interacted with, the element SHALL animate with spring physics (elastic easing with damping ratio between 0.6-0.8) rather than linear transitions.
+**Validates: Requirements 14.1, 14.2**
+
+### Property 32: In-Place Dialog Expansion
+*For any* dialog or alert triggered by a button, the dialog SHALL expand from the button's position using transform-origin set to the button's bounding rectangle center coordinates.
+**Validates: Requirements 16.1, 16.2, 16.4**
+
+### Property 33: Mobile Bottom Search Positioning
+*For any* mobile viewport (< 768px), the search input SHALL be positioned within the bottom 20% of the viewport height to ensure thumb reachability.
+**Validates: Requirements 17.1, 17.2**
+
+### Property 34: Dynamic Glass Optical Adaptation
+*For any* Glass component, when the computed brightness of content behind it changes by more than 20%, the Glass component SHALL adjust its opacity by at least 10% to maintain legibility.
+**Validates: Requirements 13.2**
+
+### Property 35: Scroll Edge Visual Feedback
+*For any* scrollable container, when scrolled within 10px of the top or bottom edge, a visual indicator SHALL appear with opacity proportional to the distance from the edge.
+**Validates: Requirements 19.1, 19.2**
+
+### Property 36: Responsive Typography Uses clamp()
+*For any* text element with responsive sizing, the font-size SHALL use clamp() function with minimum, preferred, and maximum values instead of fixed breakpoints.
+**Validates: Requirements 20.1**
+
+### Property 37: Component Responsiveness Uses Container Queries
+*For any* component with responsive layout changes, the component SHALL use @container queries instead of @media queries for component-level responsiveness.
+**Validates: Requirements 20.2**
+
+### Property 38: Spacing Uses Logical Properties
+*For any* element with padding or margin, the styles SHALL use logical properties (padding-inline, margin-block) instead of physical properties (padding-left, margin-top) for better internationalization.
+**Validates: Requirements 20.3**
+
+### Property 39: Full-Height Layouts Use Dynamic Viewport Units
+*For any* full-height layout element, the height SHALL use dvh (dynamic viewport height) instead of vh to account for mobile browser UI.
+**Validates: Requirements 20.6**
+
+### Property 40: Flex Layouts Use Gap Property
+*For any* flex container with spacing between children, the container SHALL use gap property instead of margins on children elements.
+**Validates: Requirements 20.9**
+
+### Property 41: Desktop Sidebar Default Open State
+*For any* desktop viewport (> 1024px), when the application loads for the first time, the Sidebar SHALL be in the open state by default.
+**Validates: Requirements 21.1**
+
+### Property 42: Floating Button Visibility
+*For any* mobile or tablet viewport (≤ 1024px), when the Sidebar is closed, a floating action button SHALL be visible in the bottom-right corner with minimum 44x44px dimensions.
+**Validates: Requirements 21.2**
+
+### Property 43: Button Tooltip Presence
+*For any* hamburger menu button or floating action button, when hovered or focused, a tooltip SHALL appear with descriptive text that meets WCAG AAA contrast requirements (7:1 for normal text).
+**Validates: Requirements 21.3**
+
+### Property 44: Enhanced Button Visual Prominence
+*For any* hamburger menu button, when rendered, the button SHALL have enhanced styling including hover effects (color change, ring effect) and maintain minimum 3:1 contrast ratio for focus indicators.
+**Validates: Requirements 21.4**
+
+### Property 45: First-Time Onboarding Display
+*For any* user who closes the Sidebar for the first time on mobile or tablet, an onboarding message SHALL appear after 1 second delay explaining how to reopen the Sidebar.
+**Validates: Requirements 21.5**
+
+### Property 46: Onboarding Persistence
+*For any* user who dismisses the onboarding message, the system SHALL store a flag in localStorage and SHALL NOT display the onboarding message again in future sessions.
+**Validates: Requirements 21.6**
+
+### Property 47: Floating Button Sidebar Opening
+*For any* floating action button click event, the Sidebar SHALL transition to the open state with smooth animation that respects the user's prefers-reduced-motion preference.
+**Validates: Requirements 21.7**
+
+### Property 48: Floating Button Icon Clarity
+*For any* floating action button, the button SHALL display a clear icon (chat bubbles or menu) and maintain WCAG AAA contrast ratios (minimum 7:1 for icon against background).
+**Validates: Requirements 21.8**
+
+### Property 49: Sidebar Button Keyboard Accessibility
+*For any* hamburger menu button or floating action button, the button SHALL be reachable via Tab key navigation and SHALL display a visible focus indicator with minimum 3:1 contrast ratio.
+**Validates: Requirements 21.9**
+
+### Property 50: Sidebar Button Screen Reader Support
+*For any* hamburger menu button or floating action button, the button SHALL have an aria-label attribute that clearly describes its purpose to screen reader users.
+**Validates: Requirements 21.10**
 
 ## Error Handling
 
@@ -323,6 +1063,13 @@ interface UIState {
 ## Development Tools and Best Practices
 
 ### MCP Tools for Development
+
+**shadcn MCP**: Use for component discovery and installation
+- `mcp_shadcn_search_items_in_registries`: Search for shadcn/ui components by name or description
+- `mcp_shadcn_view_items_in_registries`: View detailed component information and code
+- `mcp_shadcn_get_item_examples_from_registries`: Find usage examples and demos
+- `mcp_shadcn_get_add_command_for_items`: Get CLI commands to install components
+- `mcp_shadcn_get_project_registries`: List configured component registries
 
 **Chrome DevTools MCP**: Use for real-time debugging and verification
 - `mcp_chrome_devtools_take_snapshot`: Capture accessibility tree snapshots to verify ARIA structure
@@ -754,7 +1501,9 @@ The migration is considered successful when:
 6. ✅ All E2E tests pass on Chromium, Firefox, and WebKit
 7. ✅ TypeScript type-check reports zero errors
 8. ✅ ESLint reports zero errors and zero warnings
-9. ✅ All 24 correctness properties have passing property-based tests
+9. ✅ All 50 correctness properties have passing property-based tests (including Sidebar UX properties)
 10. ✅ Code is clean with no commented-out code or debug statements
 11. ✅ Commit history follows conventional commit format
 12. ✅ i18n support works for English and Chinese
+13. ✅ Sidebar UX improvements are complete with floating button, tooltips, and onboarding
+14. ✅ Desktop Sidebar opens by default, mobile/tablet Sidebar has clear reopen mechanisms

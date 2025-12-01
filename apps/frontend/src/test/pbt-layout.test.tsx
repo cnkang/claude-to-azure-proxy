@@ -10,12 +10,7 @@
 
 import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
-
-// Responsive breakpoints (in pixels)
-const BREAKPOINTS = {
-  MOBILE: 768,
-  TABLET: 1024,
-} as const;
+import { BREAKPOINTS } from '../constants/breakpoints.js';
 
 // Sidebar width constant
 const SIDEBAR_WIDTH = 320; // 20rem = 320px
