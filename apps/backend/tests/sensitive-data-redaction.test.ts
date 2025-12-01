@@ -20,8 +20,8 @@ const mockConsoleError = vi.fn();
 const mockStdoutWrite = vi.fn();
 const mockStderrWrite = vi.fn();
 
-let stdoutSpy: ReturnType<typeof vi.spyOn> | undefined;
-let stderrSpy: ReturnType<typeof vi.spyOn> | undefined;
+let stdoutSpy: ReturnType<typeof vi.spyOn<typeof process.stdout, 'write'>> | undefined;
+let stderrSpy: ReturnType<typeof vi.spyOn<typeof process.stderr, 'write'>> | undefined;
 
 describe('Sensitive Data Redaction', () => {
   beforeEach(() => {
