@@ -1,0 +1,181 @@
+/**
+ * Animation Performance Optimizations
+ * 
+ * This file contains CSS rules for optimizing animation performance:
+ * - will-change property for animated elements
+ * - GPU-accelerated transforms and opacity
+ * - Reduced motion support for accessibility
+ */
+
+/* ===== Animation Performance Optimizations ===== */
+
+/**
+ * Apply will-change to elements that will be animated
+ * This hints to the browser to optimize for these properties
+ * Only use on elements that will actually animate
+ */
+.will-animate-transform {
+  will-change: transform;
+}
+
+.will-animate-opacity {
+  will-change: opacity;
+}
+
+.will-animate-transform-opacity {
+  will-change: transform, opacity;
+}
+
+/**
+ * Remove will-change after animation completes
+ * This prevents unnecessary memory usage
+ */
+.animation-complete {
+  will-change: auto;
+}
+
+/**
+ * GPU-accelerated animations
+ * Use transform and opacity for best performance
+ */
+.gpu-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* ===== Reduced Motion Support ===== */
+
+/**
+ * Respect user's motion preferences
+ * Disable or reduce animations when prefers-reduced-motion is enabled
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Remove will-change when animations are disabled */
+  .will-animate-transform,
+  .will-animate-opacity,
+  .will-animate-transform-opacity {
+    will-change: auto;
+  }
+}
+
+/**
+ * Safe animations that respect reduced motion
+ * These animations will be instant when reduced motion is enabled
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .safe-fade {
+    animation: fadeIn 0.3s ease-in;
+  }
+
+  .safe-slide {
+    animation: slideIn 0.3s ease-out;
+  }
+
+  .safe-scale {
+    animation: scaleIn 0.3s ease-out;
+  }
+}
+
+/* ===== Animation Keyframes ===== */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* ===== Framer Motion Optimizations ===== */
+
+/**
+ * Optimize framer-motion animations
+ * These classes can be applied to motion components
+ */
+.motion-safe {
+  /* Ensure transforms use GPU acceleration */
+  transform: translateZ(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-safe {
+    /* Disable framer-motion animations */
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ===== Performance Hints ===== */
+
+/**
+ * Contain layout shifts during animations
+ * Use CSS containment to improve performance
+ */
+.animation-container {
+  contain: layout style paint;
+}
+
+/**
+ * Optimize for compositing
+ * Create a new compositing layer for animated elements
+ */
+.compositing-layer {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* ===== Accessibility ===== */
+
+/**
+ * Ensure focus indicators remain visible during animations
+ * Maintain WCAG AAA contrast requirements (3:1 minimum)
+ */
+.animated-element:focus-visible {
+  outline: 3px solid var(--focus-color, #0066CC);
+  outline-offset: 2px;
+  /* Ensure outline is not affected by transforms */
+  outline-style: solid;
+}
+
+/**
+ * Prevent animations from interfering with screen readers
+ * Use aria-live regions for dynamic content
+ */
+[aria-live] {
+  /* Ensure content is readable during animations */
+  animation: none;
+  transition: none;
+}
