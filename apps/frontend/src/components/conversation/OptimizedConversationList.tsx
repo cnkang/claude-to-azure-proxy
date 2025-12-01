@@ -158,7 +158,14 @@ const ConversationListItem = memo<ConversationListItemProps>(
                 <>
                   <button
                     type="button"
-                    className="p-1 text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded"
+                    className={cn(
+                      "p-1.5 rounded transition-all duration-200",
+                      "text-gray-900 dark:text-gray-100",
+                      "hover:text-blue-700 dark:hover:text-blue-300",
+                      "hover:bg-blue-100 dark:hover:bg-blue-900/50",
+                      "ring-1 ring-gray-300 dark:ring-gray-600",
+                      "hover:ring-blue-400 dark:hover:ring-blue-500"
+                    )}
                     onClick={(event) => {
                       event.stopPropagation();
                       onStartEdit(conversation.id, conversation.title);
@@ -170,7 +177,14 @@ const ConversationListItem = memo<ConversationListItemProps>(
                   </button>
                   <button
                     type="button"
-                    className="p-1 text-gray-700 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
+                    className={cn(
+                      "p-1.5 rounded transition-all duration-200",
+                      "text-gray-900 dark:text-gray-100",
+                      "hover:text-red-700 dark:hover:text-red-300",
+                      "hover:bg-red-100 dark:hover:bg-red-900/50",
+                      "ring-1 ring-gray-300 dark:ring-gray-600",
+                      "hover:ring-red-400 dark:hover:ring-red-500"
+                    )}
                     onClick={(event) => {
                       event.stopPropagation();
                       onDelete(conversation.id);
