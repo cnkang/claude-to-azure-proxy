@@ -137,3 +137,7 @@ node_modules
 apps/backend/metrics-exports/test-metrics-export.json
 playwright-report/*
 test-results/*
+
+# pnpm workspace - only root lockfile
+apps/*/pnpm-lock.yaml
+packages/*/pnpm-lock.yaml
