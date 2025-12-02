@@ -486,13 +486,19 @@ describe('Build and Deployment Validation', () => {
     });
 
     it('should have development tools configuration', () => {
-      // ESLint
-      expect(existsSync(join(backendDir, 'eslint.config.ts'))).toBe(true);
-      expect(existsSync(join(frontendDir, 'eslint.config.ts'))).toBe(true);
+      const backendPackage = JSON.parse(
+        readFileSync(join(backendDir, 'package.json'), 'utf-8')
+      );
 
-      // Prettier
-      expect(existsSync(join(rootDir, '.prettierrc'))).toBe(true);
-      expect(existsSync(join(frontendDir, '.prettierrc'))).toBe(true);
+      const frontendPackage = JSON.parse(
+        readFileSync(join(frontendDir, 'package.json'), 'utf-8')
+      );
+
+      // Biome
+      expect(existsSync(join(rootDir, 'biome.json'))).toBe(true);
+      expect(existsSync(join(rootDir, '.biomeignore'))).toBe(true);
+      expect(backendPackage.scripts.lint).toContain('biome');
+      expect(frontendPackage.scripts.lint).toContain('biome');
 
       // TypeScript
       expect(existsSync(join(backendDir, 'tsconfig.json'))).toBe(true);

@@ -431,7 +431,7 @@ describe('Search Component Accessibility', () => {
 - **Automated**: axe DevTools, Lighthouse, WAVE
 - **Manual**: Screen readers, keyboard testing
 - **Color contrast**: WebAIM Contrast Checker
-- **Code validation**: W3C Validator, ESLint a11y plugin
+- **Code validation**: W3C Validator, Biome linting with accessibility checks in component tests
 
 ### Documentation
 

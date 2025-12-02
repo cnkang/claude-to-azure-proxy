@@ -18,14 +18,15 @@
     "test:watch": "vitest",
     "test:coverage": "vitest --coverage",
     "type-check": "tsc --noEmit --project tsconfig.build.json",
-    "lint": "eslint --config ./eslint.config.ts src/ tests/",
-    "lint:fix": "eslint --config ./eslint.config.ts src/ tests/ --fix"
+    "lint": "biome lint src tests",
+    "lint:fix": "biome lint --write src tests"
   },
   "dependencies": {
     "@repo/shared-types": "workspace:*",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
     "@types/uuid": "^10.0.0",
     "typescript": "^5.6.0",
     "vitest": "^4.0.4"

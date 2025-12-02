@@ -1,14 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  generateCorrelationId,
   createRequestContext,
-  sanitizeErrorMessage,
-  isNonEmptyString,
-  isValidNumber,
   deepFreeze,
   formatTimestamp,
-  parseEnvInt,
+  generateCorrelationId,
+  isNonEmptyString,
+  isValidNumber,
   parseEnvBoolean,
+  parseEnvInt,
+  sanitizeErrorMessage,
 } from '../src/index';
 
 describe('shared-utils', () => {
@@ -98,9 +98,9 @@ describe('shared-utils', () => {
     });
 
     it('should return false for invalid numbers', () => {
-      expect(isValidNumber(NaN)).toBe(false);
-      expect(isValidNumber(Infinity)).toBe(false);
-      expect(isValidNumber(-Infinity)).toBe(false);
+      expect(isValidNumber(Number.NaN)).toBe(false);
+      expect(isValidNumber(Number.POSITIVE_INFINITY)).toBe(false);
+      expect(isValidNumber(Number.NEGATIVE_INFINITY)).toBe(false);
       expect(isValidNumber('123')).toBe(false);
       expect(isValidNumber(null)).toBe(false);
     });

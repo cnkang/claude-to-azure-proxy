@@ -62,7 +62,7 @@ claude-to-azure-proxy/
 ├── packages/
 │   ├── shared-types/      # 共享TypeScript类型
 │   ├── shared-utils/      # 工具函数库 (已测试通过)
-│   └── shared-config/     # ESLint、TypeScript、Vitest配置
+│   └── shared-config/     # TypeScript、Vitest配置（Biome在仓库根目录）
 ├── infra/                 # 基础设施代码
 ├── docs/                  # 项目文档
 └── scripts/               # 构建和部署脚本

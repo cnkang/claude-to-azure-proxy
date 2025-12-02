@@ -41,10 +41,10 @@ pnpm test             # Run tests in watch mode (keeps running, use Ctrl+C to st
 pnpm test:coverage    # Generate coverage report (>90% required)
 
 # Code quality (run before commits)
-pnpm lint             # Check for linting errors
-pnpm lint:fix         # Auto-fix ESLint issues
+pnpm lint             # Check formatting and linting with Biome
+pnpm lint:fix         # Auto-fix Biome issues (lint + format)
 pnpm type-check       # Run TypeScript type checking
-pnpm format           # Format with Prettier
+pnpm format           # Format with Biome
 pnpm quality:all      # Run all quality checks
 ```
 

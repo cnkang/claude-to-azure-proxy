@@ -43,7 +43,7 @@ claude-to-azure-proxy/
 
 - `@repo/shared-types`: Common TypeScript interfaces and types
 - `@repo/shared-utils`: Utility functions used across applications
-- `@repo/shared-config`: ESLint, TypeScript, and Vitest configurations
+- `@repo/shared-config`: TypeScript and Vitest configurations (Biome configured at repo root)
 
 ## Development Workflow
 
@@ -130,7 +130,7 @@ docker-compose -f docker-compose.prod.yml up --build
 
 ### Developer Experience
 
-- **Unified tooling**: Consistent ESLint, TypeScript, and testing configurations
+- **Unified tooling**: Consistent Biome, TypeScript, and testing configurations
 - **Shared dependencies**: Reduced duplication and faster installs
 - **Type safety**: Shared types ensure consistency across applications
 - **Hot reloading**: Fast development with automatic rebuilds

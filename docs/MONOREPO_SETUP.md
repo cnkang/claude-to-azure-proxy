@@ -57,7 +57,6 @@ claude-to-azure-proxy/
 │   │   └── vitest.config.ts         # Test configuration
 │   │
 │   └── shared-config/               # Shared configuration
-│       ├── eslint/                  # ESLint configurations
 │       ├── typescript/              # TypeScript configurations
 │       ├── vitest/                  # Test configurations
 │       └── package.json             # Package configuration
@@ -139,10 +138,10 @@ claude-to-azure-proxy/
 
 #### `@repo/shared-config`
 
-- Centralized ESLint configuration
+- Centralized TypeScript and Vitest configuration
 - TypeScript base configuration
 - Vitest test configuration
-- Consistent tooling across packages
+- Biome configuration managed at the repository root
 
 ## Development Commands
 
