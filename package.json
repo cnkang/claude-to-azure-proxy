@@ -45,8 +45,8 @@
     "type-check": "pnpm -r type-check",
     "type-check:backend": "pnpm --filter @repo/backend type-check",
     "type-check:watch": "pnpm --filter @repo/backend type-check:watch",
-    "format": "prettier --no-error-on-unmatched-pattern --write \"apps/**/*.{js,ts,tsx,jsx,json,md,mdx,yml,yaml,css,scss}\" \"packages/**/*.{js,ts,tsx,jsx,json,md,mdx,yml,yaml,css,scss}\" \"tools/**/*.{js,ts,tsx,jsx,json,md,mdx,yml,yaml,css,scss}\" \"docs/**/*.{md,mdx,yaml,yml}\" \"scripts/**/*.{js,ts}\"",
-    "format:check": "prettier --no-error-on-unmatched-pattern --check \"apps/**/*.{js,ts,tsx,jsx,json,md,mdx,yml,yaml,css,scss}\" \"packages/**/*.{js,ts,tsx,jsx,json,md,mdx,yml,yaml,css,scss}\" \"tools/**/*.{js,ts,tsx,jsx,json,md,mdx,yml,yaml,css,scss}\" \"docs/**/*.{md,mdx,yaml,yml}\" \"scripts/**/*.{js,ts}\"",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
     "docker:build": "docker build -t claude-to-azure-proxy .",
     "docker:build:backend": "docker build -f apps/backend/Dockerfile -t claude-to-azure-proxy:backend .",
     "docker:build:frontend": "docker build -f apps/frontend/Dockerfile -t claude-to-azure-proxy:frontend .",
@@ -83,8 +83,8 @@
     "docs:api": "npx swagger-ui-serve docs/api-specification.yaml",
     "docs:generate": "npx typedoc --options typedoc.json",
     "docs:serve": "npx http-server docs/api -p 3001 -o",
-    "sast:eslint": "npx eslint --config apps/backend/eslint.config.ts apps/backend/src/ apps/backend/tests/ --format json -o security-reports/eslint-results.json",
-    "sast:all": "pnpm run sast:eslint && pnpm run quality:security",
+    "sast:biome": "mkdir -p security-reports && biome lint --reporter json --files apps/backend/src apps/backend/tests > security-reports/biome-results.json",
+    "sast:all": "pnpm run sast:biome && pnpm run quality:security",
     "pre-commit:check": "pnpm run type-check && pnpm run lint && pnpm run test && pnpm run format:check",
     "pre-commit:fix": "pnpm run lint:fix && pnpm run format",
     "validate": "pnpm run type-check && pnpm run lint && pnpm run test",
@@ -147,8 +147,8 @@
     "uuid": "^13.0.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
     "@axe-core/playwright": "^4.11.0",
-    "@eslint/js": "^9.39.1",
     "@humanfs/node": "^0.16.7",
     "@playwright/test": "^1.57.0",
     "@swc/cli": "^0.7.9",
@@ -158,19 +158,14 @@
     "@types/node": "^24.10.1",
     "@types/superagent": "^8.1.9",
     "@types/supertest": "^6.0.3",
-    "@typescript-eslint/eslint-plugin": "^8.48.0",
-    "@typescript-eslint/parser": "^8.48.0",
     "@vitest/coverage-v8": "^4.0.14",
     "@vitest/ui": "^4.0.14",
     "concurrently": "^9.2.1",
-    "eslint": "^9.39.1",
-    "eslint-plugin-security": "^3.0.1",
     "glob": "^12.0.0",
     "http-server": "^14.1.1",
     "husky": "^9.1.7",
     "jiti": "^2.6.1",
     "lint-staged": "^16.2.7",
-    "prettier": "^3.6.2",
     "supertest": "^7.1.4",
     "swagger-ui-serve": "^0.0.4",
     "ts-complex": "^1.0.0",
@@ -179,19 +174,11 @@
     "typedoc": "^0.28.14",
     "typedoc-plugin-markdown": "^4.9.0",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.48.0",
     "vitest": "^4.0.14"
   },
   "lint-staged": {
-    "*.{ts,js}": [
-      "pnpm exec eslint --fix --ignore-pattern 'apps/**'",
-      "prettier --write"
-    ],
-    "*.{json,md,yml,yaml}": [
-      "prettier --write"
-    ],
-    "*.{dockerfile,Dockerfile}": [
-      "prettier --write --parser dockerfile"
+    "*.{js,jsx,ts,tsx,mjs,cjs,json,jsonc}": [
+      "pnpm exec biome check --write"
     ]
   },
   "pnpm": {

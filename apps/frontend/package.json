@@ -28,11 +28,11 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
-    "lint": "eslint src/",
-    "lint:fix": "eslint src/ --fix",
+    "lint": "biome lint src",
+    "lint:fix": "biome lint --write src",
     "type-check": "tsc --noEmit",
-    "format": "prettier --write src/",
-    "format:check": "prettier --check src/",
+    "format": "biome format --write src",
+    "format:check": "biome format src",
     "security:audit": "pnpm audit --audit-level moderate",
     "security:scan": "pnpm dlx @cyclonedx/cyclonedx-npm --output-file sbom.json"
   },
@@ -65,6 +65,7 @@
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
     "@axe-core/playwright": "^4.11.0",
     "@axe-core/react": "^4.11.0",
     "@playwright/test": "^1.57.0",

@@ -80,5 +80,5 @@ import { something } from './module';
 
 - All checks remain enabled (no bypassing)
 - TypeScript strict mode maintained
-- ESLint security rules enforced
+- Biome linting enforced
 - Minimal code changes focused on module resolution

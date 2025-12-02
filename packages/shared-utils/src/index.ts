@@ -27,8 +27,8 @@ export function createRequestContext(
   correlationId?: string,
   userAgent?: string,
   ip?: string,
-  method: string = 'GET',
-  url: string = '/'
+  method = 'GET',
+  url = '/'
 ): RequestContext {
   return {
     correlationId: correlationId ?? generateCorrelationId(),
@@ -64,7 +64,9 @@ export function isNonEmptyString(value: unknown): value is string {
  * Check if a value is a valid number
  */
 export function isValidNumber(value: unknown): value is number {
-  return typeof value === 'number' && !isNaN(value) && isFinite(value);
+  return (
+    typeof value === 'number' && !Number.isNaN(value) && Number.isFinite(value)
+  );
 }
 
 /**
@@ -73,13 +75,13 @@ export function isValidNumber(value: unknown): value is number {
 export function deepFreeze<T extends Record<string, unknown>>(
   obj: T
 ): Readonly<T> {
-  Object.getOwnPropertyNames(obj).forEach((prop) => {
+  for (const prop of Object.getOwnPropertyNames(obj)) {
     // eslint-disable-next-line security/detect-object-injection
     const value = obj[prop];
     if (value !== null && typeof value === 'object') {
       deepFreeze(value as Record<string, unknown>);
     }
-  });
+  }
   return Object.freeze(obj);
 }
 
@@ -107,7 +109,7 @@ export function parseEnvInt(
   if (value === undefined || value === '') {
     return defaultValue;
   }
-  const parsed = parseInt(value, 10);
+  const parsed = Number.parseInt(value, 10);
   return isValidNumber(parsed) ? parsed : defaultValue;
 }
 
@@ -176,8 +178,8 @@ export function throttle<T extends (...args: unknown[]) => void>(
  */
 export async function retry<T>(
   fn: () => Promise<T>,
-  maxAttempts: number = 3,
-  baseDelay: number = 1000
+  maxAttempts = 3,
+  baseDelay = 1000
 ): Promise<T> {
   let lastError: Error;
 
@@ -191,7 +193,7 @@ export async function retry<T>(
         throw lastError;
       }
 
-      const delayMs = baseDelay * Math.pow(2, attempt - 1);
+      const delayMs = baseDelay * 2 ** (attempt - 1);
       await delay(delayMs);
     }
   }
@@ -282,7 +284,7 @@ export function calculateStorageUsage(used: number, quota: number): number {
 /**
  * Format bytes to human readable string
  */
-export function formatBytes(bytes: number, decimals: number = 2): string {
+export function formatBytes(bytes: number, decimals = 2): string {
   if (bytes === 0) {
     return '0 Bytes';
   }
@@ -294,7 +296,7 @@ export function formatBytes(bytes: number, decimals: number = 2): string {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
 
   // eslint-disable-next-line security/detect-object-injection
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+  return `${Number.parseFloat((bytes / k ** i).toFixed(dm))} ${sizes[i]}`;
 }
 
 /**

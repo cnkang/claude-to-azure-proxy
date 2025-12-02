@@ -244,8 +244,8 @@ try {
 | Backend unit tests         | `pnpm --filter @repo/backend test`       | Honors NODE_OPTIONS defaults                     |
 | Frontend vitest (no cov)   | `cd apps/frontend && pnpm test:direct`   | Uses 4 GB heap cap                                |
 | Frontend coverage          | `cd apps/frontend && pnpm test:coverage` | NODE_OPTIONS limited to 8 GB (see CI policy)     |
-| Lint all packages          | `pnpm -r lint`                           | Add `:fix` for auto fixes                         |
-| Format                     | `pnpm run format`                        | Handles empty glob folders via `--no-error...`    |
+| Lint all packages          | `pnpm -r lint`                           | Biome-based linting; add `:fix` for auto fixes    |
+| Format                     | `pnpm run format`                        | Biome formatter via `biome.json`                  |
 | Build backend              | `pnpm --filter @repo/backend build`      | Uses optimized Node flags                        |
 | Build frontend             | `pnpm --filter @repo/frontend build`     | Vite production build                            |
 
@@ -257,8 +257,8 @@ try {
 | --------------- | ---------------------------------------------------------------- |
 | **Type Safety** | TypeScript strict mode + zero implicit `any`s                    |
 | **Testing**     | Vitest suites ≥90% coverage overall; critical flows 100%         |
-| **Linting**     | ESLint security rules clean; run `pnpm lint:fix` before commit   |
-| **Formatting**  | Prettier via `pnpm run format` (root and package scopes)         |
+| **Linting**     | Biome diagnostics clean; run `pnpm lint:fix` before commit       |
+| **Formatting**  | Biome formatter via `pnpm run format`                            |
 | **Docs**        | Update READMEs/specs when APIs, env vars, or workflows change    |
 | **Performance** | Respect heap caps (≤8 GB for test coverage) and streaming SLAs   |
 | **Security**    | Authentication on every route (except `/health`), sanitized logs |
@@ -377,8 +377,8 @@ pnpm test             # Run all tests once
 pnpm test:coverage    # Generate coverage report (>90% required)
 
 # Code quality (run before commits)
-pnpm lint:fix         # Auto-fix ESLint issues
-pnpm format           # Format with Prettier
+pnpm lint:fix         # Auto-fix Biome issues (lint + format)
+pnpm format           # Format with Biome
 pnpm quality:all      # Run all quality checks
 
 # Security and documentation
@@ -470,8 +470,7 @@ pnpm docs:generate    # Generate TypeScript API documentation
 ### Quality Assurance Tools
 
 - **TypeScript**: Strict mode with comprehensive type checking
-- **ESLint**: Security-focused linting with automated fixes
-- **Prettier**: Consistent code formatting
+- **Biome**: Formatter and linter with organized imports
 - **Vitest**: Comprehensive testing framework
 - **Type Coverage**: 95% type coverage requirement
 - **Complexity Analysis**: Cyclomatic complexity ≤ 10
@@ -618,7 +617,7 @@ export const newUtility = (input: SomeType): string => {
 
 - `package.json` - Dependencies and scripts
 - `tsconfig.json` - TypeScript configuration with strict mode
-- `eslint.config.ts` - ESLint configuration with security rules
+- `biome.json` - Biome formatter and linter configuration
 - `.env.example` - Environment variable documentation
 - `docker-compose.yml` - Docker deployment configuration
 

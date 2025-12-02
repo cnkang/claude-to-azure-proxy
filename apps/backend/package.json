@@ -30,12 +30,12 @@
     "test:streaming-flow": "tsx scripts/test-streaming-flow-validation.ts",
     "monitoring:heap": "node --heap-prof --enable-source-maps dist/index.js",
     "monitoring:cpu": "node --cpu-prof --enable-source-maps dist/index.js",
-    "lint": "eslint src/ tests/",
-    "lint:fix": "eslint src/ tests/ --fix",
+    "lint": "biome lint src tests",
+    "lint:fix": "biome lint --write src tests",
     "type-check": "tsc --noEmit --incremental",
     "type-check:watch": "tsc --noEmit --incremental --watch",
-    "format": "prettier --write src/ tests/",
-    "format:check": "prettier --check src/ tests/"
+    "format": "biome format --write src tests",
+    "format:check": "biome format src tests"
   },
   "dependencies": {
     "@repo/shared-types": "workspace:*",
@@ -53,6 +53,7 @@
     "uuid": "^13.0.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
     "@repo/shared-config": "workspace:*",
     "@swc/cli": "^0.7.9",
     "@swc/core": "^1.15.3",
