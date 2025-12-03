@@ -7,12 +7,12 @@
  * Requirements: 16.1, 16.2, 16.3, 16.4, 16.5
  */
 
-import type { RequestWithCorrelationId as _RequestWithCorrelationId } from '../types/index.js';
 import {
   ValidationError,
   InternalServerError as _InternalServerError,
 } from '../errors/index.js';
 import { logger } from '../middleware/logging.js';
+import type { RequestWithCorrelationId as _RequestWithCorrelationId } from '../types/index.js';
 import { getModelRoutingService } from './model-routing-service.js';
 
 /**

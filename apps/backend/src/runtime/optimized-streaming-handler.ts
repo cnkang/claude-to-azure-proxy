@@ -1,5 +1,5 @@
+import type { Readable, Transform, Writable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import type { Readable, Writable, Transform } from 'node:stream';
 import type { Response as ExpressResponse } from 'express';
 
 type ImmutableResponse = Readonly<ExpressResponse>;

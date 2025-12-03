@@ -8,22 +8,22 @@
  */
 
 import type { Request, Response } from 'express';
-import { param, body, validationResult } from 'express-validator';
+import { body, param, validationResult } from 'express-validator';
 import { v4 as uuidv4 } from 'uuid';
 import { ValidationError } from '../errors/index.js';
+import { isE2EBypassRequest } from '../middleware/authentication.js';
 import { logger } from '../middleware/logging.js';
-import type { RequestWithCorrelationId } from '../types/index.js';
 import type { ContextMessage } from '../services/context-management-service.js';
-import {
-  isValidConversationId,
-  isValidConnectionId,
-  isValidMessageId,
-} from '../utils/validation.js';
+import type { RequestWithCorrelationId } from '../types/index.js';
 import {
   forceGarbageCollection,
   getCurrentMemoryMetrics,
 } from '../utils/memory-manager.js';
-import { isE2EBypassRequest } from '../middleware/authentication.js';
+import {
+  isValidConnectionId,
+  isValidConversationId,
+  isValidMessageId,
+} from '../utils/validation.js';
 
 interface RequestWithSession extends RequestWithCorrelationId {
   sessionId: string;

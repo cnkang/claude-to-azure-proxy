@@ -1,11 +1,11 @@
 import type { Response } from 'express';
-import type {
-  RequestWithCorrelationId,
-  ModelProvider,
-} from '../types/index.js';
-import { logger } from '../middleware/logging';
 import config, { isAWSBedrockConfigured } from '../config/index';
 import { ValidationError } from '../errors/index';
+import { logger } from '../middleware/logging';
+import type {
+  ModelProvider,
+  RequestWithCorrelationId,
+} from '../types/index.js';
 
 /**
  * Enhanced /api/models endpoints for frontend model routing and configuration

@@ -10,7 +10,7 @@
  * @since 1.0.0
  */
 
-import { performance } from 'perf_hooks';
+import { performance } from 'node:perf_hooks';
 import { logger } from '../middleware/logging';
 
 /**
@@ -116,7 +116,7 @@ export class InMemoryMetricCollector implements MetricCollector {
    *
    * @param maxMetrics - Maximum number of metrics to store (default: 1000)
    */
-  constructor(maxMetrics: number = 1000) {
+  constructor(maxMetrics = 1000) {
     this.maxMetrics = maxMetrics;
   }
 
@@ -276,7 +276,7 @@ export class PerformanceTimer {
    * @param errorType - Optional error type if operation failed
    * @returns Performance metric data
    */
-  public stop(success: boolean = true, errorType?: string): PerformanceMetric {
+  public stop(success = true, errorType?: string): PerformanceMetric {
     const duration = performance.now() - this.startTime;
 
     const metric: PerformanceMetric = {
@@ -312,7 +312,7 @@ export class SystemResourceMonitor {
    *
    * @param intervalMs - Monitoring interval in milliseconds (default: 60000)
    */
-  constructor(intervalMs: number = 60000) {
+  constructor(intervalMs = 60000) {
     this.intervalMs = intervalMs;
   }
 

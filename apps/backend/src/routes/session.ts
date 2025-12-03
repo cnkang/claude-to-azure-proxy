@@ -7,16 +7,16 @@
  * Requirements: 13.1, 13.2, 13.3, 13.4, 13.5
  */
 
+import crypto from 'node:crypto';
 import type { Request, Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
-import crypto from 'crypto';
 import { body, param, validationResult } from 'express-validator';
+import { v4 as uuidv4 } from 'uuid';
+import config from '../config/index.js';
 import { ValidationError } from '../errors/index.js';
+import { isE2EBypassRequest } from '../middleware/authentication.js';
 import { logger } from '../middleware/logging.js';
 import type { RequestWithCorrelationId } from '../types/index.js';
 import { isValidSessionId } from '../utils/validation.js';
-import config from '../config/index.js';
-import { isE2EBypassRequest } from '../middleware/authentication.js';
 
 // Session storage (in-memory for now, could be Redis in production)
 interface SessionData {
@@ -123,7 +123,10 @@ setInterval(cleanupExpiredSessions, SESSION_CONFIG.cleanupInterval);
  */
 export const createSessionHandler = [
   // Input validation
-  body('fingerprint').optional().isString().isLength({ min: 1, max: 100 }),
+  body('fingerprint')
+    .optional()
+    .isString()
+    .isLength({ min: 1, max: 100 }),
 
   async (req: Request, res: Response): Promise<void> => {
     const correlationId = (req as RequestWithCorrelationId).correlationId;
@@ -386,7 +389,11 @@ export const validateSessionMiddleware = async (
   let session: SessionData | null = null;
 
   if (!isBypassMode) {
-    session = validateSessionAccess(effectiveSessionId, fingerprint, correlationId);
+    session = validateSessionAccess(
+      effectiveSessionId,
+      fingerprint,
+      correlationId
+    );
   }
 
   if (!session) {

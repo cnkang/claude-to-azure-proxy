@@ -5,14 +5,14 @@
  */
 
 import { logger } from '../middleware/logging';
-import { recordBusinessMetric } from './metrics';
 import type {
-  ResponsesResponse,
-  ResponsesCreateParams,
   RequestFormat,
   ResponseFormat,
+  ResponsesCreateParams,
+  ResponsesResponse,
   SecurityAuditLog,
 } from '../types/index';
+import { recordBusinessMetric } from './metrics';
 
 export interface AzureResponsesMetrics {
   readonly requestCount: number;
@@ -442,7 +442,7 @@ export class AzureResponsesMonitor {
   /**
    * Start continuous monitoring
    */
-  public startMonitoring(intervalMs: number = 60000): void {
+  public startMonitoring(intervalMs = 60000): void {
     if (this.monitoringInterval) {
       return;
     }

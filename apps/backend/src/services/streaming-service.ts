@@ -7,28 +7,28 @@
  * Requirements: 3.2, 16.3, 16.4, 16.5
  */
 
+import axios from 'axios';
 import type { Request as _Request, Response as _Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import axios from 'axios';
-import type {
-  RequestWithCorrelationId as _RequestWithCorrelationId,
-  UniversalRequest,
-  ClaudeRequest,
-  OpenAIRequest as _OpenAIRequest,
-  ClaudeStreamChunk as _ClaudeStreamChunk,
-  OpenAIStreamChunk as _OpenAIStreamChunk,
-  ModelProvider as _ModelProvider,
-} from '../types/index.js';
 import {
   ValidationError,
   InternalServerError as _InternalServerError,
 } from '../errors/index.js';
 import { logger } from '../middleware/logging.js';
-import { getModelRoutingService } from './model-routing-service.js';
+import type {
+  ClaudeRequest,
+  UniversalRequest,
+  ClaudeStreamChunk as _ClaudeStreamChunk,
+  ModelProvider as _ModelProvider,
+  OpenAIRequest as _OpenAIRequest,
+  OpenAIStreamChunk as _OpenAIStreamChunk,
+  RequestWithCorrelationId as _RequestWithCorrelationId,
+} from '../types/index.js';
 import {
-  getContextManagementService,
   type ContextMessage,
+  getContextManagementService,
 } from './context-management-service.js';
+import { getModelRoutingService } from './model-routing-service.js';
 
 /**
  * Stream chunk for SSE communication
@@ -624,7 +624,7 @@ export class StreamingService {
       // Make streaming request to Azure OpenAI using v1 responses endpoint
       // Use configured timeout from environment (default 120000ms)
       const configuredTimeout = process.env.AZURE_OPENAI_TIMEOUT
-        ? parseInt(process.env.AZURE_OPENAI_TIMEOUT, 10)
+        ? Number.parseInt(process.env.AZURE_OPENAI_TIMEOUT, 10)
         : 120000;
 
       const requestStartTime = Date.now();

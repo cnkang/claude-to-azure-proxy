@@ -8,18 +8,18 @@
  */
 
 import type { Request, Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
 import { body, param, query, validationResult } from 'express-validator';
+import { v4 as uuidv4 } from 'uuid';
 import { ValidationError } from '../errors/index.js';
 import { logger } from '../middleware/logging.js';
-import type { RequestWithCorrelationId } from '../types/index.js';
+import type { ContextMessage } from '../services/context-management-service.js';
 import {
-  getConversationContextService,
-  type ConversationContext,
   type ContextBuildingOptions,
+  type ConversationContext,
+  getConversationContextService,
 } from '../services/conversation-context-service.js';
+import type { RequestWithCorrelationId } from '../types/index.js';
 import { isValidConversationId } from '../utils/validation.js';
-import { type ContextMessage } from '../services/context-management-service.js';
 
 // Conversation data structures for API responses
 interface ConversationSummary {
@@ -121,7 +121,10 @@ const DEFAULT_CONTEXT_OPTIONS: ContextBuildingOptions = {
  */
 export const getConversationsHandler = [
   // Query validation
-  query('limit').optional().isInt({ min: 1, max: 100 }).toInt(),
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 100 })
+    .toInt(),
   query('offset').optional().isInt({ min: 0 }).toInt(),
   query('search').optional().isString().isLength({ min: 1, max: 100 }),
 
@@ -141,8 +144,8 @@ export const getConversationsHandler = [
         );
       }
 
-      const limit = parseInt(req.query.limit as string, 10) || 50;
-      const offset = parseInt(req.query.offset as string, 10) || 0;
+      const limit = Number.parseInt(req.query.limit as string, 10) || 50;
+      const offset = Number.parseInt(req.query.offset as string, 10) || 0;
       const search = req.query.search as string;
 
       // Get conversations for session using the service

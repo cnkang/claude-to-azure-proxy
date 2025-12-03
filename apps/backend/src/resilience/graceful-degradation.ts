@@ -3,9 +3,9 @@
  * Provides fallback mechanisms and service continuity during failures
  */
 
-import express from 'express';
-import { logger } from '../middleware/logging';
+import type express from 'express';
 import { ServiceUnavailableError } from '../errors/index';
+import { logger } from '../middleware/logging';
 import type { RequestWithCorrelationId as _RequestWithCorrelationId } from '../types/index';
 import { circuitBreakerRegistry } from './circuit-breaker';
 

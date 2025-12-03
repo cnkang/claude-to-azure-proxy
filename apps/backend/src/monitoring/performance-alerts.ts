@@ -3,12 +3,12 @@
  * Monitors performance metrics and triggers alerts for regressions
  */
 
-import { PerformanceObserver } from 'node:perf_hooks';
 import { EventEmitter } from 'node:events';
 import { mkdir, open } from 'node:fs/promises';
-import { resolve, relative, basename } from 'node:path';
-import { logger } from '../middleware/logging';
+import { basename, relative, resolve } from 'node:path';
+import { PerformanceObserver } from 'node:perf_hooks';
 import { memoryPressureHandler } from '../config/performance';
+import { logger } from '../middleware/logging';
 
 /**
  * Performance alert levels
@@ -254,7 +254,7 @@ export class PerformanceAlertSystem extends EventEmitter {
   /**
    * Record a request for metrics tracking
    */
-  public recordRequest(responseTime: number, isError: boolean = false): void {
+  public recordRequest(responseTime: number, isError = false): void {
     this.requestCount++;
     this.totalResponseTime += responseTime;
     this.responseTimes.push(responseTime);

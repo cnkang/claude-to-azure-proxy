@@ -8,19 +8,19 @@
  */
 
 import type { Request, Response } from 'express';
-import { param, body, validationResult } from 'express-validator';
+import { body, param, validationResult } from 'express-validator';
 import { v4 as uuidv4 } from 'uuid';
 import { ValidationError } from '../errors/index.js';
 import { logger } from '../middleware/logging.js';
-import type { RequestWithCorrelationId } from '../types/index.js';
 import {
-  getContextManagementService,
-  type ContextMessage,
   type ContextCompressionOptions,
+  type ContextMessage,
+  getContextManagementService,
 } from '../services/context-management-service.js';
-import { isValidConversationId } from '../utils/validation.js';
-import { getModelRoutingService } from '../services/model-routing-service.js';
 import { getConversationContextService } from '../services/conversation-context-service.js';
+import { getModelRoutingService } from '../services/model-routing-service.js';
+import type { RequestWithCorrelationId } from '../types/index.js';
+import { isValidConversationId } from '../utils/validation.js';
 
 // Context management types (using service types)
 interface CompressionEvent {

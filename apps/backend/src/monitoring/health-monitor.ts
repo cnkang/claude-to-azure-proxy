@@ -4,9 +4,9 @@
  */
 
 import type { AxiosInstance, AxiosStatic } from 'axios';
-import type { HealthCheckResult, ServerConfig } from '../types/index';
-import { logger } from '../middleware/logging';
 import { ConfigurationError } from '../errors/index';
+import { logger } from '../middleware/logging';
+import type { HealthCheckResult, ServerConfig } from '../types/index';
 
 type HealthStatus = HealthCheckResult;
 
@@ -36,7 +36,7 @@ export class HealthMonitor {
   private axiosInstance?: AxiosInstance;
   private lastHealthCheck?: HealthStatus;
   private readonly cacheTimeout: number;
-  private lastCheckTime: number = 0;
+  private lastCheckTime = 0;
   private readonly hasAzureConfig: boolean;
   private readonly azureEndpoint: string;
   private readonly azureApiKey: string;
@@ -46,7 +46,7 @@ export class HealthMonitor {
   private readonly healthChecks: Map<string, RegisteredHealthCheck> = new Map();
   private monitoringInterval?: NodeJS.Timeout;
 
-  constructor(config: ServerConfig, cacheTimeoutMs: number = 30000) {
+  constructor(config: ServerConfig, cacheTimeoutMs = 30000) {
     this.config = config;
     this.startTime = Date.now();
     this.cacheTimeout = cacheTimeoutMs;
@@ -342,8 +342,11 @@ export class HealthMonitor {
         baseURL: `https://bedrock-runtime.${region}.amazonaws.com`,
         apiKey,
         region,
-        timeout: parseInt(process.env.AWS_BEDROCK_TIMEOUT ?? '5000', 10),
-        maxRetries: parseInt(process.env.AWS_BEDROCK_MAX_RETRIES ?? '1', 10),
+        timeout: Number.parseInt(process.env.AWS_BEDROCK_TIMEOUT ?? '5000', 10),
+        maxRetries: Number.parseInt(
+          process.env.AWS_BEDROCK_MAX_RETRIES ?? '1',
+          10
+        ),
       };
 
       this.bedrockMonitor = new BedrockMonitor(bedrockConfig);

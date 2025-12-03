@@ -3,9 +3,9 @@
  * Implements Requirement 8: Backend Server Stability
  */
 
-import { logger } from '../middleware/logging.js';
+import type { Server } from 'node:http';
 import { getActiveRequestCount } from '../middleware/load-shedding.js';
-import type { Server } from 'http';
+import { logger } from '../middleware/logging.js';
 
 /**
  * Server health metrics
@@ -104,7 +104,8 @@ export class ServerHealthMonitor {
     const memoryUsage = process.memoryUsage();
 
     // Determine if server is healthy
-    const errorRate = this.totalRequests > 0 ? this.errorCount / this.totalRequests : 0;
+    const errorRate =
+      this.totalRequests > 0 ? this.errorCount / this.totalRequests : 0;
     const isHealthy = errorRate < 0.1; // Less than 10% error rate
 
     return {
@@ -130,9 +131,11 @@ export class ServerHealthMonitor {
       activeRequests: metrics.activeRequests,
       totalRequests: metrics.totalRequests,
       errorCount: metrics.errorCount,
-      errorRate: metrics.totalRequests > 0 
-        ? (metrics.errorCount / metrics.totalRequests * 100).toFixed(2) + '%'
-        : '0%',
+      errorRate:
+        metrics.totalRequests > 0
+          ? ((metrics.errorCount / metrics.totalRequests) * 100).toFixed(2) +
+            '%'
+          : '0%',
       heapUsed: Math.round(metrics.memoryUsage.heapUsed / 1024 / 1024), // MB
       heapTotal: Math.round(metrics.memoryUsage.heapTotal / 1024 / 1024), // MB
       isHealthy: metrics.isHealthy,
@@ -143,7 +146,8 @@ export class ServerHealthMonitor {
       logger.warn('Server health degraded', '', {
         errorCount: metrics.errorCount,
         totalRequests: metrics.totalRequests,
-        errorRate: (metrics.errorCount / metrics.totalRequests * 100).toFixed(2) + '%',
+        errorRate:
+          ((metrics.errorCount / metrics.totalRequests) * 100).toFixed(2) + '%',
       });
     }
   }

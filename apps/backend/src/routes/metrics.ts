@@ -11,10 +11,10 @@
  */
 
 import type { Response } from 'express';
-import type { RequestWithCorrelationId as _RequestWithCorrelationId } from '../types/index';
 import { logger } from '../middleware/logging';
-import { metricsCollector } from '../monitoring/metrics';
 import { getHealthMonitor } from '../monitoring/health-monitor';
+import { metricsCollector } from '../monitoring/metrics';
+import type { RequestWithCorrelationId as _RequestWithCorrelationId } from '../types/index';
 
 /**
  * Service-specific metrics interface for distinguishing between providers.
@@ -62,13 +62,23 @@ export interface ServiceMetrics {
  */
 export interface DetailedMetricsResponse extends ServiceMetrics {
   /** Raw performance metrics from the metrics collector */
-  readonly performanceMetrics: readonly import('../monitoring/metrics.js').MetricDataPoint[];
+  readonly performanceMetrics: readonly import(
+    '../monitoring/metrics.js'
+  ).MetricDataPoint[];
   /** Business metrics breakdown by category */
   readonly businessMetrics: {
-    readonly requests: readonly import('../monitoring/metrics.js').MetricDataPoint[];
-    readonly completions: readonly import('../monitoring/metrics.js').MetricDataPoint[];
-    readonly errors: readonly import('../monitoring/metrics.js').MetricDataPoint[];
-    readonly authentication: readonly import('../monitoring/metrics.js').MetricDataPoint[];
+    readonly requests: readonly import(
+      '../monitoring/metrics.js'
+    ).MetricDataPoint[];
+    readonly completions: readonly import(
+      '../monitoring/metrics.js'
+    ).MetricDataPoint[];
+    readonly errors: readonly import(
+      '../monitoring/metrics.js'
+    ).MetricDataPoint[];
+    readonly authentication: readonly import(
+      '../monitoring/metrics.js'
+    ).MetricDataPoint[];
   };
 }
 

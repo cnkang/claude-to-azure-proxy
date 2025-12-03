@@ -7,12 +7,12 @@
  * Requirements: 4.1, 4.2, 4.3, 4.4, 4.5
  */
 
-import type { Request, Response, RequestHandler } from 'express';
+import { promises as fs } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import type { Request, RequestHandler, Response } from 'express';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
-import { promises as fs } from 'fs';
-import path from 'path';
-import os from 'os';
 import { ValidationError } from '../errors/index.js';
 import { logger } from '../middleware/logging.js';
 import type { RequestWithCorrelationId } from '../types/index.js';

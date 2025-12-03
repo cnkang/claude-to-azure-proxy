@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
-import type { RequestWithCorrelationId } from '../types/index.js';
 import { logger } from '../middleware/logging';
+import type { RequestWithCorrelationId } from '../types/index.js';
 
 /**
  * Shared handler for completions-specific rate limiting so we can test the security behavior

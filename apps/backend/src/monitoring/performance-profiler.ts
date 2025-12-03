@@ -10,7 +10,7 @@
  * @since 1.0.0
  */
 
-import { performance, PerformanceObserver } from 'perf_hooks';
+import { PerformanceObserver, performance } from 'node:perf_hooks';
 import { logger } from '../middleware/logging';
 
 /**
@@ -202,7 +202,7 @@ export class PerformanceProfiler {
    * @param maxSamples - Maximum number of memory samples to keep (default: 100)
    * @param sampleInterval - Memory sampling interval in milliseconds (default: 5000)
    */
-  constructor(maxSamples: number = 100, sampleInterval: number = 5000) {
+  constructor(maxSamples = 100, sampleInterval = 5000) {
     this.maxSamples = maxSamples;
     this.sampleInterval = sampleInterval;
   }
@@ -716,9 +716,7 @@ export async function profileOperation<T>(
  * stopMonitoring();
  * ```
  */
-export function startMemoryLeakDetection(
-  intervalMs: number = 60000
-): () => void {
+export function startMemoryLeakDetection(intervalMs = 60000): () => void {
   const interval = setInterval(() => {
     const detection = performanceProfiler.detectMemoryLeaks();
 

@@ -13,9 +13,9 @@
  * @since 1.0.0
  */
 
-import { logger } from '../middleware/logging';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Socket } from 'node:net';
+import { logger } from '../middleware/logging';
 
 /**
  * Resource types that can be managed.
@@ -356,7 +356,7 @@ export class StreamResource extends BaseAsyncDisposableResource {
 
   constructor(
     stream: Readonly<NodeJS.ReadableStream | NodeJS.WritableStream>,
-    description: string = 'Stream resource'
+    description = 'Stream resource'
   ) {
     super(
       'stream',
@@ -429,7 +429,7 @@ export class TimerResource extends BaseDisposableResource {
   constructor(
     timerId: NodeJS.Timeout | NodeJS.Immediate,
     timerType: 'timeout' | 'interval' | 'immediate',
-    description: string = `${timerType} timer`
+    description = `${timerType} timer`
   ) {
     const timerMetadata: Record<string, unknown> = {
       timerType,

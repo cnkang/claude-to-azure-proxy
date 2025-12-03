@@ -8,17 +8,17 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import type { RequestWithCorrelationId as _RequestWithCorrelationId } from '../types/index.js';
 import {
   ValidationError,
   InternalServerError as _InternalServerError,
 } from '../errors/index.js';
 import { logger } from '../middleware/logging.js';
+import type { RequestWithCorrelationId as _RequestWithCorrelationId } from '../types/index.js';
 import {
-  getContextManagementService,
   type ContextMessage,
   type ContextUsage,
   type ContextCompressionOptions as _ContextCompressionOptions,
+  getContextManagementService,
 } from './context-management-service.js';
 import { getModelRoutingService } from './model-routing-service.js';
 

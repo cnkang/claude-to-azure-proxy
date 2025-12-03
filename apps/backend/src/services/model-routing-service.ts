@@ -7,20 +7,20 @@
  * Requirements: 2.5, 12.5
  */
 
-import type {
-  ModelProvider,
-  ModelRoutingConfig,
-  ModelRoutingDecision,
-  UniversalRequest,
-  ResponsesCreateParams as _ResponsesCreateParams,
-  RequestWithCorrelationId as _RequestWithCorrelationId,
-} from '../types/index.js';
+import config, { isAWSBedrockConfigured } from '../config/index.js';
 import {
   ValidationError,
   InternalServerError as _InternalServerError,
 } from '../errors/index.js';
 import { logger } from '../middleware/logging.js';
-import config, { isAWSBedrockConfigured } from '../config/index.js';
+import type {
+  ModelProvider,
+  ModelRoutingConfig,
+  ModelRoutingDecision,
+  UniversalRequest,
+  RequestWithCorrelationId as _RequestWithCorrelationId,
+  ResponsesCreateParams as _ResponsesCreateParams,
+} from '../types/index.js';
 
 /**
  * Model capability information

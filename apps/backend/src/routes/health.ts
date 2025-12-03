@@ -1,19 +1,19 @@
-import type { Response } from 'express';
 import axios from 'axios';
+import type { Response } from 'express';
+import { ConfigurationError } from '../errors/index';
+import { logger } from '../middleware/logging';
+import { getHealthMonitor } from '../monitoring/health-monitor';
+import {
+  circuitBreakerRegistry,
+  gracefulDegradationManager,
+  retryStrategyRegistry,
+} from '../resilience/index';
 import type {
   HealthCheckResult,
   RequestWithCorrelationId,
   ServerConfig,
 } from '../types/index.js';
-import { logger } from '../middleware/logging';
-import {
-  circuitBreakerRegistry,
-  retryStrategyRegistry,
-  gracefulDegradationManager,
-} from '../resilience/index';
 import { ensureResponsesBaseURL } from '../utils/azure-endpoint';
-import { ConfigurationError } from '../errors/index';
-import { getHealthMonitor } from '../monitoring/health-monitor';
 
 /**
  * Health check endpoint for AWS App Runner and monitoring
@@ -32,8 +32,9 @@ const checkAzureOpenAI = async (
     const maybeMockedAxiosGet =
       typeof (axios as unknown as { get?: unknown }).get === 'function' &&
       Boolean(
-        (axios as unknown as { get: { getMockImplementation?: () => unknown } })
-          .get.getMockImplementation?.()
+        (
+          axios as unknown as { get: { getMockImplementation?: () => unknown } }
+        ).get.getMockImplementation?.()
       );
 
     // In test environments, avoid external calls unless axios.get is mocked

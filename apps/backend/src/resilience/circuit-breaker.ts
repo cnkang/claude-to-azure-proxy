@@ -42,9 +42,9 @@ export interface CircuitBreakerResult<T> {
  */
 export class CircuitBreaker {
   private state: CircuitBreakerState = CircuitBreakerState.CLOSED;
-  private failureCount: number = 0;
-  private successCount: number = 0;
-  private totalRequests: number = 0;
+  private failureCount = 0;
+  private successCount = 0;
+  private totalRequests = 0;
   private lastFailureTime?: Date;
   private nextAttemptTime?: Date;
   private currentBackoffMs: number;

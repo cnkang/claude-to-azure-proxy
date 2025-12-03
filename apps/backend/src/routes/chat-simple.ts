@@ -10,9 +10,9 @@ import { body, validationResult } from 'express-validator';
 import { v4 as uuidv4 } from 'uuid';
 import { ValidationError } from '../errors/index.js';
 import { logger } from '../middleware/logging.js';
+import { getStreamingService } from '../services/streaming-service.js';
 import type { RequestWithCorrelationId } from '../types/index.js';
 import { isValidConversationId } from '../utils/validation.js';
-import { getStreamingService } from '../services/streaming-service.js';
 
 interface RequestWithSession extends RequestWithCorrelationId {
   sessionId: string;

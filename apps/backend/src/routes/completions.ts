@@ -1,70 +1,70 @@
+import { performance } from 'node:perf_hooks';
 import type { Response } from 'express';
 import rateLimit from 'express-rate-limit';
-import { performance } from 'node:perf_hooks';
-import type {
-  RequestWithCorrelationId,
-  ServerConfig,
-  IncomingRequest,
-  ResponsesResponse,
-  ResponseFormat,
-  ClaudeRequest,
-  ClaudeResponse,
-  OpenAIResponse,
-  ClaudeError,
-  OpenAIError,
-  ModelRoutingConfig,
-  ModelRoutingDecision,
-} from '../types/index.js';
-import { logger } from '../middleware/logging';
-import { asyncErrorHandler } from '../middleware/error-handler';
+import { AzureResponsesClient } from '../clients/azure-responses-client';
+import config, {
+  createAWSBedrockConfig,
+  isAWSBedrockConfigured,
+} from '../config/index';
+import { HTTP_STATUS_CLIENT_CLOSED_REQUEST } from '../constants/http-status-codes.js';
 import {
-  ValidationError,
   AzureOpenAIError,
   ErrorFactory,
+  ValidationError,
 } from '../errors/index';
+import { asyncErrorHandler } from '../middleware/error-handler';
+import { logger } from '../middleware/logging';
 import {
   circuitBreakerRegistry,
-  retryStrategyRegistry,
   gracefulDegradationManager,
+  retryStrategyRegistry,
 } from '../resilience/index';
-import { AzureResponsesClient } from '../clients/azure-responses-client';
+import type {
+  ClaudeError,
+  ClaudeRequest,
+  ClaudeResponse,
+  IncomingRequest,
+  ModelRoutingConfig,
+  ModelRoutingDecision,
+  OpenAIError,
+  OpenAIResponse,
+  RequestWithCorrelationId,
+  ResponseFormat,
+  ResponsesResponse,
+  ServerConfig,
+} from '../types/index.js';
+import {
+  abortableDelay,
+  createAbortError,
+  isAbortError,
+} from '../utils/abort-utils';
+import { conversationManager } from '../utils/conversation-manager';
+import {
+  detectRequestFormat,
+  getResponseFormat,
+} from '../utils/format-detection';
+import { createReasoningEffortAnalyzer } from '../utils/reasoning-effort-analyzer';
+import { createErrorResponseByFormat } from '../utils/response-transformer';
 import {
   createUniversalRequestProcessor,
   defaultUniversalProcessorConfig,
 } from '../utils/universal-request-processor';
 import { ALLOWED_MODELS } from '../validation/joi-validators';
-import { createReasoningEffortAnalyzer } from '../utils/reasoning-effort-analyzer';
-import { conversationManager } from '../utils/conversation-manager';
-import config, {
-  createAWSBedrockConfig,
-  isAWSBedrockConfigured,
-} from '../config/index';
-import { createErrorResponseByFormat } from '../utils/response-transformer';
-import {
-  detectRequestFormat,
-  getResponseFormat,
-} from '../utils/format-detection';
-import {
-  createAbortError,
-  isAbortError,
-  abortableDelay,
-} from '../utils/abort-utils';
-import { HTTP_STATUS_CLIENT_CLOSED_REQUEST } from '../constants/http-status-codes.js';
 
 import {
   createAbortableStreamWriter,
   endResponseOnAbort,
 } from '../utils/streaming-helpers';
 
+import { AWSBedrockClient } from '../clients/aws-bedrock-client';
+import { ensureResponsesBaseURL } from '../utils/azure-endpoint';
+import { AzureErrorMapper } from '../utils/azure-error-mapper';
 import { transformResponsesToClaude } from '../utils/responses-to-claude-transformer';
 import { transformResponsesToOpenAI } from '../utils/responses-to-openai-transformer';
-import { AzureErrorMapper } from '../utils/azure-error-mapper';
-import { ensureResponsesBaseURL } from '../utils/azure-endpoint';
-import { AWSBedrockClient } from '../clients/aws-bedrock-client';
 
+import { resolveRateLimitConfig } from '../middleware/security';
 import { getHealthMonitor } from '../monitoring/health-monitor';
 import { completionsRateLimitHandler } from './completions-rate-limit-handler';
-import { resolveRateLimitConfig } from '../middleware/security';
 export { completionsRateLimitHandler } from './completions-rate-limit-handler';
 
 /**
@@ -1044,7 +1044,11 @@ export const completionsHandler = (config: Readonly<ServerConfig>) => {
 
         // Transform Responses API response to appropriate format
         const responseTransformStart = performance.now();
-        let responseTransformationResult;
+        let responseTransformationResult: {
+          statusCode: number;
+          headers: Record<string, string>;
+          body: ResponsesResponse | ClaudeResponse | OpenAIResponse;
+        };
 
         try {
           const normalizedResponse: ResponsesResponse = {
@@ -1356,7 +1360,9 @@ async function makeBedrockAPIRequestWithResilience(
 
 async function handleBedrockRequest(
   client: AWSBedrockClient,
-  processingResult: import('../utils/universal-request-processor.js').UniversalProcessingResult,
+  processingResult: import(
+    '../utils/universal-request-processor.js'
+  ).UniversalProcessingResult,
   conversationId: string,
   responseFormat: ResponseFormat,
   correlationId: string,
@@ -1620,7 +1626,11 @@ async function handleBedrockRequest(
 
   // Transform Bedrock API response to appropriate format
   const responseTransformStart = performance.now();
-  let responseTransformationResult;
+  let responseTransformationResult: {
+    statusCode: number;
+    headers: Record<string, string>;
+    body: ResponsesResponse | ClaudeResponse | OpenAIResponse;
+  };
 
   try {
     const normalizedResponse: ResponsesResponse = {
@@ -1733,7 +1743,9 @@ async function handleBedrockRequest(
  */
 async function handleBedrockSimulatedStreamingRequest(
   client: AWSBedrockClient,
-  processingResult: import('../utils/universal-request-processor.js').UniversalProcessingResult,
+  processingResult: import(
+    '../utils/universal-request-processor.js'
+  ).UniversalProcessingResult,
   conversationId: string,
   responseFormat: import('../types/index.js').ResponseFormat,
   correlationId: string,
@@ -1926,7 +1938,9 @@ async function handleBedrockSimulatedStreamingRequest(
  */
 async function handleSimulatedStreamingRequest(
   client: AzureResponsesClient,
-  processingResult: import('../utils/universal-request-processor.js').UniversalProcessingResult,
+  processingResult: import(
+    '../utils/universal-request-processor.js'
+  ).UniversalProcessingResult,
   conversationId: string,
   responseFormat: import('../types/index.js').ResponseFormat,
   correlationId: string,

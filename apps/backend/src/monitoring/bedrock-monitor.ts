@@ -12,10 +12,10 @@
  */
 
 import axios, { type AxiosInstance } from 'axios';
-import type { AWSBedrockConfig, HealthCheckResult } from '../types/index';
-import { logger } from '../middleware/logging';
 import { ConfigurationError } from '../errors/index';
-import { metricsCollector, createTimer } from './metrics';
+import { logger } from '../middleware/logging';
+import type { AWSBedrockConfig, HealthCheckResult } from '../types/index';
+import { createTimer, metricsCollector } from './metrics';
 
 /**
  * Bedrock-specific metrics interface for tracking service performance.

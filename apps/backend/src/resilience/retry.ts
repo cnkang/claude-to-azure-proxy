@@ -238,7 +238,7 @@ export class RetryStrategy {
     // Exponential backoff: baseDelay * (multiplier ^ (attempt - 1))
     const exponentialDelay =
       this.config.baseDelayMs *
-      Math.pow(this.config.backoffMultiplier, attemptNumber - 1);
+      this.config.backoffMultiplier ** (attemptNumber - 1);
 
     // Apply maximum delay limit
     const cappedDelay = Math.min(exponentialDelay, this.config.maxDelayMs);
