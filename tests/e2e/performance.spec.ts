@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures/base.js';
+import { expect, test } from './fixtures/base.js';
 
 /**
  * Performance E2E Tests

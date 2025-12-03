@@ -1,4 +1,5 @@
-import { test as base, Page } from '@playwright/test';
+/// <reference path="../types/test-window.d.ts" />
+import { type Page, test as base } from '@playwright/test';
 import { TestHelpers } from '../utils/test-helpers.js';
 
 /**
@@ -27,11 +28,9 @@ export const test = base.extend<TestFixtures>({
     const helpers = new TestHelpers(page);
     // Ensure test mode flag is set before any app scripts run
     await page.addInitScript(() => {
-      (window as Window & { __E2E_TEST_MODE__?: boolean }).__E2E_TEST_MODE__ =
-        true;
+      window.__E2E_TEST_MODE__ = true;
       // Force localStorage storage path to avoid IndexedDB quirks in Safari/WebKit/Firefox E2E
-      (window as Window & { __E2E_USE_LOCAL_STORAGE__?: boolean }).__E2E_USE_LOCAL_STORAGE__ =
-        true;
+      window.__E2E_USE_LOCAL_STORAGE__ = true;
       // Force English locale so pluralization is consistent across browsers
       try {
         window.localStorage.setItem('i18nextLng', 'en');
@@ -44,26 +43,24 @@ export const test = base.extend<TestFixtures>({
     await page.addInitScript(() => {
       (async () => {
         try {
-          const shouldSeed =
-            (window as Window & { __E2E_SEED_CONVERSATIONS__?: boolean })
-              .__E2E_SEED_CONVERSATIONS__ === true;
+          const shouldSeed = window.__E2E_SEED_CONVERSATIONS__ === true;
           if (!shouldSeed) {
             return;
           }
-          
+
           // Wait for storage to be ready (App.tsx sets this up)
-          const storageReadyPromise = (window as any).__storageReadyPromise__;
+          const storageReadyPromise = window.__storageReadyPromise__;
           if (storageReadyPromise) {
             await storageReadyPromise;
           }
-          
+
           // Use the test bridge that App.tsx sets up
-          const testBridge = (window as any).__TEST_BRIDGE__;
+          const testBridge = window.__TEST_BRIDGE__;
           if (!testBridge) {
             console.error('Test bridge not available for seeding');
             return;
           }
-          
+
           const sessionManager = testBridge.getSessionManager();
           const sessionId = sessionManager.getSessionId();
           const storage = await testBridge.getConversationStorage();
@@ -236,11 +233,11 @@ export const test = base.extend<TestFixtures>({
 
     // Set E2E test mode flag BEFORE navigation so App.tsx can detect it
     await page.addInitScript(() => {
-      (window as any).__E2E_TEST_MODE__ = true;
-      
+      window.__E2E_TEST_MODE__ = true;
+
       // Create a promise that will be resolved when storage is ready
-      (window as any).__storageReadyPromise__ = new Promise((resolve) => {
-        (window as any).__resolveStorageReady__ = resolve;
+      window.__storageReadyPromise__ = new Promise((resolve) => {
+        window.__resolveStorageReady__ = resolve;
       });
     });
 

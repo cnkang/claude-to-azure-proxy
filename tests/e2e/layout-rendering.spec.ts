@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures/base.js';
+import { expect, test } from './fixtures/base.js';
 
 /**
  * Layout Rendering E2E Tests
@@ -44,8 +44,8 @@ test.describe('Layout Rendering', () => {
     );
 
     // Check z-index (may be 'auto' if not explicitly set in computed styles)
-    const zIndex = parseInt(headerStyles.zIndex, 10);
-    if (!isNaN(zIndex)) {
+    const zIndex = Number.parseInt(headerStyles.zIndex, 10);
+    if (!Number.isNaN(zIndex)) {
       expect(zIndex).toBeGreaterThanOrEqual(30);
     } else {
       // If z-index is 'auto', check if the class is present
@@ -107,30 +107,30 @@ test.describe('Layout Rendering', () => {
         sidebar: sidebarEl?.getBoundingClientRect(),
         main: mainEl?.getBoundingClientRect(),
         headerZIndex: headerEl
-          ? parseInt(window.getComputedStyle(headerEl).zIndex, 10)
+          ? Number.parseInt(window.getComputedStyle(headerEl).zIndex, 10)
           : 0,
         sidebarZIndex: sidebarEl
-          ? parseInt(window.getComputedStyle(sidebarEl).zIndex, 10)
+          ? Number.parseInt(window.getComputedStyle(sidebarEl).zIndex, 10)
           : 0,
         mainZIndex: mainEl
-          ? parseInt(window.getComputedStyle(mainEl).zIndex, 10)
+          ? Number.parseInt(window.getComputedStyle(mainEl).zIndex, 10)
           : 0,
       };
     });
 
     // Verify z-index ordering (Header: 30, Sidebar: 40, Main: 10)
     // Note: z-index may be 'auto' (NaN) if not in stacking context
-    if (!isNaN(bounds.headerZIndex) && bounds.headerZIndex > 0) {
+    if (!Number.isNaN(bounds.headerZIndex) && bounds.headerZIndex > 0) {
       expect(bounds.headerZIndex).toBeGreaterThanOrEqual(30);
     }
-    if (!isNaN(bounds.sidebarZIndex) && bounds.sidebarZIndex > 0) {
+    if (!Number.isNaN(bounds.sidebarZIndex) && bounds.sidebarZIndex > 0) {
       expect(bounds.sidebarZIndex).toBeGreaterThanOrEqual(40);
     }
 
     // Verify proper z-index hierarchy if both are set
     if (
-      !isNaN(bounds.sidebarZIndex) &&
-      !isNaN(bounds.headerZIndex) &&
+      !Number.isNaN(bounds.sidebarZIndex) &&
+      !Number.isNaN(bounds.headerZIndex) &&
       bounds.sidebarZIndex > 0 &&
       bounds.headerZIndex > 0
     ) {
@@ -180,7 +180,7 @@ test.describe('Responsive Layout Behavior', () => {
       const classes = el.className;
       return {
         position: styles.position,
-        zIndex: parseInt(styles.zIndex, 10),
+        zIndex: Number.parseInt(styles.zIndex, 10),
         classes: classes,
         hasFixed: classes.includes('fixed'),
       };
@@ -193,7 +193,7 @@ test.describe('Responsive Layout Behavior', () => {
     );
 
     // Check z-index (may be NaN if 'auto')
-    if (!isNaN(sidebarStyles.zIndex) && sidebarStyles.zIndex > 0) {
+    if (!Number.isNaN(sidebarStyles.zIndex) && sidebarStyles.zIndex > 0) {
       expect(sidebarStyles.zIndex).toBeGreaterThanOrEqual(40);
     } else {
       // If z-index is 'auto', check if the class is present
@@ -382,7 +382,7 @@ test.describe('Glass Component Styling', () => {
 
       // Extract blur value (e.g., "blur(24px)" -> "24")
       const match = backdropFilter.match(/blur\((\d+)px\)/);
-      const blurAmount = match ? parseInt(match[1], 10) : 0;
+      const blurAmount = match ? Number.parseInt(match[1], 10) : 0;
 
       // Check for Tailwind blur classes (backdrop-blur-xl, backdrop-blur-2xl, etc.)
       const hasBlurClass = classes.includes('backdrop-blur');

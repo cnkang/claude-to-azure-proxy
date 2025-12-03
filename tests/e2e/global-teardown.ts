@@ -9,7 +9,7 @@
  * - Perform final cleanup
  */
 
-import { chromium, FullConfig } from '@playwright/test';
+import { type FullConfig, chromium } from '@playwright/test';
 
 async function globalTeardown(config: FullConfig): Promise<void> {
   const baseURL =

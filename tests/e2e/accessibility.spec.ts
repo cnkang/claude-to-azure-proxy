@@ -1,5 +1,5 @@
-import { test, expect } from './fixtures/base.js';
 import AxeBuilder from '@axe-core/playwright';
+import { expect, test } from './fixtures/base.js';
 
 /**
  * Accessibility E2E Tests
@@ -642,7 +642,7 @@ test.describe('Accessibility - WCAG 2.2 AAA Compliance', () => {
 
     // Verify focus indicator has sufficient width (at least 2px for AAA)
     if (contrastInfo && contrastInfo.outlineWidth !== '0px') {
-      const widthValue = parseFloat(contrastInfo.outlineWidth);
+      const widthValue = Number.parseFloat(contrastInfo.outlineWidth);
       expect(widthValue).toBeGreaterThanOrEqual(2);
     }
   });
@@ -706,8 +706,8 @@ test.describe('Accessibility - WCAG 2.2 AAA Compliance', () => {
 
       elements.forEach((el) => {
         const styles = window.getComputedStyle(el);
-        const duration = parseFloat(styles.animationDuration);
-        const transitionDuration = parseFloat(styles.transitionDuration);
+        const duration = Number.parseFloat(styles.animationDuration);
+        const transitionDuration = Number.parseFloat(styles.transitionDuration);
 
         if (duration > 0) durations.push(duration);
         if (transitionDuration > 0) durations.push(transitionDuration);
@@ -864,7 +864,7 @@ test.describe('Accessibility - WCAG 2.2 AAA Compliance', () => {
         'h1, h2, h3, h4, h5, h6'
       );
       return Array.from(headingElements).map((h) => ({
-        level: parseInt(h.tagName.substring(1), 10),
+        level: Number.parseInt(h.tagName.substring(1), 10),
         text: h.textContent?.trim() || '',
       }));
     });

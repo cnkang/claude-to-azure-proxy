@@ -1,5 +1,6 @@
+/// <reference path="../types/test-window.d.ts" />
 /* eslint-disable */
-import { Page, expect } from '@playwright/test';
+import { type Page, expect } from '@playwright/test';
 
 /**
  * Test helper utilities for Playwright E2E tests
@@ -53,9 +54,9 @@ export class TestHelpers {
     await this.page
       .waitForFunction(
         () => {
-          const promise = (window as any).__storageReadyPromise__;
+          const promise = window.__storageReadyPromise__;
           if (!promise) return true; // No promise means storage setup not needed
-          return (window as any).__conversationStorage !== undefined;
+          return window.__conversationStorage !== undefined;
         },
         { timeout: 5000 }
       )
@@ -186,12 +187,12 @@ export class TestHelpers {
       this.page.evaluate(async () => {
         try {
           // Use test bridge if available (E2E test mode)
-          const bridge = (window as any).__TEST_BRIDGE__;
+          const bridge = window.__TEST_BRIDGE__;
           if (bridge && typeof bridge.getConversationStorage === 'function') {
             const storage = await bridge.getConversationStorage();
             return { ok: true };
           }
-          
+
           // Fallback to dynamic import (may not work in E2E tests)
           // @ts-expect-error - Dynamic import in browser context
           const { getConversationStorage } = await import(
@@ -231,15 +232,18 @@ export class TestHelpers {
     return await this.page.evaluate(async () => {
       try {
         // Use test bridge if available (E2E test mode)
-        const bridge = (window as any).__TEST_BRIDGE__;
+        const bridge = window.__TEST_BRIDGE__;
         if (bridge && typeof bridge.getConversationStorage === 'function') {
           const storage = await bridge.getConversationStorage();
-          const isInitialized = storage && typeof storage.initialize === 'function';
-          const hasIndexedDB = 'indexedDB' in window && window.indexedDB !== null;
-          const hasLocalStorage = 'localStorage' in window && window.localStorage !== null;
+          const isInitialized =
+            storage && typeof storage.initialize === 'function';
+          const hasIndexedDB =
+            'indexedDB' in window && window.indexedDB !== null;
+          const hasLocalStorage =
+            'localStorage' in window && window.localStorage !== null;
           return isInitialized && (hasIndexedDB || hasLocalStorage);
         }
-        
+
         // Fallback to dynamic import (may not work in E2E tests)
         // @ts-expect-error - Dynamic import in browser context
         const { getConversationStorage } = await import(
@@ -305,7 +309,7 @@ export class TestHelpers {
    * Wait for pending storage operations to complete
    * Useful before cleanup to ensure all operations have finished
    */
-  async waitForPendingStorageOperations(timeout: number = 2000): Promise<void> {
+  async waitForPendingStorageOperations(timeout = 2000): Promise<void> {
     await this.page.evaluate(async (timeoutMs) => {
       // Wait for any pending IndexedDB transactions
       await new Promise<void>((resolve) => {
@@ -430,7 +434,7 @@ export class TestHelpers {
       let conversationCount = 0;
       try {
         // Use test bridge if available (E2E test mode)
-        const bridge = (window as any).__TEST_BRIDGE__;
+        const bridge = window.__TEST_BRIDGE__;
         if (bridge && typeof bridge.getConversationStorage === 'function') {
           const storage = await bridge.getConversationStorage();
           const conversations = await storage.getAllConversations();
@@ -470,7 +474,7 @@ export class TestHelpers {
    * Log storage state for debugging
    * Useful for diagnosing test failures
    */
-  async logStorageState(label: string = 'Storage State'): Promise<void> {
+  async logStorageState(label = 'Storage State'): Promise<void> {
     const state = await this.getStorageState();
     console.log(`[${label}]`, JSON.stringify(state, null, 2));
   }
@@ -623,10 +627,12 @@ export class TestHelpers {
       const updateResult = await this.page.evaluate(
         async ({ id, title, messages }) => {
           // Use __conversationStorage directly (Task 2.3 solution)
-          const storage = (window as any).__conversationStorage;
-          
+          const storage = window.__conversationStorage;
+
           if (!storage) {
-            throw new Error('Storage not available on window object. Ensure __E2E_TEST_MODE__ is set.');
+            throw new Error(
+              'Storage not available on window object. Ensure __E2E_TEST_MODE__ is set.'
+            );
           }
 
           await storage.initialize();
@@ -681,10 +687,12 @@ export class TestHelpers {
     const conversationId = await this.page.evaluate(
       async ({ title, messages }) => {
         // Use test bridge if available (E2E test mode)
-        const bridge = (window as any).__TEST_BRIDGE__;
-        let storage;
-        let sessionManager;
-        
+        const bridge = window.__TEST_BRIDGE__;
+        let storage: { initialize: () => Promise<void> } & {
+          createConversation: (conversation: unknown) => Promise<void>;
+        };
+        let sessionManager: { getSessionId: () => string };
+
         if (bridge && typeof bridge.getConversationStorage === 'function') {
           storage = await bridge.getConversationStorage();
           sessionManager = bridge.getSessionManager();
@@ -694,7 +702,7 @@ export class TestHelpers {
           const storageModule = await import('/src/services/storage.js');
           storage = storageModule.getConversationStorage();
           await storage.initialize();
-          
+
           // @ts-expect-error - dynamic import in browser context
           const sessionModule = await import('/src/services/session.js');
           sessionManager = sessionModule.getSessionManager();
@@ -751,13 +759,13 @@ export class TestHelpers {
         async (convId) => {
           try {
             // Use test bridge if available (E2E test mode)
-            const bridge = (window as any).__TEST_BRIDGE__;
+            const bridge = window.__TEST_BRIDGE__;
             if (bridge && typeof bridge.getConversationStorage === 'function') {
               const storage = await bridge.getConversationStorage();
               const conversation = await storage.getConversation(convId);
               return conversation !== null;
             }
-            
+
             // Fallback to dynamic import (may not work in E2E tests)
             // @ts-expect-error - Dynamic import in browser context
             const { getConversationStorage } = await import(
@@ -795,13 +803,13 @@ export class TestHelpers {
     const title = await this.page.evaluate(async (convId) => {
       try {
         // Use test bridge if available (E2E test mode)
-        const bridge = (window as any).__TEST_BRIDGE__;
+        const bridge = window.__TEST_BRIDGE__;
         if (bridge && typeof bridge.getConversationStorage === 'function') {
           const storage = await bridge.getConversationStorage();
           const conversation = await storage.getConversation(convId);
           return conversation?.title || '';
         }
-        
+
         // Fallback to dynamic import (may not work in E2E tests)
         // @ts-expect-error - Dynamic import in browser context
         const { getConversationStorage } = await import(
@@ -864,10 +872,8 @@ export class TestHelpers {
       }
       await this.page.evaluate(
         async ({ id, title }) => {
-          const storage = (window as any).__conversationStorage;
-          if (storage && storage.updateConversationTitle) {
-            await storage.updateConversationTitle(id, title);
-          }
+          const storage = window.__conversationStorage;
+          await storage?.updateConversationTitle?.(id, title);
         },
         { id: conversationId, title: newTitle }
       );
@@ -1018,7 +1024,7 @@ export class TestHelpers {
       sessionStorage.setItem('sync_monitor_counts', JSON.stringify(monitor));
 
       // @ts-ignore
-      (window as any).__syncMonitor = monitor;
+      window.__syncMonitor = monitor;
     });
   }
 
@@ -1057,11 +1063,11 @@ export class TestHelpers {
       sessionStorage.setItem('sync_monitor_counts', JSON.stringify(monitor));
 
       // Use test bridge if available (E2E test mode)
-      const bridge = (window as any).__TEST_BRIDGE__;
+      const bridge = window.__TEST_BRIDGE__;
       if (bridge && typeof bridge.getConversationStorage === 'function') {
         const storage = await bridge.getConversationStorage();
         await storage.deleteConversation(id);
-        
+
         // Note: Cross-tab sync service is not exposed via bridge yet
         // The deletion will still propagate via storage events
       } else {
@@ -1082,10 +1088,10 @@ export class TestHelpers {
         const syncService = getCrossTabSyncService();
         syncService.broadcastDeletion(id);
       }
-      
+
       // Keep monitor available after direct deletion
       // @ts-ignore
-      (window as any).__syncMonitor = monitor;
+      window.__syncMonitor = monitor;
     }, conversationId);
 
     await this.page.reload({ waitUntil: 'domcontentloaded' });
@@ -1094,7 +1100,7 @@ export class TestHelpers {
       const stored = sessionStorage.getItem('sync_monitor_counts');
       if (stored) {
         // @ts-ignore
-        (window as any).__syncMonitor = JSON.parse(stored);
+        window.__syncMonitor = JSON.parse(stored);
       }
     });
   }
@@ -1170,20 +1176,18 @@ export class TestHelpers {
 
         // Install a hook to capture localStorage.setItem calls (idempotent)
         try {
-          // @ts-ignore
-          if (!(window as any).__playwright_localstorage_hook_installed) {
-            // @ts-ignore
-            (window as any).__playwright_localstorage_events = [];
+          if (!window.__playwright_localstorage_hook_installed) {
+            window.__playwright_localstorage_events = [];
 
             const origSet = localStorage.setItem.bind(localStorage);
             const origRemove = localStorage.removeItem.bind(localStorage);
 
-            localStorage.setItem = function (key: string, value: string) {
+            localStorage.setItem = ((key: string, value: string) => {
               try {
                 const parsed = JSON.parse(value);
 
                 // @ts-ignore
-                (window as any).__playwright_localstorage_events.push({
+                window.__playwright_localstorage_events?.push({
                   key,
                   value: parsed,
                 });
@@ -1191,12 +1195,12 @@ export class TestHelpers {
                 // ignore non-json values
               }
               return origSet(key, value);
-            } as unknown as (key: string, value: string) => void;
+            }) as unknown as (key: string, value: string) => void;
 
-            localStorage.removeItem = function (key: string) {
+            localStorage.removeItem = ((key: string) => {
               try {
                 // @ts-ignore
-                (window as any).__playwright_localstorage_events.push({
+                window.__playwright_localstorage_events?.push({
                   key,
                   value: null,
                   removed: true,
@@ -1205,12 +1209,10 @@ export class TestHelpers {
                 // ignore
               }
               return origRemove(key);
-            } as unknown as (key: string) => void;
+            }) as unknown as (key: string) => void;
 
             // mark installed
-
-            // @ts-ignore
-            (window as any).__playwright_localstorage_hook_installed = true;
+            window.__playwright_localstorage_hook_installed = true;
           }
         } catch (err) {
           // ignore hook installation errors
@@ -1218,8 +1220,7 @@ export class TestHelpers {
 
         const checkEvents = (): boolean => {
           try {
-            // @ts-ignore
-            const evts = (window as any).__playwright_localstorage_events || [];
+            const evts = window.__playwright_localstorage_events || [];
             for (const entry of evts) {
               if (
                 entry &&
