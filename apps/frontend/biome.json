@@ -1,0 +1,15 @@
+{
+  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "extends": ["../../biome.json"],
+  "linter": {
+    "rules": {
+      "a11y": {
+        "useKeyWithClickEvents": "error",
+        "useAltText": "error"
+      },
+      "suspicious": {
+        "noConsoleLog": "error"
+      }
+    }
+  }
+}

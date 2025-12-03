@@ -5,18 +5,12 @@
     "lib": ["ES2022", "DOM"],
     "types": ["node", "vitest/globals"],
     "typeRoots": ["./node_modules/@types", "./src/types", "./tests/types"],
-
-    // Enhanced type checking for tests with Node.js 24
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "noImplicitOverride": true,
-
-    // Test-specific compiler options
     "allowImportingTsExtensions": false,
     "verbatimModuleSyntax": false,
     "skipLibCheck": true,
-
-    // Enable Node.js 24 specific features in tests
     "experimentalDecorators": false,
     "emitDecoratorMetadata": false
   },

@@ -1,7 +1,7 @@
-import { defineConfig } from 'vitest/config';
+import { resolve } from 'node:path';
 import react from '@vitejs/plugin-react';
-import { resolve } from 'path';
 import type { Plugin } from 'vite';
+import { defineConfig } from 'vitest/config';
 
 // Plugin to mock Prism CSS imports in tests
 const mockPrismCss = (): Plugin => ({

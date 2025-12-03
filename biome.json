@@ -6,6 +6,11 @@
       "**/dist/**",
       "**/build/**",
       "**/coverage/**",
+      "**/playwright-report/**",
+      "**/apps/frontend/playwright-report/**",
+      "**/test-results/**",
+      "**/.last-run.json",
+      "**/metrics-exports/**",
       "**/.kiro/**",
       "**/.playwright-cache/**",
       "**/pnpm-lock.yaml",
@@ -27,10 +32,133 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": false
+      "recommended": true,
+      "security": {
+        "noGlobalEval": "error",
+        "noDangerouslySetInnerHtml": "error"
+      },
+      "suspicious": {
+        "noExplicitAny": "warn",
+        "noDoubleEquals": "error",
+        "noThenProperty": "warn",
+        "noControlCharactersInRegex": "off",
+        "noDuplicateObjectKeys": "off",
+        "noImplicitAnyLet": "warn"
+      },
+      "complexity": {
+        "noExcessiveCognitiveComplexity": {
+          "level": "warn",
+          "options": {
+            "maxAllowedComplexity": 10
+          }
+        },
+        "noForEach": "warn",
+        "noUselessSwitchCase": "warn",
+        "noStaticOnlyClass": "warn"
+      },
+      "style": {
+        "noVar": "error",
+        "useConst": "error",
+        "noNonNullAssertion": "warn",
+        "useTemplate": "warn",
+        "noUnusedTemplateLiteral": "warn",
+        "useExponentiationOperator": "off",
+        "noUselessElse": "warn"
+      },
+      "a11y": {
+        "useButtonType": "warn",
+        "useSemanticElements": "warn",
+        "noLabelWithoutControl": "warn",
+        "noSvgWithoutTitle": "warn",
+        "noRedundantRoles": "warn"
+      }
     }
   },
+  "overrides": [
+    {
+      "include": [
+        "tests/**/*",
+        "apps/frontend/src/test/**/*",
+        "apps/frontend/src/**/*.test.{ts,tsx}"
+      ],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noExplicitAny": "warn",
+            "noThenProperty": "warn",
+            "noImplicitAnyLet": "warn",
+            "noControlCharactersInRegex": "warn",
+            "noDuplicateObjectKeys": "warn"
+          },
+          "complexity": {
+            "noExcessiveCognitiveComplexity": {
+              "level": "warn",
+              "options": {
+                "maxAllowedComplexity": 10
+              }
+            },
+            "noForEach": "warn",
+            "noUselessSwitchCase": "warn",
+            "noStaticOnlyClass": "warn"
+          },
+          "style": {
+            "noNonNullAssertion": "warn",
+            "useTemplate": "warn",
+            "noUnusedTemplateLiteral": "warn",
+            "useExponentiationOperator": "warn",
+            "noUselessElse": "warn"
+          },
+          "a11y": {
+            "useButtonType": "warn",
+            "useSemanticElements": "warn",
+            "noLabelWithoutControl": "warn",
+            "noSvgWithoutTitle": "warn",
+            "noRedundantRoles": "warn"
+          }
+        }
+      }
+    },
+    {
+      "include": ["apps/frontend/src/**/*"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noExcessiveCognitiveComplexity": {
+              "level": "warn",
+              "options": {
+                "maxAllowedComplexity": 10
+              }
+            },
+            "noForEach": "warn",
+            "noUselessSwitchCase": "warn",
+            "noStaticOnlyClass": "warn"
+          },
+          "style": {
+            "noNonNullAssertion": "warn",
+            "useTemplate": "warn",
+            "noUnusedTemplateLiteral": "warn",
+            "useExponentiationOperator": "warn",
+            "noUselessElse": "warn"
+          },
+          "a11y": {
+            "useButtonType": "warn",
+            "useSemanticElements": "warn",
+            "noLabelWithoutControl": "warn",
+            "noSvgWithoutTitle": "warn",
+            "noRedundantRoles": "warn"
+          },
+          "performance": {
+            "noDelete": "warn"
+          },
+          "suspicious": {
+            "noThenProperty": "warn",
+            "noImplicitAnyLet": "warn"
+          }
+        }
+      }
+    }
+  ],
   "organizeImports": {
-    "enabled": false
+    "enabled": true
   }
 }
