@@ -3,21 +3,21 @@
  * Implements Requirement 8.2: Backend Server SHALL send headers exactly once per response
  */
 
-import type { Request, Response, NextFunction } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import type { RequestWithCorrelationId } from '../types/index.js';
 import { logger } from './logging.js';
 
 /**
  * Response guard middleware that prevents duplicate header sends.
- * 
+ *
  * This middleware wraps the response methods (send, json, end) to track
  * whether a response has already been sent. If an attempt is made to send
  * a response twice, it logs an error and prevents the duplicate send.
- * 
+ *
  * @param req - Express request object
  * @param res - Express response object
  * @param next - Express next function
- * 
+ *
  * @example
  * ```typescript
  * app.use(responseGuard);
@@ -29,15 +29,15 @@ export function responseGuard(
   next: NextFunction
 ): void {
   const { correlationId } = req as RequestWithCorrelationId;
-  
+
   // Track if response has been sent
   let responseSent = false;
-  
+
   // Store original methods
   const originalSend = res.send.bind(res);
   const originalJson = res.json.bind(res);
   const originalEnd = res.end.bind(res);
-  
+
   /**
    * Guarded send method
    */
@@ -56,7 +56,7 @@ export function responseGuard(
     responseSent = true;
     return originalSend(data);
   };
-  
+
   /**
    * Guarded json method
    */
@@ -75,7 +75,7 @@ export function responseGuard(
     responseSent = true;
     return originalJson(data);
   };
-  
+
   /**
    * Guarded end method
    */
@@ -96,6 +96,6 @@ export function responseGuard(
     // @ts-expect-error - originalEnd has complex overloads
     return originalEnd(...args);
   };
-  
+
   next();
 }

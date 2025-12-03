@@ -1,10 +1,10 @@
-import helmet from 'helmet';
+import type { IncomingHttpHeaders } from 'node:http';
+import type { NextFunction, Request, Response } from 'express';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
-import type { Request, Response, NextFunction } from 'express';
-import type { IncomingHttpHeaders } from 'http';
+import helmet from 'helmet';
 import { v4 as uuidv4 } from 'uuid';
-import type { RateLimitConfig, RequestWithCorrelationId } from '../types/index';
 import config from '../config/index';
+import type { RateLimitConfig, RequestWithCorrelationId } from '../types/index';
 
 /**
  * Security middleware configuration for production-ready Express server
@@ -473,10 +473,10 @@ export const correlationIdMiddleware = (
 
 // Request timeout middleware
 // Implements Requirement 8.2: Send headers exactly once per response
-export const timeoutMiddleware = (timeoutMs: number = 120000) => {
+export const timeoutMiddleware = (timeoutMs = 120000) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     let timeoutTriggered = false;
-    
+
     const timeout = setTimeout(() => {
       // Only send timeout response if headers haven't been sent (Requirement 8.2)
       if (!res.headersSent && !res.finished && !timeoutTriggered) {
@@ -625,7 +625,7 @@ export const requestSizeMiddleware = (
 /**
  * Request timeout middleware
  */
-export const requestTimeoutMiddleware = (timeoutMs: number = 120000) => {
+export const requestTimeoutMiddleware = (timeoutMs = 120000) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (typeof req.setTimeout === 'function') {
       req.setTimeout(timeoutMs, () => {

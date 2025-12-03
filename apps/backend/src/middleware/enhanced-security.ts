@@ -3,21 +3,21 @@
  * Builds upon existing security infrastructure with additional protections
  */
 
+import type { NextFunction, Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
-import type { Request, Response, NextFunction } from 'express';
-import { logger } from './logging';
+import { v4 as uuidv4 } from 'uuid';
 import {
-  ValidationError,
-  RateLimitError,
   AuthenticationError,
+  RateLimitError,
+  ValidationError,
 } from '../errors/index';
 import type {
   RequestWithCorrelationId,
   SecurityAuditLog,
 } from '../types/index';
-import { v4 as uuidv4 } from 'uuid';
-import { normalizeHeaderValue } from '../utils/http-headers';
 import { resolveCorrelationId } from '../utils/correlation-id';
+import { normalizeHeaderValue } from '../utils/http-headers';
+import { logger } from './logging';
 
 /**
  * Enhanced rate limiting configurations
@@ -334,6 +334,121 @@ export function validateRequestOrigin(
 }
 
 /**
+ * Send validation error response
+ */
+function sendValidationError(
+  res: Response,
+  validationError: ValidationError,
+  correlationId: string
+): void {
+  res.status(400).json({
+    error: {
+      type: 'invalid_request_error',
+      message: validationError.message,
+      correlationId,
+    },
+  });
+}
+
+/**
+ * Validate request body is an object
+ */
+function validateBodyIsObject(
+  body: unknown,
+  correlationId: string,
+  path: string
+): ValidationError | null {
+  if (typeof body !== 'object' || body === null) {
+    return new ValidationError(
+      'Request body must be a valid JSON object',
+      correlationId,
+      'body',
+      typeof body,
+      true,
+      path
+    );
+  }
+  return null;
+}
+
+/**
+ * Validate object depth
+ */
+function validateObjectDepth(
+  body: object,
+  correlationId: string,
+  path: string
+): ValidationError | null {
+  const maxDepth = 10;
+  if (getObjectDepth(body) > maxDepth) {
+    return new ValidationError(
+      `Request body exceeds maximum nesting depth of ${maxDepth}`,
+      correlationId,
+      'body',
+      'nested_object',
+      true,
+      path
+    );
+  }
+  return null;
+}
+
+/**
+ * Validate array lengths
+ */
+function validateArrayLengths(
+  body: object,
+  correlationId: string,
+  path: string
+): ValidationError | null {
+  const maxArrayLength = 1000;
+  if (hasExcessiveArrays(body, maxArrayLength)) {
+    return new ValidationError(
+      `Request body contains arrays exceeding maximum length of ${maxArrayLength}`,
+      correlationId,
+      'body',
+      'large_array',
+      true,
+      path
+    );
+  }
+  return null;
+}
+
+/**
+ * Validate POST request body
+ */
+function validatePostRequestBody(
+  req: Request,
+  res: Response,
+  correlationId: string
+): boolean {
+  if (req.method !== 'POST' || req.body === undefined || req.body === null) {
+    return true;
+  }
+
+  const bodyError = validateBodyIsObject(req.body, correlationId, req.path);
+  if (bodyError) {
+    sendValidationError(res, bodyError, correlationId);
+    return false;
+  }
+
+  const depthError = validateObjectDepth(req.body, correlationId, req.path);
+  if (depthError) {
+    sendValidationError(res, depthError, correlationId);
+    return false;
+  }
+
+  const arrayError = validateArrayLengths(req.body, correlationId, req.path);
+  if (arrayError) {
+    sendValidationError(res, arrayError, correlationId);
+    return false;
+  }
+
+  return true;
+}
+
+/**
  * Request integrity validation middleware
  */
 export function validateRequestIntegrity(
@@ -344,71 +459,8 @@ export function validateRequestIntegrity(
   const correlationId = getCorrelationId(req);
 
   try {
-    // Validate request structure
-    if (req.method === 'POST' && req.body !== undefined && req.body !== null) {
-      if (typeof req.body !== 'object' || req.body === null) {
-        const validationError = new ValidationError(
-          'Request body must be a valid JSON object',
-          correlationId,
-          'body',
-          typeof req.body,
-          true,
-          req.path
-        );
-
-        res.status(400).json({
-          error: {
-            type: 'invalid_request_error',
-            message: validationError.message,
-            correlationId,
-          },
-        });
-        return;
-      }
-
-      // Check for deeply nested objects (potential DoS)
-      const maxDepth = 10;
-      if (getObjectDepth(req.body) > maxDepth) {
-        const validationError = new ValidationError(
-          `Request body exceeds maximum nesting depth of ${maxDepth}`,
-          correlationId,
-          'body',
-          'nested_object',
-          true,
-          req.path
-        );
-
-        res.status(400).json({
-          error: {
-            type: 'invalid_request_error',
-            message: validationError.message,
-            correlationId,
-          },
-        });
-        return;
-      }
-
-      // Check for excessive array lengths
-      const maxArrayLength = 1000;
-      if (hasExcessiveArrays(req.body, maxArrayLength)) {
-        const validationError = new ValidationError(
-          `Request body contains arrays exceeding maximum length of ${maxArrayLength}`,
-          correlationId,
-          'body',
-          'large_array',
-          true,
-          req.path
-        );
-
-        res.status(400).json({
-          error: {
-            type: 'invalid_request_error',
-            message: validationError.message,
-            correlationId,
-          },
-        });
-        return;
-      }
+    if (!validatePostRequestBody(req, res, correlationId)) {
+      return;
     }
 
     next();
@@ -428,13 +480,7 @@ export function validateRequestIntegrity(
       req.path
     );
 
-    res.status(400).json({
-      error: {
-        type: 'invalid_request_error',
-        message: validationError.message,
-        correlationId,
-      },
-    });
+    sendValidationError(res, validationError, correlationId);
   }
 }
 

@@ -13,18 +13,18 @@
  * @since 1.0.0
  */
 
-import type { Request, Response, NextFunction } from 'express';
-import { logger } from './logging';
-import {
-  getCurrentMemoryMetrics,
-  forceGarbageCollection,
-} from '../utils/memory-manager';
+import type { NextFunction, Request, Response } from 'express';
+import loadedConfig from '../config/index';
 import {
   createHTTPConnectionResource,
   resourceManager,
 } from '../runtime/resource-manager';
 import type { RequestWithCorrelationId as _RequestWithCorrelationId } from '../types/index';
-import loadedConfig from '../config/index';
+import {
+  forceGarbageCollection,
+  getCurrentMemoryMetrics,
+} from '../utils/memory-manager';
+import { logger } from './logging';
 
 /**
  * Memory management middleware configuration.

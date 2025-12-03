@@ -1,5 +1,4 @@
-import type { Request, Response, NextFunction } from 'express';
-import type { IncomingHttpHeaders } from 'http';
+import type { IncomingHttpHeaders } from 'node:http';
 import { performance } from 'node:perf_hooks';
 import type {
   ErrorLogEntry,
@@ -9,8 +8,9 @@ import type {
   RequestLogEntry,
   SecurityLogEntry,
 } from '@repo/shared-types';
-import type { RequestWithCorrelationId } from '../types/index.js';
+import type { NextFunction, Request, Response } from 'express';
 import { isBaseError } from '../errors/index';
+import type { RequestWithCorrelationId } from '../types/index.js';
 import { resolveCorrelationId } from '../utils/correlation-id';
 
 /**
@@ -171,7 +171,7 @@ const writeStderr = (payload: unknown): void => {
 export const logger = {
   info: (
     message: string,
-    correlationId: string = '',
+    correlationId = '',
     metadata?: Record<string, unknown>,
     performance?: PerformanceLogEntry
   ): void => {
@@ -188,7 +188,7 @@ export const logger = {
 
   warn: (
     message: string,
-    correlationId: string = '',
+    correlationId = '',
     metadata?: Record<string, unknown>
   ): void => {
     const entry = createLogEntry('warn', message, correlationId, metadata);
@@ -197,7 +197,7 @@ export const logger = {
 
   error: (
     message: string,
-    correlationId: string = '',
+    correlationId = '',
     metadata?: Record<string, unknown>,
     error?: Error
   ): void => {
@@ -213,7 +213,7 @@ export const logger = {
 
   critical: (
     message: string,
-    correlationId: string = '',
+    correlationId = '',
     metadata?: Record<string, unknown>,
     error?: Error
   ): void => {
@@ -229,7 +229,7 @@ export const logger = {
 
   debug: (
     message: string,
-    correlationId: string = '',
+    correlationId = '',
     metadata?: Record<string, unknown>
   ): void => {
     if (process.env.NODE_ENV === 'development') {
@@ -309,17 +309,26 @@ export const logger = {
 };
 
 // Request logging middleware with conversation tracking support
-export const requestLoggingMiddleware = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void => {
-  const startTime = performance.now();
-  const correlationId = resolveCorrelationId(
-    (req as Partial<RequestWithCorrelationId>).correlationId,
-    () => 'unknown'
+/**
+ * Extract conversation ID from request headers
+ */
+function extractConversationId(headers: IncomingHttpHeaders): string | undefined {
+  return (
+    extractHeaderValue(headers['x-conversation-id']) ??
+    extractHeaderValue(headers['conversation-id']) ??
+    extractHeaderValue(headers['x-session-id']) ??
+    extractHeaderValue(headers['session-id'])
   );
+}
 
+/**
+ * Build request log entry
+ */
+function buildRequestLogEntry(
+  req: Request,
+  correlationId: string,
+  conversationId: string | undefined
+): RequestLogEntry & { conversationId?: string } {
   const clientIp = req.ip ?? req.socket.remoteAddress ?? 'unknown';
   const userAgentHeader = extractHeaderValue(req.headers['user-agent']);
   const contentLengthHeader = extractHeaderValue(req.headers['content-length']);
@@ -328,18 +337,7 @@ export const requestLoggingMiddleware = (
       ? parseContentLength(contentLengthHeader)
       : undefined;
 
-  // Extract conversation tracking headers
-  const conversationId =
-    extractHeaderValue(req.headers['x-conversation-id']) ??
-    extractHeaderValue(req.headers['conversation-id']) ??
-    extractHeaderValue(req.headers['x-session-id']) ??
-    extractHeaderValue(req.headers['session-id']);
-
-  const requestLog: RequestLogEntry & {
-    conversationId?: string;
-    requestFormat?: string;
-    responseFormat?: string;
-  } = {
+  return {
     timestamp: new Date().toISOString(),
     level: 'info',
     correlationId,
@@ -356,63 +354,110 @@ export const requestLoggingMiddleware = (
     },
     ...(conversationId !== undefined ? { conversationId } : {}),
   };
+}
+
+/**
+ * Extract format metadata from request
+ */
+function extractFormatMetadata(req: Request): {
+  requestFormat?: string;
+  responseFormat?: string;
+  reasoningEffort?: string;
+  conversationComplexity?: string;
+} {
+  const requestWithFormat = req as unknown as {
+    requestFormat?: string;
+    responseFormat?: string;
+    reasoningEffort?: string;
+    conversationComplexity?: string;
+  };
+
+  return {
+    ...(typeof requestWithFormat.requestFormat === 'string'
+      ? { requestFormat: requestWithFormat.requestFormat }
+      : {}),
+    ...(typeof requestWithFormat.responseFormat === 'string'
+      ? { responseFormat: requestWithFormat.responseFormat }
+      : {}),
+    ...(typeof requestWithFormat.reasoningEffort === 'string'
+      ? { reasoningEffort: requestWithFormat.reasoningEffort }
+      : {}),
+    ...(typeof requestWithFormat.conversationComplexity === 'string'
+      ? { conversationComplexity: requestWithFormat.conversationComplexity }
+      : {}),
+  };
+}
+
+/**
+ * Build response log entry
+ */
+function buildResponseLogEntry(
+  req: Request,
+  res: Response,
+  correlationId: string,
+  conversationId: string | undefined,
+  requestLog: RequestLogEntry,
+  startTime: number
+): RequestLogEntry & {
+  conversationId?: string;
+  requestFormat?: string;
+  responseFormat?: string;
+  reasoningEffort?: string;
+  conversationComplexity?: string;
+} {
+  const responseTime = Math.round(performance.now() - startTime);
+  const responseContentLengthHeader = res.getHeader('content-length');
+  const responseContentLength =
+    responseContentLengthHeader !== undefined
+      ? parseHeaderContentLength(responseContentLengthHeader)
+      : undefined;
+
+  const formatMetadata = extractFormatMetadata(req);
+
+  return {
+    timestamp: new Date().toISOString(),
+    level: res.statusCode >= 400 ? 'warn' : 'info',
+    correlationId,
+    message: 'Request completed',
+    service: 'claude-to-azure-proxy',
+    version: '2.0.0',
+    environment: getEnvironment(),
+    request: requestLog.request,
+    response: {
+      statusCode: res.statusCode,
+      contentLength: responseContentLength,
+      responseTime,
+    },
+    ...(conversationId !== undefined ? { conversationId } : {}),
+    ...formatMetadata,
+  };
+}
+
+export const requestLoggingMiddleware = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  const startTime = performance.now();
+  const correlationId = resolveCorrelationId(
+    (req as Partial<RequestWithCorrelationId>).correlationId,
+    () => 'unknown'
+  );
+
+  const conversationId = extractConversationId(req.headers);
+  const requestLog = buildRequestLogEntry(req, correlationId, conversationId);
 
   writeStdout(requestLog);
 
-  // Log response when finished
   res.on('finish', () => {
-    const responseTime = Math.round(performance.now() - startTime);
-    const responseContentLengthHeader = res.getHeader('content-length');
-    const responseContentLength =
-      responseContentLengthHeader !== undefined
-        ? parseHeaderContentLength(responseContentLengthHeader)
-        : undefined;
-
-    // Extract format information if available
-    const requestWithFormat = req as unknown as {
-      requestFormat?: string;
-      responseFormat?: string;
-      reasoningEffort?: string;
-      conversationComplexity?: string;
-    };
-
-    const responseLog: RequestLogEntry & {
-      conversationId?: string;
-      requestFormat?: string;
-      responseFormat?: string;
-      reasoningEffort?: string;
-      conversationComplexity?: string;
-    } = {
-      timestamp: new Date().toISOString(),
-      level: res.statusCode >= 400 ? 'warn' : 'info',
+    const responseLog = buildResponseLogEntry(
+      req,
+      res,
       correlationId,
-      message: 'Request completed',
-      service: 'claude-to-azure-proxy',
-      version: '2.0.0',
-      environment: getEnvironment(),
-      request: requestLog.request,
-      response: {
-        statusCode: res.statusCode,
-        contentLength: responseContentLength,
-        responseTime,
-      },
-      ...(conversationId !== undefined ? { conversationId } : {}),
-      ...(typeof requestWithFormat.requestFormat === 'string'
-        ? { requestFormat: requestWithFormat.requestFormat }
-        : {}),
-      ...(typeof requestWithFormat.responseFormat === 'string'
-        ? { responseFormat: requestWithFormat.responseFormat }
-        : {}),
-      ...(typeof requestWithFormat.reasoningEffort === 'string'
-        ? { reasoningEffort: requestWithFormat.reasoningEffort }
-        : {}),
-      ...(typeof requestWithFormat.conversationComplexity === 'string'
-        ? {
-            conversationComplexity: requestWithFormat.conversationComplexity,
-          }
-        : {}),
-    };
-
+      conversationId,
+      requestLog,
+      startTime
+    );
     writeStdout(responseLog);
   });
 
@@ -478,6 +523,22 @@ const parseContentLength = (value: string): number | undefined => {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
 };
 
+/**
+ * Parse content length from array of strings
+ */
+const parseContentLengthFromArray = (
+  value: readonly string[]
+): number | undefined => {
+  for (const entry of value) {
+    const parsed =
+      typeof entry === 'string' ? parseContentLength(entry) : undefined;
+    if (parsed !== undefined) {
+      return parsed;
+    }
+  }
+  return undefined;
+};
+
 const parseHeaderContentLength = (
   value: number | string | readonly string[]
 ): number | undefined => {
@@ -490,13 +551,7 @@ const parseHeaderContentLength = (
   }
 
   if (Array.isArray(value)) {
-    for (const entry of value) {
-      const parsed =
-        typeof entry === 'string' ? parseContentLength(entry) : undefined;
-      if (parsed !== undefined) {
-        return parsed;
-      }
-    }
+    return parseContentLengthFromArray(value);
   }
 
   return undefined;

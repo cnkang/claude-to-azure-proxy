@@ -3,29 +3,29 @@
  * Integrates custom errors, circuit breakers, retry logic, and graceful degradation
  */
 
-import type { Request, Response, NextFunction } from 'express';
+import type { NextFunction, Request, Response } from 'express';
+import loadedConfig from '../config/index';
 import {
-  BaseError,
-  isBaseError,
-  ValidationError,
   AuthenticationError,
   AuthorizationError,
-  RateLimitError,
+  type BaseError,
   CircuitBreakerError,
+  RateLimitError,
   ServiceUnavailableError,
+  ValidationError,
+  isBaseError,
 } from '../errors/index';
-import { logger } from './logging';
 import { healthMonitor } from '../monitoring/health-monitor';
 import { gracefulDegradationManager } from '../resilience/graceful-degradation';
-import type { RequestWithCorrelationId, ErrorResponse } from '../types/index';
-import { normalizeHeaderValue } from '../utils/http-headers';
+import type { ErrorResponse, RequestWithCorrelationId } from '../types/index';
 import { resolveCorrelationId } from '../utils/correlation-id';
+import { normalizeHeaderValue } from '../utils/http-headers';
 import {
-  getCurrentMemoryMetrics,
   forceGarbageCollection,
+  getCurrentMemoryMetrics,
 } from '../utils/memory-manager';
+import { logger } from './logging';
 import { getRequestMemoryInfo } from './memory-management';
-import loadedConfig from '../config/index';
 
 export interface ErrorHandlerConfig {
   readonly exposeStackTrace: boolean;
@@ -71,6 +71,88 @@ export class EnhancedErrorHandler {
   }
 
   /**
+   * Handle response already sent scenario
+   */
+  private handleResponseAlreadySent(
+    error: Readonly<Error>,
+    context: Readonly<ErrorContext>,
+    req: Readonly<Request>,
+    next: NextFunction
+  ): void {
+    logger.warn(
+      'Response already sent, cannot send error response',
+      context.correlationId,
+      {
+        url: req.url,
+        method: req.method,
+        errorMessage: error.message,
+      }
+    );
+    next(error);
+  }
+
+  /**
+   * Send error response and perform post-processing
+   */
+  private async sendErrorResponseAndProcess(
+    error: Readonly<Error>,
+    context: Readonly<ErrorContext>,
+    res: Readonly<Response>,
+    errorResponse: { statusCode: number; body: ErrorResponse },
+    memoryInfo: ReturnType<typeof this.gatherMemoryInfo>
+  ): Promise<void> {
+    res.status(errorResponse.statusCode).json(errorResponse.body);
+
+    if (
+      this.config.enableHealthMonitoring &&
+      this.shouldTriggerAlert(error)
+    ) {
+      await this.triggerHealthAlert(error, context);
+    }
+
+    this.adjustServiceLevel(error, context);
+
+    if (memoryInfo.pressureDetected && loadedConfig.ENABLE_AUTO_GC) {
+      this.handleMemoryPressureOnError(context.correlationId);
+    }
+  }
+
+  /**
+   * Handle error that occurred during error handling
+   */
+  private handleErrorHandlingFailure(
+    error: Readonly<Error>,
+    handlingError: unknown,
+    context: Readonly<ErrorContext>,
+    res: Readonly<Response>
+  ): void {
+    logger.critical(
+      'Error handler failed',
+      context.correlationId,
+      {
+        originalError: error.message,
+        handlingError:
+          handlingError instanceof Error
+            ? handlingError.message
+            : 'Unknown error',
+        nodeVersion: process.version,
+      },
+      handlingError as Error
+    );
+
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: {
+          type: 'internal_server_error',
+          message: 'An unexpected error occurred',
+          correlationId: context.correlationId,
+          timestamp: new Date().toISOString(),
+        },
+      });
+    }
+  }
+
+  /**
    * Main error handling middleware with Node.js 24 enhancements
    * Implements Requirement 8.3: Log errors with correlation IDs and continue serving
    */
@@ -83,76 +165,28 @@ export class EnhancedErrorHandler {
     const context = this.createErrorContext(req);
 
     try {
-      // Check memory state during error handling
       const memoryInfo = this.gatherMemoryInfo(req);
 
-      // Log the error with memory context and correlation ID (Requirement 8.3)
       if (this.config.logErrors) {
         this.logErrorWithMemoryContext(error, context, memoryInfo);
       }
 
-      // Check if response was already sent (Requirement 8.2)
       if (res.headersSent) {
-        // Log but don't throw - continue serving requests (Requirement 8.3)
-        logger.warn('Response already sent, cannot send error response', context.correlationId, {
-          url: req.url,
-          method: req.method,
-          errorMessage: error.message,
-        });
-        return next(error);
+        this.handleResponseAlreadySent(error, context, req, next);
+        return;
       }
 
-      // Handle different error types
       const errorResponse = await this.processError(error, context);
 
-      // Send error response (Requirement 8.2 - send once)
-      res.status(errorResponse.statusCode).json(errorResponse.body);
-
-      // Trigger health monitoring alerts if enabled
-      if (
-        this.config.enableHealthMonitoring &&
-        this.shouldTriggerAlert(error)
-      ) {
-        await this.triggerHealthAlert(error, context);
-      }
-
-      // Auto-adjust service level based on error patterns
-      this.adjustServiceLevel(error, context);
-
-      // Handle memory pressure during error scenarios
-      if (memoryInfo.pressureDetected && loadedConfig.ENABLE_AUTO_GC) {
-        this.handleMemoryPressureOnError(context.correlationId);
-      }
-    } catch (handlingError) {
-      // Error occurred while handling the original error
-      // Log with correlation ID and continue serving (Requirement 8.3)
-      logger.critical(
-        'Error handler failed',
-        context.correlationId,
-        {
-          originalError: error.message,
-          handlingError:
-            handlingError instanceof Error
-              ? handlingError.message
-              : 'Unknown error',
-          nodeVersion: process.version,
-        },
-        handlingError as Error
+      await this.sendErrorResponseAndProcess(
+        error,
+        context,
+        res,
+        errorResponse,
+        memoryInfo
       );
-
-      // Send minimal error response without exposing internals (Requirement 8.3)
-      if (!res.headersSent) {
-        res.status(500).json({
-          error: {
-            type: 'internal_server_error',
-            message: 'An unexpected error occurred',
-            correlationId: context.correlationId,
-            timestamp: new Date().toISOString(),
-          },
-        });
-      }
-      
-      // Continue serving requests - don't crash the server (Requirement 8.3)
+    } catch (handlingError) {
+      this.handleErrorHandlingFailure(error, handlingError, context, res);
     }
   };
 

@@ -1,12 +1,12 @@
-import type { Request, Response, NextFunction } from 'express';
-import type { IncomingHttpHeaders } from 'http';
-import { timingSafeEqual } from 'crypto';
+import { timingSafeEqual } from 'node:crypto';
+import type { IncomingHttpHeaders } from 'node:http';
+import type { NextFunction, Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import config from '../config/index';
-import { logger } from './logging';
-import type { RequestWithCorrelationId, Mutable } from '../types/index';
-import { normalizeHeaderValue } from '../utils/http-headers';
+import type { Mutable, RequestWithCorrelationId } from '../types/index';
 import { resolveCorrelationId } from '../utils/correlation-id';
+import { normalizeHeaderValue } from '../utils/http-headers';
+import { logger } from './logging';
 
 /**
  * Authentication middleware with TypeScript types and security best practices
@@ -240,6 +240,120 @@ function createAuthErrorResponse(
 }
 
 /**
+ * Handle E2E bypass authentication
+ */
+function handleE2EBypass(
+  mutableRequest: Mutable<AuthenticationRequest>,
+  correlationId: string,
+  req: Readonly<Request>,
+  next: NextFunction
+): void {
+  mutableRequest.authResult = AuthenticationResult.SUCCESS;
+  mutableRequest.authMethod = AuthenticationMethod.API_KEY_HEADER;
+  logger.debug('E2E authentication bypass applied', correlationId, {
+    method: req.method,
+    url: req.url,
+  });
+  next();
+}
+
+/**
+ * Handle missing credentials
+ */
+function handleMissingCredentials(
+  mutableRequest: Mutable<AuthenticationRequest>,
+  correlationId: string,
+  req: Readonly<Request>,
+  res: Readonly<Response>,
+  userAgent: string | undefined,
+  hasAuthHeader: boolean,
+  hasApiKeyHeader: boolean
+): void {
+  mutableRequest.authResult = AuthenticationResult.MISSING_CREDENTIALS;
+
+  const logLevel = isTestOrDev ? 'debug' : 'warn';
+  logger[logLevel](
+    'Authentication failed - missing credentials',
+    correlationId,
+    {
+      ip: req.ip,
+      userAgent,
+      method: req.method,
+      url: req.url,
+      hasAuthHeader,
+      hasApiKeyHeader,
+      requestFormat: detectRequestFormatFromHeaders(req.headers),
+    }
+  );
+
+  const errorResponse = createAuthErrorResponse(
+    AuthenticationResult.MISSING_CREDENTIALS,
+    correlationId
+  );
+  res.status(401).json(errorResponse);
+}
+
+/**
+ * Handle invalid credentials
+ */
+function handleInvalidCredentials(
+  mutableRequest: Mutable<AuthenticationRequest>,
+  correlationId: string,
+  req: Readonly<Request>,
+  res: Readonly<Response>,
+  userAgent: string | undefined,
+  credentialData: { credentials: string; method: AuthenticationMethod }
+): void {
+  mutableRequest.authResult = AuthenticationResult.INVALID_CREDENTIALS;
+
+  const logLevel = isTestOrDev ? 'debug' : 'warn';
+  logger[logLevel](
+    'Authentication failed - invalid credentials',
+    correlationId,
+    {
+      ip: req.ip,
+      userAgent,
+      method: req.method,
+      url: req.url,
+      authMethod: credentialData.method,
+      credentialLength: credentialData.credentials.length,
+      requestFormat: detectRequestFormatFromHeaders(req.headers),
+    }
+  );
+
+  const errorResponse = createAuthErrorResponse(
+    AuthenticationResult.INVALID_CREDENTIALS,
+    correlationId
+  );
+  res.status(401).json(errorResponse);
+}
+
+/**
+ * Handle successful authentication
+ */
+function handleSuccessfulAuth(
+  mutableRequest: Mutable<AuthenticationRequest>,
+  correlationId: string,
+  req: Readonly<Request>,
+  userAgent: string | undefined,
+  credentialData: { credentials: string; method: AuthenticationMethod },
+  next: NextFunction
+): void {
+  mutableRequest.authResult = AuthenticationResult.SUCCESS;
+
+  logger.info('Authentication successful', correlationId, {
+    ip: req.ip,
+    userAgent,
+    method: req.method,
+    url: req.url,
+    authMethod: credentialData.method,
+    requestFormat: detectRequestFormatFromHeaders(req.headers),
+  });
+
+  next();
+}
+
+/**
  * Main authentication middleware function
  * Validates Authorization Bearer tokens and x-api-key headers with type safety
  * Now supports multi-format requests (Claude and OpenAI)
@@ -265,103 +379,53 @@ export const authenticationMiddleware = (
 
   try {
     if (canBypassAuth) {
-      mutableRequest.authResult = AuthenticationResult.SUCCESS;
-      mutableRequest.authMethod = AuthenticationMethod.API_KEY_HEADER;
-      logger.debug('E2E authentication bypass applied', correlationId, {
-        method: req.method,
-        url: req.url,
-      });
-      next();
+      handleE2EBypass(mutableRequest, correlationId, req, next);
       return;
     }
 
-    // Extract credentials from request headers
     const credentialData = extractCredentials(req);
 
     if (credentialData === null) {
-      // No credentials provided
-      mutableRequest.authResult = AuthenticationResult.MISSING_CREDENTIALS;
-
-      // Log authentication attempt (without exposing sensitive data)
-      // Use debug level in test/dev to reduce noise in E2E tests
-      const logLevel = isTestOrDev ? 'debug' : 'warn';
-      logger[logLevel](
-        'Authentication failed - missing credentials',
+      handleMissingCredentials(
+        mutableRequest,
         correlationId,
-        {
-          ip: req.ip,
-          userAgent,
-          method: req.method,
-          url: req.url,
-          hasAuthHeader,
-          hasApiKeyHeader,
-          requestFormat: detectRequestFormatFromHeaders(req.headers),
-        }
+        req,
+        res,
+        userAgent,
+        hasAuthHeader,
+        hasApiKeyHeader
       );
-
-      const errorResponse = createAuthErrorResponse(
-        AuthenticationResult.MISSING_CREDENTIALS,
-        correlationId
-      );
-      res.status(401).json(errorResponse);
       return;
     }
 
-    // Store authentication method for logging
     mutableRequest.authMethod = credentialData.method;
 
-    // Compare client credentials against PROXY_API_KEY with constant-time comparison
     const isValidCredential = constantTimeCompare(
       credentialData.credentials,
       config.PROXY_API_KEY
     );
 
     if (!isValidCredential) {
-      // Invalid credentials
-      mutableRequest.authResult = AuthenticationResult.INVALID_CREDENTIALS;
-
-      // Log authentication failure (without exposing sensitive data)
-      // Use debug level in test/dev to reduce noise in E2E tests
-      const logLevel = isTestOrDev ? 'debug' : 'warn';
-      logger[logLevel](
-        'Authentication failed - invalid credentials',
+      handleInvalidCredentials(
+        mutableRequest,
         correlationId,
-        {
-          ip: req.ip,
-          userAgent,
-          method: req.method,
-          url: req.url,
-          authMethod: credentialData.method,
-          credentialLength: credentialData.credentials.length,
-          requestFormat: detectRequestFormatFromHeaders(req.headers),
-        }
+        req,
+        res,
+        userAgent,
+        credentialData
       );
-
-      const errorResponse = createAuthErrorResponse(
-        AuthenticationResult.INVALID_CREDENTIALS,
-        correlationId
-      );
-      res.status(401).json(errorResponse);
       return;
     }
 
-    // Authentication successful
-    mutableRequest.authResult = AuthenticationResult.SUCCESS;
-
-    // Log successful authentication (without exposing sensitive data)
-    logger.info('Authentication successful', correlationId, {
-      ip: req.ip,
+    handleSuccessfulAuth(
+      mutableRequest,
+      correlationId,
+      req,
       userAgent,
-      method: req.method,
-      url: req.url,
-      authMethod: credentialData.method,
-      requestFormat: detectRequestFormatFromHeaders(req.headers),
-    });
-
-    // Continue to next middleware
-    next();
+      credentialData,
+      next
+    );
   } catch (error: unknown) {
-    // Handle unexpected errors during authentication
     const failure =
       error instanceof Error
         ? error.message

@@ -3,17 +3,17 @@
  * Analyzes request complexity and adds reasoning recommendations to request object
  */
 
-import type { Request, Response, NextFunction } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import type {
-  RequestWithCorrelationId,
   ClaudeRequest,
-  ReasoningEffort,
   ComplexityFactors,
   LanguageContext,
+  ReasoningEffort,
+  RequestWithCorrelationId,
 } from '../types/index';
-import { logger } from './logging';
-import { ReasoningEffortAnalysisService } from '../utils/reasoning-effort-analyzer';
 import { conversationManager } from '../utils/conversation-manager';
+import { ReasoningEffortAnalysisService } from '../utils/reasoning-effort-analyzer';
+import { logger } from './logging';
 
 /**
  * Extended request interface with reasoning effort analysis information

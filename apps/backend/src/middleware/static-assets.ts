@@ -10,10 +10,10 @@
  * @since 1.0.0
  */
 
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
 import express from 'express';
-import path from 'path';
-import { promises as fs } from 'fs';
-import type { Request, Response, NextFunction } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import type { RequestWithCorrelationId } from '../types/index.js';
 import { logger } from './logging.js';
 

@@ -3,18 +3,18 @@
  * Adds format information to request object for downstream processing
  */
 
-import type { Request, Response, NextFunction } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import type {
-  RequestWithCorrelationId,
   IncomingRequest,
   RequestFormat,
+  RequestWithCorrelationId,
   ResponseFormat,
 } from '../types/index';
-import { logger } from './logging';
 import {
   detectRequestFormat,
   getResponseFormat,
 } from '../utils/format-detection';
+import { logger } from './logging';
 
 /**
  * Extended request interface with format detection information
