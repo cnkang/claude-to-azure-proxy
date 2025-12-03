@@ -230,7 +230,7 @@ export class AWSBedrockClient implements AsyncDisposable {
   }
 
   private createTrackedStreamResource(
-    stream: BedrockStream['data'],
+    stream: BedrockStream,
     model: string
   ): StreamResource {
     const resource = createStreamResource(
@@ -242,7 +242,7 @@ export class AWSBedrockClient implements AsyncDisposable {
   }
 
   private createStreamAbortContext(
-    stream: BedrockStream['data'],
+    stream: BedrockStream,
     signal?: AbortSignal
   ): {
     aborted: () => boolean;
@@ -281,7 +281,7 @@ export class AWSBedrockClient implements AsyncDisposable {
     modelId: string;
     signal?: AbortSignal;
     startTime: number;
-    stream: BedrockStream['data'];
+    stream: BedrockStream;
   }): AsyncIterable<ResponsesStreamChunk> {
     let responseId = params.correlationId;
     let createdAt = Math.floor(Date.now() / 1000);
