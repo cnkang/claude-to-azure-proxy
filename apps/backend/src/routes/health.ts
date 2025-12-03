@@ -96,9 +96,8 @@ const checkAzureOpenAI = async (
         status: 'connected',
         responseTime,
       };
-    } else {
-      return { status: 'disconnected' };
     }
+    return { status: 'disconnected' };
   } catch {
     return { status: 'disconnected' };
   }
