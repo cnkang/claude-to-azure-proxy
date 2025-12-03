@@ -1,5 +1,5 @@
+import { type ClassValue, clsx } from 'clsx';
 import React from 'react';
-import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useBackdropFilterSupport } from '../../hooks/useBackdropFilterSupport.js';
 
@@ -16,8 +16,21 @@ type GlassProps<T extends React.ElementType> = {
   children?: React.ReactNode;
 } & React.ComponentPropsWithoutRef<T>;
 
-export const Glass = React.forwardRef<HTMLDivElement, GlassProps<React.ElementType>>(
-  ({ as: Component = 'div', className, intensity = 'medium', border = true, children, ...props }, ref) => {
+export const Glass = React.forwardRef<
+  HTMLDivElement,
+  GlassProps<React.ElementType>
+>(
+  (
+    {
+      as: Component = 'div',
+      className,
+      intensity = 'medium',
+      border = true,
+      children,
+      ...props
+    },
+    ref
+  ) => {
     const supportsBackdropFilter = useBackdropFilterSupport();
 
     // Glass effect styles with backdrop-filter

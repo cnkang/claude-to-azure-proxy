@@ -7,7 +7,8 @@
  * Requirements: 6.3, 7.3
  */
 
-import React, { Component, type ReactNode, type ErrorInfo } from 'react';
+import type React from 'react';
+import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { frontendLogger } from '../../utils/logger';
 
@@ -251,6 +252,7 @@ function ErrorFallback({
         }}
       >
         <button
+          type="button"
           onClick={onReset}
           style={{
             padding: '0.5rem 1rem',
@@ -267,6 +269,7 @@ function ErrorFallback({
         </button>
 
         <button
+          type="button"
           onClick={handleReloadPage}
           style={{
             padding: '0.5rem 1rem',
@@ -284,6 +287,7 @@ function ErrorFallback({
 
         {import.meta.env.DEV && error && (
           <button
+            type="button"
             onClick={handleCopyError}
             style={{
               padding: '0.5rem 1rem',

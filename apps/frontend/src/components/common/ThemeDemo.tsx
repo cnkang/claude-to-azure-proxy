@@ -7,11 +7,11 @@
  * Requirements: 10.2, 10.3, 10.4, 10.5
  */
 
-import React from 'react';
+import type React from 'react';
 import {
+  ThemeToggle,
   useTheme,
   useThemeStyles,
-  ThemeToggle,
   _wcagUtils as wcagUtils,
 } from '../../contexts/ThemeContext';
 
@@ -138,6 +138,7 @@ export function ThemeDemo(): React.JSX.Element {
           }}
         >
           <button
+            type="button"
             style={{
               background: 'var(--color-accent)',
               color: 'var(--color-accent-text)',
@@ -152,6 +153,7 @@ export function ThemeDemo(): React.JSX.Element {
           </button>
 
           <button
+            type="button"
             style={{
               background: 'none',
               color: 'var(--color-foreground)',

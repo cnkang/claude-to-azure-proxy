@@ -7,9 +7,10 @@
  * Requirements: 6.3, 7.3
  */
 
-import React, { useState, useEffect } from 'react';
+import type React from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { SSEConnectionState, ConnectionHealth } from '../../services/chat';
+import type { ConnectionHealth, SSEConnectionState } from '../../services/chat';
 import { networkUtils } from '../../utils/networkErrorHandler';
 import { useNotifications } from './NotificationSystem';
 
@@ -209,6 +210,7 @@ export function ConnectionStatus({
 
       {shouldShowRetry() && (
         <button
+          type="button"
           onClick={handleRetry}
           style={{
             padding: '0.25rem 0.5rem',
@@ -240,6 +242,7 @@ export function ConnectionStatus({
 
       {connectionHealth && (
         <button
+          type="button"
           onClick={toggleDetails}
           style={{
             padding: '0.25rem',

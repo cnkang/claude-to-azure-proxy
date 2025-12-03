@@ -7,12 +7,13 @@
  * Requirements: 6.3, 7.3
  */
 
-import React, {
+import type React from 'react';
+import {
   createContext,
-  useContext,
   useCallback,
-  useState,
+  useContext,
   useEffect,
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NetworkError } from '../../utils/networkErrorHandler';
@@ -428,9 +429,10 @@ function NotificationItem({
                 flexWrap: 'wrap',
               }}
             >
-              {notification.actions.map((action, index) => (
+              {notification.actions.map((action) => (
                 <button
-                  key={index}
+                  key={`${notification.id}-${action.label}`}
+                  type="button"
                   onClick={action.action}
                   style={{
                     padding: '0.25rem 0.75rem',
@@ -482,6 +484,7 @@ function NotificationItem({
         </div>
 
         <button
+          type="button"
           onClick={handleClose}
           style={{
             marginLeft: '0.5rem',

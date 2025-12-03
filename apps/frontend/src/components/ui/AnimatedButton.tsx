@@ -1,10 +1,10 @@
 /**
  * AnimatedButton Component
- * 
+ *
  * Example button component demonstrating the Liquid Glass animation system.
  * Uses framer-motion with spring physics for organic, fluid motion.
  * Automatically respects user's motion preferences (prefers-reduced-motion).
- * 
+ *
  * @example
  * ```tsx
  * <AnimatedButton onClick={handleClick} variant="primary">
@@ -14,25 +14,29 @@
  */
 
 import { motion } from 'framer-motion';
-import { useAccessibleAnimation, useAccessibleGestures } from '../../hooks/useAccessibleAnimation';
+import {
+  useAccessibleAnimation,
+  useAccessibleGestures,
+} from '../../hooks/useAccessibleAnimation';
 import { cn } from './Glass';
 
-export interface AnimatedButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface AnimatedButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   /**
    * Button variant
    */
   variant?: 'primary' | 'secondary' | 'ghost';
-  
+
   /**
    * Button size
    */
   size?: 'sm' | 'md' | 'lg';
-  
+
   /**
    * Whether the button is in a loading state
    */
   loading?: boolean;
-  
+
   /**
    * Children content
    */
@@ -53,12 +57,15 @@ export function AnimatedButton({
   const gestures = useAccessibleGestures();
 
   // Base styles
-  const baseStyles = 'inline-flex items-center justify-center rounded-xl font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50';
+  const baseStyles =
+    'inline-flex items-center justify-center rounded-xl font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50';
 
   // Variant styles
   const variantStyles = {
-    primary: 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600',
-    secondary: 'bg-gray-200 text-gray-900 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600',
+    primary:
+      'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600',
+    secondary:
+      'bg-gray-200 text-gray-900 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600',
     ghost: 'hover:bg-gray-100 dark:hover:bg-gray-800',
   };
 
@@ -70,9 +77,9 @@ export function AnimatedButton({
   };
 
   // Extract only the safe button props to avoid conflicts with motion props
-  const { 
-    onClick, 
-    onFocus, 
+  const {
+    onClick,
+    onFocus,
     onBlur,
     type,
     'aria-label': ariaLabel,
@@ -126,7 +133,7 @@ export function AnimatedButton({
             animate={{ rotate: 360 }}
             transition={{
               duration: 1,
-              repeat: Infinity,
+              repeat: Number.POSITIVE_INFINITY,
               ease: 'linear',
             }}
             aria-hidden="true"

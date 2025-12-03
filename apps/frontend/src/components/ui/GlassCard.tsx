@@ -1,8 +1,8 @@
+import { useBackdropFilterSupport } from '@/hooks/useBackdropFilterSupport';
+import { useAdaptiveGlassOpacity } from '@/hooks/useBackgroundBrightness';
+import { cn } from '@/lib/utils';
 import * as React from 'react';
 import { Card } from './card';
-import { cn } from '@/lib/utils';
-import { useAdaptiveGlassOpacity } from '@/hooks/useBackgroundBrightness';
-import { useBackdropFilterSupport } from '@/hooks/useBackdropFilterSupport';
 
 type GlassIntensity = 'low' | 'medium' | 'high';
 
@@ -15,7 +15,7 @@ export interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
 
 /**
  * GlassCard component - A Card component with liquid glass effects
- * 
+ *
  * Features:
  * - Configurable glass intensity (low/medium/high)
  * - Backdrop blur effects with fallbacks for unsupported browsers
@@ -24,11 +24,22 @@ export interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
  * - Container query support for adaptive behavior
  */
 export const GlassCard = React.forwardRef<HTMLDivElement, GlassCardProps>(
-  ({ className, intensity = 'medium', border = true, adaptive = false, children, style, ...props }, ref) => {
+  (
+    {
+      className,
+      intensity = 'medium',
+      border = true,
+      adaptive = false,
+      children,
+      style,
+      ...props
+    },
+    ref
+  ) => {
     // Always call hooks (React rules)
     const adaptiveOpacity = useAdaptiveGlassOpacity(intensity);
     const supportsBackdropFilter = useBackdropFilterSupport();
-    
+
     // Glass effect styles with backdrop-filter
     const glassStyles: Record<GlassIntensity, string> = {
       low: 'bg-white/10 dark:bg-black/10 backdrop-blur-md',
@@ -48,11 +59,13 @@ export const GlassCard = React.forwardRef<HTMLDivElement, GlassCardProps>(
       : fallbackStyles[intensity];
 
     // If adaptive mode is enabled, use CSS variables for dynamic opacity
-    const adaptiveStyle = adaptive ? {
-      ...style,
-      '--glass-opacity': adaptiveOpacity,
-      backgroundColor: `rgba(255, 255, 255, var(--glass-opacity))`,
-    } as React.CSSProperties : style;
+    const adaptiveStyle = adaptive
+      ? ({
+          ...style,
+          '--glass-opacity': adaptiveOpacity,
+          backgroundColor: `rgba(255, 255, 255, var(--glass-opacity))`,
+        } as React.CSSProperties)
+      : style;
 
     return (
       <Card
@@ -61,7 +74,10 @@ export const GlassCard = React.forwardRef<HTMLDivElement, GlassCardProps>(
           // Glass effect with intensity (only if not adaptive)
           !adaptive && intensityStyle,
           // Adaptive mode uses inline styles for dynamic opacity
-          adaptive && (supportsBackdropFilter ? 'backdrop-blur-xl dark:backdrop-blur-2xl' : ''),
+          adaptive &&
+            (supportsBackdropFilter
+              ? 'backdrop-blur-xl dark:backdrop-blur-2xl'
+              : ''),
           // Border with semi-transparent white
           border && 'border border-white/20 dark:border-white/10',
           // Shadow and rounded corners

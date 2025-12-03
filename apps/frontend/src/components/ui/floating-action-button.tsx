@@ -7,8 +7,9 @@
  * Requirements: 21.2, 21.7, 21.8, 21.9, 21.10
  */
 
-import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
+import type React from 'react';
+import { useAccessibleAnimation } from '../../hooks/useAccessibleAnimation';
 import { Button } from './button';
 import {
   Tooltip,
@@ -16,7 +17,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from './tooltip';
-import { useAccessibleAnimation } from '../../hooks/useAccessibleAnimation';
 
 /**
  * Floating Action Button props
@@ -34,7 +34,7 @@ export interface FloatingActionButtonProps {
 
 /**
  * Floating Action Button component
- * 
+ *
  * Displays a floating button in the bottom-right corner with:
  * - 56x56px size (exceeds 44x44px minimum touch target)
  * - Spring-based entrance/exit animations

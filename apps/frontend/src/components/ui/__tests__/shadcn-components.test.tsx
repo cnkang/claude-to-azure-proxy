@@ -1,14 +1,16 @@
-import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 import { Button } from '../button';
-import { Card, CardHeader, CardTitle, CardContent } from '../card';
+import { Card, CardContent, CardHeader, CardTitle } from '../card';
 import { Input } from '../input';
 
 describe('shadcn/ui Components - Basic Rendering', () => {
   describe('Button', () => {
     it('should render button with text', () => {
       render(<Button>Click me</Button>);
-      expect(screen.getByRole('button', { name: /click me/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /click me/i })
+      ).toBeInTheDocument();
     });
 
     it('should render button with variant', () => {
@@ -23,7 +25,9 @@ describe('shadcn/ui Components - Basic Rendering', () => {
           <span>→</span>
         </Button>
       );
-      expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /submit/i })
+      ).toBeInTheDocument();
     });
   });
 

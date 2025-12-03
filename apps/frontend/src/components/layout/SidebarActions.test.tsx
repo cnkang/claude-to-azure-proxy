@@ -1,6 +1,6 @@
+import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { beforeEach, describe, expect, vi, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Conversation } from '../../types/index.js';
 import { Sidebar } from './Sidebar.js';
 
@@ -88,23 +88,32 @@ vi.mock('../search/ConversationSearch.js', () => ({
 }));
 
 vi.mock('../common/DropdownMenu.js', () => ({
-  DropdownMenu: ({ isOpen, items }: { isOpen: boolean; items: Array<{ id: string; label: string; onClick: () => void }> }) => (
+  DropdownMenu: ({
+    isOpen,
+    items,
+  }: {
+    isOpen: boolean;
+    items: Array<{ id: string; label: string; onClick: () => void }>;
+  }) =>
     isOpen ? (
       <div data-testid="dropdown-menu">
-        {items.map(item => (
-          <button key={item.id} data-testid={`dropdown-item-${item.id}`} onClick={item.onClick}>
+        {items.map((item) => (
+          <button
+            key={item.id}
+            data-testid={`dropdown-item-${item.id}`}
+            type="button"
+            onClick={item.onClick}
+          >
             {item.label}
           </button>
         ))}
       </div>
-    ) : null
-  ),
+    ) : null,
 }));
 
 vi.mock('../common/ConfirmDialog.js', () => ({
-  ConfirmDialog: ({ isOpen }: { isOpen: boolean }) => (
-    isOpen ? <div data-testid="confirm-dialog">Confirm Dialog</div> : null
-  ),
+  ConfirmDialog: ({ isOpen }: { isOpen: boolean }) =>
+    isOpen ? <div data-testid="confirm-dialog">Confirm Dialog</div> : null,
 }));
 
 describe('Sidebar conversation actions menu', () => {
@@ -119,16 +128,16 @@ describe('Sidebar conversation actions menu', () => {
     const optionsButton = screen.getByTestId(
       `conversation-options-${baseConversation.id}`
     );
-    
+
     // Initially, dropdown should not be visible
     expect(screen.queryByTestId('dropdown-menu')).not.toBeInTheDocument();
-    
+
     // Click the options button
     fireEvent.click(optionsButton);
 
     // Dropdown menu should now be visible
     expect(screen.getByTestId('dropdown-menu')).toBeInTheDocument();
-    
+
     // Dropdown items should be visible
     expect(screen.getByTestId('dropdown-item-rename')).toBeInTheDocument();
     expect(screen.getByTestId('dropdown-item-delete')).toBeInTheDocument();

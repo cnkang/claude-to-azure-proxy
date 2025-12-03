@@ -7,15 +7,16 @@
  * Requirements: 5.4, 14.5
  */
 
-import React, {
+import type React from 'react';
+import {
+  forwardRef,
   memo,
   useCallback,
   useEffect,
+  useImperativeHandle,
+  useMemo,
   useRef,
   useState,
-  useMemo,
-  forwardRef,
-  useImperativeHandle,
 } from 'react';
 import { useThrottledCallback } from '../../utils/performance.js';
 import { cn } from '../ui/Glass.js';
@@ -23,14 +24,12 @@ import { cn } from '../ui/Glass.js';
 /**
  * Item renderer function type
  */
-export interface VirtualizedItemRenderer<T> {
-  (props: {
-    item: T;
-    index: number;
-    style: React.CSSProperties;
-    isVisible: boolean;
-  }): React.ReactNode;
-}
+export type VirtualizedItemRenderer<T> = (props: {
+  item: T;
+  index: number;
+  style: React.CSSProperties;
+  isVisible: boolean;
+}) => React.ReactNode;
 
 /**
  * Virtualized list props
@@ -332,7 +331,7 @@ const VirtualizedListComponent = <T,>(
   return (
     <div
       ref={containerRef}
-      className={cn("overflow-auto relative custom-scrollbar", className)}
+      className={cn('overflow-auto relative custom-scrollbar', className)}
       style={{
         height,
         width,
@@ -354,9 +353,7 @@ const VirtualizedListComponent = <T,>(
 
       {/* Scrolling indicator */}
       {isScrolling && (
-        <div
-          className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs pointer-events-none z-50"
-        >
+        <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs pointer-events-none z-50">
           Scrolling...
         </div>
       )}

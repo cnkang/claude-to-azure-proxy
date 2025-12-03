@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FloatingActionButton } from '../floating-action-button';
 
 // Mock framer-motion to avoid animation complexity in tests
@@ -248,9 +248,9 @@ describe('FloatingActionButton', () => {
 
       const button = screen.getByRole('button', { name: /open sidebar/i });
       button.focus();
-      
+
       expect(button).toHaveFocus();
-      
+
       // Buttons are natively keyboard accessible via Enter and Space
       // The browser handles this automatically, so we just verify the button is focusable
       expect(button.tagName).toBe('BUTTON');

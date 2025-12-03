@@ -11,11 +11,12 @@
  * - WCAG 2.2 AAA: Full accessibility compliance
  */
 
-import React, { useRef, useEffect, useMemo } from 'react';
+import type React from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { SearchResult } from '../../services/conversation-search';
-import { cn } from '../ui/Glass.js';
 import { highlightKeywords, parseSearchQuery } from '../../utils/highlight.js';
+import { cn } from '../ui/Glass.js';
 
 interface SearchResultItemProps {
   result: SearchResult;
@@ -85,10 +86,10 @@ export function SearchResultItem({
       ref={itemRef}
       id={`result-${result.conversationId}`}
       className={cn(
-        "p-4 rounded-xl border transition-all duration-200 cursor-pointer outline-none",
-        isFocused 
-          ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 shadow-sm ring-2 ring-blue-500/50" 
-          : "bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+        'p-4 rounded-xl border transition-all duration-200 cursor-pointer outline-none',
+        isFocused
+          ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 shadow-sm ring-2 ring-blue-500/50'
+          : 'bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
       )}
       data-testid={`search-result-${result.conversationId}`}
       role="button"
@@ -98,7 +99,10 @@ export function SearchResultItem({
       onKeyDown={handleKeyDown}
     >
       {/* Conversation Title with Highlighting */}
-      <h3 id={`result-title-${result.conversationId}`} className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
+      <h3
+        id={`result-title-${result.conversationId}`}
+        className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2"
+      >
         {highlightKeywords(result.conversationTitle, keywords)}
       </h3>
 
@@ -138,17 +142,21 @@ export function SearchResultItem({
                   ? t('search.you')
                   : t('search.assistant')}
               </span>
-              <span className="text-gray-300 dark:text-gray-300" aria-hidden="true">
+              <span
+                className="text-gray-300 dark:text-gray-300"
+                aria-hidden="true"
+              >
                 •
               </span>
-              <time
-                dateTime={match.timestamp.toISOString()}
-              >
+              <time dateTime={match.timestamp.toISOString()}>
                 {formatTimestamp(match.timestamp)}
               </time>
               {match.highlights.length > 1 && (
                 <>
-                  <span className="text-gray-300 dark:text-gray-300" aria-hidden="true">
+                  <span
+                    className="text-gray-300 dark:text-gray-300"
+                    aria-hidden="true"
+                  >
                     •
                   </span>
                   <span>

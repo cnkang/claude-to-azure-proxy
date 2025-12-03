@@ -7,10 +7,10 @@
  * Requirements: 21.5, 21.6
  */
 
-import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from './button';
+import { AnimatePresence, motion } from 'framer-motion';
+import type React from 'react';
 import { useAccessibleAnimation } from '../../hooks/useAccessibleAnimation';
+import { Button } from './button';
 
 /**
  * Onboarding Message props
@@ -30,7 +30,7 @@ export interface OnboardingMessageProps {
 
 /**
  * Onboarding Message component
- * 
+ *
  * Displays a modal dialog with:
  * - Semi-transparent backdrop with blur
  * - Centered card with icon, title, description, and dismiss button
@@ -92,9 +92,7 @@ export function OnboardingMessage({
             onClick={(e) => e.stopPropagation()}
           >
             {/* Icon */}
-            <div className="flex justify-center mb-4">
-              {infoIcon}
-            </div>
+            <div className="flex justify-center mb-4">{infoIcon}</div>
 
             {/* Title */}
             <h2

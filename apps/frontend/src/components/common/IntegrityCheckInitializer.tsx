@@ -7,13 +7,14 @@
  * Requirements: 3.3, 5.5
  */
 
-import React, { useEffect, useState } from 'react';
-import { getConversationStorage } from '../../services/storage.js';
-import { getDataIntegrityService } from '../../services/data-integrity.js';
+import type React from 'react';
+import { useEffect, useState } from 'react';
 import type { IntegrityReport } from '../../services/data-integrity';
-import { useNotifications } from './NotificationSystem';
+import { getDataIntegrityService } from '../../services/data-integrity.js';
+import { getConversationStorage } from '../../services/storage.js';
 import { frontendLogger } from '../../utils/logger';
 import { Glass } from '../ui/Glass.js';
+import { useNotifications } from './NotificationSystem';
 
 /**
  * Dialog component for integrity check results
@@ -48,18 +49,24 @@ function IntegrityCheckDialog({
         tabIndex={0}
         aria-label="Close dialog"
       />
-      <Glass 
-        className="relative w-full max-w-md flex flex-col shadow-2xl animate-in zoom-in-95 duration-200" 
+      <Glass
+        className="relative w-full max-w-md flex flex-col shadow-2xl animate-in zoom-in-95 duration-200"
         intensity="high"
         border={true}
       >
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 backdrop-blur-md">
-          <h2 id="integrity-dialog-title" className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          <h2
+            id="integrity-dialog-title"
+            className="text-lg font-semibold text-gray-900 dark:text-gray-100"
+          >
             Data Integrity Check
           </h2>
         </div>
 
-        <div id="integrity-dialog-description" className="p-6 space-y-4 bg-white dark:bg-gray-900">
+        <div
+          id="integrity-dialog-description"
+          className="p-6 space-y-4 bg-white dark:bg-gray-900"
+        >
           <p className="text-sm text-gray-700 dark:text-gray-300">
             Found{' '}
             {report.orphanedMessages +
@@ -85,6 +92,7 @@ function IntegrityCheckDialog({
 
         <div className="flex items-center justify-end gap-3 p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
           <button
+            type="button"
             onClick={onDismiss}
             className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             aria-label="Dismiss dialog"
@@ -93,6 +101,7 @@ function IntegrityCheckDialog({
             Dismiss
           </button>
           <button
+            type="button"
             onClick={onRepair}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
             aria-label="Repair data issues"

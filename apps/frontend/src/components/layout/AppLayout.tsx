@@ -7,20 +7,28 @@
  * Requirements: 5.1, 5.2, 5.3, 10.1
  */
 
-import React, { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import { isNonEmptyString } from '@repo/shared-utils';
-import { useAppContext } from '../../contexts/AppContext.js';
-import { useTheme } from '../../contexts/ThemeContext.js';
-import { useI18n } from '../../contexts/I18nContext.js';
-import { Sidebar } from './Sidebar.js';
-import { Header } from './Header.js';
-import { ErrorBoundary } from '../common/ErrorBoundary.js';
-import { AccessibilityProvider, SkipLink } from '../accessibility/index.js';
-import { cn } from '../ui/Glass.js';
-import { debounce } from '../../utils/performance.js';
+import type React from 'react';
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { BREAKPOINTS } from '../../constants/breakpoints.js';
+import { useAppContext } from '../../contexts/AppContext.js';
+import { useI18n } from '../../contexts/I18nContext.js';
+import { useTheme } from '../../contexts/ThemeContext.js';
+import { debounce } from '../../utils/performance.js';
+import { AccessibilityProvider, SkipLink } from '../accessibility/index.js';
+import { ErrorBoundary } from '../common/ErrorBoundary.js';
+import { cn } from '../ui/Glass.js';
 import { FloatingActionButton } from '../ui/floating-action-button.js';
 import { OnboardingMessage } from '../ui/onboarding-message.js';
+import { Header } from './Header.js';
+import { Sidebar } from './Sidebar.js';
 
 /**
  * App layout props
@@ -40,10 +48,10 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
   const [isTablet, setIsTablet] = useState<boolean>(false);
   const [isLandscape, setIsLandscape] = useState<boolean>(false);
   const prevIsMobileRef = useRef<boolean>(false);
-  
+
   // Calculate desktop viewport (Requirement 1.2, 1.3, 1.5, 1.6)
   const isDesktop = !isMobile && !isTablet;
-  
+
   // Onboarding state (Requirement 21.5, 21.6)
   const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
   const [hasShownOnboarding, setHasShownOnboarding] = useState<boolean>(false);
@@ -53,10 +61,11 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
     const width = window.innerWidth;
     const height = window.innerHeight;
     const newIsMobile = width < BREAKPOINTS.MOBILE;
-    const newIsTablet = width >= BREAKPOINTS.MOBILE && width < BREAKPOINTS.TABLET;
+    const newIsTablet =
+      width >= BREAKPOINTS.MOBILE && width < BREAKPOINTS.TABLET;
     // Detect landscape mode: width > height and height < 500px
     const newIsLandscape = width > height && height < 500;
-    
+
     setIsMobile(newIsMobile);
     setIsTablet(newIsTablet);
     setIsLandscape(newIsLandscape);
@@ -89,13 +98,11 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
     if (isMobile && !prevIsMobileRef.current && state.ui.sidebarOpen) {
       setSidebarOpen(false);
     }
-    
+
     // Update previous mobile state
     prevIsMobileRef.current = isMobile;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMobile, setSidebarOpen]);
-  // Note: state.ui.sidebarOpen is intentionally excluded to prevent infinite loops
-  // We only want to close the sidebar when transitioning TO mobile, not when it opens/closes
+  }, [isMobile, setSidebarOpen, state.ui.sidebarOpen]);
 
   // Open sidebar by default on desktop (Requirement 21.1)
   useEffect(() => {
@@ -168,7 +175,11 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
     // 1. On mobile or tablet
     // 2. Sidebar is closed
     // 3. Haven't shown onboarding yet
-    if ((isMobile || isTablet) && !state.ui.sidebarOpen && !hasShownOnboarding) {
+    if (
+      (isMobile || isTablet) &&
+      !state.ui.sidebarOpen &&
+      !hasShownOnboarding
+    ) {
       const timer = setTimeout(() => {
         setShowOnboarding(true);
         setHasShownOnboarding(true);
@@ -193,7 +204,7 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
     <AccessibilityProvider wcagLevel="AAA">
       <div
         className={cn(
-          "flex flex-col h-screen w-full overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-black text-gray-900 dark:text-gray-100 transition-colors duration-300",
+          'flex flex-col h-screen w-full overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-black text-gray-900 dark:text-gray-100 transition-colors duration-300',
           resolvedTheme === 'dark' ? 'dark' : '',
           isRTL ? 'rtl' : 'ltr'
         )}
@@ -221,20 +232,30 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
             <div
               className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity duration-300"
               onClick={handleOverlayClick}
-              aria-hidden="true"
+              role="button"
+              tabIndex={0}
+              aria-label="Close sidebar overlay"
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  handleOverlayClick();
+                }
+              }}
             />
           )}
 
           {/* Main content area with header */}
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Header - only in main content area */}
-            <Header isMobile={isMobile} isTablet={isTablet} isLandscape={isLandscape} />
+            <Header
+              isMobile={isMobile}
+              isTablet={isTablet}
+              isLandscape={isLandscape}
+            />
 
             {/* Main content */}
             <main
               id="main-content"
               className="flex-1 relative z-10 overflow-y-auto scroll-smooth"
-              role="main"
               aria-label={t('accessibility.chatInterface')}
             >
               <div className="min-h-full p-4 md:p-6 max-w-7xl mx-auto w-full">
@@ -262,7 +283,9 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
           >
             <div className="flex flex-col items-center gap-4 p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
               <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-              <span className="text-lg font-medium text-gray-700 dark:text-gray-200">{t('loading.default')}</span>
+              <span className="text-lg font-medium text-gray-700 dark:text-gray-200">
+                {t('loading.default')}
+              </span>
             </div>
           </div>
         )}
@@ -277,7 +300,9 @@ export function AppLayout({ children }: AppLayoutProps): React.JSX.Element {
           >
             <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl shadow-lg text-red-700 dark:text-red-300 max-w-md">
               <span className="text-xl">⚠️</span>
-              <span className="flex-1 text-sm font-medium">{currentErrorMessage}</span>
+              <span className="flex-1 text-sm font-medium">
+                {currentErrorMessage}
+              </span>
               <button
                 type="button"
                 className="p-1 hover:bg-red-100 dark:hover:bg-red-800/30 rounded-full transition-colors"
@@ -335,12 +360,14 @@ export function LayoutContainer({
   };
 
   return (
-    <div className={cn(
-      "mx-auto w-full",
-      maxWidthClasses[maxWidth],
-      paddingClasses[padding],
-      className
-    )}>
+    <div
+      className={cn(
+        'mx-auto w-full',
+        maxWidthClasses[maxWidth],
+        paddingClasses[padding],
+        className
+      )}
+    >
       {children}
     </div>
   );
@@ -379,15 +406,15 @@ export function ResponsiveGrid({
   } as React.CSSProperties;
 
   return (
-    <div 
+    <div
       className={cn(
-        "grid",
-        "grid-cols-[repeat(var(--grid-cols-mobile),minmax(0,1fr))]",
-        "md:grid-cols-[repeat(var(--grid-cols-tablet),minmax(0,1fr))]",
-        "lg:grid-cols-[repeat(var(--grid-cols-desktop),minmax(0,1fr))]",
+        'grid',
+        'grid-cols-[repeat(var(--grid-cols-mobile),minmax(0,1fr))]',
+        'md:grid-cols-[repeat(var(--grid-cols-tablet),minmax(0,1fr))]',
+        'lg:grid-cols-[repeat(var(--grid-cols-desktop),minmax(0,1fr))]',
         gapClasses[gap],
         className
-      )} 
+      )}
       style={gridStyle}
     >
       {children}

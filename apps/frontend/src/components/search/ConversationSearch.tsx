@@ -10,17 +10,18 @@
  * - WCAG 2.2 AAA: Full accessibility compliance
  */
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { frontendLogger } from '../../utils/logger';
+import type React from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ConversationSearchService } from '../../services/conversation-search';
-import { getConversationStorage } from '../../services/storage';
-import type { SearchResponse } from '../../services/conversation-search';
-import { SearchResultItem } from './SearchResultItem';
-import { SearchPagination } from './SearchPagination';
-import { useSearchWithPrefetch } from '../../hooks/useSearchWithPrefetch';
 import { useConversations } from '../../hooks/useConversations';
+import { useSearchWithPrefetch } from '../../hooks/useSearchWithPrefetch';
+import { ConversationSearchService } from '../../services/conversation-search';
+import type { SearchResponse } from '../../services/conversation-search';
+import { getConversationStorage } from '../../services/storage';
+import { frontendLogger } from '../../utils/logger';
 import { Glass, cn } from '../ui/Glass.js';
+import { SearchPagination } from './SearchPagination';
+import { SearchResultItem } from './SearchResultItem';
 
 const isE2ETestMode = (): boolean =>
   typeof window !== 'undefined' &&
@@ -209,7 +210,7 @@ export function ConversationSearch({
 
   // Debounced search function with prefetching (300ms debounce - Requirement 8.1)
   const performSearch = useCallback(
-    async (searchQuery: string, page: number = 0) => {
+    async (searchQuery: string, page = 0) => {
       if (!searchServiceRef.current) {
         return;
       }
@@ -405,13 +406,17 @@ export function ConversationSearch({
   const statusText = isSearching
     ? t('search.searching')
     : hasResults && effectiveResponse
-      ? resultsCountLabel ?? ''
+      ? (resultsCountLabel ?? '')
       : showNoResults
         ? t('search.noResults', { query })
         : '';
 
   return (
-    <div className={cn("flex flex-col h-full", className)} role="search" data-testid="conversation-search">
+    <div
+      className={cn('flex flex-col h-full', className)}
+      role="search"
+      data-testid="conversation-search"
+    >
       {/* Search input */}
       <Glass intensity="low" border={true} className="p-4 mb-4">
         <div className="relative">
@@ -426,7 +431,6 @@ export function ConversationSearch({
             onChange={handleSearchChange}
             placeholder={t('search.placeholder')}
             className="w-full pl-4 pr-10 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-            role="searchbox"
             aria-label={t('search.ariaLabel')}
             aria-describedby={instructionsId}
             aria-controls={resultsRegionId}
@@ -460,16 +464,21 @@ export function ConversationSearch({
 
         {/* Search statistics */}
         {hasResults && (
-          <div className="search-stats flex items-center gap-2 mt-2 text-xs text-gray-700 dark:text-gray-300" aria-live="polite" aria-atomic="true">
-            <span className="font-medium">
-              {resultsCountLabel}
-            </span>
+          <div
+            className="search-stats flex items-center gap-2 mt-2 text-xs text-gray-700 dark:text-gray-300"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            <span className="font-medium">{resultsCountLabel}</span>
             <span className="opacity-75">
               ({effectiveResponse.searchTime}ms)
             </span>
             {/* Show cache indicator for instant results (Requirement 6.1) */}
             {isCached(query, currentPage) && (
-              <span className="text-yellow-700" title={t('search.cachedResult')}>
+              <span
+                className="text-yellow-700"
+                title={t('search.cachedResult')}
+              >
                 ⚡
               </span>
             )}
@@ -496,7 +505,10 @@ export function ConversationSearch({
           aria-label={t('search.searching')}
           aria-live="polite"
         >
-          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-2" aria-hidden="true" />
+          <div
+            className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-2"
+            aria-hidden="true"
+          />
           <span className="sr-only">{t('search.searching')}</span>
         </div>
       )}
@@ -531,7 +543,11 @@ export function ConversationSearch({
 
       {/* Error message */}
       {error && (
-        <div className="p-4 mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-200 text-sm" role="alert" aria-live="assertive">
+        <div
+          className="p-4 mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-200 text-sm"
+          role="alert"
+          aria-live="assertive"
+        >
           <p>{error}</p>
         </div>
       )}
@@ -588,7 +604,9 @@ export function ConversationSearch({
             {t('search.noResults', { query })}
           </p>
           <div className="search-suggestions mt-6 max-w-xs w-full text-left bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">
-            <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-3">{t('search.suggestionsTitle')}</p>
+            <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-3">
+              {t('search.suggestionsTitle')}
+            </p>
             <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
               <li className="flex items-center gap-2">
                 <span className="w-1 h-1 bg-gray-400 rounded-full" />

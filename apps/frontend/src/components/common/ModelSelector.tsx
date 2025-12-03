@@ -7,13 +7,14 @@
  * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 12.1, 12.2, 12.3, 12.4
  */
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import type React from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type {
   EnhancedModelInfo,
   ModelSelectionCriteria,
 } from '../../services/models';
-import { getModelService, MODEL_CATEGORIES } from '../../services/models';
+import { MODEL_CATEGORIES, getModelService } from '../../services/models';
 import { useScreenReaderAnnouncer } from '../accessibility';
 import { Glass, cn } from '../ui/Glass.js';
 
@@ -191,7 +192,10 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   const renderCapabilities = (capabilities: string[]): React.ReactElement => (
     <div className="flex flex-wrap gap-1 mt-2">
       {capabilities.slice(0, 3).map((capability) => (
-        <span key={capability} className="px-2 py-0.5 text-xs font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-full border border-blue-100 dark:border-blue-800">
+        <span
+          key={capability}
+          className="px-2 py-0.5 text-xs font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-full border border-blue-100 dark:border-blue-800"
+        >
           {t(`model.capability.${capability}`, capability)}
         </span>
       ))}
@@ -211,9 +215,26 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   ): React.ReactElement => (
     <div className="flex items-center gap-1.5 mt-2">
       <div className="flex gap-0.5">
-        <div className={cn("w-1.5 h-1.5 rounded-full", rating ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600")} />
-        <div className={cn("w-1.5 h-1.5 rounded-full", rating === 'high' || rating === 'medium' ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600")} />
-        <div className={cn("w-1.5 h-1.5 rounded-full", rating === 'high' ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600")} />
+        <div
+          className={cn(
+            'w-1.5 h-1.5 rounded-full',
+            rating ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+          )}
+        />
+        <div
+          className={cn(
+            'w-1.5 h-1.5 rounded-full',
+            rating === 'high' || rating === 'medium'
+              ? 'bg-green-500'
+              : 'bg-gray-300 dark:bg-gray-600'
+          )}
+        />
+        <div
+          className={cn(
+            'w-1.5 h-1.5 rounded-full',
+            rating === 'high' ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+          )}
+        />
       </div>
       <span className="text-xs text-gray-700 dark:text-gray-300">
         {t(`model.performance.${rating}`)}
@@ -228,11 +249,11 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     <div
       key={model.id}
       className={cn(
-        "p-3 rounded-lg border transition-all cursor-pointer",
-        model.id === selectedModel 
-          ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-900"
-          : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700",
-        !model.isAvailable && "opacity-50 cursor-not-allowed"
+        'p-3 rounded-lg border transition-all cursor-pointer',
+        model.id === selectedModel
+          ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-900'
+          : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700',
+        !model.isAvailable && 'opacity-50 cursor-not-allowed'
       )}
       onClick={() => void handleModelSelect(model.id)}
       role="option"
@@ -249,7 +270,9 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     >
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2 flex-1">
-          <span className="font-medium text-gray-900 dark:text-gray-100">{model.name}</span>
+          <span className="font-medium text-gray-900 dark:text-gray-100">
+            {model.name}
+          </span>
           <span className="text-base" title={model.providerInfo.name}>
             {model.providerInfo.icon}
           </span>
@@ -268,24 +291,39 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
       {showDetails && (
         <div className="mt-2 space-y-2">
-          <p className="text-xs text-gray-700 dark:text-gray-300" id={`model-${model.id}-description`}>
+          <p
+            className="text-xs text-gray-700 dark:text-gray-300"
+            id={`model-${model.id}-description`}
+          >
             {model.description}
           </p>
 
           <div className="grid grid-cols-3 gap-2 text-xs">
             <div>
-              <span className="text-gray-700 dark:text-gray-300">{t('model.contextLimit')}:</span>
-              <div className="font-medium text-gray-900 dark:text-gray-100">{model.contextLimitFormatted}</div>
+              <span className="text-gray-700 dark:text-gray-300">
+                {t('model.contextLimit')}:
+              </span>
+              <div className="font-medium text-gray-900 dark:text-gray-100">
+                {model.contextLimitFormatted}
+              </div>
             </div>
 
             <div>
-              <span className="text-gray-700 dark:text-gray-300">{t('model.provider')}:</span>
-              <div className="font-medium text-gray-900 dark:text-gray-100">{model.providerInfo.name}</div>
+              <span className="text-gray-700 dark:text-gray-300">
+                {t('model.provider')}:
+              </span>
+              <div className="font-medium text-gray-900 dark:text-gray-100">
+                {model.providerInfo.name}
+              </div>
             </div>
 
             <div>
-              <span className="text-gray-700 dark:text-gray-300">{t('model.category')}:</span>
-              <div className="font-medium text-gray-900 dark:text-gray-100">{model.categoryLabel}</div>
+              <span className="text-gray-700 dark:text-gray-300">
+                {t('model.category')}:
+              </span>
+              <div className="font-medium text-gray-900 dark:text-gray-100">
+                {model.categoryLabel}
+              </div>
             </div>
           </div>
 
@@ -300,13 +338,17 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
    * Render category tabs
    */
   const renderCategoryTabs = (): React.ReactElement => (
-    <div className="flex gap-2 mb-3 overflow-x-auto pb-2 custom-scrollbar" role="tablist">
+    <div
+      className="flex gap-2 mb-3 overflow-x-auto pb-2 custom-scrollbar"
+      role="tablist"
+    >
       <button
+        type="button"
         className={cn(
-          "px-3 py-1.5 text-sm font-medium rounded-lg transition-colors whitespace-nowrap",
-          selectedCategory === 'all' 
-            ? "bg-blue-600 text-white"
-            : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+          'px-3 py-1.5 text-sm font-medium rounded-lg transition-colors whitespace-nowrap',
+          selectedCategory === 'all'
+            ? 'bg-blue-600 text-white'
+            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
         )}
         onClick={() => setSelectedCategory('all')}
         role="tab"
@@ -316,12 +358,13 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       </button>
       {Object.entries(MODEL_CATEGORIES).map(([key, label]) => (
         <button
+          type="button"
           key={key}
           className={cn(
-            "px-3 py-1.5 text-sm font-medium rounded-lg transition-colors whitespace-nowrap",
-            selectedCategory === key 
-              ? "bg-blue-600 text-white"
-              : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+            'px-3 py-1.5 text-sm font-medium rounded-lg transition-colors whitespace-nowrap',
+            selectedCategory === key
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
           )}
           onClick={() => setSelectedCategory(key)}
           role="tab"
@@ -352,10 +395,18 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
   if (isLoading) {
     return (
-      <div className={cn("flex items-center justify-center p-8", compact && "p-4", disabled && "opacity-50")}>
+      <div
+        className={cn(
+          'flex items-center justify-center p-8',
+          compact && 'p-4',
+          disabled && 'opacity-50'
+        )}
+      >
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm text-gray-700 dark:text-gray-300">{t('model.loading')}</span>
+          <span className="text-sm text-gray-700 dark:text-gray-300">
+            {t('model.loading')}
+          </span>
         </div>
       </div>
     );
@@ -363,12 +414,19 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
   if (error !== null && error.length > 0) {
     return (
-      <div className={cn("flex items-center justify-center p-8", compact && "p-4", disabled && "opacity-50")}>
+      <div
+        className={cn(
+          'flex items-center justify-center p-8',
+          compact && 'p-4',
+          disabled && 'opacity-50'
+        )}
+      >
         <div className="flex flex-col items-center gap-3 text-red-700">
           <span className="text-3xl">⚠️</span>
           <span className="text-sm">{t('model.error', { error })}</span>
-          <button 
-            onClick={() => void loadModels()} 
+          <button
+            type="button"
+            onClick={() => void loadModels()}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
           >
             {t('common.retry')}
@@ -379,12 +437,20 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   }
 
   return (
-    <div className={cn("relative", compact && "text-sm", disabled && "opacity-50 pointer-events-none")}>
+    <div
+      className={cn(
+        'relative',
+        compact && 'text-sm',
+        disabled && 'opacity-50 pointer-events-none'
+      )}
+    >
       {/* Selected model display */}
       <div
         className={cn(
-          "p-3 bg-white dark:bg-gray-800 border rounded-lg cursor-pointer transition-all",
-          isOpen ? "border-blue-500 ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-900" : "border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
+          'p-3 bg-white dark:bg-gray-800 border rounded-lg cursor-pointer transition-all',
+          isOpen
+            ? 'border-blue-500 ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-900'
+            : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
         )}
         onClick={() => !disabled && setIsOpen(!isOpen)}
         role="combobox"
@@ -423,16 +489,25 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
               )}
             </div>
           ) : (
-            <span className="text-gray-700 dark:text-gray-300">{t('model.noSelection')}</span>
+            <span className="text-gray-700 dark:text-gray-300">
+              {t('model.noSelection')}
+            </span>
           )}
-          <span className={cn("ml-2 text-gray-700 transition-transform duration-200", isOpen && "rotate-180")}>▼</span>
+          <span
+            className={cn(
+              'ml-2 text-gray-700 transition-transform duration-200',
+              isOpen && 'rotate-180'
+            )}
+          >
+            ▼
+          </span>
         </div>
       </div>
 
       {/* Dropdown panel */}
       {isOpen && (
-        <Glass 
-          id="model-dropdown" 
+        <Glass
+          id="model-dropdown"
           className="absolute z-50 top-full mt-2 w-full max-h-96 overflow-y-auto custom-scrollbar p-3 shadow-xl"
           intensity="high"
           role="listbox"
@@ -457,7 +532,14 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         <div
           className="fixed inset-0 z-40"
           onClick={() => setIsOpen(false)}
-          aria-hidden="true"
+          role="button"
+          tabIndex={0}
+          aria-label="Close model selector overlay"
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              setIsOpen(false);
+            }
+          }}
         />
       )}
     </div>

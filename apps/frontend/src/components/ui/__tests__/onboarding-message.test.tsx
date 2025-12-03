@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { OnboardingMessage } from '../onboarding-message';
 
 // Mock framer-motion to avoid animation complexity in tests
@@ -65,7 +65,9 @@ describe('OnboardingMessage', () => {
       expect(
         screen.getByText('This is how you reopen the sidebar.')
       ).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /got it/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /got it/i })
+      ).toBeInTheDocument();
     });
 
     it('should not render when visible is false', () => {
@@ -81,9 +83,7 @@ describe('OnboardingMessage', () => {
     });
 
     it('should render with custom title', () => {
-      render(
-        <OnboardingMessage {...defaultProps} title="Custom Title" />
-      );
+      render(<OnboardingMessage {...defaultProps} title="Custom Title" />);
 
       expect(screen.getByText('Custom Title')).toBeInTheDocument();
       expect(screen.queryByText('Welcome!')).not.toBeInTheDocument();
@@ -104,9 +104,7 @@ describe('OnboardingMessage', () => {
     });
 
     it('should render with custom dismiss label', () => {
-      render(
-        <OnboardingMessage {...defaultProps} dismissLabel="Understood" />
-      );
+      render(<OnboardingMessage {...defaultProps} dismissLabel="Understood" />);
 
       expect(
         screen.getByRole('button', { name: /understood/i })
@@ -292,9 +290,9 @@ describe('OnboardingMessage', () => {
 
       const dismissButton = screen.getByRole('button', { name: /got it/i });
       dismissButton.focus();
-      
+
       expect(dismissButton).toHaveFocus();
-      
+
       // Buttons are natively keyboard accessible via Enter and Space
       // The browser handles this automatically, so we just verify the button is focusable
       expect(dismissButton.tagName).toBe('BUTTON');

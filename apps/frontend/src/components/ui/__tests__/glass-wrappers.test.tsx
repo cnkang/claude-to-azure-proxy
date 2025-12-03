@@ -1,9 +1,9 @@
-import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import React from 'react';
+import type React from 'react';
+import { describe, expect, it, vi } from 'vitest';
+import { GlassButton } from '../GlassButton';
 import { GlassCard } from '../GlassCard';
 import { GlassSheetContent, Sheet } from '../GlassSheet';
-import { GlassButton } from '../GlassButton';
 
 // Mock the theme hook to avoid provider complexity
 vi.mock('../../../contexts/ThemeContext', () => ({
@@ -128,7 +128,7 @@ describe('Glass Wrapper Components', () => {
   describe('GlassSheetContent', () => {
     // Note: GlassSheetContent requires Sheet context from Radix UI
     // These tests verify the component structure and props
-    
+
     it('should export GlassSheetContent component', () => {
       expect(GlassSheetContent).toBeDefined();
       expect(GlassSheetContent.displayName).toBe('GlassSheetContent');
@@ -181,14 +181,22 @@ describe('Glass Wrapper Components', () => {
     });
 
     it('should support all shadcn/ui Button variants', () => {
-      const { rerender } = renderWithProviders(<GlassButton variant="outline">Outline</GlassButton>);
-      expect(screen.getByRole('button', { name: /outline/i })).toBeInTheDocument();
+      const { rerender } = renderWithProviders(
+        <GlassButton variant="outline">Outline</GlassButton>
+      );
+      expect(
+        screen.getByRole('button', { name: /outline/i })
+      ).toBeInTheDocument();
 
       rerender(<GlassButton variant="ghost">Ghost</GlassButton>);
-      expect(screen.getByRole('button', { name: /ghost/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /ghost/i })
+      ).toBeInTheDocument();
 
       rerender(<GlassButton variant="destructive">Destructive</GlassButton>);
-      expect(screen.getByRole('button', { name: /destructive/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /destructive/i })
+      ).toBeInTheDocument();
     });
 
     it('should be accessible with proper ARIA attributes', () => {
@@ -197,7 +205,9 @@ describe('Glass Wrapper Components', () => {
           <span>→</span>
         </GlassButton>
       );
-      expect(screen.getByRole('button', { name: /submit form/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /submit form/i })
+      ).toBeInTheDocument();
     });
   });
 
@@ -232,14 +242,14 @@ describe('Glass Wrapper Components', () => {
           <div>Content</div>
         </GlassCard>
       );
-      expect(screen.getByRole('article', { name: /test card/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('article', { name: /test card/i })
+      ).toBeInTheDocument();
     });
 
     it('should preserve shadcn/ui accessibility features in GlassButton', () => {
       renderWithProviders(
-        <GlassButton aria-describedby="help-text">
-          Submit
-        </GlassButton>
+        <GlassButton aria-describedby="help-text">Submit</GlassButton>
       );
       const button = screen.getByRole('button', { name: /submit/i });
       expect(button).toHaveAttribute('aria-describedby', 'help-text');

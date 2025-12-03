@@ -1,4 +1,5 @@
-import React from 'react';
+import type React from 'react';
+import { cn } from '../ui/Glass.js';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,7 +10,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '../ui/alert-dialog.js';
-import { cn } from '../ui/Glass.js';
 
 export interface ConfirmDialogProps {
   readonly isOpen: boolean;

@@ -278,6 +278,7 @@ export function ConversationDemo(): React.JSX.Element {
         }}
       >
         <button
+          type="button"
           onClick={handleCreateConversation}
           style={{
             padding: '8px 16px',
@@ -431,6 +432,7 @@ export function ConversationDemo(): React.JSX.Element {
                 </h3>
                 <div style={{ display: 'flex', gap: '5px' }}>
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       const newTitle = prompt(
@@ -456,6 +458,7 @@ export function ConversationDemo(): React.JSX.Element {
                     ✏️
                   </button>
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       if (window.confirm(`Delete "${conversation.title}"?`)) {

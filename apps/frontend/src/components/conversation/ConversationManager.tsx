@@ -7,14 +7,15 @@
  * Requirements: 11.1, 11.2, 11.3, 11.4, 11.5
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
-import {
-  useConversations,
-  useConversationOrganization,
-} from '../../hooks/useConversations.js';
+import type React from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useI18n } from '../../contexts/I18nContext.js';
-import { ConversationList } from './ConversationList.js';
+import {
+  useConversationOrganization,
+  useConversations,
+} from '../../hooks/useConversations.js';
 import { Glass, cn } from '../ui/Glass.js';
+import { ConversationList } from './ConversationList.js';
 
 /**
  * Conversation filter panel props
@@ -101,7 +102,9 @@ function ConversationFilterPanel({
   return (
     <Glass intensity="low" border={true} className="p-4 mb-4">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-800 dark:text-gray-100">{t('conversation.filters')}</h3>
+        <h3 className="font-semibold text-gray-800 dark:text-gray-100">
+          {t('conversation.filters')}
+        </h3>
         <button
           type="button"
           onClick={onClose}
@@ -114,7 +117,10 @@ function ConversationFilterPanel({
 
       <div className="space-y-4">
         <div className="flex flex-col gap-1">
-          <label htmlFor="sort-select" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label
+            htmlFor="sort-select"
+            className="text-sm font-medium text-gray-700 dark:text-gray-300"
+          >
             {t('conversation.sortBy')}
           </label>
           <select
@@ -143,7 +149,10 @@ function ConversationFilterPanel({
         </div>
 
         <div className="flex flex-col gap-1">
-          <label htmlFor="model-filter" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label
+            htmlFor="model-filter"
+            className="text-sm font-medium text-gray-700 dark:text-gray-300"
+          >
             {t('conversation.filterByModel')}
           </label>
           <select
@@ -162,10 +171,15 @@ function ConversationFilterPanel({
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('conversation.dateRange')}</label>
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            {t('conversation.dateRange')}
+          </p>
           <div className="grid grid-cols-2 gap-2">
             <div className="flex flex-col gap-1">
-              <label htmlFor="date-start" className="text-xs text-gray-700 dark:text-gray-300">
+              <label
+                htmlFor="date-start"
+                className="text-xs text-gray-700 dark:text-gray-300"
+              >
                 {t('conversation.from')}
               </label>
               <input
@@ -181,7 +195,10 @@ function ConversationFilterPanel({
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label htmlFor="date-end" className="text-xs text-gray-700 dark:text-gray-300">
+              <label
+                htmlFor="date-end"
+                className="text-xs text-gray-700 dark:text-gray-300"
+              >
                 {t('conversation.to')}
               </label>
               <input
@@ -330,11 +347,13 @@ export function ConversationManager({
   );
 
   return (
-    <div className={cn(
-      "flex flex-col h-full",
-      compactMode ? "text-sm" : "",
-      className
-    )}>
+    <div
+      className={cn(
+        'flex flex-col h-full',
+        compactMode ? 'text-sm' : '',
+        className
+      )}
+    >
       {showHeader ? (
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
@@ -363,10 +382,10 @@ export function ConversationManager({
                 type="button"
                 onClick={handleToggleFilterPanel}
                 className={cn(
-                  "p-2 rounded-lg transition-colors",
-                  showFilterPanel 
-                    ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200" 
-                    : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700"
+                  'p-2 rounded-lg transition-colors',
+                  showFilterPanel
+                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200'
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700'
                 )}
                 aria-label={t('conversation.toggleFilters')}
                 title={t('conversation.toggleFilters')}
@@ -379,10 +398,10 @@ export function ConversationManager({
               type="button"
               onClick={() => setShowBulkActions((prev) => !prev)}
               className={cn(
-                "p-2 rounded-lg transition-colors",
-                showBulkActions 
-                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200" 
-                  : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700"
+                'p-2 rounded-lg transition-colors',
+                showBulkActions
+                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200'
+                  : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700'
               )}
               aria-label={t('conversation.toggleBulkActions')}
               title={t('conversation.toggleBulkActions')}
@@ -445,7 +464,10 @@ export function ConversationManager({
 
       <div className="flex-1 overflow-hidden relative">
         {state.error && (
-          <div className="absolute top-0 left-0 right-0 z-10 p-4 m-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-200 text-sm flex items-center gap-2" role="alert">
+          <div
+            className="absolute top-0 left-0 right-0 z-10 p-4 m-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-200 text-sm flex items-center gap-2"
+            role="alert"
+          >
             <span className="text-lg">⚠️</span>
             <span>{state.error}</span>
           </div>

@@ -133,25 +133,31 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
           break;
         case 'ArrowDown':
           event.preventDefault();
-          setFocusedIndex((prev) => {
-            const nextIndex = prev + 1;
-            return nextIndex >= items.length ? 0 : nextIndex;
-          });
+          {
+            setFocusedIndex((prev) => {
+              const nextIndex = prev + 1;
+              return nextIndex >= items.length ? 0 : nextIndex;
+            });
+          }
           break;
         case 'ArrowUp':
           event.preventDefault();
-          setFocusedIndex((prev) => {
-            const nextIndex = prev - 1;
-            return nextIndex < 0 ? items.length - 1 : nextIndex;
-          });
+          {
+            setFocusedIndex((prev) => {
+              const nextIndex = prev - 1;
+              return nextIndex < 0 ? items.length - 1 : nextIndex;
+            });
+          }
           break;
         case 'Enter':
         case ' ':
           event.preventDefault();
-          const item = items[focusedIndex];
-          if (item && !item.disabled) {
-            item.onClick();
-            onClose();
+          {
+            const item = items[focusedIndex];
+            if (item && !item.disabled) {
+              item.onClick();
+              onClose();
+            }
           }
           break;
         case 'Home':
@@ -200,12 +206,14 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
           role="menuitem"
           tabIndex={-1}
           className={cn(
-            "flex items-center gap-2 px-3 py-2 text-sm cursor-pointer transition-colors",
-            item.disabled && "opacity-50 cursor-not-allowed",
-            !item.disabled && index === focusedIndex && "bg-blue-50 dark:bg-blue-900/20",
-            !item.disabled && item.variant === 'danger' 
-              ? "text-red-700 dark:text-red-200 hover:bg-red-50 dark:hover:bg-red-900/20"
-              : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+            'flex items-center gap-2 px-3 py-2 text-sm cursor-pointer transition-colors',
+            item.disabled && 'opacity-50 cursor-not-allowed',
+            !item.disabled &&
+              index === focusedIndex &&
+              'bg-blue-50 dark:bg-blue-900/20',
+            !item.disabled && item.variant === 'danger'
+              ? 'text-red-700 dark:text-red-200 hover:bg-red-50 dark:hover:bg-red-900/20'
+              : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
           )}
           data-testid={`dropdown-item-${item.id}`}
           onClick={() => {
@@ -224,9 +232,7 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
           onMouseEnter={() => setFocusedIndex(index)}
           aria-disabled={item.disabled}
         >
-          {item.icon && (
-            <span className="text-base">{item.icon}</span>
-          )}
+          {item.icon && <span className="text-base">{item.icon}</span>}
           <span className="flex-1">{item.label}</span>
         </div>
       ))}

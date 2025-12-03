@@ -7,18 +7,19 @@
  * management hooks.
  */
 
-import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
-import type { Conversation, Message } from '../../types/index.js';
-import {
-  useConversations,
-  useConversationSearch,
-} from '../../hooks/useConversations.js';
+import type React from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useI18n } from '../../contexts/I18nContext.js';
+import {
+  useConversationSearch,
+  useConversations,
+} from '../../hooks/useConversations.js';
+import type { Conversation, Message } from '../../types/index.js';
+import { useDebounce } from '../../utils/performance.js';
 import {
   VirtualizedList,
   type VirtualizedListRef,
 } from '../common/VirtualizedList.js';
-import { useDebounce } from '../../utils/performance.js';
 import { cn } from '../ui/Glass.js';
 
 export interface OptimizedConversationListProps {
@@ -76,10 +77,10 @@ const ConversationListItem = memo<ConversationListItemProps>(
     return (
       <div
         className={cn(
-          "group relative p-3 rounded-xl transition-all duration-200 cursor-pointer border border-transparent",
-          isActive 
-            ? "bg-blue-50/50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 shadow-sm" 
-            : "hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:border-gray-200 dark:hover:border-gray-700"
+          'group relative p-3 rounded-xl transition-all duration-200 cursor-pointer border border-transparent',
+          isActive
+            ? 'bg-blue-50/50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 shadow-sm'
+            : 'hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:border-gray-200 dark:hover:border-gray-700'
         )}
         data-index={index}
         data-testid={`conversation-item-${conversation.id}`}
@@ -123,10 +124,12 @@ const ConversationListItem = memo<ConversationListItemProps>(
               </h3>
             )}
 
-            <div className={cn(
-              "flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity",
-              (isActive || isEditing) && "opacity-100"
-            )}>
+            <div
+              className={cn(
+                'flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity',
+                (isActive || isEditing) && 'opacity-100'
+              )}
+            >
               {isEditing ? (
                 <>
                   <button
@@ -159,12 +162,12 @@ const ConversationListItem = memo<ConversationListItemProps>(
                   <button
                     type="button"
                     className={cn(
-                      "p-1.5 rounded transition-all duration-200",
-                      "text-gray-900 dark:text-gray-100",
-                      "hover:text-blue-700 dark:hover:text-blue-300",
-                      "hover:bg-blue-100 dark:hover:bg-blue-900/50",
-                      "ring-1 ring-gray-300 dark:ring-gray-600",
-                      "hover:ring-blue-400 dark:hover:ring-blue-500"
+                      'p-1.5 rounded transition-all duration-200',
+                      'text-gray-900 dark:text-gray-100',
+                      'hover:text-blue-700 dark:hover:text-blue-300',
+                      'hover:bg-blue-100 dark:hover:bg-blue-900/50',
+                      'ring-1 ring-gray-300 dark:ring-gray-600',
+                      'hover:ring-blue-400 dark:hover:ring-blue-500'
                     )}
                     onClick={(event) => {
                       event.stopPropagation();
@@ -178,12 +181,12 @@ const ConversationListItem = memo<ConversationListItemProps>(
                   <button
                     type="button"
                     className={cn(
-                      "p-1.5 rounded transition-all duration-200",
-                      "text-gray-900 dark:text-gray-100",
-                      "hover:text-red-700 dark:hover:text-red-300",
-                      "hover:bg-red-100 dark:hover:bg-red-900/50",
-                      "ring-1 ring-gray-300 dark:ring-gray-600",
-                      "hover:ring-red-400 dark:hover:ring-red-500"
+                      'p-1.5 rounded transition-all duration-200',
+                      'text-gray-900 dark:text-gray-100',
+                      'hover:text-red-700 dark:hover:text-red-300',
+                      'hover:bg-red-100 dark:hover:bg-red-900/50',
+                      'ring-1 ring-gray-300 dark:ring-gray-600',
+                      'hover:ring-red-400 dark:hover:ring-red-500'
                     )}
                     onClick={(event) => {
                       event.stopPropagation();
@@ -206,9 +209,7 @@ const ConversationListItem = memo<ConversationListItemProps>(
             <span className="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider">
               {conversation.selectedModel}
             </span>
-            <span>
-              {formatRelativeTime(conversation.updatedAt)}
-            </span>
+            <span>{formatRelativeTime(conversation.updatedAt)}</span>
           </div>
 
           <div className="text-xs text-gray-700 dark:text-gray-300 line-clamp-2 min-h-[2.5em]">
@@ -479,7 +480,10 @@ const OptimizedConversationListComponent = function OptimizedConversationList({
 
   return (
     <section
-      className={cn("flex flex-col h-full bg-white/50 dark:bg-black/20 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800", className)}
+      className={cn(
+        'flex flex-col h-full bg-white/50 dark:bg-black/20 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800',
+        className
+      )}
       data-e2e-mode={
         typeof window !== 'undefined' && window.__E2E_TEST_MODE__
           ? 'true'
@@ -488,7 +492,9 @@ const OptimizedConversationListComponent = function OptimizedConversationList({
     >
       <header className="p-4 border-b border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-black/20 backdrop-blur-sm">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">{t('conversation.conversations', 'Conversations')}</h2>
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+            {t('conversation.conversations', 'Conversations')}
+          </h2>
           <button
             type="button"
             className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm transition-colors flex items-center justify-center"
@@ -544,14 +550,25 @@ const OptimizedConversationListComponent = function OptimizedConversationList({
           : {})}
       >
         {state.isLoading && (
-          <div className="flex flex-col items-center justify-center h-32 text-gray-700 gap-2" role="status">
-            <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" aria-hidden="true" />
-            <span className="text-sm">{t('conversation.loading', 'Loading conversations…')}</span>
+          <div
+            className="flex flex-col items-center justify-center h-32 text-gray-700 gap-2"
+            role="status"
+          >
+            <div
+              className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"
+              aria-hidden="true"
+            />
+            <span className="text-sm">
+              {t('conversation.loading', 'Loading conversations…')}
+            </span>
           </div>
         )}
 
         {state.error && (
-          <div className="p-4 m-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-200 text-sm flex items-center gap-2" role="alert">
+          <div
+            className="p-4 m-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-200 text-sm flex items-center gap-2"
+            role="alert"
+          >
             <span className="text-lg" aria-hidden="true">
               ⚠️
             </span>
@@ -564,7 +581,9 @@ const OptimizedConversationListComponent = function OptimizedConversationList({
             <div className="text-4xl mb-3 opacity-50" aria-hidden="true">
               💬
             </div>
-            <p className="font-medium mb-1">{t('sidebar.noConversations', 'No conversations yet')}</p>
+            <p className="font-medium mb-1">
+              {t('sidebar.noConversations', 'No conversations yet')}
+            </p>
             <p className="text-sm opacity-75">
               {t(
                 'sidebar.startFirstConversation',
@@ -574,47 +593,45 @@ const OptimizedConversationListComponent = function OptimizedConversationList({
           </div>
         ) : null}
 
-        {!state.isLoading && conversations.length > 0 && (
-          <>
-            {shouldVirtualize ? (
-              <VirtualizedList
-                ref={listRef}
-                items={conversations}
-                itemHeight={112}
-                height={listHeight}
-                overscan={6}
-                renderItem={renderItem}
-                className="w-full"
-              />
-            ) : (
-              <div className="flex flex-col gap-1">
-                {conversations.map((conversation, index) => (
-                  <ConversationListItem
-                    key={conversation.id}
-                    index={index}
-                    conversation={conversation}
-                    isActive={conversation.id === activeConversation?.id}
-                    isEditing={editingId === conversation.id}
-                    editTitle={
-                      editingId === conversation.id
-                        ? editingTitle
-                        : conversation.title
-                    }
-                    isVisible
-                    onSelect={handleSelect}
-                    onStartEdit={handleStartEdit}
-                    onTitleChange={setEditingTitle}
-                    onSaveEdit={handleSaveEdit}
-                    onCancelEdit={handleCancelEdit}
-                    onDelete={handleDeleteConversation}
-                    formatRelativeTime={formatRelativeTime}
-                    t={t}
-                  />
-                ))}
-              </div>
-            )}
-          </>
-        )}
+        {!state.isLoading &&
+          conversations.length > 0 &&
+          (shouldVirtualize ? (
+            <VirtualizedList
+              ref={listRef}
+              items={conversations}
+              itemHeight={112}
+              height={listHeight}
+              overscan={6}
+              renderItem={renderItem}
+              className="w-full"
+            />
+          ) : (
+            <div className="flex flex-col gap-1">
+              {conversations.map((conversation, index) => (
+                <ConversationListItem
+                  key={conversation.id}
+                  index={index}
+                  conversation={conversation}
+                  isActive={conversation.id === activeConversation?.id}
+                  isEditing={editingId === conversation.id}
+                  editTitle={
+                    editingId === conversation.id
+                      ? editingTitle
+                      : conversation.title
+                  }
+                  isVisible
+                  onSelect={handleSelect}
+                  onStartEdit={handleStartEdit}
+                  onTitleChange={setEditingTitle}
+                  onSaveEdit={handleSaveEdit}
+                  onCancelEdit={handleCancelEdit}
+                  onDelete={handleDeleteConversation}
+                  formatRelativeTime={formatRelativeTime}
+                  t={t}
+                />
+              ))}
+            </div>
+          ))}
       </div>
 
       {showSearch && isSearching && (
@@ -626,4 +643,6 @@ const OptimizedConversationListComponent = function OptimizedConversationList({
   );
 };
 
-export const OptimizedConversationList = memo(OptimizedConversationListComponent);
+export const OptimizedConversationList = memo(
+  OptimizedConversationListComponent
+);

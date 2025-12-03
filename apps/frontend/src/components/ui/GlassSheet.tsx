@@ -1,11 +1,8 @@
-import * as React from 'react';
-import * as SheetPrimitive from "@radix-ui/react-dialog"
-import {
-  Sheet,
-  SheetContent,
-} from './sheet';
-import { cn } from '@/lib/utils';
 import { useBackdropFilterSupport } from '@/hooks/useBackdropFilterSupport';
+import { cn } from '@/lib/utils';
+import type * as SheetPrimitive from '@radix-ui/react-dialog';
+import * as React from 'react';
+import { Sheet, SheetContent } from './sheet';
 
 type GlassIntensity = 'low' | 'medium' | 'high';
 
@@ -22,7 +19,7 @@ export interface GlassSheetContentProps extends SheetContentProps {
 
 /**
  * GlassSheetContent component - A SheetContent component with liquid glass effects
- * 
+ *
  * Features:
  * - Configurable glass intensity (low/medium/high)
  * - Backdrop blur effects with fallbacks for unsupported browsers
@@ -31,8 +28,14 @@ export interface GlassSheetContentProps extends SheetContentProps {
  * - Logical properties for better i18n support
  * - Gap property for flex layouts
  */
-export const GlassSheetContent = React.forwardRef<HTMLDivElement, GlassSheetContentProps>(
-  ({ className, intensity = 'high', border = true, children, ...props }, ref) => {
+export const GlassSheetContent = React.forwardRef<
+  HTMLDivElement,
+  GlassSheetContentProps
+>(
+  (
+    { className, intensity = 'high', border = true, children, ...props },
+    ref
+  ) => {
     const supportsBackdropFilter = useBackdropFilterSupport();
 
     // Glass effect styles with backdrop-filter

@@ -7,18 +7,19 @@
  * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 12.1, 12.2, 12.3, 12.4
  */
 
-import React, { useState, useCallback } from 'react';
+import type React from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ModelSelector } from './ModelSelector.js';
-import { ModelConfiguration } from './ModelConfiguration.js';
-import { ModelSwitchDialog } from './ModelSwitchDialog.js';
 import { useModelSelection } from '../../hooks/useModelSelection.js';
+import type { ModelSwitchValidation } from '../../hooks/useModelSelection.js';
 import type {
   EnhancedModelInfo,
   ModelConfiguration as ModelConfig,
 } from '../../services/models.js';
-import type { ModelSwitchValidation } from '../../hooks/useModelSelection.js';
 import { cn } from '../ui/Glass.js';
+import { ModelConfiguration } from './ModelConfiguration.js';
+import { ModelSelector } from './ModelSelector.js';
+import { ModelSwitchDialog } from './ModelSwitchDialog.js';
 
 /**
  * Demo component for testing model selection features
@@ -144,7 +145,9 @@ export const ModelDemo: React.FC = () => {
       <div className="flex items-center justify-center h-full p-8">
         <div className="flex flex-col items-center gap-4">
           <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('model.loading')}</span>
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            {t('model.loading')}
+          </span>
         </div>
       </div>
     );
@@ -155,7 +158,9 @@ export const ModelDemo: React.FC = () => {
       <div className="flex items-center justify-center h-full p-8">
         <div className="flex flex-col items-center gap-4 text-red-700">
           <span className="text-4xl">⚠️</span>
-          <span className="text-lg font-medium">{t('model.error', { _error: state.error })}</span>
+          <span className="text-lg font-medium">
+            {t('model.error', { _error: state.error })}
+          </span>
         </div>
       </div>
     );
@@ -164,7 +169,9 @@ export const ModelDemo: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8">
       <div className="space-y-2">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Model Selection Demo</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          Model Selection Demo
+        </h2>
         <p className="text-gray-700 dark:text-gray-300">
           Test the model selection, configuration, and switching functionality.
         </p>
@@ -173,7 +180,9 @@ export const ModelDemo: React.FC = () => {
       <div className="grid gap-8">
         {/* Model Selector */}
         <section className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Model Selector</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Model Selector
+          </h3>
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
             <ModelSelector
               selectedModel={selectedModelId}
@@ -188,25 +197,36 @@ export const ModelDemo: React.FC = () => {
         {/* Model Information */}
         {selectedModel && (
           <section className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Selected Model Information</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              Selected Model Information
+            </h3>
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
               <div className="space-y-6">
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-xl font-bold text-gray-900 dark:text-gray-100">{selectedModel.name}</span>
+                      <span className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                        {selectedModel.name}
+                      </span>
                       <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-                        {selectedModel.providerInfo.icon} {selectedModel.providerInfo.name}
+                        {selectedModel.providerInfo.icon}{' '}
+                        {selectedModel.providerInfo.name}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-700 dark:text-gray-300 max-w-2xl">{selectedModel.description}</p>
+                    <p className="text-sm text-gray-700 dark:text-gray-300 max-w-2xl">
+                      {selectedModel.description}
+                    </p>
                   </div>
-                  <span className={cn(
-                    "px-3 py-1 rounded-full text-sm font-medium",
-                    selectedModel.performanceRating === 'high' ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200" :
-                    selectedModel.performanceRating === 'medium' ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200" :
-                    "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200"
-                  )}>
+                  <span
+                    className={cn(
+                      'px-3 py-1 rounded-full text-sm font-medium',
+                      selectedModel.performanceRating === 'high'
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200'
+                        : selectedModel.performanceRating === 'medium'
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200'
+                          : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200'
+                    )}
+                  >
                     {t(`model.performance.${selectedModel.performanceRating}`)}
                   </span>
                 </div>
@@ -239,11 +259,20 @@ export const ModelDemo: React.FC = () => {
                       <span className="text-sm text-gray-700 dark:text-gray-300">
                         / {selectedModel.contextLength.toLocaleString()}
                       </span>
-                      <span className={cn(
-                        "text-sm font-medium ml-auto",
-                        (contextTokens / selectedModel.contextLength) > 0.8 ? "text-amber-600 dark:text-amber-400" : "text-green-700 dark:text-green-200"
-                      )}>
-                        ({((contextTokens / selectedModel.contextLength) * 100).toFixed(1)}%)
+                      <span
+                        className={cn(
+                          'text-sm font-medium ml-auto',
+                          contextTokens / selectedModel.contextLength > 0.8
+                            ? 'text-amber-600 dark:text-amber-400'
+                            : 'text-green-700 dark:text-green-200'
+                        )}
+                      >
+                        (
+                        {(
+                          (contextTokens / selectedModel.contextLength) *
+                          100
+                        ).toFixed(1)}
+                        %)
                       </span>
                     </div>
                   </div>
@@ -255,7 +284,10 @@ export const ModelDemo: React.FC = () => {
                   </span>
                   <div className="flex flex-wrap gap-2">
                     {selectedModel.capabilities.map((capability) => (
-                      <span key={capability} className="px-2 py-1 text-xs font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-full border border-blue-100 dark:border-blue-800">
+                      <span
+                        key={capability}
+                        className="px-2 py-1 text-xs font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-full border border-blue-100 dark:border-blue-800"
+                      >
                         {t(`model.capability.${capability}`, capability)}
                       </span>
                     ))}
@@ -270,12 +302,17 @@ export const ModelDemo: React.FC = () => {
         {selectedModel && (
           <section className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Model Configuration</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                Model Configuration
+              </h3>
               <button
+                type="button"
                 onClick={() => setShowConfiguration(!showConfiguration)}
                 className="text-sm font-medium text-blue-700 dark:text-blue-200 hover:text-blue-700 dark:hover:text-blue-300"
               >
-                {showConfiguration ? 'Hide Configuration' : 'Show Configuration'}
+                {showConfiguration
+                  ? 'Hide Configuration'
+                  : 'Show Configuration'}
               </button>
             </div>
 
@@ -294,42 +331,64 @@ export const ModelDemo: React.FC = () => {
 
         {/* Model Statistics */}
         <section className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Available Models</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Available Models
+          </h3>
           <div className="space-y-6">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 text-center">
-                <span className="block text-2xl font-bold text-gray-900 dark:text-gray-100">{state.models.length}</span>
-                <span className="text-xs text-gray-700 dark:text-gray-300 uppercase tracking-wider">Total Models</span>
+                <span className="block text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  {state.models.length}
+                </span>
+                <span className="text-xs text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  Total Models
+                </span>
               </div>
               <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 text-center">
                 <span className="block text-2xl font-bold text-green-700 dark:text-green-200">
                   {state.models.filter((m) => m.isAvailable).length}
                 </span>
-                <span className="text-xs text-gray-700 dark:text-gray-300 uppercase tracking-wider">Available</span>
+                <span className="text-xs text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  Available
+                </span>
               </div>
               <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 text-center">
-                <span className="block text-2xl font-bold text-blue-700 dark:text-blue-200">{state.recommended.length}</span>
-                <span className="text-xs text-gray-700 dark:text-gray-300 uppercase tracking-wider">Recommended</span>
+                <span className="block text-2xl font-bold text-blue-700 dark:text-blue-200">
+                  {state.recommended.length}
+                </span>
+                <span className="text-xs text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  Recommended
+                </span>
               </div>
               <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 text-center">
                 <span className="block text-2xl font-bold text-purple-600 dark:text-purple-400">
                   {Object.keys(state.categories).length}
                 </span>
-                <span className="text-xs text-gray-700 dark:text-gray-300 uppercase tracking-wider">Categories</span>
+                <span className="text-xs text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  Categories
+                </span>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {Object.entries(state.categories).map(([category, models]) => (
-                <div key={category} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+                <div
+                  key={category}
+                  className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-3"
+                >
                   <h4 className="font-medium text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
                     {t(`model.category.${category}`, category)}
                   </h4>
                   <div className="flex flex-wrap gap-2">
                     {models.slice(0, 3).map((model) => (
-                      <div key={model.id} className="flex items-center gap-1 px-2 py-1 bg-gray-50 dark:bg-gray-700 rounded-lg text-xs font-medium text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600">
+                      <div
+                        key={model.id}
+                        className="flex items-center gap-1 px-2 py-1 bg-gray-50 dark:bg-gray-700 rounded-lg text-xs font-medium text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600"
+                      >
                         <span>{model.providerInfo.icon}</span>
-                        <span className="truncate max-w-[120px]">{model.name}</span>
+                        <span className="truncate max-w-[120px]">
+                          {model.name}
+                        </span>
                       </div>
                     ))}
                     {models.length > 3 && (
@@ -346,20 +405,17 @@ export const ModelDemo: React.FC = () => {
       </div>
 
       {/* Model Switch Dialog */}
-      {showSwitchDialog &&
-        selectedModel &&
-        targetModel &&
-        switchValidation && (
-          <ModelSwitchDialog
-            isOpen={showSwitchDialog}
-            currentModel={selectedModel}
-            targetModel={targetModel}
-            validation={switchValidation}
-            contextTokens={contextTokens}
-            onConfirm={handleSwitchConfirm}
-            onCancel={handleSwitchCancel}
-          />
-        )}
+      {showSwitchDialog && selectedModel && targetModel && switchValidation && (
+        <ModelSwitchDialog
+          isOpen={showSwitchDialog}
+          currentModel={selectedModel}
+          targetModel={targetModel}
+          validation={switchValidation}
+          contextTokens={contextTokens}
+          onConfirm={handleSwitchConfirm}
+          onCancel={handleSwitchCancel}
+        />
+      )}
     </div>
   );
 };

@@ -4,13 +4,13 @@
  * Tests for responsive breakpoint behavior and layout functionality
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import { AppLayout } from './AppLayout.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppProvider } from '../../contexts/AppContext.js';
-import { ThemeProvider } from '../../contexts/ThemeContext.js';
 import { I18nProvider } from '../../contexts/I18nContext.js';
 import { SessionProvider } from '../../contexts/SessionContext.js';
+import { ThemeProvider } from '../../contexts/ThemeContext.js';
+import { AppLayout } from './AppLayout.js';
 
 // Mock child components
 vi.mock('./Sidebar.js', () => ({
@@ -22,7 +22,10 @@ vi.mock('./Sidebar.js', () => ({
 }));
 
 vi.mock('./Header.js', () => ({
-  Header: ({ isMobile, isTablet }: { isMobile: boolean; isTablet: boolean }) => (
+  Header: ({
+    isMobile,
+    isTablet,
+  }: { isMobile: boolean; isTablet: boolean }) => (
     <div data-testid="header" data-mobile={isMobile} data-tablet={isTablet}>
       Header
     </div>
@@ -30,11 +33,15 @@ vi.mock('./Header.js', () => ({
 }));
 
 vi.mock('../common/ErrorBoundary.js', () => ({
-  ErrorBoundary: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  ErrorBoundary: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
 }));
 
 vi.mock('../accessibility/index.js', () => ({
-  AccessibilityProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  AccessibilityProvider: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
   SkipLink: () => <a href="#main-content">Skip to main content</a>,
 }));
 
@@ -59,7 +66,7 @@ describe('AppLayout - Responsive Breakpoint Behavior', () => {
   beforeEach(() => {
     // Store original window.innerWidth
     originalInnerWidth = window.innerWidth;
-    
+
     // Mock window.innerWidth
     Object.defineProperty(window, 'innerWidth', {
       writable: true,
@@ -75,7 +82,7 @@ describe('AppLayout - Responsive Breakpoint Behavior', () => {
       configurable: true,
       value: originalInnerWidth,
     });
-    
+
     vi.clearAllMocks();
   });
 

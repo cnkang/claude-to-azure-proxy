@@ -7,13 +7,13 @@
  * Feature: liquid-glass-frontend-redesign
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import * as fc from 'fast-check';
-import { ConversationSearch } from './ConversationSearch';
-import { highlightKeywords, parseSearchQuery } from '../../utils/highlight';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SearchResult } from '../../services/conversation-search';
+import { highlightKeywords, parseSearchQuery } from '../../utils/highlight';
+import { ConversationSearch } from './ConversationSearch';
 
 // Mock dependencies
 vi.mock('react-i18next', () => ({
@@ -23,7 +23,8 @@ vi.mock('react-i18next', () => ({
         'search.label': 'Search conversations',
         'search.placeholder': 'Search...',
         'search.ariaLabel': 'Search through conversation titles and messages',
-        'search.instructions': 'Type to search through conversation titles and messages',
+        'search.instructions':
+          'Type to search through conversation titles and messages',
         'search.searching': 'Searching...',
         'search.noResults': `No results found for "${params?.query || ''}"`,
         'search.resultsCount': `${params?.count || 0} result`,
@@ -88,21 +89,28 @@ describe('Search Functionality Property-Based Tests', () => {
     it('should highlight all occurrences of all keywords in search results', () => {
       fc.assert(
         fc.property(
-          fc.string({ minLength: 1, maxLength: 50 }).filter((s) => s.trim().length > 0),
-          fc.array(fc.string({ minLength: 1, maxLength: 20 }), { minLength: 1, maxLength: 5 }),
+          fc
+            .string({ minLength: 1, maxLength: 50 })
+            .filter((s) => s.trim().length > 0),
+          fc.array(fc.string({ minLength: 1, maxLength: 20 }), {
+            minLength: 1,
+            maxLength: 5,
+          }),
           (text, keywords) => {
             const validKeywords = keywords.filter((k) => k.trim().length > 0);
             if (validKeywords.length === 0) return true;
 
             const result = highlightKeywords(text, validKeywords);
-            
+
             // Result should be an array of React nodes
             expect(result).toBeDefined();
-            
+
             // If text contains any keyword, result should include mark elements
             const textLower = text.toLowerCase();
-            const hasMatch = validKeywords.some((k) => textLower.includes(k.toLowerCase()));
-            
+            const hasMatch = validKeywords.some((k) =>
+              textLower.includes(k.toLowerCase())
+            );
+
             if (hasMatch && Array.isArray(result)) {
               // At least one element should be a mark element
               const hasMarkElement = result.some((node: unknown) => {
@@ -115,7 +123,7 @@ describe('Search Functionality Property-Based Tests', () => {
               });
               expect(hasMarkElement).toBe(true);
             }
-            
+
             return true;
           }
         ),
@@ -125,28 +133,28 @@ describe('Search Functionality Property-Based Tests', () => {
 
     it('should parse search queries into individual keywords correctly', () => {
       fc.assert(
-        fc.property(
-          fc.string({ minLength: 0, maxLength: 100 }),
-          (query) => {
-            const keywords = parseSearchQuery(query);
-            
-            // Keywords should be an array
-            expect(Array.isArray(keywords)).toBe(true);
-            
-            // All keywords should be non-empty strings
-            keywords.forEach((keyword) => {
-              expect(typeof keyword).toBe('string');
-              expect(keyword.length).toBeGreaterThan(0);
-              expect(keyword.trim()).toBe(keyword); // No leading/trailing whitespace
-            });
-            
-            // Number of keywords should match number of whitespace-separated words
-            const expectedCount = query.trim().split(/\s+/).filter((w) => w.length > 0).length;
-            expect(keywords.length).toBe(expectedCount);
-            
-            return true;
-          }
-        ),
+        fc.property(fc.string({ minLength: 0, maxLength: 100 }), (query) => {
+          const keywords = parseSearchQuery(query);
+
+          // Keywords should be an array
+          expect(Array.isArray(keywords)).toBe(true);
+
+          // All keywords should be non-empty strings
+          keywords.forEach((keyword) => {
+            expect(typeof keyword).toBe('string');
+            expect(keyword.length).toBeGreaterThan(0);
+            expect(keyword.trim()).toBe(keyword); // No leading/trailing whitespace
+          });
+
+          // Number of keywords should match number of whitespace-separated words
+          const expectedCount = query
+            .trim()
+            .split(/\s+/)
+            .filter((w) => w.length > 0).length;
+          expect(keywords.length).toBe(expectedCount);
+
+          return true;
+        }),
         { numRuns: 100 }
       );
     });
@@ -164,22 +172,22 @@ describe('Search Functionality Property-Based Tests', () => {
             const pageSize = 20;
             const totalPages = Math.ceil(totalResults / pageSize);
             const actualCurrentPage = Math.min(currentPage, totalPages - 1);
-            
+
             // Pagination should be displayed
             expect(totalPages).toBeGreaterThan(1);
-            
+
             // Current page should be within valid range
             expect(actualCurrentPage).toBeGreaterThanOrEqual(0);
             expect(actualCurrentPage).toBeLessThan(totalPages);
-            
+
             // Has next page if not on last page
             const hasNextPage = actualCurrentPage < totalPages - 1;
             expect(hasNextPage).toBe(actualCurrentPage !== totalPages - 1);
-            
+
             // Has previous page if not on first page
             const hasPreviousPage = actualCurrentPage > 0;
             expect(hasPreviousPage).toBe(actualCurrentPage !== 0);
-            
+
             return true;
           }
         ),
@@ -198,14 +206,17 @@ describe('Search Functionality Property-Based Tests', () => {
           fc.option(fc.uuid(), { nil: undefined }), // optional messageId
           (conversationId, messageId) => {
             const onResultSelect = vi.fn();
-            
+
             // Simulate result selection
             onResultSelect(conversationId, messageId);
-            
+
             // Verify callback was called with correct parameters
-            expect(onResultSelect).toHaveBeenCalledWith(conversationId, messageId);
+            expect(onResultSelect).toHaveBeenCalledWith(
+              conversationId,
+              messageId
+            );
             expect(onResultSelect).toHaveBeenCalledTimes(1);
-            
+
             return true;
           }
         ),
@@ -235,21 +246,18 @@ describe('Search Functionality Property-Based Tests', () => {
 
     it('should announce result count changes with appropriate politeness', () => {
       fc.assert(
-        fc.property(
-          fc.integer({ min: 0, max: 1000 }),
-          (resultCount) => {
-            // Result count announcements should use polite level
-            // (not interrupting user's current activity)
-            const politenessLevel = 'polite';
-            expect(politenessLevel).toBe('polite');
-            
-            // Error messages should use assertive level
-            const errorPoliteness = 'assertive';
-            expect(errorPoliteness).toBe('assertive');
-            
-            return true;
-          }
-        ),
+        fc.property(fc.integer({ min: 0, max: 1000 }), (resultCount) => {
+          // Result count announcements should use polite level
+          // (not interrupting user's current activity)
+          const politenessLevel = 'polite';
+          expect(politenessLevel).toBe('polite');
+
+          // Error messages should use assertive level
+          const errorPoliteness = 'assertive';
+          expect(errorPoliteness).toBe('assertive');
+
+          return true;
+        }),
         { numRuns: 100 }
       );
     });
@@ -265,17 +273,18 @@ describe('Search Functionality Property-Based Tests', () => {
           fc.integer({ min: 0, max: 19 }), // Current focused index
           (numResults, currentIndex) => {
             const validIndex = Math.min(currentIndex, numResults - 1);
-            
+
             // ArrowDown should move to next result
-            const nextIndex = validIndex < numResults - 1 ? validIndex + 1 : validIndex;
+            const nextIndex =
+              validIndex < numResults - 1 ? validIndex + 1 : validIndex;
             expect(nextIndex).toBeGreaterThanOrEqual(validIndex);
             expect(nextIndex).toBeLessThan(numResults);
-            
+
             // ArrowUp should move to previous result
             const prevIndex = validIndex > 0 ? validIndex - 1 : -1; // -1 means back to search input
             expect(prevIndex).toBeLessThan(validIndex);
             expect(prevIndex).toBeGreaterThanOrEqual(-1);
-            
+
             return true;
           }
         ),
@@ -291,12 +300,12 @@ describe('Search Functionality Property-Based Tests', () => {
             // Home key should jump to first result (index 0)
             const homeIndex = 0;
             expect(homeIndex).toBe(0);
-            
+
             // End key should jump to last result
             const endIndex = numResults - 1;
             expect(endIndex).toBe(numResults - 1);
             expect(endIndex).toBeGreaterThanOrEqual(0);
-            
+
             return true;
           }
         ),
@@ -311,13 +320,13 @@ describe('Search Functionality Property-Based Tests', () => {
           fc.uuid(), // Conversation ID
           (focusedIndex, conversationId) => {
             const onResultSelect = vi.fn();
-            
+
             // Simulate Enter key press on focused result
             if (focusedIndex >= 0) {
               onResultSelect(conversationId);
               expect(onResultSelect).toHaveBeenCalledWith(conversationId);
             }
-            
+
             return true;
           }
         ),
@@ -327,21 +336,18 @@ describe('Search Functionality Property-Based Tests', () => {
 
     it('should handle Escape key to clear search', () => {
       fc.assert(
-        fc.property(
-          fc.string({ minLength: 1, maxLength: 50 }),
-          (query) => {
-            // Escape should clear the query
-            const clearedQuery = '';
-            expect(clearedQuery).toBe('');
-            expect(clearedQuery).not.toBe(query);
-            
-            // Focus should return to search input
-            const focusedIndex = -1;
-            expect(focusedIndex).toBe(-1);
-            
-            return true;
-          }
-        ),
+        fc.property(fc.string({ minLength: 1, maxLength: 50 }), (query) => {
+          // Escape should clear the query
+          const clearedQuery = '';
+          expect(clearedQuery).toBe('');
+          expect(clearedQuery).not.toBe(query);
+
+          // Focus should return to search input
+          const focusedIndex = -1;
+          expect(focusedIndex).toBe(-1);
+
+          return true;
+        }),
         { numRuns: 100 }
       );
     });

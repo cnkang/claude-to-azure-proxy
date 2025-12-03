@@ -1,9 +1,9 @@
-import { describe, it, expect, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import fc from 'fast-check';
+import { describe, expect, it, vi } from 'vitest';
+import { GlassButton } from '../GlassButton';
 import { GlassCard } from '../GlassCard';
 import { GlassSheetContent } from '../GlassSheet';
-import { GlassButton } from '../GlassButton';
 
 // Mock the theme hook to avoid provider complexity
 vi.mock('../../../contexts/ThemeContext', () => ({
@@ -39,20 +39,17 @@ describe('Modern CSS Features - Property-Based Tests', () => {
   describe('Property 36: Responsive Typography Uses clamp()', () => {
     it('should use clamp() for responsive sizing in GlassCard', () => {
       fc.assert(
-        fc.property(
-          fc.constantFrom('low', 'medium', 'high'),
-          (intensity) => {
-            const { container } = renderWithProviders(
-              <GlassCard intensity={intensity}>
-                <div>Content</div>
-              </GlassCard>
-            );
-            const card = container.firstChild as HTMLElement;
-            
-            // Verify that clamp() is used for responsive padding
-            return card.className.includes('clamp');
-          }
-        ),
+        fc.property(fc.constantFrom('low', 'medium', 'high'), (intensity) => {
+          const { container } = renderWithProviders(
+            <GlassCard intensity={intensity}>
+              <div>Content</div>
+            </GlassCard>
+          );
+          const card = container.firstChild as HTMLElement;
+
+          // Verify that clamp() is used for responsive padding
+          return card.className.includes('clamp');
+        }),
         { numRuns: 100 }
       );
     });
@@ -67,7 +64,7 @@ describe('Modern CSS Features - Property-Based Tests', () => {
               <GlassButton intensity={intensity}>{text}</GlassButton>
             );
             const button = container.firstChild as HTMLElement;
-            
+
             // Verify that clamp() is used for responsive padding
             return button.className.includes('clamp');
           }
@@ -81,20 +78,17 @@ describe('Modern CSS Features - Property-Based Tests', () => {
   describe('Property 37: Component Responsiveness Uses Container Queries', () => {
     it('should use container queries for responsive behavior in GlassCard', () => {
       fc.assert(
-        fc.property(
-          fc.constantFrom('low', 'medium', 'high'),
-          (intensity) => {
-            const { container } = renderWithProviders(
-              <GlassCard intensity={intensity}>
-                <div>Content</div>
-              </GlassCard>
-            );
-            const card = container.firstChild as HTMLElement;
-            
-            // Verify that @container is used for component-level responsiveness
-            return card.className.includes('@container');
-          }
-        ),
+        fc.property(fc.constantFrom('low', 'medium', 'high'), (intensity) => {
+          const { container } = renderWithProviders(
+            <GlassCard intensity={intensity}>
+              <div>Content</div>
+            </GlassCard>
+          );
+          const card = container.firstChild as HTMLElement;
+
+          // Verify that @container is used for component-level responsiveness
+          return card.className.includes('@container');
+        }),
         { numRuns: 100 }
       );
     });
@@ -104,39 +98,36 @@ describe('Modern CSS Features - Property-Based Tests', () => {
   describe('Property 38: Spacing Uses Logical Properties', () => {
     it('should use logical properties for padding in GlassCard', () => {
       fc.assert(
-        fc.property(
-          fc.constantFrom('low', 'medium', 'high'),
-          (intensity) => {
-            const { container } = renderWithProviders(
-              <GlassCard intensity={intensity}>
-                <div>Content</div>
-              </GlassCard>
-            );
-            const card = container.firstChild as HTMLElement;
-            
-            // Tailwind CSS 4.1 automatically uses logical properties
-            // Verify that padding classes are present (Tailwind handles the logical property conversion)
-            return card.className.includes('p-[clamp');
-          }
-        ),
+        fc.property(fc.constantFrom('low', 'medium', 'high'), (intensity) => {
+          const { container } = renderWithProviders(
+            <GlassCard intensity={intensity}>
+              <div>Content</div>
+            </GlassCard>
+          );
+          const card = container.firstChild as HTMLElement;
+
+          // Tailwind CSS 4.1 automatically uses logical properties
+          // Verify that padding classes are present (Tailwind handles the logical property conversion)
+          return card.className.includes('p-[clamp');
+        }),
         { numRuns: 100 }
       );
     });
 
     it('should use logical properties for padding in GlassButton', () => {
       fc.assert(
-        fc.property(
-          fc.constantFrom('low', 'medium', 'high'),
-          (intensity) => {
-            const { container } = renderWithProviders(
-              <GlassButton intensity={intensity}>Click</GlassButton>
-            );
-            const button = container.firstChild as HTMLElement;
-            
-            // Verify that padding classes use clamp (Tailwind handles logical properties)
-            return button.className.includes('px-[clamp') && button.className.includes('py-[clamp');
-          }
-        ),
+        fc.property(fc.constantFrom('low', 'medium', 'high'), (intensity) => {
+          const { container } = renderWithProviders(
+            <GlassButton intensity={intensity}>Click</GlassButton>
+          );
+          const button = container.firstChild as HTMLElement;
+
+          // Verify that padding classes use clamp (Tailwind handles logical properties)
+          return (
+            button.className.includes('px-[clamp') &&
+            button.className.includes('py-[clamp')
+          );
+        }),
         { numRuns: 100 }
       );
     });
@@ -149,7 +140,7 @@ describe('Modern CSS Features - Property-Based Tests', () => {
       // This test verifies the component is exported and configured correctly
       expect(GlassSheetContent).toBeDefined();
       expect(GlassSheetContent.displayName).toBe('GlassSheetContent');
-      
+
       // The component is configured with h-dvh in its className
       // This will be tested in integration tests with full Sheet context
     });
@@ -161,7 +152,7 @@ describe('Modern CSS Features - Property-Based Tests', () => {
       // Note: GlassSheetContent requires Dialog context from Radix UI
       // This test verifies the component is exported and configured correctly
       expect(GlassSheetContent).toBeDefined();
-      
+
       // The component is configured with flex and gap in its className
       // This will be tested in integration tests with full Sheet context
     });
@@ -171,48 +162,42 @@ describe('Modern CSS Features - Property-Based Tests', () => {
   describe('Glass Effect Consistency', () => {
     it('should apply correct backdrop-blur for all intensity levels in GlassCard', () => {
       fc.assert(
-        fc.property(
-          fc.constantFrom('low', 'medium', 'high'),
-          (intensity) => {
-            const { container } = renderWithProviders(
-              <GlassCard intensity={intensity}>
-                <div>Content</div>
-              </GlassCard>
-            );
-            const card = container.firstChild as HTMLElement;
-            
-            const expectedBlur = {
-              low: 'backdrop-blur-md',
-              medium: 'backdrop-blur-xl',
-              high: 'backdrop-blur-2xl',
-            };
-            
-            return card.className.includes(expectedBlur[intensity]);
-          }
-        ),
+        fc.property(fc.constantFrom('low', 'medium', 'high'), (intensity) => {
+          const { container } = renderWithProviders(
+            <GlassCard intensity={intensity}>
+              <div>Content</div>
+            </GlassCard>
+          );
+          const card = container.firstChild as HTMLElement;
+
+          const expectedBlur = {
+            low: 'backdrop-blur-md',
+            medium: 'backdrop-blur-xl',
+            high: 'backdrop-blur-2xl',
+          };
+
+          return card.className.includes(expectedBlur[intensity]);
+        }),
         { numRuns: 100 }
       );
     });
 
     it('should apply correct background opacity for all intensity levels in GlassButton', () => {
       fc.assert(
-        fc.property(
-          fc.constantFrom('low', 'medium', 'high'),
-          (intensity) => {
-            const { container } = renderWithProviders(
-              <GlassButton intensity={intensity}>Click</GlassButton>
-            );
-            const button = container.firstChild as HTMLElement;
-            
-            const expectedOpacity = {
-              low: 'bg-white/10',
-              medium: 'bg-white/40',
-              high: 'bg-white/70',
-            };
-            
-            return button.className.includes(expectedOpacity[intensity]);
-          }
-        ),
+        fc.property(fc.constantFrom('low', 'medium', 'high'), (intensity) => {
+          const { container } = renderWithProviders(
+            <GlassButton intensity={intensity}>Click</GlassButton>
+          );
+          const button = container.firstChild as HTMLElement;
+
+          const expectedOpacity = {
+            low: 'bg-white/10',
+            medium: 'bg-white/40',
+            high: 'bg-white/70',
+          };
+
+          return button.className.includes(expectedOpacity[intensity]);
+        }),
         { numRuns: 100 }
       );
     });
@@ -222,22 +207,19 @@ describe('Modern CSS Features - Property-Based Tests', () => {
   describe('Theme-Dependent Styling', () => {
     it('should include dark mode classes for all Glass components', () => {
       fc.assert(
-        fc.property(
-          fc.constantFrom('low', 'medium', 'high'),
-          (intensity) => {
-            const { container } = renderWithProviders(
-              <div className="dark">
-                <GlassCard intensity={intensity}>
-                  <div>Content</div>
-                </GlassCard>
-              </div>
-            );
-            const card = container.querySelector('[class*="dark:bg-black"]');
-            
-            // Verify dark mode classes are present
-            return card !== null;
-          }
-        ),
+        fc.property(fc.constantFrom('low', 'medium', 'high'), (intensity) => {
+          const { container } = renderWithProviders(
+            <div className="dark">
+              <GlassCard intensity={intensity}>
+                <div>Content</div>
+              </GlassCard>
+            </div>
+          );
+          const card = container.querySelector('[class*="dark:bg-black"]');
+
+          // Verify dark mode classes are present
+          return card !== null;
+        }),
         { numRuns: 100 }
       );
     });
@@ -257,7 +239,7 @@ describe('Modern CSS Features - Property-Based Tests', () => {
               </GlassButton>
             );
             const button = container.firstChild as HTMLElement;
-            
+
             // Verify ARIA label is preserved
             return button.getAttribute('aria-label') === label;
           }
@@ -268,21 +250,18 @@ describe('Modern CSS Features - Property-Based Tests', () => {
 
     it('should maintain focus indicators with proper contrast', () => {
       fc.assert(
-        fc.property(
-          fc.constantFrom('low', 'medium', 'high'),
-          (intensity) => {
-            const { container } = renderWithProviders(
-              <GlassButton intensity={intensity}>Click</GlassButton>
-            );
-            const button = container.firstChild as HTMLElement;
-            
-            // Verify focus indicator classes are present (WCAG AAA: 3:1 contrast)
-            return (
-              button.className.includes('focus-visible:ring-2') &&
-              button.className.includes('focus-visible:ring-blue-500')
-            );
-          }
-        ),
+        fc.property(fc.constantFrom('low', 'medium', 'high'), (intensity) => {
+          const { container } = renderWithProviders(
+            <GlassButton intensity={intensity}>Click</GlassButton>
+          );
+          const button = container.firstChild as HTMLElement;
+
+          // Verify focus indicator classes are present (WCAG AAA: 3:1 contrast)
+          return (
+            button.className.includes('focus-visible:ring-2') &&
+            button.className.includes('focus-visible:ring-blue-500')
+          );
+        }),
         { numRuns: 100 }
       );
     });

@@ -1,6 +1,6 @@
-import { describe, it } from 'vitest';
 import { render } from '@testing-library/react';
 import * as fc from 'fast-check';
+import { describe, it } from 'vitest';
 import { Glass } from './Glass';
 
 describe('Glass Component - Property-Based Tests', () => {
@@ -8,42 +8,39 @@ describe('Glass Component - Property-Based Tests', () => {
   // Validates: Requirements 2.1
   it('Glass component applies correct styling for any intensity level', () => {
     fc.assert(
-      fc.property(
-        fc.constantFrom('low', 'medium', 'high'),
-        (intensity) => {
-          const { container } = render(
-            <Glass intensity={intensity as 'low' | 'medium' | 'high'}>
-              Test Content
-            </Glass>
-          );
-          const element = container.firstChild as HTMLElement;
+      fc.property(fc.constantFrom('low', 'medium', 'high'), (intensity) => {
+        const { container } = render(
+          <Glass intensity={intensity as 'low' | 'medium' | 'high'}>
+            Test Content
+          </Glass>
+        );
+        const element = container.firstChild as HTMLElement;
 
-          // Define expected classes for each intensity level
-          const expectedClasses: Record<string, string[]> = {
-            low: ['bg-white/10', 'dark:bg-black/10', 'backdrop-blur-md'],
-            medium: ['bg-white/40', 'dark:bg-black/40', 'backdrop-blur-xl'],
-            high: ['bg-white/70', 'dark:bg-black/70', 'backdrop-blur-2xl'],
-          };
+        // Define expected classes for each intensity level
+        const expectedClasses: Record<string, string[]> = {
+          low: ['bg-white/10', 'dark:bg-black/10', 'backdrop-blur-md'],
+          medium: ['bg-white/40', 'dark:bg-black/40', 'backdrop-blur-xl'],
+          high: ['bg-white/70', 'dark:bg-black/70', 'backdrop-blur-2xl'],
+        };
 
-          // Verify that all expected classes for the intensity level are present
-          const classes = expectedClasses[intensity];
-          const elementClasses = element.className;
+        // Verify that all expected classes for the intensity level are present
+        const classes = expectedClasses[intensity];
+        const elementClasses = element.className;
 
-          // Check each expected class is present in the element's className
-          const allClassesPresent = classes.every((cls) => {
-            // Handle Tailwind classes that might be transformed
-            // For classes with slashes, check if they're present in any form
-            if (cls.includes('/')) {
-              // Extract the base class and check if it's present
-              const baseClass = cls.split('/')[0];
-              return elementClasses.includes(baseClass);
-            }
-            return elementClasses.includes(cls);
-          });
+        // Check each expected class is present in the element's className
+        const allClassesPresent = classes.every((cls) => {
+          // Handle Tailwind classes that might be transformed
+          // For classes with slashes, check if they're present in any form
+          if (cls.includes('/')) {
+            // Extract the base class and check if it's present
+            const baseClass = cls.split('/')[0];
+            return elementClasses.includes(baseClass);
+          }
+          return elementClasses.includes(cls);
+        });
 
-          return allClassesPresent;
-        }
-      ),
+        return allClassesPresent;
+      }),
       { numRuns: 100 }
     );
   });
@@ -86,7 +83,14 @@ describe('Glass Component - Property-Based Tests', () => {
   it('Glass component renders with any valid element type', () => {
     fc.assert(
       fc.property(
-        fc.constantFrom('div', 'section', 'article', 'aside', 'header', 'footer'),
+        fc.constantFrom(
+          'div',
+          'section',
+          'article',
+          'aside',
+          'header',
+          'footer'
+        ),
         fc.constantFrom('low', 'medium', 'high'),
         (elementType, intensity) => {
           const { container } = render(
@@ -176,7 +180,8 @@ describe('Glass Component - Property-Based Tests', () => {
 
           // Verify light mode classes are present
           const hasLightBgClasses = lightModeClasses.includes('bg-white');
-          const hasLightBorderClasses = !border || lightModeClasses.includes('border-white');
+          const hasLightBorderClasses =
+            !border || lightModeClasses.includes('border-white');
 
           // Simulate dark mode by adding dark class to document root
           document.documentElement.classList.add('dark');
@@ -196,7 +201,8 @@ describe('Glass Component - Property-Based Tests', () => {
 
           // Verify dark mode classes are present
           const hasDarkBgClasses = darkModeClasses.includes('dark:bg-black');
-          const hasDarkBorderClasses = !border || darkModeClasses.includes('dark:border-white');
+          const hasDarkBorderClasses =
+            !border || darkModeClasses.includes('dark:border-white');
 
           // Clean up
           document.documentElement.classList.remove('dark');

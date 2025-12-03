@@ -1,7 +1,7 @@
+import { useBackdropFilterSupport } from '@/hooks/useBackdropFilterSupport';
+import { cn } from '@/lib/utils';
 import * as React from 'react';
 import { Button, type ButtonProps } from './button';
-import { cn } from '@/lib/utils';
-import { useBackdropFilterSupport } from '@/hooks/useBackdropFilterSupport';
 
 type GlassIntensity = 'low' | 'medium' | 'high';
 
@@ -12,7 +12,7 @@ export interface GlassButtonProps extends ButtonProps {
 
 /**
  * GlassButton component - A Button component with liquid glass effects
- * 
+ *
  * Features:
  * - Configurable glass intensity (low/medium/high)
  * - Backdrop blur effects with fallbacks for unsupported browsers
@@ -21,21 +21,36 @@ export interface GlassButtonProps extends ButtonProps {
  * - Modern CSS with logical properties
  * - Maintains all shadcn/ui Button functionality
  */
-export const GlassButton = React.forwardRef<HTMLButtonElement, GlassButtonProps>(
-  ({ className, intensity = 'medium', border = true, children, variant = 'default', ...props }, ref) => {
+export const GlassButton = React.forwardRef<
+  HTMLButtonElement,
+  GlassButtonProps
+>(
+  (
+    {
+      className,
+      intensity = 'medium',
+      border = true,
+      children,
+      variant = 'default',
+      ...props
+    },
+    ref
+  ) => {
     const supportsBackdropFilter = useBackdropFilterSupport();
 
     // Glass effect styles with backdrop-filter
     const glassStyles: Record<GlassIntensity, string> = {
       low: 'bg-white/10 dark:bg-black/10 backdrop-blur-md hover:bg-white/20 dark:hover:bg-black/20',
-      medium: 'bg-white/40 dark:bg-black/40 backdrop-blur-xl hover:bg-white/50 dark:hover:bg-black/50',
+      medium:
+        'bg-white/40 dark:bg-black/40 backdrop-blur-xl hover:bg-white/50 dark:hover:bg-black/50',
       high: 'bg-white/70 dark:bg-black/70 backdrop-blur-2xl hover:bg-white/80 dark:hover:bg-black/80',
     };
 
     // Fallback styles for browsers without backdrop-filter support
     const fallbackStyles: Record<GlassIntensity, string> = {
       low: 'bg-white/80 dark:bg-black/80 hover:bg-white/85 dark:hover:bg-black/85',
-      medium: 'bg-white/90 dark:bg-black/90 hover:bg-white/95 dark:hover:bg-black/95',
+      medium:
+        'bg-white/90 dark:bg-black/90 hover:bg-white/95 dark:hover:bg-black/95',
       high: 'bg-white/95 dark:bg-black/95 hover:bg-white/100 dark:hover:bg-black/100',
     };
 

@@ -4,10 +4,10 @@
  * Tests for Sidebar component functionality, responsive behavior, and accessibility
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { Sidebar } from './Sidebar.js';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Conversation } from '../../types/index.js';
+import { Sidebar } from './Sidebar.js';
 
 const baseConversation: Conversation = {
   id: 'conv-1',
@@ -94,33 +94,52 @@ vi.mock('../../services/conversations.js', () => ({
 }));
 
 vi.mock('../search/ConversationSearch.js', () => ({
-  ConversationSearch: ({ onResultSelect }: { onResultSelect: (id: string) => void }) => (
+  ConversationSearch: ({
+    onResultSelect,
+  }: { onResultSelect: (id: string) => void }) => (
     <div data-testid="conversation-search-mock">
-      <button onClick={() => onResultSelect('conv-1')}>Search Result</button>
+      <button type="button" onClick={() => onResultSelect('conv-1')}>
+        Search Result
+      </button>
     </div>
   ),
 }));
 
 vi.mock('../common/DropdownMenu.js', () => ({
-  DropdownMenu: ({ isOpen, items }: { isOpen: boolean; items: Array<{ id: string; label: string; onClick: () => void }> }) => (
+  DropdownMenu: ({
+    isOpen,
+    items,
+  }: {
+    isOpen: boolean;
+    items: Array<{ id: string; label: string; onClick: () => void }>;
+  }) =>
     isOpen ? (
       <div data-testid="dropdown-menu">
-        {items.map(item => (
-          <button key={item.id} data-testid={`dropdown-item-${item.id}`} onClick={item.onClick}>
+        {items.map((item) => (
+          <button
+            key={item.id}
+            data-testid={`dropdown-item-${item.id}`}
+            type="button"
+            onClick={item.onClick}
+          >
             {item.label}
           </button>
         ))}
       </div>
-    ) : null
-  ),
+    ) : null,
 }));
 
 // Mock shadcn/ui alert-dialog components used by ConfirmDialog
 vi.mock('../ui/alert-dialog.js', () => ({
-  AlertDialog: ({ open, children }: { open: boolean; children: React.ReactNode }) => (
-    open ? <div data-testid="alert-dialog-root">{children}</div> : null
-  ),
-  AlertDialogContent: ({ children, ...props }: { children: React.ReactNode; [key: string]: unknown }) => (
+  AlertDialog: ({
+    open,
+    children,
+  }: { open: boolean; children: React.ReactNode }) =>
+    open ? <div data-testid="alert-dialog-root">{children}</div> : null,
+  AlertDialogContent: ({
+    children,
+    ...props
+  }: { children: React.ReactNode; [key: string]: unknown }) => (
     <div {...props}>{children}</div>
   ),
   AlertDialogHeader: ({ children }: { children: React.ReactNode }) => (
@@ -135,11 +154,31 @@ vi.mock('../ui/alert-dialog.js', () => ({
   AlertDialogFooter: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="alert-dialog-footer">{children}</div>
   ),
-  AlertDialogAction: ({ children, onClick, ...props }: { children: React.ReactNode; onClick: () => void; [key: string]: unknown }) => (
-    <button onClick={onClick} {...props}>{children}</button>
+  AlertDialogAction: ({
+    children,
+    onClick,
+    ...props
+  }: {
+    children: React.ReactNode;
+    onClick: () => void;
+    [key: string]: unknown;
+  }) => (
+    <button type="button" onClick={onClick} {...props}>
+      {children}
+    </button>
   ),
-  AlertDialogCancel: ({ children, onClick, ...props }: { children: React.ReactNode; onClick: () => void; [key: string]: unknown }) => (
-    <button onClick={onClick} {...props}>{children}</button>
+  AlertDialogCancel: ({
+    children,
+    onClick,
+    ...props
+  }: {
+    children: React.ReactNode;
+    onClick: () => void;
+    [key: string]: unknown;
+  }) => (
+    <button type="button" onClick={onClick} {...props}>
+      {children}
+    </button>
   ),
 }));
 
@@ -150,7 +189,14 @@ describe('Sidebar Component', () => {
 
   describe('Rendering', () => {
     it('should render sidebar with dialog role (Sheet component) on mobile', () => {
-      render(<Sidebar isOpen={true} isMobile={true} isDesktop={false} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={true}
+          isDesktop={false}
+          onClose={() => {}}
+        />
+      );
 
       // Sheet component uses role="dialog" by default
       const sidebar = screen.getByRole('dialog');
@@ -159,7 +205,15 @@ describe('Sidebar Component', () => {
     });
 
     it('should render sidebar with navigation role (static aside) on desktop', () => {
-      render(<Sidebar isOpen={true} isMobile={false} isTablet={false} isDesktop={true} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={false}
+          isTablet={false}
+          isDesktop={true}
+          onClose={() => {}}
+        />
+      );
 
       // Desktop sidebar uses role="navigation"
       const sidebar = screen.getByRole('navigation');
@@ -168,45 +222,98 @@ describe('Sidebar Component', () => {
     });
 
     it('should have correct data-testid on mobile', () => {
-      render(<Sidebar isOpen={true} isMobile={true} isDesktop={false} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={true}
+          isDesktop={false}
+          onClose={() => {}}
+        />
+      );
 
       expect(screen.getByTestId('sidebar')).toBeInTheDocument();
     });
 
     it('should have correct data-testid on desktop', () => {
-      render(<Sidebar isOpen={true} isMobile={false} isTablet={false} isDesktop={true} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={false}
+          isTablet={false}
+          isDesktop={true}
+          onClose={() => {}}
+        />
+      );
 
       expect(screen.getByTestId('sidebar')).toBeInTheDocument();
     });
 
     it('should render new conversation button on mobile', () => {
-      render(<Sidebar isOpen={true} isMobile={true} isDesktop={false} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={true}
+          isDesktop={false}
+          onClose={() => {}}
+        />
+      );
 
       const newButton = screen.getByTestId('new-conversation-button');
       expect(newButton).toBeInTheDocument();
     });
 
     it('should render new conversation button on desktop', () => {
-      render(<Sidebar isOpen={true} isMobile={false} isTablet={false} isDesktop={true} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={false}
+          isTablet={false}
+          isDesktop={true}
+          onClose={() => {}}
+        />
+      );
 
       const newButton = screen.getByTestId('new-conversation-button');
       expect(newButton).toBeInTheDocument();
     });
 
     it('should render conversation search', () => {
-      render(<Sidebar isOpen={true} isMobile={true} isDesktop={false} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={true}
+          isDesktop={false}
+          onClose={() => {}}
+        />
+      );
 
-      expect(screen.getByTestId('conversation-search-mock')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('conversation-search-mock')
+      ).toBeInTheDocument();
     });
 
     it('should render conversations list', () => {
-      render(<Sidebar isOpen={true} isMobile={true} isDesktop={false} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={true}
+          isDesktop={false}
+          onClose={() => {}}
+        />
+      );
 
       expect(screen.getByTestId('conversations-list')).toBeInTheDocument();
     });
 
     it('should render session information in footer', () => {
-      render(<Sidebar isOpen={true} isMobile={true} isDesktop={false} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={true}
+          isDesktop={false}
+          onClose={() => {}}
+        />
+      );
 
       expect(screen.getByText('sidebar.session')).toBeInTheDocument();
       // Session ID is truncated to first 8 characters with "..."
@@ -216,28 +323,58 @@ describe('Sidebar Component', () => {
 
   describe('Responsive Behavior', () => {
     it('should apply correct width (w-80 = 320px) on mobile when open', () => {
-      render(<Sidebar isOpen={true} isMobile={true} isDesktop={false} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={true}
+          isDesktop={false}
+          onClose={() => {}}
+        />
+      );
 
       const sidebar = screen.getByTestId('sidebar');
       expect(sidebar.className).toContain('w-80');
     });
 
     it('should apply correct width (w-80 = 320px) on desktop when open', () => {
-      render(<Sidebar isOpen={true} isMobile={false} isTablet={false} isDesktop={true} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={false}
+          isTablet={false}
+          isDesktop={true}
+          onClose={() => {}}
+        />
+      );
 
       const sidebar = screen.getByTestId('sidebar');
       expect(sidebar.className).toContain('w-80');
     });
 
     it('should apply w-0 on desktop when closed', () => {
-      render(<Sidebar isOpen={false} isMobile={false} isTablet={false} isDesktop={true} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={false}
+          isMobile={false}
+          isTablet={false}
+          isDesktop={true}
+          onClose={() => {}}
+        />
+      );
 
       const sidebar = screen.getByTestId('sidebar');
       expect(sidebar.className).toContain('w-0');
     });
 
     it('should be visible when isOpen is true on mobile', () => {
-      render(<Sidebar isOpen={true} isMobile={true} isDesktop={false} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={true}
+          isDesktop={false}
+          onClose={() => {}}
+        />
+      );
 
       // Sheet component renders content when open
       const sidebar = screen.getByTestId('sidebar');
@@ -245,7 +382,15 @@ describe('Sidebar Component', () => {
     });
 
     it('should be visible when isOpen is true on desktop', () => {
-      render(<Sidebar isOpen={true} isMobile={false} isTablet={false} isDesktop={true} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={false}
+          isTablet={false}
+          isDesktop={true}
+          onClose={() => {}}
+        />
+      );
 
       // Desktop sidebar renders as aside element
       const sidebar = screen.getByTestId('sidebar');
@@ -253,7 +398,14 @@ describe('Sidebar Component', () => {
     });
 
     it('should be hidden when isOpen is false on mobile', () => {
-      render(<Sidebar isOpen={false} isMobile={true} isDesktop={false} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={false}
+          isMobile={true}
+          isDesktop={false}
+          onClose={() => {}}
+        />
+      );
 
       // Sheet component doesn't render content when closed
       const sidebar = screen.queryByTestId('sidebar');
@@ -261,7 +413,15 @@ describe('Sidebar Component', () => {
     });
 
     it('should render but be collapsed (w-0) when isOpen is false on desktop', () => {
-      render(<Sidebar isOpen={false} isMobile={false} isTablet={false} isDesktop={true} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={false}
+          isMobile={false}
+          isTablet={false}
+          isDesktop={true}
+          onClose={() => {}}
+        />
+      );
 
       // Desktop sidebar still renders but with w-0
       const sidebar = screen.getByTestId('sidebar');
@@ -279,7 +439,14 @@ describe('Sidebar Component', () => {
     it('should not render close button on desktop when isMobile is explicitly false', () => {
       // Close button should NOT be rendered on desktop (isMobile=false, isTablet=false)
       // The component checks: (isMobile || isTablet)
-      render(<Sidebar isOpen={true} isMobile={false} isTablet={false} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={false}
+          isTablet={false}
+          onClose={() => {}}
+        />
+      );
 
       // Close button should not be in the document on desktop
       const closeButton = screen.queryByLabelText('sidebar.close');
@@ -299,7 +466,14 @@ describe('Sidebar Component', () => {
 
   describe('Glass Component Styling', () => {
     it('should apply GlassSheetContent with high intensity on mobile', () => {
-      render(<Sidebar isOpen={true} isMobile={true} isDesktop={false} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={true}
+          isDesktop={false}
+          onClose={() => {}}
+        />
+      );
 
       // Verify sidebar renders with proper structure
       const sidebar = screen.getByTestId('sidebar');
@@ -308,7 +482,15 @@ describe('Sidebar Component', () => {
     });
 
     it('should apply GlassSheetContent with high intensity on desktop', () => {
-      render(<Sidebar isOpen={true} isMobile={false} isTablet={false} isDesktop={true} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={false}
+          isTablet={false}
+          isDesktop={true}
+          onClose={() => {}}
+        />
+      );
 
       // Verify sidebar renders with proper structure
       const sidebar = screen.getByTestId('sidebar');
@@ -317,7 +499,15 @@ describe('Sidebar Component', () => {
     });
 
     it('should have border styling on desktop', () => {
-      render(<Sidebar isOpen={true} isMobile={false} isTablet={false} isDesktop={true} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={false}
+          isTablet={false}
+          isDesktop={true}
+          onClose={() => {}}
+        />
+      );
 
       // Verify sidebar renders with proper structure and border-r class
       const sidebar = screen.getByTestId('sidebar');
@@ -328,44 +518,91 @@ describe('Sidebar Component', () => {
 
   describe('Conversation List', () => {
     it('should render conversation items', () => {
-      render(<Sidebar isOpen={true} isMobile={true} isDesktop={false} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={true}
+          isDesktop={false}
+          onClose={() => {}}
+        />
+      );
 
-      expect(screen.getByTestId(`conversation-item-${baseConversation.id}`)).toBeInTheDocument();
+      expect(
+        screen.getByTestId(`conversation-item-${baseConversation.id}`)
+      ).toBeInTheDocument();
     });
 
     it('should display conversation title', () => {
-      render(<Sidebar isOpen={true} isMobile={true} isDesktop={false} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={true}
+          isDesktop={false}
+          onClose={() => {}}
+        />
+      );
 
-      expect(screen.getByTestId(`conversation-title-${baseConversation.id}`)).toBeInTheDocument();
+      expect(
+        screen.getByTestId(`conversation-title-${baseConversation.id}`)
+      ).toBeInTheDocument();
       expect(screen.getByText(baseConversation.title)).toBeInTheDocument();
     });
 
     it('should display conversation model', () => {
-      render(<Sidebar isOpen={true} isMobile={true} isDesktop={false} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={true}
+          isDesktop={false}
+          onClose={() => {}}
+        />
+      );
 
-      expect(screen.getByText(baseConversation.selectedModel)).toBeInTheDocument();
+      expect(
+        screen.getByText(baseConversation.selectedModel)
+      ).toBeInTheDocument();
     });
 
     it('should display relative time', () => {
-      render(<Sidebar isOpen={true} isMobile={true} isDesktop={false} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={true}
+          isDesktop={false}
+          onClose={() => {}}
+        />
+      );
 
       expect(screen.getByText('just now')).toBeInTheDocument();
     });
 
     it('should call setActiveConversation when conversation is clicked', () => {
-      render(<Sidebar isOpen={true} isMobile={true} isDesktop={false} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={true}
+          isDesktop={false}
+          onClose={() => {}}
+        />
+      );
 
-      const conversationButton = screen.getByTestId(`conversation-button-${baseConversation.id}`);
+      const conversationButton = screen.getByTestId(
+        `conversation-button-${baseConversation.id}`
+      );
       fireEvent.click(conversationButton);
 
-      expect(mockSetActiveConversation).toHaveBeenCalledWith(baseConversation.id);
+      expect(mockSetActiveConversation).toHaveBeenCalledWith(
+        baseConversation.id
+      );
     });
 
     it('should close sidebar on mobile after conversation selection', () => {
       const onClose = vi.fn();
       render(<Sidebar isOpen={true} isMobile={true} onClose={onClose} />);
 
-      const conversationButton = screen.getByTestId(`conversation-button-${baseConversation.id}`);
+      const conversationButton = screen.getByTestId(
+        `conversation-button-${baseConversation.id}`
+      );
       fireEvent.click(conversationButton);
 
       expect(onClose).toHaveBeenCalledTimes(1);
@@ -374,25 +611,52 @@ describe('Sidebar Component', () => {
 
   describe('Conversation Options Menu', () => {
     it('should render options button for each conversation', () => {
-      render(<Sidebar isOpen={true} isMobile={true} isDesktop={false} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={true}
+          isDesktop={false}
+          onClose={() => {}}
+        />
+      );
 
-      const optionsButton = screen.getByTestId(`conversation-options-${baseConversation.id}`);
+      const optionsButton = screen.getByTestId(
+        `conversation-options-${baseConversation.id}`
+      );
       expect(optionsButton).toBeInTheDocument();
     });
 
     it('should open dropdown menu when options button is clicked', () => {
-      render(<Sidebar isOpen={true} isMobile={true} isDesktop={false} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={true}
+          isDesktop={false}
+          onClose={() => {}}
+        />
+      );
 
-      const optionsButton = screen.getByTestId(`conversation-options-${baseConversation.id}`);
+      const optionsButton = screen.getByTestId(
+        `conversation-options-${baseConversation.id}`
+      );
       fireEvent.click(optionsButton);
 
       expect(screen.getByTestId('dropdown-menu')).toBeInTheDocument();
     });
 
     it('should have rename and delete options in menu', () => {
-      render(<Sidebar isOpen={true} isMobile={true} isDesktop={false} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={true}
+          isDesktop={false}
+          onClose={() => {}}
+        />
+      );
 
-      const optionsButton = screen.getByTestId(`conversation-options-${baseConversation.id}`);
+      const optionsButton = screen.getByTestId(
+        `conversation-options-${baseConversation.id}`
+      );
       fireEvent.click(optionsButton);
 
       expect(screen.getByTestId('dropdown-item-rename')).toBeInTheDocument();
@@ -403,7 +667,14 @@ describe('Sidebar Component', () => {
   describe('Keyboard Navigation', () => {
     it('should close sidebar on Escape key on mobile', () => {
       const onClose = vi.fn();
-      render(<Sidebar isOpen={true} isMobile={true} isDesktop={false} onClose={onClose} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={true}
+          isDesktop={false}
+          onClose={onClose}
+        />
+      );
 
       // Sheet component handles Escape key internally
       fireEvent.keyDown(document, { key: 'Escape' });
@@ -414,7 +685,15 @@ describe('Sidebar Component', () => {
 
     it('should close sidebar on Escape key on desktop', () => {
       const onClose = vi.fn();
-      render(<Sidebar isOpen={true} isMobile={false} isTablet={false} isDesktop={true} onClose={onClose} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={false}
+          isTablet={false}
+          isDesktop={true}
+          onClose={onClose}
+        />
+      );
 
       // Desktop sidebar handles Escape key
       fireEvent.keyDown(document, { key: 'Escape' });
@@ -424,7 +703,14 @@ describe('Sidebar Component', () => {
 
     it('should not close sidebar on Escape when closed', () => {
       const onClose = vi.fn();
-      render(<Sidebar isOpen={false} isMobile={true} isDesktop={false} onClose={onClose} />);
+      render(
+        <Sidebar
+          isOpen={false}
+          isMobile={true}
+          isDesktop={false}
+          onClose={onClose}
+        />
+      );
 
       fireEvent.keyDown(document, { key: 'Escape' });
 
@@ -432,16 +718,32 @@ describe('Sidebar Component', () => {
     });
 
     it('should have proper ARIA attributes for listbox', () => {
-      render(<Sidebar isOpen={true} isMobile={true} isDesktop={false} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={true}
+          isDesktop={false}
+          onClose={() => {}}
+        />
+      );
 
       const listbox = screen.getByRole('listbox');
       expect(listbox).toHaveAttribute('aria-label', 'sidebar.conversations');
     });
 
     it('should have proper ARIA attributes for conversation options', () => {
-      render(<Sidebar isOpen={true} isMobile={true} isDesktop={false} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={true}
+          isDesktop={false}
+          onClose={() => {}}
+        />
+      );
 
-      const conversationButton = screen.getByTestId(`conversation-button-${baseConversation.id}`);
+      const conversationButton = screen.getByTestId(
+        `conversation-button-${baseConversation.id}`
+      );
       expect(conversationButton).toHaveAttribute('role', 'option');
       expect(conversationButton).toHaveAttribute('aria-selected');
     });
@@ -449,7 +751,14 @@ describe('Sidebar Component', () => {
 
   describe('Accessibility', () => {
     it('should have proper aria-label on mobile (Sheet)', () => {
-      render(<Sidebar isOpen={true} isMobile={true} isDesktop={false} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={true}
+          isDesktop={false}
+          onClose={() => {}}
+        />
+      );
 
       // Sheet component uses role="dialog" with aria-labelledby
       const sidebar = screen.getByRole('dialog');
@@ -457,7 +766,15 @@ describe('Sidebar Component', () => {
     });
 
     it('should have proper aria-label on desktop (aside)', () => {
-      render(<Sidebar isOpen={true} isMobile={false} isTablet={false} isDesktop={true} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={false}
+          isTablet={false}
+          isDesktop={true}
+          onClose={() => {}}
+        />
+      );
 
       // Desktop sidebar uses role="navigation" with aria-label
       const sidebar = screen.getByRole('navigation');
@@ -465,7 +782,14 @@ describe('Sidebar Component', () => {
     });
 
     it('should not render content when closed on mobile', () => {
-      render(<Sidebar isOpen={false} isMobile={true} isDesktop={false} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={false}
+          isMobile={true}
+          isDesktop={false}
+          onClose={() => {}}
+        />
+      );
 
       // Sheet component doesn't render content when closed
       const sidebar = screen.queryByTestId('sidebar');
@@ -473,7 +797,15 @@ describe('Sidebar Component', () => {
     });
 
     it('should render but be collapsed when closed on desktop', () => {
-      render(<Sidebar isOpen={false} isMobile={false} isTablet={false} isDesktop={true} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={false}
+          isMobile={false}
+          isTablet={false}
+          isDesktop={true}
+          onClose={() => {}}
+        />
+      );
 
       // Desktop sidebar renders but with w-0
       const sidebar = screen.getByTestId('sidebar');
@@ -482,18 +814,36 @@ describe('Sidebar Component', () => {
     });
 
     it('should render content when open', () => {
-      render(<Sidebar isOpen={true} isMobile={true} isDesktop={false} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={true}
+          isDesktop={false}
+          onClose={() => {}}
+        />
+      );
 
       const sidebar = screen.getByTestId('sidebar');
       expect(sidebar).toBeInTheDocument();
     });
 
     it('should have proper button types', () => {
-      render(<Sidebar isOpen={true} isMobile={true} isDesktop={false} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={true}
+          isDesktop={false}
+          onClose={() => {}}
+        />
+      );
 
       // Get only the actual Sidebar buttons (not mocked components)
-      const newConversationButton = screen.getByTestId('new-conversation-button');
-      const conversationButton = screen.getByTestId('conversation-button-conv-1');
+      const newConversationButton = screen.getByTestId(
+        'new-conversation-button'
+      );
+      const conversationButton = screen.getByTestId(
+        'conversation-button-conv-1'
+      );
       const optionsButton = screen.getByTestId('conversation-options-conv-1');
 
       expect(newConversationButton).toHaveAttribute('type', 'button');
@@ -504,14 +854,31 @@ describe('Sidebar Component', () => {
 
   describe('New Conversation', () => {
     it('should have proper aria-label', () => {
-      render(<Sidebar isOpen={true} isMobile={true} isDesktop={false} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={true}
+          isDesktop={false}
+          onClose={() => {}}
+        />
+      );
 
       const newButton = screen.getByTestId('new-conversation-button');
-      expect(newButton).toHaveAttribute('aria-label', 'sidebar.newConversation');
+      expect(newButton).toHaveAttribute(
+        'aria-label',
+        'sidebar.newConversation'
+      );
     });
 
     it('should show loading state when creating conversation', async () => {
-      render(<Sidebar isOpen={true} isMobile={true} isDesktop={false} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={true}
+          isDesktop={false}
+          onClose={() => {}}
+        />
+      );
 
       const newButton = screen.getByTestId('new-conversation-button');
       fireEvent.click(newButton);
@@ -523,7 +890,14 @@ describe('Sidebar Component', () => {
     });
 
     it('should have aria-busy attribute when creating', async () => {
-      render(<Sidebar isOpen={true} isMobile={true} isDesktop={false} onClose={() => {}} />);
+      render(
+        <Sidebar
+          isOpen={true}
+          isMobile={true}
+          isDesktop={false}
+          onClose={() => {}}
+        />
+      );
 
       const newButton = screen.getByTestId('new-conversation-button');
       fireEvent.click(newButton);

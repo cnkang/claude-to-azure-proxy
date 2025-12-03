@@ -9,16 +9,16 @@
 
 import React, { useState, memo, useEffect } from 'react';
 import {
-  useGlobalPerformanceMonitoring,
   type PerformanceMetrics,
+  useGlobalPerformanceMonitoring,
 } from '../../hooks/usePerformanceMonitoring.js';
-import { getMemoryUsage } from '../../utils/performance.js';
 import { indexedDBOptimizer } from '../../services/indexeddb-optimization.js';
 import {
-  getPerformanceMetrics,
-  OperationType,
   type MetricStats,
+  OperationType,
+  getPerformanceMetrics,
 } from '../../utils/performance-metrics.js';
+import { getMemoryUsage } from '../../utils/performance.js';
 import { Glass, cn } from '../ui/Glass.js';
 
 interface IndexedDbStats {
@@ -46,12 +46,15 @@ const MetricsDisplay = memo<{
   unit?: string;
   status?: 'good' | 'warning' | 'critical';
 }>(({ title, value, unit = '', status = 'good' }) => (
-  <div className={cn(
-    "p-2 rounded-lg text-center border",
-    status === 'good' && "bg-green-500/20 border-green-500/30 text-green-100",
-    status === 'warning' && "bg-amber-500/20 border-amber-500/30 text-amber-100",
-    status === 'critical' && "bg-red-500/20 border-red-500/30 text-red-100"
-  )}>
+  <div
+    className={cn(
+      'p-2 rounded-lg text-center border',
+      status === 'good' && 'bg-green-500/20 border-green-500/30 text-green-100',
+      status === 'warning' &&
+        'bg-amber-500/20 border-amber-500/30 text-amber-100',
+      status === 'critical' && 'bg-red-500/20 border-red-500/30 text-red-100'
+    )}
+  >
     <div className="text-[10px] opacity-80 mb-0.5">{title}</div>
     <div className="text-xs font-bold">
       {value}
@@ -69,20 +72,26 @@ const ComponentPerformanceList = memo<{
   metrics: Map<string, PerformanceMetrics>;
 }>(({ metrics }) => (
   <div className="space-y-2">
-    <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider">Component Performance</h4>
+    <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider">
+      Component Performance
+    </h4>
     <div className="space-y-1 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
       {Array.from(metrics.entries()).map(([name, metric]) => (
         <div key={name} className="py-1 border-b border-gray-700 last:border-0">
           <div className="text-xs font-bold mb-0.5">{name}</div>
           <div className="flex items-center gap-3 text-[10px] opacity-80">
             <span>Renders: {metric.renderCount}</span>
-            <span className={cn(metric.averageRenderTime > 16 ? "text-amber-400" : "text-green-400")}>
+            <span
+              className={cn(
+                metric.averageRenderTime > 16
+                  ? 'text-amber-400'
+                  : 'text-green-400'
+              )}
+            >
               Avg: {metric.averageRenderTime.toFixed(2)}ms
             </span>
             {metric.slowRenders > 0 && (
-              <span className="text-red-400">
-                Slow: {metric.slowRenders}
-              </span>
+              <span className="text-red-400">Slow: {metric.slowRenders}</span>
             )}
           </div>
         </div>
@@ -103,9 +112,17 @@ const MemoryChart = memo<{
 
   return (
     <div className="space-y-2">
-      <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider">Memory Usage History</h4>
+      <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider">
+        Memory Usage History
+      </h4>
       <div className="relative h-[60px] w-full bg-gray-900/50 rounded border border-gray-700">
-        <svg width="100%" height="100%" viewBox="0 0 200 60" preserveAspectRatio="none">
+        <svg
+          width="100%"
+          height="100%"
+          viewBox="0 0 200 60"
+          preserveAspectRatio="none"
+        >
+          <title>Memory usage history</title>
           <polyline
             points={memoryHistory
               .map(
@@ -193,19 +210,23 @@ const PersistenceMetrics = memo(() => {
             return null;
           }
 
-          const target = {
-            [OperationType.TITLE_UPDATE]: 500,
-            [OperationType.DELETION]: 500,
-            [OperationType.SEARCH]: 500,
-            [OperationType.CROSS_TAB_SYNC]: 1000,
-            [OperationType.INTEGRITY_CHECK]: 5000,
-            [OperationType.STORAGE_READ]: 100,
-            [OperationType.STORAGE_WRITE]: 200,
-            [OperationType.ENCRYPTION]: 50,
-            [OperationType.DECRYPTION]: 50,
-          }[opType] || 500;
+          const target =
+            {
+              [OperationType.TITLE_UPDATE]: 500,
+              [OperationType.DELETION]: 500,
+              [OperationType.SEARCH]: 500,
+              [OperationType.CROSS_TAB_SYNC]: 1000,
+              [OperationType.INTEGRITY_CHECK]: 5000,
+              [OperationType.STORAGE_READ]: 100,
+              [OperationType.STORAGE_WRITE]: 200,
+              [OperationType.ENCRYPTION]: 50,
+              [OperationType.DECRYPTION]: 50,
+            }[opType] || 500;
 
-          const statusColorClass = getStatusColorClass(stats.p95Latency, target);
+          const statusColorClass = getStatusColorClass(
+            stats.p95Latency,
+            target
+          );
           const statusBgClass = getStatusBgClass(stats.p95Latency, target);
 
           return (
@@ -217,7 +238,12 @@ const PersistenceMetrics = memo(() => {
                 <span className="text-[10px] font-bold">
                   {opType.replace(/_/g, ' ').toUpperCase()}
                 </span>
-                <span className={cn("px-1.5 py-0.5 rounded text-[9px]", statusBgClass)}>
+                <span
+                  className={cn(
+                    'px-1.5 py-0.5 rounded text-[9px]',
+                    statusBgClass
+                  )}
+                >
                   {stats.successRate.toFixed(1)}%
                 </span>
               </div>
@@ -238,7 +264,11 @@ const PersistenceMetrics = memo(() => {
                 </div>
                 <div className="flex justify-between">
                   <span>Failed:</span>
-                  <span className={stats.failed > 0 ? 'text-red-400' : 'text-green-400'}>
+                  <span
+                    className={
+                      stats.failed > 0 ? 'text-red-400' : 'text-green-400'
+                    }
+                  >
                     {stats.failed}
                   </span>
                 </div>
@@ -322,7 +352,7 @@ export const PerformanceDashboard = memo<PerformanceDashboardProps>(
           onClick={onToggle}
           title="Toggle Performance Dashboard"
           className={cn(
-            "fixed z-[10000] px-2 py-1 bg-gray-800 text-white border border-gray-700 rounded shadow-lg text-xs font-mono hover:bg-gray-700 transition-colors",
+            'fixed z-[10000] px-2 py-1 bg-gray-800 text-white border border-gray-700 rounded shadow-lg text-xs font-mono hover:bg-gray-700 transition-colors',
             position.includes('top') ? 'top-2.5' : 'bottom-2.5',
             position.includes('left') ? 'left-2.5' : 'right-2.5'
           )}
@@ -334,7 +364,7 @@ export const PerformanceDashboard = memo<PerformanceDashboardProps>(
         {isVisible && (
           <Glass
             className={cn(
-              "fixed z-[9999] p-4 text-xs font-mono w-[400px] max-h-[80vh] overflow-auto flex flex-col gap-4 shadow-2xl",
+              'fixed z-[9999] p-4 text-xs font-mono w-[400px] max-h-[80vh] overflow-auto flex flex-col gap-4 shadow-2xl',
               position.includes('top') ? 'top-[50px]' : 'bottom-[50px]',
               position.includes('left') ? 'left-2.5' : 'right-2.5'
             )}
@@ -464,7 +494,9 @@ export const PerformanceDashboard = memo<PerformanceDashboardProps>(
                       </div>
                       <div className="flex justify-between">
                         <span>Storage:</span>
-                        <span>{(dbStats.storageUsed / 1024 / 1024).toFixed(1)}MB</span>
+                        <span>
+                          {(dbStats.storageUsed / 1024 / 1024).toFixed(1)}MB
+                        </span>
                       </div>
                     </div>
                   </div>

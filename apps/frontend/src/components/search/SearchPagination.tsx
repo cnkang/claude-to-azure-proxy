@@ -9,7 +9,7 @@
  * - WCAG 2.2 AAA: Full accessibility compliance
  */
 
-import React from 'react';
+import type React from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../ui/Glass.js';
 
@@ -64,26 +64,30 @@ export function SearchPagination({
     }
   };
 
-  const buttonClass = "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed";
-  const activeClass = "bg-blue-600 text-white shadow-sm";
-  const inactiveClass = "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700";
+  const buttonClass =
+    'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed';
+  const activeClass = 'bg-blue-600 text-white shadow-sm';
+  const inactiveClass =
+    'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700';
 
   return (
     <nav
       className="flex flex-col items-center gap-4 py-4"
-      role="navigation"
       aria-label={t('search.paginationLabel')}
     >
       <div className="flex items-center gap-2">
         {/* Previous Button */}
         <button
+          type="button"
           className={cn(buttonClass, inactiveClass)}
           onClick={() => onPageChange(currentPage - 1)}
           disabled={!hasPreviousPage}
           aria-label={t('search.previousPage')}
           aria-disabled={!hasPreviousPage}
         >
-          <span aria-hidden="true" className="mr-1">‹</span>
+          <span aria-hidden="true" className="mr-1">
+            ‹
+          </span>
           <span>{t('search.previous')}</span>
         </button>
 
@@ -91,6 +95,7 @@ export function SearchPagination({
         {pageNumbers[0] > 0 && (
           <>
             <button
+              type="button"
               className={cn(buttonClass, inactiveClass)}
               onClick={() => onPageChange(0)}
               onKeyDown={(e) => handleKeyDown(e, 0)}
@@ -109,8 +114,12 @@ export function SearchPagination({
         {/* Page Numbers */}
         {pageNumbers.map((page) => (
           <button
+            type="button"
             key={page}
-            className={cn(buttonClass, page === currentPage ? activeClass : inactiveClass)}
+            className={cn(
+              buttonClass,
+              page === currentPage ? activeClass : inactiveClass
+            )}
             onClick={() => onPageChange(page)}
             onKeyDown={(e) => handleKeyDown(e, page)}
             aria-label={t('search.goToPage', { page: page + 1 })}
@@ -130,6 +139,7 @@ export function SearchPagination({
               </span>
             )}
             <button
+              type="button"
               className={cn(buttonClass, inactiveClass)}
               onClick={() => onPageChange(totalPages - 1)}
               onKeyDown={(e) => handleKeyDown(e, totalPages - 1)}
@@ -142,6 +152,7 @@ export function SearchPagination({
 
         {/* Next Button */}
         <button
+          type="button"
           className={cn(buttonClass, inactiveClass)}
           onClick={() => onPageChange(currentPage + 1)}
           disabled={!hasNextPage}
@@ -149,12 +160,18 @@ export function SearchPagination({
           aria-disabled={!hasNextPage}
         >
           <span>{t('search.next')}</span>
-          <span aria-hidden="true" className="ml-1">›</span>
+          <span aria-hidden="true" className="ml-1">
+            ›
+          </span>
         </button>
       </div>
 
       {/* Page Info */}
-      <div className="pagination-info text-xs text-gray-700 dark:text-gray-300" aria-live="polite" aria-atomic="true">
+      <div
+        className="pagination-info text-xs text-gray-700 dark:text-gray-300"
+        aria-live="polite"
+        aria-atomic="true"
+      >
         {t('search.pageInfo', { current: currentPage + 1, total: totalPages })}
       </div>
     </nav>

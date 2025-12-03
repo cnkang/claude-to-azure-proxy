@@ -4,21 +4,24 @@
  * Tests for Header component functionality, responsive behavior, and accessibility
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { Header, Breadcrumb, HeaderAction } from './Header.js';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppProvider } from '../../contexts/AppContext.js';
-import { ThemeProvider } from '../../contexts/ThemeContext.js';
 import { I18nProvider } from '../../contexts/I18nContext.js';
 import { SessionProvider } from '../../contexts/SessionContext.js';
+import { ThemeProvider } from '../../contexts/ThemeContext.js';
+import { Breadcrumb, Header, HeaderAction } from './Header.js';
 
 // Mock child components
 vi.mock('../../contexts/ThemeContext', async () => {
   const actual = await vi.importActual('../../contexts/ThemeContext');
   return {
     ...actual,
-    ThemeToggle: ({ className, showLabel }: { className?: string; showLabel?: boolean }) => (
-      <button data-testid="theme-toggle" className={className}>
+    ThemeToggle: ({
+      className,
+      showLabel,
+    }: { className?: string; showLabel?: boolean }) => (
+      <button type="button" data-testid="theme-toggle" className={className}>
         {showLabel && 'Theme'}
       </button>
     ),
@@ -29,10 +32,22 @@ vi.mock('../../contexts/I18nContext', async () => {
   const actual = await vi.importActual('../../contexts/I18nContext');
   return {
     ...actual,
-    LanguageSelector: ({ className, showFlag, showNativeName }: { className?: string; showFlag?: boolean; showNativeName?: boolean }) => (
+    LanguageSelector: ({
+      className,
+      showFlag,
+      showNativeName,
+    }: {
+      className?: string;
+      showFlag?: boolean;
+      showNativeName?: boolean;
+    }) => (
       <select data-testid="language-selector" className={className}>
-        <option value="en">English {showFlag && '🇺🇸'} {showNativeName && 'English'}</option>
-        <option value="zh">中文 {showFlag && '🇨🇳'} {showNativeName && '中文'}</option>
+        <option value="en">
+          English {showFlag && '🇺🇸'} {showNativeName && 'English'}
+        </option>
+        <option value="zh">
+          中文 {showFlag && '🇨🇳'} {showNativeName && '中文'}
+        </option>
       </select>
     ),
   };
@@ -130,7 +145,9 @@ describe('Header Component', () => {
         </TestWrapper>
       );
 
-      const menuButton = screen.getByLabelText(/header\.(openSidebar|closeSidebar)/);
+      const menuButton = screen.getByLabelText(
+        /header\.(openSidebar|closeSidebar)/
+      );
       expect(menuButton).toBeInTheDocument();
     });
 
@@ -141,7 +158,9 @@ describe('Header Component', () => {
         </TestWrapper>
       );
 
-      const menuButton = screen.getByLabelText(/header\.(openSidebar|closeSidebar)/);
+      const menuButton = screen.getByLabelText(
+        /header\.(openSidebar|closeSidebar)/
+      );
       expect(menuButton).toBeInTheDocument();
     });
 
@@ -152,7 +171,9 @@ describe('Header Component', () => {
         </TestWrapper>
       );
 
-      const menuButton = screen.queryByLabelText(/header\.(openSidebar|closeSidebar)/);
+      const menuButton = screen.queryByLabelText(
+        /header\.(openSidebar|closeSidebar)/
+      );
       expect(menuButton).not.toBeInTheDocument();
     });
 
@@ -163,7 +184,9 @@ describe('Header Component', () => {
         </TestWrapper>
       );
 
-      const menuButton = screen.getByLabelText(/header\.(openSidebar|closeSidebar)/);
+      const menuButton = screen.getByLabelText(
+        /header\.(openSidebar|closeSidebar)/
+      );
       expect(menuButton).toHaveAttribute('aria-expanded');
       expect(menuButton).toHaveAttribute('aria-controls', 'sidebar');
     });
@@ -288,7 +311,9 @@ describe('Header Component', () => {
         </TestWrapper>
       );
 
-      const menuButton = screen.getByLabelText(/header\.(openSidebar|closeSidebar)/);
+      const menuButton = screen.getByLabelText(
+        /header\.(openSidebar|closeSidebar)/
+      );
       const settingsButton = screen.getByLabelText('header.settings');
 
       expect(menuButton).toBeInTheDocument();
@@ -303,7 +328,9 @@ describe('Header Component', () => {
       );
 
       // Get only the actual Header buttons (not mocked components)
-      const menuButton = screen.getByLabelText(/header\.(openSidebar|closeSidebar)/);
+      const menuButton = screen.getByLabelText(
+        /header\.(openSidebar|closeSidebar)/
+      );
       const settingsButton = screen.getByLabelText('header.settings');
 
       expect(menuButton).toHaveAttribute('type', 'button');
@@ -371,14 +398,10 @@ describe('Breadcrumb Component', () => {
 describe('HeaderAction Component', () => {
   it('should render action button with icon and label', () => {
     const handleClick = vi.fn();
-    
+
     render(
       <TestWrapper>
-        <HeaderAction
-          icon="🔍"
-          label="Search"
-          onClick={handleClick}
-        />
+        <HeaderAction icon="🔍" label="Search" onClick={handleClick} />
       </TestWrapper>
     );
 
@@ -390,14 +413,10 @@ describe('HeaderAction Component', () => {
 
   it('should call onClick when clicked', () => {
     const handleClick = vi.fn();
-    
+
     render(
       <TestWrapper>
-        <HeaderAction
-          icon="🔍"
-          label="Search"
-          onClick={handleClick}
-        />
+        <HeaderAction icon="🔍" label="Search" onClick={handleClick} />
       </TestWrapper>
     );
 
@@ -424,7 +443,7 @@ describe('HeaderAction Component', () => {
 
   it('should be disabled when disabled prop is true', () => {
     const handleClick = vi.fn();
-    
+
     render(
       <TestWrapper>
         <HeaderAction
@@ -438,7 +457,7 @@ describe('HeaderAction Component', () => {
 
     const button = screen.getByLabelText('Search');
     expect(button).toBeDisabled();
-    
+
     fireEvent.click(button);
     expect(handleClick).not.toHaveBeenCalled();
   });

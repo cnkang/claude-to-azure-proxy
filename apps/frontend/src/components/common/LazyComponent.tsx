@@ -7,9 +7,13 @@
  * Requirements: 5.4
  */
 
-import React, { Suspense, ComponentType, LazyExoticComponent } from 'react';
-import { ErrorBoundary } from './ErrorBoundary';
+import React, {
+  Suspense,
+  type ComponentType,
+  type LazyExoticComponent,
+} from 'react';
 import { useI18n } from '../../contexts/I18nContext';
+import { ErrorBoundary } from './ErrorBoundary';
 
 /**
  * Loading component for lazy-loaded components
@@ -166,13 +170,14 @@ export function useDynamicImport<T>(
 
   React.useEffect(() => {
     let cancelled = false;
+    const currentRetryKey = retryKey;
 
     const loadComponent = async (): Promise<void> => {
       try {
         setState((prev) => ({ ...prev, loading: true, error: null }));
         const module = await importFn();
 
-        if (!cancelled) {
+        if (!cancelled && currentRetryKey === retryKey) {
           setState({
             component: module.default,
             loading: false,
@@ -180,7 +185,7 @@ export function useDynamicImport<T>(
           });
         }
       } catch (error) {
-        if (!cancelled) {
+        if (!cancelled && currentRetryKey === retryKey) {
           setState({
             component: null,
             loading: false,
@@ -195,7 +200,7 @@ export function useDynamicImport<T>(
     return (): void => {
       cancelled = true;
     };
-  }, [importFn, retryKey, deps]);
+  }, [importFn, retryKey, ...deps]);
 
   return {
     ...state,
@@ -302,41 +307,41 @@ class LazyComponentRegistry {
   private static readonly preloadPromises = new Map<string, Promise<void>>();
 
   static markAsLoaded(componentName: string): void {
-    this.loadedComponents.add(componentName);
+    LazyComponentRegistry.loadedComponents.add(componentName);
   }
 
   static isLoaded(componentName: string): boolean {
-    return this.loadedComponents.has(componentName);
+    return LazyComponentRegistry.loadedComponents.has(componentName);
   }
 
   static preload(
     componentName: string,
     importFn: () => Promise<unknown>
   ): Promise<void> {
-    if (this.isLoaded(componentName)) {
+    if (LazyComponentRegistry.isLoaded(componentName)) {
       return Promise.resolve();
     }
 
-    if (this.preloadPromises.has(componentName)) {
-      return this.preloadPromises.get(componentName)!;
+    if (LazyComponentRegistry.preloadPromises.has(componentName)) {
+      return LazyComponentRegistry.preloadPromises.get(componentName)!;
     }
 
     const promise: Promise<void> = importFn().then(() => {
-      this.markAsLoaded(componentName);
-      this.preloadPromises.delete(componentName);
+      LazyComponentRegistry.markAsLoaded(componentName);
+      LazyComponentRegistry.preloadPromises.delete(componentName);
     });
 
-    this.preloadPromises.set(componentName, promise);
+    LazyComponentRegistry.preloadPromises.set(componentName, promise);
     return promise;
   }
 
   static getLoadedComponents(): string[] {
-    return Array.from(this.loadedComponents);
+    return Array.from(LazyComponentRegistry.loadedComponents);
   }
 
   static clear(): void {
-    this.loadedComponents.clear();
-    this.preloadPromises.clear();
+    LazyComponentRegistry.loadedComponents.clear();
+    LazyComponentRegistry.preloadPromises.clear();
   }
 }
 
