@@ -1,5 +1,10 @@
 declare module 'react-window' {
-  import { ComponentType, CSSProperties, ReactElement, Component } from 'react';
+  import {
+    type ComponentType,
+    type CSSProperties,
+    ReactElement,
+    Component,
+  } from 'react';
 
   export interface ListProps {
     children: ComponentType<ListChildComponentProps>;

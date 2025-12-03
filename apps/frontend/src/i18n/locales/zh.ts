@@ -38,7 +38,8 @@ export default {
   onboarding: {
     sidebar: {
       title: '侧边栏已关闭',
-      description: '要重新打开侧边栏，请点击右下角的浮动按钮或使用顶部的菜单按钮。',
+      description:
+        '要重新打开侧边栏，请点击右下角的浮动按钮或使用顶部的菜单按钮。',
       dismiss: '知道了',
     },
   },
@@ -154,7 +155,8 @@ export default {
   },
   welcome: {
     title: '欢迎使用',
-    description: '与我们的 AI 助手开始对话，获取编程、写作、分析等方面的帮助。点击下方按钮立即开始。',
+    description:
+      '与我们的 AI 助手开始对话，获取编程、写作、分析等方面的帮助。点击下方按钮立即开始。',
     startChat: '开始聊天',
     orTry: '或试试：',
     youCanTry: '你可以试试：',

@@ -1,9 +1,9 @@
 /**
  * Theme System with WCAG 2.2 AAA Compliance
- * 
+ *
  * Comprehensive theme system with smooth transitions and accessibility compliance.
  * Includes light and dark themes with proper contrast ratios and smooth animations.
- * 
+ *
  * Requirements: 10.2, 10.3, 10.4, 10.5
  */
 
@@ -78,12 +78,12 @@
   /* Modern shadows with layered depth */
   --color-shadow: rgba(0, 0, 0, 0.05);
   --color-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --color-shadow-md:
-    0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --color-shadow-lg:
-    0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --color-shadow-xl:
-    0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --color-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px
+    rgba(0, 0, 0, 0.06);
+  --color-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px
+    rgba(0, 0, 0, 0.05);
+  --color-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px
+    rgba(0, 0, 0, 0.04);
   --color-shadow-elevated: rgba(0, 0, 0, 0.12);
   --color-overlay: rgba(0, 0, 0, 0.5);
 
@@ -149,12 +149,12 @@
   /* Modern shadows with layered depth */
   --color-shadow: rgba(0, 0, 0, 0.3);
   --color-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --color-shadow-md:
-    0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-  --color-shadow-lg:
-    0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
-  --color-shadow-xl:
-    0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+  --color-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px
+    rgba(0, 0, 0, 0.3);
+  --color-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px
+    rgba(0, 0, 0, 0.3);
+  --color-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px
+    rgba(0, 0, 0, 0.4);
   --color-shadow-elevated: rgba(0, 0, 0, 0.5);
   --color-overlay: rgba(0, 0, 0, 0.75);
 
@@ -219,15 +219,15 @@
 
 /* Enhanced button styles with modern interactions */
 button,
-[role='button'] {
+[role="button"] {
   position: relative;
   overflow: hidden;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 button::before,
-[role='button']::before {
-  content: '';
+[role="button"]::before {
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -236,26 +236,24 @@ button::before,
   border-radius: 50%;
   background: var(--color-hover);
   transform: translate(-50%, -50%);
-  transition:
-    width 0.6s,
-    height 0.6s;
+  transition: width 0.6s, height 0.6s;
 }
 
 button:hover:not(:disabled),
-[role='button']:hover:not([aria-disabled='true']) {
+[role="button"]:hover:not([aria-disabled="true"]) {
   background-color: var(--color-hover);
   transform: translateY(-1px);
   box-shadow: var(--color-shadow-md);
 }
 
 button:hover:not(:disabled)::before,
-[role='button']:hover:not([aria-disabled='true'])::before {
+[role="button"]:hover:not([aria-disabled="true"])::before {
   width: 300px;
   height: 300px;
 }
 
 button:active:not(:disabled),
-[role='button']:active:not([aria-disabled='true']) {
+[role="button"]:active:not([aria-disabled="true"]) {
   background-color: var(--color-active);
   transform: translateY(0);
   box-shadow: var(--color-shadow-sm);
@@ -265,9 +263,7 @@ button:active:not(:disabled),
 a {
   color: var(--color-accent);
   text-decoration-color: transparent;
-  transition:
-    var(--theme-transition),
-    text-decoration-color 0.2s ease;
+  transition: var(--theme-transition), text-decoration-color 0.2s ease;
 }
 
 a:hover {
@@ -306,9 +302,8 @@ code {
   color: var(--color-code-text);
   padding: 0.125rem 0.375rem;
   border-radius: 6px;
-  font-family:
-    'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New',
-    monospace;
+  font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas,
+    "Courier New", monospace;
   font-size: 0.875em;
   box-shadow: var(--color-shadow-sm);
 }
@@ -325,7 +320,7 @@ pre {
 }
 
 pre::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -494,7 +489,7 @@ pre code {
 }
 
 .theme-auto-indicator::after {
-  content: '';
+  content: "";
   position: absolute;
   top: -2px;
   right: -2px;
@@ -521,7 +516,7 @@ pre code {
 
 /* Ensure proper contrast for all interactive elements */
 button:not(:disabled),
-[role='button']:not([aria-disabled='true']),
+[role="button"]:not([aria-disabled="true"]),
 a,
 input:not(:disabled),
 textarea:not(:disabled),

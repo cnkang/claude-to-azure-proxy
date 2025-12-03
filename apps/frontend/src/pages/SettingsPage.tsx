@@ -6,14 +6,15 @@
  * Requirements: 1.1, 5.1, 5.2, 5.3, 10.1
  */
 
-import React, { useState, useCallback } from 'react';
 import { isNonEmptyString } from '@repo/shared-utils';
-import { useTheme } from '../contexts/ThemeContext.js';
-import { useI18n, type SupportedLanguage } from '../contexts/I18nContext.js';
+import type React from 'react';
+import { useCallback, useState } from 'react';
+import { LayoutContainer } from '../components/layout/AppLayout.js';
+import { type SupportedLanguage, useI18n } from '../contexts/I18nContext.js';
 import { useSessionContext } from '../contexts/SessionContext.js';
+import { useTheme } from '../contexts/ThemeContext.js';
 import { useConversations } from '../hooks/useConversations.js';
 import { useStorage } from '../hooks/useStorage.js';
-import { LayoutContainer } from '../components/layout/AppLayout.js';
 import { frontendLogger } from '../utils/logger.js';
 
 /**
@@ -50,7 +51,7 @@ function SettingsPage(): React.JSX.Element {
       Math.floor(Math.log(bytes) / Math.log(k)),
       sizes.length - 1
     );
-    return `${parseFloat((bytes / Math.pow(k, sizeIndex)).toFixed(2))} ${sizes[sizeIndex]}`;
+    return `${Number.parseFloat((bytes / k ** sizeIndex).toFixed(2))} ${sizes[sizeIndex]}`;
   };
 
   const getStoragePercentage = (): number => {
@@ -223,7 +224,7 @@ function SettingsPage(): React.JSX.Element {
             </p>
 
             <div className="setting-group">
-              <label className="setting-label">
+              <label className="setting-label" htmlFor="theme-light">
                 {t('settings.appearance.theme')}
               </label>
               <div className="theme-options">

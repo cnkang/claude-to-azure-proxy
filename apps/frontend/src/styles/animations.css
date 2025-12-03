@@ -1,6 +1,6 @@
 /**
  * Animation Performance Optimizations
- * 
+ *
  * This file contains CSS rules for optimizing animation performance:
  * - will-change property for animated elements
  * - GPU-accelerated transforms and opacity
@@ -164,7 +164,7 @@
  * Maintain WCAG AAA contrast requirements (3:1 minimum)
  */
 .animated-element:focus-visible {
-  outline: 3px solid var(--focus-color, #0066CC);
+  outline: 3px solid var(--focus-color, #0066cc);
   outline-offset: 2px;
   /* Ensure outline is not affected by transforms */
   outline-style: solid;

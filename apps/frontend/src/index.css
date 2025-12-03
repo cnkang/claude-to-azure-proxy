@@ -6,11 +6,11 @@
   :root {
     --background: 0 0% 100%;
     --foreground: 0 0% 3.9%;
-    
+
     /* Liquid Glass Colors */
     --glass-border: 255 255 255;
     --glass-surface: 255 255 255;
-    
+
     /* Focus Indicator Colors - WCAG AAA compliant (3:1 contrast minimum) */
     --focus-ring: 0 80 180; /* #0050B4 - 7.48:1 contrast on white */
     --focus-ring-offset: 255 255 255;
@@ -42,10 +42,10 @@
   .dark {
     --background: 0 0% 3.9%;
     --foreground: 0 0% 98%;
-    
+
     --glass-border: 255 255 255;
     --glass-surface: 0 0 0;
-    
+
     /* Focus Indicator Colors - WCAG AAA compliant (3:1 contrast minimum) */
     --focus-ring: 102 179 255; /* #66B3FF - 7.5:1 contrast on black */
     --focus-ring-offset: 0 0 0;
@@ -115,8 +115,6 @@
   }
 }
 
-
-
 @layer base {
   * {
     @apply border-border;
@@ -133,14 +131,14 @@
   .container-query {
     container-type: inline-size;
   }
-  
+
   /* Responsive glass effects using container queries */
   @container (min-width: 400px) {
     .glass-adaptive {
       backdrop-filter: blur(20px);
     }
   }
-  
+
   @container (min-width: 768px) {
     .glass-adaptive {
       backdrop-filter: blur(24px);
@@ -153,11 +151,11 @@
   .h-dvh {
     height: 100dvh;
   }
-  
+
   .min-h-dvh {
     min-height: 100dvh;
   }
-  
+
   .max-h-dvh {
     max-height: 100dvh;
   }
@@ -168,20 +166,20 @@
   .glass-low {
     @apply bg-white/10 dark:bg-black/10 backdrop-blur-md;
   }
-  
+
   .glass-medium {
     @apply bg-white/40 dark:bg-black/40 backdrop-blur-xl;
   }
-  
+
   .glass-high {
     @apply bg-white/70 dark:bg-black/70 backdrop-blur-2xl;
   }
-  
+
   /* Glass border styles */
   .glass-border {
     @apply border border-white/20 dark:border-white/10;
   }
-  
+
   /* Glass hover effects */
   .glass-hover {
     @apply transition-all duration-300 hover:bg-white/50 dark:hover:bg-black/50;
@@ -195,7 +193,7 @@
   .glass-high {
     background: rgba(255, 255, 255, 0.9);
   }
-  
+
   .dark .glass-low,
   .dark .glass-medium,
   .dark .glass-high {
@@ -223,14 +221,14 @@
     background: rgba(255, 255, 255, 1);
     border: 2px solid #000;
   }
-  
+
   .dark .glass-low,
   .dark .glass-medium,
   .dark .glass-high {
     background: rgba(0, 0, 0, 1);
     border: 2px solid #fff;
   }
-  
+
   *:focus-visible {
     outline-width: 4px;
     outline-color: currentColor;

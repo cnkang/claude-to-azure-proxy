@@ -8,10 +8,10 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { useConversations } from '../hooks/useConversations.js';
-import { useI18n } from '../contexts/I18nContext';
-import { LayoutContainer } from '../components/layout/AppLayout';
 import { ChatInterface } from '../components/chat/ChatInterface';
+import { LayoutContainer } from '../components/layout/AppLayout';
+import { useI18n } from '../contexts/I18nContext';
+import { useConversations } from '../hooks/useConversations.js';
 import { getModelService } from '../services/models';
 import type { ClientConfig, Conversation } from '../types/index';
 
@@ -144,7 +144,7 @@ function ChatPage(): React.JSX.Element {
     }, 3000);
 
     loadConfig();
-    
+
     return () => clearTimeout(timeoutId);
   }, [config]);
 

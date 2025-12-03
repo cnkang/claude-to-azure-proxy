@@ -8,17 +8,17 @@
  */
 
 import React, { Suspense, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { PreloadOnHover } from '../components/common/LazyComponent.js';
 import { AppLayout } from '../components/layout/AppLayout.js';
 import { useI18n } from '../contexts/I18nContext.js';
 import {
   LazyChatPage,
   LazySettingsPage,
   preloadCriticalComponents,
-  routePreloadStrategy,
   preloadOnUserAction,
+  routePreloadStrategy,
 } from './LazyRoutes.js';
-import { PreloadOnHover } from '../components/common/LazyComponent.js';
 
 /**
  * Loading component for route transitions

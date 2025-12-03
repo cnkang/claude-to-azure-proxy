@@ -8,26 +8,27 @@
  * Requirements: 1.1, 5.1, 5.2, 5.3, 10.1, 6.3, 7.3, 5.4
  */
 
-import React, { useEffect, useState } from 'react';
-import { SessionProvider } from './contexts/SessionContext';
-import { AppProvider } from './contexts/AppContext';
-import { ThemeProvider } from './contexts/ThemeContext';
-import { I18nProvider } from './contexts/I18nContext';
-import { AppRouter } from './router/AppRouter';
+import type React from 'react';
+import { useEffect, useState } from 'react';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { IntegrityCheckInitializer } from './components/common/IntegrityCheckInitializer';
 import { NotificationProvider } from './components/common/NotificationSystem';
 import { PerformanceDashboard } from './components/common/PerformanceDashboard';
+import { AppProvider } from './contexts/AppContext';
+import { I18nProvider } from './contexts/I18nContext';
+import { SessionProvider } from './contexts/SessionContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import {
   usePerformanceMonitoring,
   usePerformanceRegistration,
 } from './hooks/usePerformanceMonitoring';
+import { AppRouter } from './router/AppRouter';
 import { indexedDBOptimizer } from './services/indexeddb-optimization';
+import { getSessionManager } from './services/session';
+import { getConversationStorage } from './services/storage';
 import { reportAnalyticsException } from './utils/analytics';
 import { frontendLogger } from './utils/logger';
 import { startMemoryMonitoring } from './utils/memoryManager';
-import { IntegrityCheckInitializer } from './components/common/IntegrityCheckInitializer';
-import { getConversationStorage } from './services/storage';
-import { getSessionManager } from './services/session';
 
 declare global {
   interface Window {
@@ -39,7 +40,9 @@ declare global {
       >;
       getSessionManager: () => ReturnType<typeof getSessionManager>;
     };
-    __resolveStorageReady__?: (storage: ReturnType<typeof getConversationStorage>) => void;
+    __resolveStorageReady__?: (
+      storage: ReturnType<typeof getConversationStorage>
+    ) => void;
   }
 }
 
@@ -56,15 +59,15 @@ function App(): React.JSX.Element {
     if (typeof window !== 'undefined' && window.__E2E_TEST_MODE__ === true) {
       const initializeStorage = async () => {
         const storage = getConversationStorage();
-        
+
         // Initialize storage first
         await storage.initialize?.();
-        
+
         // Expose storage directly on window for E2E tests
         if (!window.__conversationStorage) {
           window.__conversationStorage = storage;
         }
-        
+
         // Also set up test bridge for backward compatibility
         if (!window.__TEST_BRIDGE__) {
           window.__TEST_BRIDGE__ = {
@@ -72,13 +75,13 @@ function App(): React.JSX.Element {
             getSessionManager,
           };
         }
-        
+
         // Resolve the storage ready promise if it exists
         if (window.__resolveStorageReady__) {
           window.__resolveStorageReady__(storage);
         }
       };
-      
+
       void initializeStorage();
     }
   }, []);
@@ -194,13 +197,16 @@ function App(): React.JSX.Element {
           <div className="absolute top-0 right-1/4 w-96 h-96 bg-yellow-300/30 dark:bg-yellow-900/20 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-3xl opacity-70 animate-blob animation-delay-2000" />
           <div className="absolute -bottom-8 left-1/3 w-96 h-96 bg-pink-300/30 dark:bg-pink-900/20 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-3xl opacity-70 animate-blob animation-delay-4000" />
         </div>
-        
+
         <div className="relative z-10 h-full">
           <SessionProvider>
             <AppProvider>
               <ThemeProvider>
                 <I18nProvider>
-                  <NotificationProvider maxNotifications={5} defaultDuration={5000}>
+                  <NotificationProvider
+                    maxNotifications={5}
+                    defaultDuration={5000}
+                  >
                     {/* Data Integrity Check on Startup */}
                     <IntegrityCheckInitializer />
 

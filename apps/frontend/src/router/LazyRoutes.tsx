@@ -9,8 +9,8 @@
 
 import { lazy } from 'react';
 import {
-  withLazyLoading,
   LazyComponentRegistry,
+  withLazyLoading,
 } from '../components/common/LazyComponent';
 import { sendAnalyticsEvent } from '../utils/analytics';
 

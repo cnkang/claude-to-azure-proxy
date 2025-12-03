@@ -8,8 +8,8 @@
  */
 
 import i18n from 'i18next';
-import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
+import { initReactI18next } from 'react-i18next';
 import { frontendLogger } from '../utils/logger.js';
 
 // Import translation resources
@@ -201,11 +201,7 @@ export const i18nUtils = {
    * Change language
    */
   changeLanguage: async (language: SupportedLanguage): Promise<void> => {
-    try {
-      await i18n.changeLanguage(language);
-    } catch (error) {
-      throw error;
-    }
+    await i18n.changeLanguage(language);
   },
 
   /**

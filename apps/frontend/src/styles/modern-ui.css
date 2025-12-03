@@ -1,6 +1,6 @@
 /**
  * Modern UI Enhancements
- * 
+ *
  * Additional modern design patterns and micro-interactions
  * while maintaining WCAG 2.2 AAA compliance
  */
@@ -29,7 +29,7 @@ html {
 }
 
 .card::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -51,10 +51,10 @@ html {
 }
 
 /* Modern input fields */
-input[type='text'],
-input[type='email'],
-input[type='password'],
-input[type='search'],
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
 textarea,
 select {
   background: var(--color-background-elevated);
@@ -94,7 +94,7 @@ select:focus {
 }
 
 .btn::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   background: white;
@@ -157,7 +157,7 @@ select:focus {
 }
 
 .spinner-modern::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: -3px;
   border: 3px solid transparent;
@@ -240,7 +240,7 @@ select:focus {
 }
 
 .tooltip::before {
-  content: '';
+  content: "";
   position: absolute;
   bottom: 100%;
   left: 50%;
@@ -279,7 +279,7 @@ select:focus {
 }
 
 .progress-bar::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -405,7 +405,7 @@ select:focus {
 }
 
 .tab.active::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: 0;
   left: 20%;
@@ -440,7 +440,7 @@ select:focus {
 }
 
 .switch-slider::before {
-  content: '';
+  content: "";
   position: absolute;
   height: 16px;
   width: 16px;
@@ -560,7 +560,7 @@ select:focus {
 
 .divider-text::before,
 .divider-text::after {
-  content: '';
+  content: "";
   flex: 1;
   height: 1px;
   background: linear-gradient(
