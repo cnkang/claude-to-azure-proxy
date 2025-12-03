@@ -1,0 +1,11 @@
+# Suggested Commands
+- Install deps: `pnpm install`
+- Lint/format: `pnpm -r lint`, `pnpm -r lint:fix`, `biome check --write .`, `biome format --write .`
+- Type check: `pnpm -r type-check`
+- Tests: `pnpm -r test`, backend `pnpm --filter @repo/backend test`, frontend `pnpm --filter @repo/frontend test`
+- E2E: `pnpm test:e2e` (Playwright)
+- Build: `pnpm --filter @repo/backend build`, `pnpm --filter @repo/frontend build`
+- Dev servers: backend `pnpm --filter @repo/backend dev`, frontend `pnpm --filter @repo/frontend dev`
+- Quality/security: `pnpm run quality:all`, `pnpm run quality:security`, `pnpm run sast:biome`
+- Docker: `pnpm run docker:build`, `pnpm run docker:run`
+- Biome focused checks: `npx @biomejs/biome check --diagnostic-level error --reporter summary` (narrow paths for speed)

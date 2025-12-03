@@ -1,0 +1,4 @@
+# Project Overview
+- Purpose: Production-ready TypeScript API proxy translating Claude API requests to Azure OpenAI (Claude Code CLI compatibility), with security, monitoring, resilience, AWS App Runner ready.
+- Tech stack: Node 24+, TypeScript 5+, Express, axios, helmet, express-rate-limit, Joi, express-validator, uuid. pnpm workspace with backend/frontend packages; Vitest for tests; Biome for lint/format.
+- Architecture: layered (Routes → Middleware → Utils → Types). Core folders: apps/backend (routes, middleware, config, utils, monitoring, resilience), apps/frontend (Vite React app), packages/shared-* (types/utils/config).

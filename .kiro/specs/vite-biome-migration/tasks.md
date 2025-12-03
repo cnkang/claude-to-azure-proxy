@@ -9,11 +9,11 @@
   - Set up ignore patterns for node_modules, dist, coverage, .git, .kiro, *.d.ts ✅
   - _Requirements: 1.1, 1.2, 1.4, 1.5, 3.1, 3.2, 3.3, 3.4, 3.5, 8.1, 8.2, 8.3, 8.4, 8.5, 9.1, 9.4_
 
-- [ ]* 1.1 Write property test for formatting idempotence
+- [ ] 1.1 Write property test for formatting idempotence
   - **Property 2: Formatting Determinism**
   - **Validates: Requirements 3.1, 3.2, 3.3, 3.4, 3.5**
 
-- [ ] 2. Enhance root Biome configuration
+- [x] 2. Enhance root Biome configuration
   - Enable recommended linter rules (currently disabled)
   - Add security-focused rules (noGlobalEval, noDangerouslySetInnerHtml)
   - Add TypeScript strict mode rules (noExplicitAny, noDoubleEquals)
@@ -22,18 +22,18 @@
   - Enable organize imports (currently disabled)
   - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-- [ ] 3. Create workspace-specific Biome configurations
+- [x] 3. Create workspace-specific Biome configurations
   - Create apps/backend/biome.json extending root config
   - Configure backend-specific rules (security rules, console.log warnings)
   - Create apps/frontend/biome.json extending root config
   - Configure frontend-specific rules (a11y rules, console.log errors)
   - _Requirements: 1.3, 2.5_
 
-- [ ]* 3.1 Write property test for configuration inheritance
+- [x] 3.1 Write property test for configuration inheritance
   - **Property 1: Configuration Inheritance Consistency**
   - **Validates: Requirements 1.3**
 
-- [ ]* 3.2 Write unit tests for workspace configuration merging
+- [x] 3.2 Write unit tests for workspace configuration merging
   - Test that backend config correctly extends root config
   - Test that frontend config correctly extends root config
   - Test that workspace overrides take precedence over root rules
@@ -45,13 +45,13 @@
   - Add "ci:check" script: "biome ci ."
   - _Requirements: 4.5, 4.6_
 
-- [ ]* 4.1 Write unit tests for package.json script migration
+- [ ] 4.1 Write unit tests for package.json script migration
   - Test that lint scripts use biome commands
   - Test that format scripts use biome commands
   - Test that check scripts combine linting and formatting
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
 
-- [ ]* 4.2 Write property test for script command compatibility
+- [ ] 4.2 Write property test for script command compatibility
   - **Property 4: Script Command Compatibility**
   - **Validates: Requirements 4.1, 4.2, 4.3, 4.4**
 
@@ -64,7 +64,7 @@
   - Add unwanted recommendations for ESLint and Prettier extensions
   - _Requirements: 6.1, 6.2, 6.3, 6.4_
 
-- [ ]* 5.1 Write integration test for IDE configuration
+- [ ] 5.1 Write integration test for IDE configuration
   - Test that VS Code settings.json has correct Biome configuration
   - Test that extensions.json recommends Biome
   - Test that extensions.json marks ESLint and Prettier as unwanted
@@ -76,7 +76,7 @@
   - Configure Biome to output CI-friendly format
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-- [ ]* 6.1 Write property test for CI/CD exit codes
+- [ ] 6.1 Write property test for CI/CD exit codes
   - **Property 8: CI/CD Exit Code Correctness**
   - **Validates: Requirements 7.3, 7.4**
 
@@ -87,11 +87,11 @@
   - Fix any remaining linting errors manually
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [ ]* 7.1 Write property test for linting rule equivalence
+- [ ] 7.1 Write property test for linting rule equivalence
   - **Property 3: Linting Rule Equivalence**
   - **Validates: Requirements 2.1, 2.2, 2.3, 2.4**
 
-- [ ]* 7.2 Write property test for ignore pattern matching
+- [ ] 7.2 Write property test for ignore pattern matching
   - **Property 5: Ignore Pattern Completeness**
   - **Validates: Requirements 8.1, 8.2, 8.3, 8.4, 8.5**
 
@@ -105,7 +105,7 @@
   - Fix any JSON validation errors
   - _Requirements: 9.1, 9.2, 9.3, 9.5_
 
-- [ ]* 9.1 Write property test for JSON validation
+- [ ] 9.1 Write property test for JSON validation
   - **Property 6: JSON Validation Correctness**
   - **Validates: Requirements 9.1, 9.2, 9.3, 9.4, 9.5**
 
@@ -135,7 +135,7 @@
   - Document licensing considerations
   - _Requirements: 11.3, 11.5_
 
-- [ ]* 12.1 Write property test for Vite+ migration readiness
+- [ ] 12.1 Write property test for Vite+ migration readiness
   - **Property 9: Vite+ Migration Readiness**
   - **Validates: Requirements 11.1, 11.2, 11.3**
 
