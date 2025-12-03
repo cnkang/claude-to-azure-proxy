@@ -15,15 +15,15 @@
  * involve UI components. It tests the error recovery logic and retry mechanisms.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { waitFor } from '@testing-library/react';
-import { getConversationStorage } from '../services/storage.js';
-import { getRetryManager } from '../utils/retry-manager.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   PersistenceError,
   PersistenceErrorType,
 } from '../errors/persistence-error.js';
+import { getConversationStorage } from '../services/storage.js';
 import type { Conversation } from '../types/index.js';
+import { getRetryManager } from '../utils/retry-manager.js';
 
 describe('Error Recovery E2E Scenarios', () => {
   let storage: ReturnType<typeof getConversationStorage>;

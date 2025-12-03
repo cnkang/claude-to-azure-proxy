@@ -1,8 +1,7 @@
-import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppProvider } from '../contexts/AppContext.js';
-import { SessionProvider } from '../contexts/SessionContext.js';
 import {
   I18nProvider,
   LanguageSelector,
@@ -10,8 +9,9 @@ import {
   useI18n,
   withI18n,
 } from '../contexts/I18nContext.js';
-import { TestWrapper } from './test-wrapper.js';
+import { SessionProvider } from '../contexts/SessionContext.js';
 import { createUseSessionMock } from './mocks/session-context.js';
+import { TestWrapper } from './test-wrapper.js';
 
 const useSessionMock = createUseSessionMock();
 const updatePreferencesSpy = useSessionMock.updatePreferences;

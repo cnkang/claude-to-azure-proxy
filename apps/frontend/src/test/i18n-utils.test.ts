@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import i18n, { i18nUtils, SUPPORTED_LANGUAGES } from '../i18n/index.js';
 import { frontendLogger } from '../utils/logger.js';
 

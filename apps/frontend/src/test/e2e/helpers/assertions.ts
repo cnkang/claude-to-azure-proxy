@@ -7,7 +7,7 @@
  * @module Assertions
  */
 
-import { expect, type Page } from '@playwright/test';
+import { type Page, expect } from '@playwright/test';
 
 /**
  * Helper class for performing UI assertions in E2E tests
@@ -75,7 +75,9 @@ export class Assertions {
     expectedCount: number,
     timeout = 5000
   ): Promise<void> {
-    const conversations = this.page.locator('[data-testid^="conversation-item-"]');
+    const conversations = this.page.locator(
+      '[data-testid^="conversation-item-"]'
+    );
     await expect(conversations).toHaveCount(expectedCount, { timeout });
   }
 

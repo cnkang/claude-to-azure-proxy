@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConversationSearch } from '../components/search/ConversationSearch.js';
 import { AppProvider } from '../contexts/AppContext.js';
 import { SessionProvider } from '../contexts/SessionContext.js';
@@ -39,72 +39,72 @@ describe('Search Components Accessibility', () => {
   describe('ConversationSearch', () => {
     it('has proper ARIA labels and roles', () => {
       renderWithProvider(
-        <ConversationSearch 
+        <ConversationSearch
           conversations={mockConversations}
           onResultSelect={() => {}}
         />
       );
-      
+
       const searchComponent = screen.getByTestId('conversation-search');
       expect(searchComponent).toHaveAttribute('role', 'search');
     });
 
     it('provides screen reader instructions', () => {
       renderWithProvider(
-        <ConversationSearch 
+        <ConversationSearch
           conversations={mockConversations}
           onResultSelect={() => {}}
         />
       );
-      
+
       const searchComponent = screen.getByTestId('conversation-search');
       expect(searchComponent).toBeInTheDocument();
     });
 
     it('supports keyboard navigation with Escape key', () => {
       renderWithProvider(
-        <ConversationSearch 
+        <ConversationSearch
           conversations={mockConversations}
           onResultSelect={() => {}}
         />
       );
-      
+
       const searchInput = screen.getByRole('searchbox');
       expect(searchInput).toBeInTheDocument();
     });
 
     it('has minimum 44x44px touch target for input', () => {
       renderWithProvider(
-        <ConversationSearch 
+        <ConversationSearch
           conversations={mockConversations}
           onResultSelect={() => {}}
         />
       );
-      
+
       const searchInput = screen.getByRole('searchbox');
       expect(searchInput).toBeInTheDocument();
     });
 
     it('shows loading state with proper ARIA attributes', () => {
       renderWithProvider(
-        <ConversationSearch 
+        <ConversationSearch
           conversations={mockConversations}
           onResultSelect={() => {}}
         />
       );
-      
+
       const searchInput = screen.getByRole('searchbox');
       expect(searchInput).toBeInTheDocument();
     });
 
     it('announces search results to screen readers', () => {
       renderWithProvider(
-        <ConversationSearch 
+        <ConversationSearch
           conversations={mockConversations}
           onResultSelect={() => {}}
         />
       );
-      
+
       const searchComponent = screen.getByTestId('conversation-search');
       expect(searchComponent).toBeInTheDocument();
     });
@@ -113,12 +113,12 @@ describe('Search Components Accessibility', () => {
   describe('Keyboard Navigation Integration', () => {
     it('supports Tab navigation through search interface', () => {
       renderWithProvider(
-        <ConversationSearch 
+        <ConversationSearch
           conversations={mockConversations}
           onResultSelect={() => {}}
         />
       );
-      
+
       const searchInput = screen.getByRole('searchbox');
       expect(searchInput).toBeInTheDocument();
     });
@@ -127,12 +127,12 @@ describe('Search Components Accessibility', () => {
   describe('Screen Reader Support', () => {
     it('provides live region for search results', () => {
       renderWithProvider(
-        <ConversationSearch 
+        <ConversationSearch
           conversations={mockConversations}
           onResultSelect={() => {}}
         />
       );
-      
+
       const searchComponent = screen.getByTestId('conversation-search');
       expect(searchComponent).toBeInTheDocument();
     });
@@ -141,24 +141,24 @@ describe('Search Components Accessibility', () => {
   describe('Focus Management', () => {
     it('maintains focus on search input after clearing', () => {
       renderWithProvider(
-        <ConversationSearch 
+        <ConversationSearch
           conversations={mockConversations}
           onResultSelect={() => {}}
         />
       );
-      
+
       const searchInput = screen.getByRole('searchbox');
       expect(searchInput).toBeInTheDocument();
     });
 
     it('shows visible focus indicators', () => {
       renderWithProvider(
-        <ConversationSearch 
+        <ConversationSearch
           conversations={mockConversations}
           onResultSelect={() => {}}
         />
       );
-      
+
       const searchInput = screen.getByRole('searchbox');
       expect(searchInput).toBeInTheDocument();
     });
@@ -167,12 +167,12 @@ describe('Search Components Accessibility', () => {
   describe('Responsive Design', () => {
     it('maintains accessibility on mobile viewports', () => {
       renderWithProvider(
-        <ConversationSearch 
+        <ConversationSearch
           conversations={mockConversations}
           onResultSelect={() => {}}
         />
       );
-      
+
       const searchInput = screen.getByRole('searchbox');
       expect(searchInput).toBeInTheDocument();
     });
@@ -181,36 +181,36 @@ describe('Search Components Accessibility', () => {
   describe('SearchResultItem', () => {
     it('highlights keywords with proper contrast', () => {
       renderWithProvider(
-        <ConversationSearch 
+        <ConversationSearch
           conversations={mockConversations}
           onResultSelect={() => {}}
         />
       );
-      
+
       const searchComponent = screen.getByTestId('conversation-search');
       expect(searchComponent).toBeInTheDocument();
     });
 
     it('has minimum 44x44px touch targets for buttons', () => {
       renderWithProvider(
-        <ConversationSearch 
+        <ConversationSearch
           conversations={mockConversations}
           onResultSelect={() => {}}
         />
       );
-      
+
       const searchComponent = screen.getByTestId('conversation-search');
       expect(searchComponent).toBeInTheDocument();
     });
 
     it('uses semantic mark element for keyword highlighting', () => {
       renderWithProvider(
-        <ConversationSearch 
+        <ConversationSearch
           conversations={mockConversations}
           onResultSelect={() => {}}
         />
       );
-      
+
       const searchComponent = screen.getByTestId('conversation-search');
       expect(searchComponent).toBeInTheDocument();
     });

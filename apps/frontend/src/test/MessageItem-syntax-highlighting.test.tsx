@@ -1,7 +1,7 @@
-import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import React from 'react';
 import { act } from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MessageItem } from '../components/chat/MessageItem.js';
 import type { Message } from '../types/index.js';
 

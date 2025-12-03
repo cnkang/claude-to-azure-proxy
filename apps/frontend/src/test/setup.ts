@@ -1,5 +1,5 @@
-import { vi, expect } from 'vitest';
 import { cleanup } from '@testing-library/react';
+import { expect, vi } from 'vitest';
 import { afterEach } from 'vitest';
 
 // Cleanup after each test
@@ -237,7 +237,6 @@ vi.mock('i18next-browser-_languagedetector', () => ({
 (
   globalThis as unknown as { IntersectionObserver: unknown }
 ).IntersectionObserver = class IntersectionObserver {
-  constructor() {}
   disconnect(): void {}
   observe(): void {}
   unobserve(): void {}
@@ -246,7 +245,6 @@ vi.mock('i18next-browser-_languagedetector', () => ({
 // Mock ResizeObserver
 (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver =
   class ResizeObserver {
-    constructor() {}
     disconnect(): void {}
     observe(): void {}
     unobserve(): void {}

@@ -5,7 +5,7 @@
  * Bug fix: Ensure encrypted data is properly serialized before storage
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ConversationStorage } from '../services/storage.js';
 import type { Conversation } from '../types/index.js';
 
@@ -187,7 +187,7 @@ describe('ConversationStorage - ArrayBuffer Serialization', () => {
     };
 
     await storage.storeConversation(conversation1);
-    
+
     // Store second conversation
     const conversation2: Conversation = {
       id: 'test-conv-4b',
@@ -209,21 +209,21 @@ describe('ConversationStorage - ArrayBuffer Serialization', () => {
     };
 
     await storage.storeConversation(conversation2);
-    
+
     // Wait for storage to complete
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     // Retrieve both conversations
     const retrieved1 = await storage.getConversation('test-conv-4a');
     const retrieved2 = await storage.getConversation('test-conv-4b');
-    
+
     // Verify both conversations maintain their data integrity
     // This tests that serialization doesn't interfere between conversations
     if (retrieved1 && retrieved2) {
       expect(retrieved1.id).toBe('test-conv-4a');
       expect(retrieved1.title).toBe('First Conversation');
       expect(retrieved1.messages[0].content).toBe('First message');
-      
+
       expect(retrieved2.id).toBe('test-conv-4b');
       expect(retrieved2.title).toBe('Second Conversation');
       expect(retrieved2.messages[0].content).toBe('Second message');

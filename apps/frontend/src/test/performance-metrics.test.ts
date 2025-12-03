@@ -6,11 +6,11 @@
  * Task 9.1: Test performance metrics collection
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
-  PerformanceMetrics,
   OperationType,
   PERFORMANCE_TARGETS,
+  PerformanceMetrics,
   measureAsync,
   measureSync,
 } from '../utils/performance-metrics';

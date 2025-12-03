@@ -12,8 +12,8 @@
  * Requirements: 4.1, 4.2, 4.3, 6.1-6.5
  */
 
-import { test, expect, type BrowserContext, type Page } from '@playwright/test';
-import { UIActions, Assertions, TestSetup } from './helpers/index.js';
+import { type BrowserContext, type Page, expect, test } from '@playwright/test';
+import { Assertions, TestSetup, UIActions } from './helpers/index.js';
 
 test.describe('E2E: Deletion Cleanup (UI-Based)', () => {
   let ui: UIActions;
@@ -22,10 +22,10 @@ test.describe('E2E: Deletion Cleanup (UI-Based)', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to the application
     await page.goto('http://localhost:3000');
-    
+
     // Wait for navigation to complete (app redirects to /chat)
     await page.waitForURL('**/chat**', { timeout: 10000 });
-    
+
     // Wait for app container to be visible
     await page.waitForSelector('[data-testid="app-container"]', {
       state: 'visible',
@@ -42,12 +42,17 @@ test.describe('E2E: Deletion Cleanup (UI-Based)', () => {
     // Tests should be written to handle existing conversations and use unique titles
   });
 
-  test('should remove conversation and messages from UI after deletion', async ({ page }) => {
+  test('should remove conversation and messages from UI after deletion', async ({
+    page,
+  }) => {
     // Create a conversation
     const conversationId = await ui.createConversation();
 
     // Update the title to make it identifiable
-    await ui.updateConversationTitle(conversationId, 'Test Conversation for Deletion');
+    await ui.updateConversationTitle(
+      conversationId,
+      'Test Conversation for Deletion'
+    );
 
     // Verify conversation is visible
     await assert.expectConversationInList(conversationId);
@@ -59,22 +64,32 @@ test.describe('E2E: Deletion Cleanup (UI-Based)', () => {
     await assert.expectConversationNotInList(conversationId);
   });
 
-  test('should exclude deleted conversations from search results', async ({ page }) => {
+  test('should exclude deleted conversations from search results', async ({
+    page,
+  }) => {
     // Create multiple conversations with unique titles
     const conversationId1 = await ui.createConversation();
     await ui.updateConversationTitle(conversationId1, 'Python Tutorial XYZ');
 
     const conversationId2 = await ui.createConversation();
-    await ui.updateConversationTitle(conversationId2, 'Python Best Practices XYZ');
+    await ui.updateConversationTitle(
+      conversationId2,
+      'Python Best Practices XYZ'
+    );
 
     const conversationId3 = await ui.createConversation();
-    await ui.updateConversationTitle(conversationId3, 'Python Data Science XYZ');
+    await ui.updateConversationTitle(
+      conversationId3,
+      'Python Data Science XYZ'
+    );
 
     // Wait for conversations to be indexed
     await page.waitForTimeout(1000);
 
     // Get the count of conversations before search
-    const initialCount = await page.locator('[data-testid^="conversation-item-"]').count();
+    const initialCount = await page
+      .locator('[data-testid^="conversation-item-"]')
+      .count();
 
     // Search for "Python XYZ" - should find all 3 Python conversations
     await ui.searchConversations('Python XYZ');
@@ -86,7 +101,9 @@ test.describe('E2E: Deletion Cleanup (UI-Based)', () => {
 
     if (isVisible) {
       // Verify we have 3 search results
-      const searchResultCount = await page.locator('[data-testid^="search-result-"]').count();
+      const searchResultCount = await page
+        .locator('[data-testid^="search-result-"]')
+        .count();
       expect(searchResultCount).toBe(3);
     } else {
       // If filtering conversation list, verify the 3 Python conversations are visible
@@ -109,11 +126,15 @@ test.describe('E2E: Deletion Cleanup (UI-Based)', () => {
     const isStillVisible = await searchResults.isVisible().catch(() => false);
     if (isStillVisible) {
       // Verify we now have 2 search results
-      const searchResultCount = await page.locator('[data-testid^="search-result-"]').count();
+      const searchResultCount = await page
+        .locator('[data-testid^="search-result-"]')
+        .count();
       expect(searchResultCount).toBe(2);
     } else {
       // If filtering conversation list, verify only 2 Python conversations are visible
-      const visibleCount = await page.locator('[data-testid^="conversation-item-"]').count();
+      const visibleCount = await page
+        .locator('[data-testid^="conversation-item-"]')
+        .count();
       expect(visibleCount).toBe(initialCount - 1);
     }
 
@@ -125,7 +146,9 @@ test.describe('E2E: Deletion Cleanup (UI-Based)', () => {
     await assert.expectConversationInList(conversationId3);
   });
 
-  test('should update UI immediately after deletion without page refresh', async ({ page }) => {
+  test('should update UI immediately after deletion without page refresh', async ({
+    page,
+  }) => {
     // Create a conversation
     const conversationId = await ui.createConversation();
 
@@ -153,7 +176,10 @@ test.describe('E2E: Deletion Cleanup (UI-Based)', () => {
   test('should persist deletion after page refresh', async ({ page }) => {
     // Create a conversation with a unique title
     const conversationId = await ui.createConversation();
-    await ui.updateConversationTitle(conversationId, 'Conversation to Delete and Verify');
+    await ui.updateConversationTitle(
+      conversationId,
+      'Conversation to Delete and Verify'
+    );
 
     // Verify conversation is visible
     await assert.expectConversationInList(conversationId);

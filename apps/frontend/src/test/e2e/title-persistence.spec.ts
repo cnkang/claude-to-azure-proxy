@@ -15,8 +15,8 @@
  * Requirements: 3.1, 3.2, 3.3, 6.1-6.5
  */
 
-import { test, expect, type BrowserContext, type Page } from '@playwright/test';
-import { UIActions, Assertions, TestSetup } from './helpers/index.js';
+import { type BrowserContext, type Page, expect, test } from '@playwright/test';
+import { Assertions, TestSetup, UIActions } from './helpers/index.js';
 
 test.describe('E2E: Title Persistence (UI-Based)', () => {
   let context: BrowserContext;
@@ -28,10 +28,10 @@ test.describe('E2E: Title Persistence (UI-Based)', () => {
     context = await browser.newContext();
     page = await context.newPage();
     await page.goto('http://localhost:3000');
-    
+
     // Wait for navigation to complete (app redirects to /chat)
     await page.waitForURL('**/chat**', { timeout: 10000 });
-    
+
     // Wait for app container to be visible
     await page.waitForSelector('[data-testid="app-container"]', {
       state: 'visible',

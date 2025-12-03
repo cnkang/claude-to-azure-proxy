@@ -1,16 +1,16 @@
-import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { renderHook, act } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
+import type React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  ThemeProvider,
-  useTheme,
-  useThemeStyles,
   ThemeConditional,
-  withTheme,
+  ThemeProvider,
   ThemeToggle,
   _themeTransitions,
   _wcagUtils,
+  useTheme,
+  useThemeStyles,
+  withTheme,
 } from '../contexts/ThemeContext.js';
 
 const { setThemeMock, appState, matchMediaMock } = vi.hoisted(() => ({

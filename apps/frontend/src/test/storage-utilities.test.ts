@@ -1,4 +1,4 @@
-import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConversationStorage } from '../services/storage.js';
 import type { Conversation } from '../types/index.js';
 
@@ -155,7 +155,10 @@ beforeEach(() => {
   if (originalNavigatorStorage) {
     Object.defineProperty(navigator, 'storage', originalNavigatorStorage);
   } else {
-    delete (navigator as unknown as { storage?: unknown }).storage;
+    Reflect.deleteProperty(
+      navigator as unknown as { storage?: unknown },
+      'storage'
+    );
   }
 
   Object.defineProperty(globalThis, 'crypto', {
@@ -168,7 +171,10 @@ afterEach(() => {
   if (originalNavigatorStorage) {
     Object.defineProperty(navigator, 'storage', originalNavigatorStorage);
   } else {
-    delete (navigator as unknown as { storage?: unknown }).storage;
+    Reflect.deleteProperty(
+      navigator as unknown as { storage?: unknown },
+      'storage'
+    );
   }
 
   Object.defineProperty(globalThis, 'crypto', {
@@ -180,21 +186,33 @@ afterEach(() => {
     (globalThis as Record<string, unknown>).CompressionStream =
       originalCompressionStream;
   } else {
-    delete (globalThis as Record<string, unknown>).CompressionStream;
+    Reflect.deleteProperty(
+      globalThis as Record<string, unknown>,
+      'CompressionStream'
+    );
   }
 
   if (originalDecompressionStream) {
     (globalThis as Record<string, unknown>).DecompressionStream =
       originalDecompressionStream;
   } else {
-    delete (globalThis as Record<string, unknown>).DecompressionStream;
+    Reflect.deleteProperty(
+      globalThis as Record<string, unknown>,
+      'DecompressionStream'
+    );
   }
 });
 
 describe('ConversationStorage low-level utilities', () => {
   it('compresses and decompresses using simple fallback when streams are unavailable', async () => {
-    delete (globalThis as Record<string, unknown>).CompressionStream;
-    delete (globalThis as Record<string, unknown>).DecompressionStream;
+    Reflect.deleteProperty(
+      globalThis as Record<string, unknown>,
+      'CompressionStream'
+    );
+    Reflect.deleteProperty(
+      globalThis as Record<string, unknown>,
+      'DecompressionStream'
+    );
 
     const sample = 'aaaaabbbbccccddddeeee';
     const compressed = await internals.compressData.call(storage, sample);
@@ -259,20 +277,20 @@ describe('ConversationStorage low-level utilities', () => {
     const originalKey = (
       internals as unknown as { encryptionKey: CryptoKey | null }
     ).encryptionKey;
-    
+
     // When encryption key is null, encryptData should still work (fallback to unencrypted)
     (
       internals as unknown as { encryptionKey: CryptoKey | null }
     ).encryptionKey = null;
-    
+
     const result = await internals.encryptData.call(storage, 'test data');
-    
+
     // Should return data in unencrypted format
     expect(result).toBeDefined();
     expect(result.data).toBeInstanceOf(ArrayBuffer);
     expect(result.iv).toBeInstanceOf(ArrayBuffer);
     expect(result.iv.byteLength).toBe(0); // Empty IV indicates no encryption
-    
+
     // Restore original key
     (
       internals as unknown as { encryptionKey: CryptoKey | null }
@@ -293,7 +311,10 @@ describe('ConversationStorage low-level utilities', () => {
         value: undefined,
       });
     } else {
-      delete (navigator as unknown as { storage?: unknown }).storage;
+      Reflect.deleteProperty(
+        navigator as unknown as { storage?: unknown },
+        'storage'
+      );
     }
 
     const quotaFallback = await storage.getStorageQuota();

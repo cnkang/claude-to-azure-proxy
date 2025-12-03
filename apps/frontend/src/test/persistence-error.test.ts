@@ -6,25 +6,25 @@
  * Requirements: 7.1, 7.2, 7.3, 7.4
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   PersistenceError,
+  PersistenceErrorFactory,
   PersistenceErrorType,
   RecoveryStrategy,
-  PersistenceErrorFactory,
-  createPersistenceError,
-  createStorageFullError,
+  createConflictError,
+  createDataCorruptionError,
+  createDecryptionError,
+  createEncryptionError,
   createIndexedDBError,
   createLocalStorageError,
-  createEncryptionError,
-  createDecryptionError,
-  createValidationError,
-  createDataCorruptionError,
   createNotFoundError,
-  createConflictError,
-  createTimeoutError,
+  createPersistenceError,
+  createStorageFullError,
   createStorageUnavailableError,
+  createTimeoutError,
   createUnknownError,
+  createValidationError,
 } from '../errors/persistence-error.js';
 import { frontendLogger } from '../utils/logger.js';
 

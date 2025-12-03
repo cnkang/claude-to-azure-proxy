@@ -7,7 +7,7 @@
  * Requirements: Code Quality, 8.1, 8.2, 8.4, 8.6, 8.7, 8.9, 8.14
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConversationSearchService } from '../services/conversation-search.js';
 import type { ConversationStorage } from '../services/storage.js';
 import type { Conversation, Message } from '../types/index.js';
@@ -408,7 +408,7 @@ describe('ConversationSearchService', () => {
         'Updated Title',
         [{ role: 'user', content: 'Updated message' }]
       );
-      
+
       // Mock both getConversation and getAllConversations to return updated data
       vi.mocked(mockStorage.getConversation).mockResolvedValue(
         updatedConversation
@@ -424,7 +424,7 @@ describe('ConversationSearchService', () => {
       const results = await searchService.search('Updated');
       expect(results.results.length).toBe(1);
       expect(results.results[0].conversationTitle).toBe('Updated Title');
-      
+
       // Should not find old content
       const oldResults = await searchService.search('Original');
       expect(oldResults.results.length).toBe(0);
@@ -434,10 +434,10 @@ describe('ConversationSearchService', () => {
       // Verify conversation exists before removal
       const beforeResults = await searchService.search('Original');
       expect(beforeResults.results.length).toBe(1);
-      
+
       // Remove from index
       await searchService.removeFromIndex('conv-1');
-      
+
       // Update mock to return empty array (simulating deletion from storage)
       vi.mocked(mockStorage.getAllConversations).mockResolvedValue([]);
 

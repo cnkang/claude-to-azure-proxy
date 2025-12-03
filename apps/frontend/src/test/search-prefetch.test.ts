@@ -11,8 +11,8 @@
  * - Test concurrent prefetch requests
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useSearchWithPrefetch } from '../hooks/useSearchWithPrefetch.js';
 import type {
   ConversationSearchService,

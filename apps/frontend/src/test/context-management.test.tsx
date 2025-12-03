@@ -1,10 +1,10 @@
-import React from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react';
+import type React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Conversation } from '../types/index.js';
 import type { UseConversationsReturn } from '../hooks/useConversations.js';
-import { TestWrapper } from './test-wrapper.js';
+import type { Conversation } from '../types/index.js';
 import { createUseSessionMock } from './mocks/session-context.js';
+import { TestWrapper } from './test-wrapper.js';
 
 const storageMock = {
   initialize: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
@@ -106,8 +106,12 @@ const createConversation = (
 
 const loadHookEnvironment = async (): Promise<{
   useConversations: () => UseConversationsReturn;
-  useConversationOrganization: typeof import('../hooks/useConversations.js').useConversationOrganization;
-  useConversationSearch: typeof import('../hooks/useConversations.js').useConversationSearch;
+  useConversationOrganization: typeof import(
+    '../hooks/useConversations.js'
+  ).useConversationOrganization;
+  useConversationSearch: typeof import(
+    '../hooks/useConversations.js'
+  ).useConversationSearch;
   wrapper: React.FC<{ children: React.ReactNode }>;
 }> => {
   vi.resetModules();

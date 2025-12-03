@@ -81,11 +81,13 @@ export class UIActions {
     await this.page.waitForTimeout(800);
 
     // Find the rename button using testid (more reliable than role)
-    const renameButton = this.page.locator('[data-testid="dropdown-item-rename"]');
-    
+    const renameButton = this.page.locator(
+      '[data-testid="dropdown-item-rename"]'
+    );
+
     // Wait for it to be visible
     await renameButton.waitFor({ state: 'visible', timeout: 5000 });
-    
+
     // Click using JavaScript to bypass overlay issues
     await renameButton.evaluate((el) => (el as HTMLElement).click());
 
@@ -113,7 +115,7 @@ export class UIActions {
     const conversationItem = this.page.locator(
       `[data-testid="conversation-item-${conversationId}"]`
     );
-    
+
     // Wait for conversation item to be visible (important if we just cleared search)
     await conversationItem.waitFor({ state: 'visible', timeout: 10000 });
 
@@ -125,7 +127,7 @@ export class UIActions {
     const optionsButton = conversationItem.locator(
       `[data-testid="conversation-options-${conversationId}"]`
     );
-    
+
     // Ensure options button is visible and clickable
     await optionsButton.waitFor({ state: 'visible', timeout: 10000 });
     await optionsButton.click({ force: true });
@@ -134,11 +136,13 @@ export class UIActions {
     await this.page.waitForTimeout(800);
 
     // Find the delete button using testid (more reliable than role)
-    const deleteButton = this.page.locator('[data-testid="dropdown-item-delete"]');
-    
+    const deleteButton = this.page.locator(
+      '[data-testid="dropdown-item-delete"]'
+    );
+
     // Wait for it to be visible
     await deleteButton.waitFor({ state: 'visible', timeout: 5000 });
-    
+
     // Click using JavaScript to bypass overlay issues
     await deleteButton.evaluate((el) => (el as HTMLElement).click());
 
@@ -146,7 +150,9 @@ export class UIActions {
     await this.page.waitForTimeout(800);
 
     // Click confirm button in the dialog - use JavaScript click to bypass overlay
-    const confirmButton = this.page.getByRole('button', { name: /delete|confirm/i });
+    const confirmButton = this.page.getByRole('button', {
+      name: /delete|confirm/i,
+    });
     await confirmButton.waitFor({ state: 'visible', timeout: 5000 });
     await confirmButton.evaluate((el) => (el as HTMLElement).click());
 
@@ -195,7 +201,9 @@ export class UIActions {
    */
   async clearAllConversations(): Promise<void> {
     // Get all conversation items
-    const conversations = this.page.locator('[data-testid^="conversation-item-"]');
+    const conversations = this.page.locator(
+      '[data-testid^="conversation-item-"]'
+    );
     const count = await conversations.count();
 
     // Delete each conversation (always delete the first one since list shrinks)

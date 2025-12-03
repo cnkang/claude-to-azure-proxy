@@ -1,8 +1,8 @@
 /**
  * Comprehensive Accessibility Tests for Sidebar UX Improvements
- * 
+ *
  * Tests Requirements: 21.3, 21.4, 21.8, 21.9, 21.10
- * 
+ *
  * This test suite verifies WCAG AAA compliance for:
  * - Hamburger menu button (contrast, touch targets, keyboard access)
  * - Floating action button (contrast, touch targets, keyboard access)
@@ -10,37 +10,40 @@
  * - Onboarding message (contrast, keyboard access, ARIA)
  * - Screen reader support (ARIA labels, roles)
  * - Reduced motion support
- * 
+ *
  * Note: This test suite focuses on manual accessibility checks that can be
  * verified in unit tests. For automated accessibility audits with axe-core,
  * use E2E tests with Playwright which has better support for axe integration.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import { FloatingActionButton } from '../../components/ui/floating-action-button';
-import { OnboardingMessage } from '../../components/ui/onboarding-message';
-import { Header } from '../../components/layout/Header';
-import { AppProvider } from '../../contexts/AppContext';
-import { ThemeProvider } from '../../contexts/ThemeContext';
-import { I18nProvider } from '../../contexts/I18nContext';
-import { SessionProvider } from '../../contexts/SessionContext';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Header } from '../components/layout/Header.js';
+import { FloatingActionButton } from '../components/ui/floating-action-button.js';
+import { OnboardingMessage } from '../components/ui/onboarding-message.js';
+import { AppProvider } from '../contexts/AppContext.js';
+import { I18nProvider } from '../contexts/I18nContext.js';
+import { SessionProvider } from '../contexts/SessionContext.js';
+import { ThemeProvider } from '../contexts/ThemeContext.js';
 
 // Mock child components to simplify rendering
-vi.mock('../../contexts/ThemeContext', async () => {
-  const actual = await vi.importActual('../../contexts/ThemeContext');
+vi.mock('../contexts/ThemeContext.js', async () => {
+  const actual = await vi.importActual('../contexts/ThemeContext.js');
   return {
     ...actual,
-    ThemeToggle: ({ className, showLabel }: { className?: string; showLabel?: boolean }) => (
-      <button data-testid="theme-toggle" className={className}>
+    ThemeToggle: ({
+      className,
+      showLabel,
+    }: { className?: string; showLabel?: boolean }) => (
+      <button type="button" data-testid="theme-toggle" className={className}>
         {showLabel && 'Theme'}
       </button>
     ),
   };
 });
 
-vi.mock('../../contexts/I18nContext', async () => {
-  const actual = await vi.importActual('../../contexts/I18nContext');
+vi.mock('../contexts/I18nContext.js', async () => {
+  const actual = await vi.importActual('../contexts/I18nContext.js');
   return {
     ...actual,
     LanguageSelector: ({ className }: { className?: string }) => (
@@ -68,9 +71,7 @@ function renderWithProviders(ui: React.ReactElement) {
     <SessionProvider>
       <AppProvider>
         <ThemeProvider>
-          <I18nProvider>
-            {ui}
-          </I18nProvider>
+          <I18nProvider>{ui}</I18nProvider>
         </ThemeProvider>
       </AppProvider>
     </SessionProvider>
@@ -81,11 +82,11 @@ describe('Sidebar UX Accessibility Tests', () => {
   describe('Hamburger Menu Button', () => {
     it('should have focus indicator styles applied', async () => {
       renderWithProviders(<Header isMobile={true} isTablet={false} />);
-      
+
       // Use findByRole for async rendering with increased timeout
       // In test environment, aria-label is the translation key (e.g., "header.openSidebar")
       const menuButton = await screen.findByRole(
-        'button', 
+        'button',
         { name: /header\.(open|close)Sidebar/i },
         { timeout: 3000 }
       );
@@ -93,7 +94,7 @@ describe('Sidebar UX Accessibility Tests', () => {
 
       // Focus the button
       menuButton.focus();
-      
+
       // Wait for focus state to be applied
       await waitFor(() => {
         expect(menuButton).toHaveFocus();
@@ -106,10 +107,10 @@ describe('Sidebar UX Accessibility Tests', () => {
 
     it('should have appropriate size classes for touch targets', async () => {
       renderWithProviders(<Header isMobile={true} isTablet={false} />);
-      
+
       // Use findByRole for async rendering with increased timeout
       const menuButton = await screen.findByRole(
-        'button', 
+        'button',
         { name: /header\.(open|close)Sidebar/i },
         { timeout: 3000 }
       );
@@ -123,17 +124,17 @@ describe('Sidebar UX Accessibility Tests', () => {
 
     it('should be keyboard accessible', async () => {
       renderWithProviders(<Header isMobile={true} isTablet={false} />);
-      
+
       // Use findByRole for async rendering with increased timeout
       const menuButton = await screen.findByRole(
-        'button', 
+        'button',
         { name: /header\.(open|close)Sidebar/i },
         { timeout: 3000 }
       );
 
       // Verify button can receive focus
       menuButton.focus();
-      
+
       await waitFor(() => {
         expect(menuButton).toHaveFocus();
       });
@@ -144,14 +145,14 @@ describe('Sidebar UX Accessibility Tests', () => {
 
     it('should have descriptive ARIA label', async () => {
       renderWithProviders(<Header isMobile={true} isTablet={false} />);
-      
+
       // Use findByRole for async rendering with increased timeout
       const menuButton = await screen.findByRole(
-        'button', 
+        'button',
         { name: /header\.(open|close)Sidebar/i },
         { timeout: 3000 }
       );
-      
+
       // Requirement 21.10: descriptive ARIA label
       const ariaLabel = menuButton.getAttribute('aria-label');
       expect(ariaLabel).toBeTruthy();
@@ -160,14 +161,14 @@ describe('Sidebar UX Accessibility Tests', () => {
 
     it('should have proper ARIA expanded state', async () => {
       renderWithProviders(<Header isMobile={true} isTablet={false} />);
-      
+
       // Use findByRole for async rendering with increased timeout
       const menuButton = await screen.findByRole(
-        'button', 
+        'button',
         { name: /header\.(open|close)Sidebar/i },
         { timeout: 3000 }
       );
-      
+
       // Should have aria-expanded attribute
       expect(menuButton).toHaveAttribute('aria-expanded');
       const expanded = menuButton.getAttribute('aria-expanded');
@@ -176,14 +177,14 @@ describe('Sidebar UX Accessibility Tests', () => {
 
     it('should have tooltip component present', async () => {
       renderWithProviders(<Header isMobile={true} isTablet={false} />);
-      
+
       // Use findByRole for async rendering with increased timeout
       const menuButton = await screen.findByRole(
-        'button', 
+        'button',
         { name: /header\.(open|close)Sidebar/i },
         { timeout: 3000 }
       );
-      
+
       // Verify button is wrapped with Tooltip component (check for tooltip trigger)
       // The actual tooltip contrast should be verified with E2E tests
       expect(menuButton).toBeInTheDocument();
@@ -210,7 +211,7 @@ describe('Sidebar UX Accessibility Tests', () => {
       );
 
       const button = screen.getByRole('button', { name: /open sidebar/i });
-      
+
       // Verify button has blue background and white text classes
       // Actual contrast ratio should be verified with E2E tests using Chrome DevTools MCP
       expect(button.className).toMatch(/bg-blue-\d+/);
@@ -253,7 +254,7 @@ describe('Sidebar UX Accessibility Tests', () => {
 
       // Verify button is not disabled
       expect(button).not.toBeDisabled();
-      
+
       // Verify button has proper type
       expect(button.tagName).toBe('BUTTON');
     });
@@ -268,8 +269,10 @@ describe('Sidebar UX Accessibility Tests', () => {
         />
       );
 
-      const button = screen.getByRole('button', { name: /open sidebar to view conversations/i });
-      
+      const button = screen.getByRole('button', {
+        name: /open sidebar to view conversations/i,
+      });
+
       // Requirement 21.10: descriptive ARIA label
       const ariaLabel = button.getAttribute('aria-label');
       expect(ariaLabel).toBeTruthy();
@@ -287,7 +290,7 @@ describe('Sidebar UX Accessibility Tests', () => {
       );
 
       const button = screen.getByRole('button', { name: /open sidebar/i });
-      
+
       // Verify button has aria-label for tooltip/screen readers
       // Actual tooltip contrast should be verified with E2E tests
       expect(button.getAttribute('aria-label')).toBe('Open sidebar');
@@ -304,7 +307,7 @@ describe('Sidebar UX Accessibility Tests', () => {
       );
 
       const button = screen.getByRole('button', { name: /open sidebar/i });
-      
+
       // Focus the button
       button.focus();
       expect(button).toHaveFocus();
@@ -316,7 +319,7 @@ describe('Sidebar UX Accessibility Tests', () => {
 
     it('should respect prefers-reduced-motion', () => {
       // Mock matchMedia for prefers-reduced-motion
-      const mockMatchMedia = vi.fn().mockImplementation(query => ({
+      const mockMatchMedia = vi.fn().mockImplementation((query) => ({
         matches: query === '(prefers-reduced-motion: reduce)',
         media: query,
         onchange: null,
@@ -368,7 +371,7 @@ describe('Sidebar UX Accessibility Tests', () => {
       const dialog = screen.getByRole('dialog');
       const title = screen.getByText(/how to reopen the sidebar/i);
       const description = screen.getByText(/tap the blue button/i);
-      
+
       // Verify text has appropriate color classes
       // Actual contrast ratios should be verified with E2E tests using Chrome DevTools MCP
       expect(title.className).toMatch(/text-gray-\d+/);
@@ -388,18 +391,21 @@ describe('Sidebar UX Accessibility Tests', () => {
       );
 
       const dialog = screen.getByRole('dialog');
-      
+
       // Should have role="dialog"
       expect(dialog).toHaveAttribute('role', 'dialog');
-      
+
       // Should have aria-modal="true"
       expect(dialog).toHaveAttribute('aria-modal', 'true');
-      
+
       // Should have aria-labelledby
       expect(dialog).toHaveAttribute('aria-labelledby', 'onboarding-title');
-      
+
       // Should have aria-describedby
-      expect(dialog).toHaveAttribute('aria-describedby', 'onboarding-description');
+      expect(dialog).toHaveAttribute(
+        'aria-describedby',
+        'onboarding-description'
+      );
     });
 
     it('should be keyboard accessible', () => {
@@ -443,7 +449,7 @@ describe('Sidebar UX Accessibility Tests', () => {
 
     it('should respect prefers-reduced-motion', () => {
       // Mock matchMedia for prefers-reduced-motion
-      const mockMatchMedia = vi.fn().mockImplementation(query => ({
+      const mockMatchMedia = vi.fn().mockImplementation((query) => ({
         matches: query === '(prefers-reduced-motion: reduce)',
         media: query,
         onchange: null,
@@ -486,7 +492,7 @@ describe('Sidebar UX Accessibility Tests', () => {
       );
 
       const dialog = screen.getByRole('dialog');
-      
+
       // Verify dialog has onClick handler (for click outside to dismiss)
       // Actual click behavior should be verified with E2E tests
       expect(dialog).toBeInTheDocument();
@@ -497,17 +503,17 @@ describe('Sidebar UX Accessibility Tests', () => {
   describe('Screen Reader Support', () => {
     it('should announce hamburger menu button state changes', async () => {
       renderWithProviders(<Header isMobile={true} isTablet={false} />);
-      
+
       // Use findByRole for async rendering with increased timeout
       const menuButton = await screen.findByRole(
-        'button', 
+        'button',
         { name: /header\.(open|close)Sidebar/i },
         { timeout: 3000 }
       );
-      
+
       // Should have aria-expanded for state announcement
       expect(menuButton).toHaveAttribute('aria-expanded');
-      
+
       // Should have aria-controls to link to sidebar
       expect(menuButton).toHaveAttribute('aria-controls', 'sidebar');
     });
@@ -524,7 +530,7 @@ describe('Sidebar UX Accessibility Tests', () => {
 
       const button = screen.getByRole('button');
       const ariaLabel = button.getAttribute('aria-label');
-      
+
       // Label should be descriptive (not just "button" or "open")
       expect(ariaLabel).toBeTruthy();
       expect(ariaLabel!.split(' ').length).toBeGreaterThan(2);
@@ -544,7 +550,7 @@ describe('Sidebar UX Accessibility Tests', () => {
       // Title should be a heading
       const title = screen.getByText(/how to reopen the sidebar/i);
       expect(title.tagName).toBe('H2');
-      
+
       // Should have proper id for aria-labelledby
       expect(title).toHaveAttribute('id', 'onboarding-title');
     });

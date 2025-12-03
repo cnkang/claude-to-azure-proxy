@@ -7,17 +7,17 @@
  * Requirements: Code Quality, 1.1, 1.3, 2.1, 2.2, 2.3, 3.1, 3.4, 6.1
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
-import { useConversations } from '../hooks/useConversations.js';
-import { useDebouncedTitle } from '../hooks/useDebouncedTitle.js';
-import { getConversationStorage } from '../services/storage.js';
-import { getRetryManager } from '../utils/retry-manager.js';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   PersistenceError,
   PersistenceErrorType,
 } from '../errors/persistence-error.js';
+import { useConversations } from '../hooks/useConversations.js';
+import { useDebouncedTitle } from '../hooks/useDebouncedTitle.js';
+import { getConversationStorage } from '../services/storage.js';
 import type { Conversation } from '../types/index.js';
+import { getRetryManager } from '../utils/retry-manager.js';
 
 // Mock dependencies
 vi.mock('../services/storage.js');

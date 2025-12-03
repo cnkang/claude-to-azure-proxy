@@ -18,7 +18,7 @@ describe('ConversationStorage initialization', () => {
     if (originalIndexedDB) {
       globalThis.indexedDB = originalIndexedDB;
     } else {
-      delete (globalThis as { indexedDB?: IDBFactory }).indexedDB;
+      Reflect.deleteProperty(globalThis as { indexedDB?: IDBFactory }, 'indexedDB');
     }
     vi.restoreAllMocks();
   });

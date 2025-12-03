@@ -6,7 +6,7 @@
  * Requirements: 9.1, 9.2, 9.3, 9.4
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import i18n from '../i18n/index';
 
 describe('I18n Integration (happy-dom)', () => {

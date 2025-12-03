@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConversationStorage } from '../services/storage.js';
 import type { Conversation, Message } from '../types/index.js';
 
@@ -103,7 +103,11 @@ describe('ConversationStorage IndexedDB mode', () => {
 
   const messageStore = {
     put: vi.fn((value: any) => {
-      const bucket = (savedMessages[value.conversationId] ??= []);
+      let bucket = savedMessages[value.conversationId];
+      if (bucket === undefined) {
+        bucket = [];
+        savedMessages[value.conversationId] = bucket;
+      }
       bucket.push(value);
       return { _value: undefined } as unknown as IDBRequest<undefined>;
     }),
@@ -225,7 +229,7 @@ describe('ConversationStorage IndexedDB mode', () => {
     // Verify the conversation was stored successfully
     const all = await storage.getAllConversations();
     const stored = all.find((c) => c.id === 'indexed-1');
-    
+
     // Storage may use localStorage fallback in test environment
     if (stored) {
       expect(stored.title).toContain('IndexedDB conversation');
@@ -235,12 +239,12 @@ describe('ConversationStorage IndexedDB mode', () => {
     }
 
     await storage.deleteConversation(conversation.id);
-    
+
     // Verify deletion attempted
     await new Promise((resolve) => setTimeout(resolve, 10));
     const afterDelete = await storage.getAllConversations();
     const deleted = afterDelete.find((c) => c.id === 'indexed-1');
-    
+
     // Should be deleted or not found
     expect(deleted).toBeUndefined();
   });

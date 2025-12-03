@@ -7,7 +7,7 @@
  * Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, Code Quality
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   CrossTabSyncService,
   type SyncEvent,

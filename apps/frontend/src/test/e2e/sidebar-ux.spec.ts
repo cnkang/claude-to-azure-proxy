@@ -1,5 +1,5 @@
-import { test, expect } from './fixtures/base.js';
 import AxeBuilder from '@axe-core/playwright';
+import { expect, test } from './fixtures/base.js';
 
 /**
  * Sidebar UX Improvements E2E Tests
@@ -21,7 +21,7 @@ test.describe('Sidebar UX - Floating Action Button', () => {
   }) => {
     // Set mobile viewport
     await cleanPage.setViewportSize({ width: 375, height: 667 });
-    
+
     // Wait for page to load completely
     await cleanPage.waitForLoadState('networkidle');
     await cleanPage.waitForTimeout(2000);
@@ -29,13 +29,19 @@ test.describe('Sidebar UX - Floating Action Button', () => {
     // On mobile, sidebar should be closed by default, so floating button should be visible
     // Check for floating action button directly
     const floatingButton = cleanPage.locator('.fixed.bottom-6.right-6 button');
-    
+
     // If floating button is not visible, sidebar might be open - close it
-    const isFloatingButtonVisible = await floatingButton.isVisible().catch(() => false);
+    const isFloatingButtonVisible = await floatingButton
+      .isVisible()
+      .catch(() => false);
     if (!isFloatingButtonVisible) {
       // Try to close sidebar using hamburger menu
-      const menuButton = cleanPage.locator('header button[aria-controls="sidebar"]');
-      const isMenuButtonVisible = await menuButton.isVisible().catch(() => false);
+      const menuButton = cleanPage.locator(
+        'header button[aria-controls="sidebar"]'
+      );
+      const isMenuButtonVisible = await menuButton
+        .isVisible()
+        .catch(() => false);
       if (isMenuButtonVisible) {
         await menuButton.click();
         await cleanPage.waitForTimeout(1000);
@@ -67,14 +73,20 @@ test.describe('Sidebar UX - Floating Action Button', () => {
     const sidebarVisible = await sidebar.isVisible();
 
     if (sidebarVisible) {
-      const closeButton = cleanPage.locator('[data-testid="sidebar-close-button"]');
-      const closeButtonVisible = await closeButton.isVisible().catch(() => false);
-      
+      const closeButton = cleanPage.locator(
+        '[data-testid="sidebar-close-button"]'
+      );
+      const closeButtonVisible = await closeButton
+        .isVisible()
+        .catch(() => false);
+
       if (closeButtonVisible) {
         await closeButton.click();
         await cleanPage.waitForTimeout(500);
       } else {
-        const menuButton = cleanPage.locator('header button[aria-controls="sidebar"]');
+        const menuButton = cleanPage.locator(
+          'header button[aria-controls="sidebar"]'
+        );
         await menuButton.click();
         await cleanPage.waitForTimeout(500);
       }
@@ -106,9 +118,11 @@ test.describe('Sidebar UX - Floating Action Button', () => {
     await cleanPage.waitForTimeout(2000);
 
     // Ensure sidebar is closed using hamburger menu
-    const menuButton = cleanPage.locator('header button[aria-controls="sidebar"]');
+    const menuButton = cleanPage.locator(
+      'header button[aria-controls="sidebar"]'
+    );
     await menuButton.waitFor({ state: 'visible', timeout: 10000 });
-    
+
     const ariaExpanded = await menuButton.getAttribute('aria-expanded');
     if (ariaExpanded === 'true') {
       await menuButton.click();
@@ -118,11 +132,11 @@ test.describe('Sidebar UX - Floating Action Button', () => {
     // Now floating button should be visible
     const floatingButton = cleanPage.locator('.fixed.bottom-6.right-6 button');
     await expect(floatingButton).toBeVisible({ timeout: 10000 });
-    
+
     // Scroll into view and click
     await floatingButton.scrollIntoViewIfNeeded();
     await cleanPage.waitForTimeout(500);
-    
+
     // Click using JavaScript as a fallback for reliability
     await floatingButton.evaluate((el) => (el as HTMLElement).click());
     await cleanPage.waitForTimeout(1000);
@@ -141,16 +155,18 @@ test.describe('Sidebar UX - Onboarding Message', () => {
     await cleanPage.evaluate(() => {
       localStorage.removeItem('sidebar-onboarding-seen');
     });
-    
+
     // Set mobile viewport
     await cleanPage.setViewportSize({ width: 375, height: 667 });
     await cleanPage.waitForLoadState('networkidle');
     await cleanPage.waitForTimeout(2000);
 
     // Ensure sidebar is open first
-    const menuButton = cleanPage.locator('header button[aria-controls="sidebar"]');
+    const menuButton = cleanPage.locator(
+      'header button[aria-controls="sidebar"]'
+    );
     await menuButton.waitFor({ state: 'visible', timeout: 10000 });
-    
+
     const ariaExpanded = await menuButton.getAttribute('aria-expanded');
     if (ariaExpanded !== 'true') {
       // Open sidebar first - use JavaScript click for reliability
@@ -178,15 +194,17 @@ test.describe('Sidebar UX - Onboarding Message', () => {
     await cleanPage.evaluate(() => {
       localStorage.removeItem('sidebar-onboarding-seen');
     });
-    
+
     // Set mobile viewport
     await cleanPage.setViewportSize({ width: 375, height: 667 });
     await cleanPage.waitForLoadState('networkidle');
     await cleanPage.waitForTimeout(2000);
 
-    const menuButton = cleanPage.locator('header button[aria-controls="sidebar"]');
+    const menuButton = cleanPage.locator(
+      'header button[aria-controls="sidebar"]'
+    );
     await menuButton.waitFor({ state: 'visible', timeout: 10000 });
-    
+
     // Ensure sidebar is open
     const ariaExpanded = await menuButton.getAttribute('aria-expanded');
     if (ariaExpanded !== 'true') {
@@ -201,8 +219,11 @@ test.describe('Sidebar UX - Onboarding Message', () => {
     // Wait for and dismiss onboarding
     const onboardingDialog = cleanPage.locator('[role="dialog"]').first();
     await expect(onboardingDialog).toBeVisible({ timeout: 5000 });
-    
-    const dismissButton = cleanPage.locator('button').filter({ hasText: /dismiss|got it|ok|close/i }).first();
+
+    const dismissButton = cleanPage
+      .locator('button')
+      .filter({ hasText: /dismiss|got it|ok|close/i })
+      .first();
     await dismissButton.click();
     await cleanPage.waitForTimeout(500);
 
@@ -233,7 +254,9 @@ test.describe('Sidebar UX - Hamburger Menu Button', () => {
     await cleanPage.waitForTimeout(500);
 
     // Find hamburger menu button in header
-    const menuButton = cleanPage.locator('header button[aria-controls="sidebar"]');
+    const menuButton = cleanPage.locator(
+      'header button[aria-controls="sidebar"]'
+    );
     await expect(menuButton).toBeVisible({ timeout: 10000 });
 
     // Verify button has enhanced styling by checking computed styles
@@ -241,9 +264,9 @@ test.describe('Sidebar UX - Hamburger Menu Button', () => {
       const styles = window.getComputedStyle(el);
       return styles.transition !== 'all 0s ease 0s';
     });
-    
+
     expect(hasTransition).toBe(true);
-    
+
     // Verify button has proper ARIA attributes
     const ariaLabel = await menuButton.getAttribute('aria-label');
     const ariaControls = await menuButton.getAttribute('aria-controls');
@@ -257,7 +280,9 @@ test.describe('Sidebar UX - Hamburger Menu Button', () => {
     await cleanPage.waitForTimeout(500);
 
     // Find hamburger menu button
-    const menuButton = cleanPage.locator('header button[aria-controls="sidebar"]');
+    const menuButton = cleanPage.locator(
+      'header button[aria-controls="sidebar"]'
+    );
     await expect(menuButton).toBeVisible({ timeout: 10000 });
 
     // Verify button size meets 44x44px minimum
@@ -278,14 +303,16 @@ test.describe('Sidebar UX - Tooltips', () => {
     await cleanPage.evaluate(() => {
       localStorage.setItem('sidebar-onboarding-seen', 'true');
     });
-    
+
     // Set tablet viewport (tooltips work better with hover on larger screens)
     await cleanPage.setViewportSize({ width: 768, height: 1024 });
     await cleanPage.waitForLoadState('networkidle');
     await cleanPage.waitForTimeout(1000);
 
     // Find hamburger menu button
-    const menuButton = cleanPage.locator('header button[aria-controls="sidebar"]');
+    const menuButton = cleanPage.locator(
+      'header button[aria-controls="sidebar"]'
+    );
     await expect(menuButton).toBeVisible({ timeout: 10000 });
 
     // Ensure sidebar is closed to avoid overlay blocking hover
@@ -316,16 +343,18 @@ test.describe('Sidebar UX - Tooltips', () => {
     await cleanPage.evaluate(() => {
       localStorage.setItem('sidebar-onboarding-seen', 'true');
     });
-    
+
     // Set tablet viewport (floating button shows on tablet and hover works)
     await cleanPage.setViewportSize({ width: 768, height: 1024 });
     await cleanPage.waitForLoadState('networkidle');
     await cleanPage.waitForTimeout(2000);
 
     // Ensure sidebar is closed to show floating button
-    const menuButton = cleanPage.locator('header button[aria-controls="sidebar"]');
+    const menuButton = cleanPage.locator(
+      'header button[aria-controls="sidebar"]'
+    );
     await menuButton.waitFor({ state: 'visible', timeout: 10000 });
-    
+
     const ariaExpanded = await menuButton.getAttribute('aria-expanded');
     if (ariaExpanded === 'true') {
       await menuButton.evaluate((el) => (el as HTMLElement).click());
@@ -355,10 +384,12 @@ test.describe('Sidebar UX - Keyboard Navigation', () => {
     await cleanPage.waitForTimeout(500);
 
     // Focus on hamburger button
-    const menuButton = cleanPage.locator('header button[aria-controls="sidebar"]');
+    const menuButton = cleanPage.locator(
+      'header button[aria-controls="sidebar"]'
+    );
     await expect(menuButton).toBeVisible({ timeout: 10000 });
     await menuButton.focus();
-    
+
     // Verify it's focused
     const focusedElement = await cleanPage.evaluate(() => {
       const el = document.activeElement;
@@ -383,9 +414,11 @@ test.describe('Sidebar UX - Keyboard Navigation', () => {
     // Ensure floating button is visible
     const floatingButton = cleanPage.locator('.fixed.bottom-6.right-6 button');
     const isVisible = await floatingButton.isVisible().catch(() => false);
-    
+
     if (!isVisible) {
-      const menuButton = cleanPage.locator('header button[aria-controls="sidebar"]');
+      const menuButton = cleanPage.locator(
+        'header button[aria-controls="sidebar"]'
+      );
       await menuButton.click();
       await cleanPage.waitForTimeout(1000);
     }
@@ -393,7 +426,7 @@ test.describe('Sidebar UX - Keyboard Navigation', () => {
     // Focus on floating button
     await expect(floatingButton).toBeVisible({ timeout: 10000 });
     await floatingButton.focus();
-    
+
     // Verify it's focused
     const focusedElement = await cleanPage.evaluate(() => {
       const el = document.activeElement;
@@ -415,7 +448,9 @@ test.describe('Sidebar UX - Keyboard Navigation', () => {
     await cleanPage.waitForTimeout(500);
 
     // Focus on hamburger button
-    const menuButton = cleanPage.locator('header button[aria-controls="sidebar"]');
+    const menuButton = cleanPage.locator(
+      'header button[aria-controls="sidebar"]'
+    );
     await expect(menuButton).toBeVisible({ timeout: 10000 });
     await menuButton.focus();
 
@@ -451,12 +486,14 @@ test.describe('Sidebar UX - Keyboard Navigation', () => {
     await cleanPage.waitForTimeout(2000);
 
     // Focus on hamburger button
-    const menuButton = cleanPage.locator('header button[aria-controls="sidebar"]');
+    const menuButton = cleanPage.locator(
+      'header button[aria-controls="sidebar"]'
+    );
     await expect(menuButton).toBeVisible({ timeout: 10000 });
-    
+
     // Get initial aria-expanded state
     const initialExpanded = await menuButton.getAttribute('aria-expanded');
-    
+
     await menuButton.focus();
 
     // Press Enter to activate
@@ -478,7 +515,9 @@ test.describe('Sidebar UX - Screen Reader Support', () => {
     await cleanPage.waitForTimeout(500);
 
     // Find hamburger menu button
-    const menuButton = cleanPage.locator('header button[aria-controls="sidebar"]');
+    const menuButton = cleanPage.locator(
+      'header button[aria-controls="sidebar"]'
+    );
     await expect(menuButton).toBeVisible({ timeout: 10000 });
 
     // Verify ARIA attributes
@@ -504,9 +543,11 @@ test.describe('Sidebar UX - Screen Reader Support', () => {
     // Ensure floating button is visible
     const floatingButton = cleanPage.locator('.fixed.bottom-6.right-6 button');
     const isVisible = await floatingButton.isVisible().catch(() => false);
-    
+
     if (!isVisible) {
-      const menuButton = cleanPage.locator('header button[aria-controls="sidebar"]');
+      const menuButton = cleanPage.locator(
+        'header button[aria-controls="sidebar"]'
+      );
       await menuButton.click();
       await cleanPage.waitForTimeout(1000);
     }
@@ -528,7 +569,9 @@ test.describe('Sidebar UX - Screen Reader Support', () => {
     await cleanPage.waitForTimeout(500);
 
     // Find hamburger menu button
-    const menuButton = cleanPage.locator('header button[aria-controls="sidebar"]');
+    const menuButton = cleanPage.locator(
+      'header button[aria-controls="sidebar"]'
+    );
     await expect(menuButton).toBeVisible({ timeout: 10000 });
 
     // Get initial aria-expanded state
@@ -552,18 +595,20 @@ test.describe('Sidebar UX - Cross-Browser Compatibility', () => {
     await cleanPage.evaluate(() => {
       localStorage.setItem('sidebar-onboarding-seen', 'true');
     });
-    
+
     // Set mobile viewport
     await cleanPage.setViewportSize({ width: 375, height: 667 });
-    
+
     // Wait for page to load
     await cleanPage.waitForLoadState('networkidle');
     await cleanPage.waitForTimeout(2000);
 
     // Ensure sidebar is closed using hamburger menu
-    const menuButton = cleanPage.locator('header button[aria-controls="sidebar"]');
+    const menuButton = cleanPage.locator(
+      'header button[aria-controls="sidebar"]'
+    );
     await menuButton.waitFor({ state: 'visible', timeout: 10000 });
-    
+
     const ariaExpanded = await menuButton.getAttribute('aria-expanded');
     if (ariaExpanded === 'true') {
       await menuButton.evaluate((el) => (el as HTMLElement).click());
@@ -588,13 +633,15 @@ test.describe('Sidebar UX - Cross-Browser Compatibility', () => {
   }) => {
     // Set mobile viewport
     await cleanPage.setViewportSize({ width: 375, height: 667 });
-    
+
     // Wait for page to load
     await cleanPage.waitForLoadState('networkidle');
     await cleanPage.waitForTimeout(2000);
 
     // Check hamburger menu button size
-    const menuButton = cleanPage.locator('header button[aria-controls="sidebar"]');
+    const menuButton = cleanPage.locator(
+      'header button[aria-controls="sidebar"]'
+    );
     await expect(menuButton).toBeVisible({ timeout: 10000 });
 
     const menuButtonBox = await menuButton.boundingBox();
@@ -630,21 +677,23 @@ test.describe('Sidebar UX - Cross-Browser Compatibility', () => {
     await cleanPage.evaluate(() => {
       localStorage.setItem('sidebar-onboarding-seen', 'true');
     });
-    
+
     // Emulate reduced motion preference
     await cleanPage.emulateMedia({ reducedMotion: 'reduce' });
 
     // Set mobile viewport
     await cleanPage.setViewportSize({ width: 375, height: 667 });
-    
+
     // Wait for page to load
     await cleanPage.waitForLoadState('networkidle');
     await cleanPage.waitForTimeout(2000);
 
     // Ensure sidebar is closed using hamburger menu
-    const menuButton = cleanPage.locator('header button[aria-controls="sidebar"]');
+    const menuButton = cleanPage.locator(
+      'header button[aria-controls="sidebar"]'
+    );
     await menuButton.waitFor({ state: 'visible', timeout: 10000 });
-    
+
     const ariaExpanded = await menuButton.getAttribute('aria-expanded');
     if (ariaExpanded === 'true') {
       await menuButton.evaluate((el) => (el as HTMLElement).click());
@@ -668,8 +717,8 @@ test.describe('Sidebar UX - Cross-Browser Compatibility', () => {
 
       elements.forEach((el) => {
         const styles = window.getComputedStyle(el);
-        const duration = parseFloat(styles.animationDuration);
-        const transitionDuration = parseFloat(styles.transitionDuration);
+        const duration = Number.parseFloat(styles.animationDuration);
+        const transitionDuration = Number.parseFloat(styles.transitionDuration);
 
         if (duration > 0) durations.push(duration);
         if (transitionDuration > 0) durations.push(transitionDuration);
@@ -709,13 +758,15 @@ test.describe('Sidebar UX - Desktop Default State', () => {
 
     // Set desktop viewport
     await cleanPage.setViewportSize({ width: 1440, height: 900 });
-    
+
     // Wait for page to load
     await cleanPage.waitForLoadState('networkidle');
     await cleanPage.waitForTimeout(2000);
 
     // Verify no onboarding dialog with specific text
-    const onboardingDialog = cleanPage.locator('[role="dialog"]').filter({ hasText: /floating|reopen/i });
+    const onboardingDialog = cleanPage
+      .locator('[role="dialog"]')
+      .filter({ hasText: /floating|reopen/i });
     await expect(onboardingDialog).not.toBeVisible();
   });
 });

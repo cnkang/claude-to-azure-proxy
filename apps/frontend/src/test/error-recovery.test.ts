@@ -12,19 +12,19 @@
  * - 7.5: Comprehensive error logging
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { getRetryManager } from '../utils/retry-manager.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   PersistenceError,
   PersistenceErrorType,
   RecoveryStrategy,
-  createStorageFullError,
+  createDataCorruptionError,
   createIndexedDBError,
   createNetworkError,
-  createDataCorruptionError,
+  createStorageFullError,
   createTimeoutError,
 } from '../errors/persistence-error.js';
 import { frontendLogger } from '../utils/logger.js';
+import { getRetryManager } from '../utils/retry-manager.js';
 
 describe('Error Recovery Integration Tests', () => {
   let retryManager: ReturnType<typeof getRetryManager>;
@@ -426,18 +426,3 @@ describe('Error Recovery Integration Tests', () => {
     });
   });
 });
-
-/**
- * Helper function to create network error
- */
-function createNetworkError(operation: string): PersistenceError {
-  return new PersistenceError(
-    PersistenceErrorType.NETWORK_ERROR,
-    operation,
-    'Network error. Please check your connection and try again.',
-    {
-      retryable: true,
-      recoveryStrategy: RecoveryStrategy.RETRY,
-    }
-  );
-}

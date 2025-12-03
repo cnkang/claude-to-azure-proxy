@@ -10,16 +10,16 @@
  * Requirements: Code Quality, 1.1, 1.3, 2.1, 2.2, 2.3, 2.4, 7.1, 7.2
  */
 
-import { beforeEach, describe, expect, it, vi, afterEach } from 'vitest';
-import { ConversationStorage, type DeleteResult } from '../services/storage.js';
-import { RetryManager } from '../utils/retry-manager.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   PersistenceError,
-  PersistenceErrorType,
   PersistenceErrorFactory,
+  PersistenceErrorType,
 } from '../errors/persistence-error.js';
-import { frontendLogger } from '../utils/logger.js';
+import { ConversationStorage, type DeleteResult } from '../services/storage.js';
 import type { Conversation } from '../types/index.js';
+import { frontendLogger } from '../utils/logger.js';
+import { RetryManager } from '../utils/retry-manager.js';
 
 // Helper to create test conversation
 const createTestConversation = (

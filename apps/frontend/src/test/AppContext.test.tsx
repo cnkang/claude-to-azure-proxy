@@ -1,13 +1,13 @@
-import React from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react';
+import type React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Conversation } from '../types/index.js';
 import {
   AppProvider,
   useAppContext,
   useConfig,
   useUI,
 } from '../contexts/AppContext.js';
+import type { Conversation } from '../types/index.js';
 
 const updatePreferencesSpy = vi.fn();
 

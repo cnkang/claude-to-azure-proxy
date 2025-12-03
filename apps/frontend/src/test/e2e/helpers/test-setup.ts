@@ -46,7 +46,10 @@ export class TestSetup {
    * @returns UIActions instance for interacting with the UI
    * @throws Error if setup fails
    */
-  static async setup(page: Page, url = 'http://localhost:3000'): Promise<UIActions> {
+  static async setup(
+    page: Page,
+    url = 'http://localhost:3000'
+  ): Promise<UIActions> {
     // Navigate to app
     await page.goto(url);
 
@@ -69,7 +72,7 @@ export class TestSetup {
    */
   static async cleanup(page: Page): Promise<void> {
     // Clear storage to prevent test pollution
-    await this.clearStorage(page);
+    await StorageTestHelpers.clearStorage(page);
   }
 
   /**

@@ -4,9 +4,9 @@
  * Tests for the ChatSSEClient with @microsoft/fetch-event-source
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ChatSSEClient } from '../services/chat.js';
 import * as fetchEventSourceModule from '@microsoft/fetch-event-source';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ChatSSEClient } from '../services/chat.js';
 
 // Type for fetchEventSource options
 type FetchEventSourceOptions = {
@@ -137,14 +137,16 @@ describe('ChatSSEClient', () => {
     const mockOnOpen = vi.fn();
     client.on('connectionStateChange', mockOnOpen);
 
-    fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-      // Simulate successful connection
-      await options.onopen?.({
-        ok: true,
-        status: 200,
-        text: async () => '',
-      } as Response);
-    });
+    fetchEventSourceSpy.mockImplementation(
+      async (_url: string, options: FetchEventSourceOptions) => {
+        // Simulate successful connection
+        await options.onopen?.({
+          ok: true,
+          status: 200,
+          text: async () => '',
+        } as Response);
+      }
+    );
 
     client.connect();
 
@@ -158,12 +160,14 @@ describe('ChatSSEClient', () => {
     const mockOnError = vi.fn();
     client.on('connectionError', mockOnError);
 
-    fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-      // Simulate error
-      const error = new Error('Connection failed');
-      options.onerror?.(error);
-      throw error;
-    });
+    fetchEventSourceSpy.mockImplementation(
+      async (_url: string, options: FetchEventSourceOptions) => {
+        // Simulate error
+        const error = new Error('Connection failed');
+        options.onerror?.(error);
+        throw error;
+      }
+    );
 
     client.connect();
 
@@ -181,12 +185,14 @@ describe('ChatSSEClient', () => {
   });
 
   it('should not reconnect when manually disconnected', async () => {
-    fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-      // Simulate error
-      const error = new Error('Connection failed');
-      options.onerror?.(error);
-      throw error;
-    });
+    fetchEventSourceSpy.mockImplementation(
+      async (_url: string, options: FetchEventSourceOptions) => {
+        // Simulate error
+        const error = new Error('Connection failed');
+        options.onerror?.(error);
+        throw error;
+      }
+    );
 
     client.connect();
     client.disconnect();
@@ -214,23 +220,25 @@ describe('ChatSSEClient', () => {
     const mockOnMessageStart = vi.fn();
     client.on('messageStart', mockOnMessageStart);
 
-    fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-      // Simulate successful connection
-      await options.onopen?.({
-        ok: true,
-        status: 200,
-        text: async () => '',
-      } as Response);
+    fetchEventSourceSpy.mockImplementation(
+      async (_url: string, options: FetchEventSourceOptions) => {
+        // Simulate successful connection
+        await options.onopen?.({
+          ok: true,
+          status: 200,
+          text: async () => '',
+        } as Response);
 
-      // Simulate message event
-      options.onmessage?.({
-        data: JSON.stringify({
-          type: 'start',
-          messageId: 'msg-123',
-          correlationId: 'corr-123',
-        }),
-      } as MessageEvent);
-    });
+        // Simulate message event
+        options.onmessage?.({
+          data: JSON.stringify({
+            type: 'start',
+            messageId: 'msg-123',
+            correlationId: 'corr-123',
+          }),
+        } as MessageEvent);
+      }
+    );
 
     client.connect();
 
@@ -247,17 +255,19 @@ describe('ChatSSEClient', () => {
     const mockOnError = vi.fn();
     client.on('connectionError', mockOnError);
 
-    fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-      // Simulate non-OK response
-      await options.onopen?.({
-        ok: false,
-        status: 401,
-        text: async () =>
-          JSON.stringify({
-            error: { message: 'Unauthorized' },
-          }),
-      } as Response);
-    });
+    fetchEventSourceSpy.mockImplementation(
+      async (_url: string, options: FetchEventSourceOptions) => {
+        // Simulate non-OK response
+        await options.onopen?.({
+          ok: false,
+          status: 401,
+          text: async () =>
+            JSON.stringify({
+              error: { message: 'Unauthorized' },
+            }),
+        } as Response);
+      }
+    );
 
     client.connect();
 
@@ -268,13 +278,15 @@ describe('ChatSSEClient', () => {
   });
 
   it('should force reconnect when requested', async () => {
-    fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-      await options.onopen?.({
-        ok: true,
-        status: 200,
-        text: async () => '',
-      } as Response);
-    });
+    fetchEventSourceSpy.mockImplementation(
+      async (_url: string, options: FetchEventSourceOptions) => {
+        await options.onopen?.({
+          ok: true,
+          status: 200,
+          text: async () => '',
+        } as Response);
+      }
+    );
 
     client.connect();
     await new Promise((resolve) => setTimeout(resolve, 10));
@@ -291,13 +303,15 @@ describe('ChatSSEClient', () => {
   // Task 1.6: Tests for debounce mechanism
   describe('Debounce Mechanism (Task 1.6)', () => {
     it('should debounce rapid connect() calls', async () => {
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        await options.onopen?.({
-          ok: true,
-          status: 200,
-          text: async () => '',
-        } as Response);
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          await options.onopen?.({
+            ok: true,
+            status: 200,
+            text: async () => '',
+          } as Response);
+        }
+      );
 
       // Call connect() multiple times rapidly
       client.connect();
@@ -311,13 +325,15 @@ describe('ChatSSEClient', () => {
     });
 
     it('should allow connect() after debounce period', async () => {
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        await options.onopen?.({
-          ok: true,
-          status: 200,
-          text: async () => '',
-        } as Response);
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          await options.onopen?.({
+            ok: true,
+            status: 200,
+            text: async () => '',
+          } as Response);
+        }
+      );
 
       // First connect
       client.connect();
@@ -360,13 +376,15 @@ describe('ChatSSEClient', () => {
   // Subtask 1.4: Tests for connection lifecycle fixes
   describe('Connection Lifecycle Fixes (Task 1)', () => {
     it('should prevent duplicate connections when already connected', async () => {
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        await options.onopen?.({
-          ok: true,
-          status: 200,
-          text: async () => '',
-        } as Response);
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          await options.onopen?.({
+            ok: true,
+            status: 200,
+            text: async () => '',
+          } as Response);
+        }
+      );
 
       client.connect();
       await new Promise((resolve) => setTimeout(resolve, 10));
@@ -392,13 +410,15 @@ describe('ChatSSEClient', () => {
     });
 
     it('should create fresh AbortController on each connection attempt', async () => {
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        await options.onopen?.({
-          ok: true,
-          status: 200,
-          text: async () => '',
-        } as Response);
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          await options.onopen?.({
+            ok: true,
+            status: 200,
+            text: async () => '',
+          } as Response);
+        }
+      );
 
       // First connection
       client.connect();
@@ -418,13 +438,15 @@ describe('ChatSSEClient', () => {
     });
 
     it('should properly clean up AbortController on disconnect', async () => {
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        await options.onopen?.({
-          ok: true,
-          status: 200,
-          text: async () => '',
-        } as Response);
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          await options.onopen?.({
+            ok: true,
+            status: 200,
+            text: async () => '',
+          } as Response);
+        }
+      );
 
       client.connect();
       await new Promise((resolve) => setTimeout(resolve, 10));
@@ -448,12 +470,14 @@ describe('ChatSSEClient', () => {
       const mockOnError = vi.fn();
       client.on('connectionError', mockOnError);
 
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        // Simulate error
-        const error = new Error('Connection failed');
-        options.onerror?.(error);
-        throw error;
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          // Simulate error
+          const error = new Error('Connection failed');
+          options.onerror?.(error);
+          throw error;
+        }
+      );
 
       client.connect();
       await new Promise((resolve) => setTimeout(resolve, 10));
@@ -461,13 +485,15 @@ describe('ChatSSEClient', () => {
       expect(mockOnError).toHaveBeenCalled();
 
       // Should be able to connect again after error cleanup
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        await options.onopen?.({
-          ok: true,
-          status: 200,
-          text: async () => '',
-        } as Response);
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          await options.onopen?.({
+            ok: true,
+            status: 200,
+            text: async () => '',
+          } as Response);
+        }
+      );
 
       client.connect();
       await new Promise((resolve) => setTimeout(resolve, 10));
@@ -486,23 +512,25 @@ describe('ChatSSEClient', () => {
         events.push('messageStart');
       });
 
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        // Simulate successful connection
-        await options.onopen?.({
-          ok: true,
-          status: 200,
-          text: async () => '',
-        } as Response);
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          // Simulate successful connection
+          await options.onopen?.({
+            ok: true,
+            status: 200,
+            text: async () => '',
+          } as Response);
 
-        // Immediately send a message
-        options.onmessage?.({
-          data: JSON.stringify({
-            type: 'start',
-            messageId: 'msg-123',
-            correlationId: 'corr-123',
-          }),
-        } as MessageEvent);
-      });
+          // Immediately send a message
+          options.onmessage?.({
+            data: JSON.stringify({
+              type: 'start',
+              messageId: 'msg-123',
+              correlationId: 'corr-123',
+            }),
+          } as MessageEvent);
+        }
+      );
 
       client.connect();
       await new Promise((resolve) => setTimeout(resolve, 10));
@@ -523,14 +551,16 @@ describe('ChatSSEClient', () => {
 
     it('should not create connection if AbortController exists and is not aborted', async () => {
       // Mock implementation that keeps connection open
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        await options.onopen?.({
-          ok: true,
-          status: 200,
-          text: async () => '',
-        } as Response);
-        // Don't throw, keep connection open
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          await options.onopen?.({
+            ok: true,
+            status: 200,
+            text: async () => '',
+          } as Response);
+          // Don't throw, keep connection open
+        }
+      );
 
       client.connect();
       await new Promise((resolve) => setTimeout(resolve, 10));
@@ -585,15 +615,17 @@ describe('ChatService', () => {
   describe('Connection Readiness Check (Subtask 2.1)', () => {
     it('should wait for connection to be ready before sending message', async () => {
       // Mock connection that becomes ready after delay
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        setTimeout(async () => {
-          await options.onopen?.({
-            ok: true,
-            status: 200,
-            text: async () => '',
-          } as Response);
-        }, 100);
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          setTimeout(async () => {
+            await options.onopen?.({
+              ok: true,
+              status: 200,
+              text: async () => '',
+            } as Response);
+          }, 100);
+        }
+      );
 
       // Get connection and start connecting
       const connection = chatService.getSSEConnection('test-conv-id');
@@ -620,10 +652,12 @@ describe('ChatService', () => {
 
     it('should timeout if connection takes too long', async () => {
       // Mock connection that never becomes ready
-      fetchEventSourceSpy.mockImplementation(async (_url: string, _options: FetchEventSourceOptions) => {
-        // Never call onopen - connection stays in 'connecting' state
-        await new Promise((resolve) => setTimeout(resolve, 10000)); // Hang for 10 seconds
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, _options: FetchEventSourceOptions) => {
+          // Never call onopen - connection stays in 'connecting' state
+          await new Promise((resolve) => setTimeout(resolve, 10000)); // Hang for 10 seconds
+        }
+      );
 
       // Get connection and start connecting
       const connection = chatService.getSSEConnection('test-conv-id');
@@ -641,11 +675,13 @@ describe('ChatService', () => {
 
     it('should throw error if connection fails', async () => {
       // Mock connection that fails
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        const error = new Error('Connection failed');
-        options.onerror?.(error);
-        throw error;
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          const error = new Error('Connection failed');
+          options.onerror?.(error);
+          throw error;
+        }
+      );
 
       // Get connection and start connecting
       const connection = chatService.getSSEConnection('test-conv-id');
@@ -666,13 +702,15 @@ describe('ChatService', () => {
 
     it('should send message immediately if connection is already ready', async () => {
       // Mock successful connection
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        await options.onopen?.({
-          ok: true,
-          status: 200,
-          text: async () => '',
-        } as Response);
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          await options.onopen?.({
+            ok: true,
+            status: 200,
+            text: async () => '',
+          } as Response);
+        }
+      );
 
       // Get connection and wait for it to be ready
       const connection = chatService.getSSEConnection('test-conv-id');
@@ -700,13 +738,15 @@ describe('ChatService', () => {
   describe('Connection Pooling (Subtask 2.2)', () => {
     it('should reuse existing active connection', async () => {
       // Mock successful connection
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        await options.onopen?.({
-          ok: true,
-          status: 200,
-          text: async () => '',
-        } as Response);
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          await options.onopen?.({
+            ok: true,
+            status: 200,
+            text: async () => '',
+          } as Response);
+        }
+      );
 
       // Get connection twice
       const connection1 = chatService.getSSEConnection('test-conv-id');
@@ -722,13 +762,15 @@ describe('ChatService', () => {
 
     it('should create new connection if existing is disconnected', async () => {
       // Mock successful connection
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        await options.onopen?.({
-          ok: true,
-          status: 200,
-          text: async () => '',
-        } as Response);
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          await options.onopen?.({
+            ok: true,
+            status: 200,
+            text: async () => '',
+          } as Response);
+        }
+      );
 
       // Get connection and disconnect it
       const connection1 = chatService.getSSEConnection('test-conv-id');
@@ -750,17 +792,19 @@ describe('ChatService', () => {
       ).NetworkError;
 
       // Mock failed connection with retryable error
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        const error = new NetworkErrorClass(
-          'Connection failed',
-          'connection_failed',
-          {
-            retryable: true,
-          }
-        );
-        options.onerror?.(error);
-        throw error;
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          const error = new NetworkErrorClass(
+            'Connection failed',
+            'connection_failed',
+            {
+              retryable: true,
+            }
+          );
+          options.onerror?.(error);
+          throw error;
+        }
+      );
 
       // Get connection and let it fail
       const connection1 = chatService.getSSEConnection('test-conv-id');
@@ -772,13 +816,15 @@ describe('ChatService', () => {
       expect(['error', 'reconnecting', 'disconnected']).toContain(state);
 
       // Mock successful connection for retry
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        await options.onopen?.({
-          ok: true,
-          status: 200,
-          text: async () => '',
-        } as Response);
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          await options.onopen?.({
+            ok: true,
+            status: 200,
+            text: async () => '',
+          } as Response);
+        }
+      );
 
       // Get connection again - should create new one if in error/disconnected
       const connection2 = chatService.getSSEConnection('test-conv-id');
@@ -810,17 +856,19 @@ describe('ChatService', () => {
       ).NetworkError;
 
       // Mock failed connection that will reconnect (retryable error)
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        const error = new NetworkErrorClass(
-          'Connection failed',
-          'connection_failed',
-          {
-            retryable: true,
-          }
-        );
-        options.onerror?.(error);
-        throw error;
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          const error = new NetworkErrorClass(
+            'Connection failed',
+            'connection_failed',
+            {
+              retryable: true,
+            }
+          );
+          options.onerror?.(error);
+          throw error;
+        }
+      );
 
       // Get connection and let it fail (will trigger reconnect)
       const connection1 = chatService.getSSEConnection('test-conv-id');
@@ -842,13 +890,15 @@ describe('ChatService', () => {
 
     it('should clean up disconnected connection from pool', async () => {
       // Mock successful connection
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        await options.onopen?.({
-          ok: true,
-          status: 200,
-          text: async () => '',
-        } as Response);
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          await options.onopen?.({
+            ok: true,
+            status: 200,
+            text: async () => '',
+          } as Response);
+        }
+      );
 
       // Get connection
       const connection = chatService.getSSEConnection('test-conv-id');
@@ -878,17 +928,19 @@ describe('ChatService', () => {
       ).NetworkError;
 
       // Mock failed connection with retryable error
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        const error = new NetworkErrorClass(
-          'Connection failed',
-          'connection_failed',
-          {
-            retryable: true,
-          }
-        );
-        options.onerror?.(error);
-        throw error;
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          const error = new NetworkErrorClass(
+            'Connection failed',
+            'connection_failed',
+            {
+              retryable: true,
+            }
+          );
+          options.onerror?.(error);
+          throw error;
+        }
+      );
 
       // Get connection and let it fail
       const connection = chatService.getSSEConnection('test-conv-id');
@@ -919,10 +971,12 @@ describe('ChatService', () => {
         { retryable: true }
       );
 
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        options.onerror?.(networkError);
-        throw networkError;
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          options.onerror?.(networkError);
+          throw networkError;
+        }
+      );
 
       // Get connection and let it fail
       const connection = chatService.getSSEConnection('test-conv-id');
@@ -946,11 +1000,13 @@ describe('ChatService', () => {
       chatService.onConnectionError(callback2);
 
       // Mock failed connection
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        const error = new Error('Connection failed');
-        options.onerror?.(error);
-        throw error;
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          const error = new Error('Connection failed');
+          options.onerror?.(error);
+          throw error;
+        }
+      );
 
       // Get connection and let it fail
       const connection = chatService.getSSEConnection('test-conv-id');
@@ -970,11 +1026,13 @@ describe('ChatService', () => {
       unsubscribe();
 
       // Mock failed connection
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        const error = new Error('Connection failed');
-        options.onerror?.(error);
-        throw error;
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          const error = new Error('Connection failed');
+          options.onerror?.(error);
+          throw error;
+        }
+      );
 
       // Get connection and let it fail
       const connection = chatService.getSSEConnection('test-conv-id');
@@ -998,10 +1056,12 @@ describe('ChatService', () => {
         retryable: true,
       });
 
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        options.onerror?.(timeoutError);
-        throw timeoutError;
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          options.onerror?.(timeoutError);
+          throw timeoutError;
+        }
+      );
 
       const connection = chatService.getSSEConnection('test-conv-id');
       connection.connect();
@@ -1025,11 +1085,13 @@ describe('ChatService', () => {
       chatService.onConnectionError(normalCallback);
 
       // Mock failed connection
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        const error = new Error('Connection failed');
-        options.onerror?.(error);
-        throw error;
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          const error = new Error('Connection failed');
+          options.onerror?.(error);
+          throw error;
+        }
+      );
 
       // Get connection and let it fail
       const connection = chatService.getSSEConnection('test-conv-id');
@@ -1168,17 +1230,19 @@ describe('Error Handling (Task 5)', () => {
       const reconnectDelays: number[] = [];
 
       // Mock failed connection that triggers reconnection
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        const error = new NetworkError(
-          'Connection failed',
-          'connection_failed',
-          {
-            retryable: true,
-          }
-        );
-        options.onerror?.(error);
-        throw error;
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          const error = new NetworkError(
+            'Connection failed',
+            'connection_failed',
+            {
+              retryable: true,
+            }
+          );
+          options.onerror?.(error);
+          throw error;
+        }
+      );
 
       // Track reconnection attempts
       client.on('reconnectAttempt', (_attempt, _maxAttempts, delay) => {
@@ -1210,17 +1274,19 @@ describe('Error Handling (Task 5)', () => {
       const reconnectDelays: number[] = [];
 
       // Mock failed connection
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        const error = new NetworkError(
-          'Connection failed',
-          'connection_failed',
-          {
-            retryable: true,
-          }
-        );
-        options.onerror?.(error);
-        throw error;
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          const error = new NetworkError(
+            'Connection failed',
+            'connection_failed',
+            {
+              retryable: true,
+            }
+          );
+          options.onerror?.(error);
+          throw error;
+        }
+      );
 
       // Track reconnection attempts
       client.on('reconnectAttempt', (_attempt, _maxAttempts, delay) => {
@@ -1245,29 +1311,31 @@ describe('Error Handling (Task 5)', () => {
       let connectionAttempts = 0;
 
       // Mock connection that fails first, then succeeds
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        connectionAttempts++;
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          connectionAttempts++;
 
-        if (connectionAttempts === 1) {
-          // First attempt fails
-          const error = new NetworkError(
-            'Connection failed',
-            'connection_failed',
-            {
-              retryable: true,
-            }
-          );
-          options.onerror?.(error);
-          throw error;
-        } else {
-          // Subsequent attempts succeed
-          await options.onopen?.({
-            ok: true,
-            status: 200,
-            text: async () => '',
-          } as Response);
+          if (connectionAttempts === 1) {
+            // First attempt fails
+            const error = new NetworkError(
+              'Connection failed',
+              'connection_failed',
+              {
+                retryable: true,
+              }
+            );
+            options.onerror?.(error);
+            throw error;
+          } else {
+            // Subsequent attempts succeed
+            await options.onopen?.({
+              ok: true,
+              status: 200,
+              text: async () => '',
+            } as Response);
+          }
         }
-      });
+      );
 
       // Trigger connection
       client.connect();
@@ -1288,17 +1356,19 @@ describe('Error Handling (Task 5)', () => {
       const reconnectDelays: number[] = [];
 
       // Mock failed connection
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        const error = new NetworkError(
-          'Connection failed',
-          'connection_failed',
-          {
-            retryable: true,
-          }
-        );
-        options.onerror?.(error);
-        throw error;
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          const error = new NetworkError(
+            'Connection failed',
+            'connection_failed',
+            {
+              retryable: true,
+            }
+          );
+          options.onerror?.(error);
+          throw error;
+        }
+      );
 
       // Track reconnection attempts
       client.on('reconnectAttempt', (_attempt, _maxAttempts, delay) => {
@@ -1357,10 +1427,12 @@ describe('Error Handling (Task 5)', () => {
         retryable: true,
       });
 
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        options.onerror?.(error);
-        throw error;
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          options.onerror?.(error);
+          throw error;
+        }
+      );
 
       const connection = chatService.getSSEConnection('test-conv-id');
       connection.connect();
@@ -1387,10 +1459,12 @@ describe('Error Handling (Task 5)', () => {
       );
       const error = new NetworkError('Timeout', 'timeout', { retryable: true });
 
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        options.onerror?.(error);
-        throw error;
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          options.onerror?.(error);
+          throw error;
+        }
+      );
 
       const connection = chatService.getSSEConnection('test-conv-id');
       connection.connect();
@@ -1417,10 +1491,12 @@ describe('Error Handling (Task 5)', () => {
         retryable: false,
       });
 
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        options.onerror?.(error);
-        throw error;
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          options.onerror?.(error);
+          throw error;
+        }
+      );
 
       const connection = chatService.getSSEConnection('test-conv-id');
       connection.connect();
@@ -1449,10 +1525,12 @@ describe('Error Handling (Task 5)', () => {
         retryable: true,
       });
 
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        options.onerror?.(error);
-        throw error;
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          options.onerror?.(error);
+          throw error;
+        }
+      );
 
       const connection = chatService.getSSEConnection('test-conv-id');
       connection.connect();
@@ -1479,10 +1557,12 @@ describe('Error Handling (Task 5)', () => {
         retryable: true,
       });
 
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        options.onerror?.(error);
-        throw error;
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          options.onerror?.(error);
+          throw error;
+        }
+      );
 
       const connection = chatService.getSSEConnection('test-conv-id');
       connection.connect();
@@ -1518,10 +1598,12 @@ describe('Error Handling (Task 5)', () => {
           retryable: true,
         });
 
-        fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-          options.onerror?.(error);
-          throw error;
-        });
+        fetchEventSourceSpy.mockImplementation(
+          async (_url: string, options: FetchEventSourceOptions) => {
+            options.onerror?.(error);
+            throw error;
+          }
+        );
 
         const connection = chatService.getSSEConnection(`test-conv-${type}`);
         connection.connect();
@@ -1557,10 +1639,12 @@ describe('Error Handling (Task 5)', () => {
         }
       );
 
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        options.onerror?.(retryableError);
-        throw retryableError;
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          options.onerror?.(retryableError);
+          throw retryableError;
+        }
+      );
 
       const connection = chatService.getSSEConnection('test-conv-id');
       connection.connect();
@@ -1591,10 +1675,12 @@ describe('Error Handling (Task 5)', () => {
         }
       );
 
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        options.onerror?.(nonRetryableError);
-        throw nonRetryableError;
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          options.onerror?.(nonRetryableError);
+          throw nonRetryableError;
+        }
+      );
 
       const connection = chatService.getSSEConnection('test-conv-id');
       connection.connect();
@@ -1643,23 +1729,25 @@ describe('Connection Health Monitoring (Task 6)', () => {
       client.on('messageEnd', mockOnMessageEnd);
       client.on('messageError', mockOnMessageError);
 
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        // Simulate successful connection
-        await options.onopen?.({
-          ok: true,
-          status: 200,
-          text: async () => '',
-        } as Response);
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          // Simulate successful connection
+          await options.onopen?.({
+            ok: true,
+            status: 200,
+            text: async () => '',
+          } as Response);
 
-        // Simulate heartbeat message
-        options.onmessage?.({
-          data: JSON.stringify({
-            type: 'heartbeat',
-            correlationId: 'heartbeat',
-            timestamp: Date.now(),
-          }),
-        } as MessageEvent);
-      });
+          // Simulate heartbeat message
+          options.onmessage?.({
+            data: JSON.stringify({
+              type: 'heartbeat',
+              correlationId: 'heartbeat',
+              timestamp: Date.now(),
+            }),
+          } as MessageEvent);
+        }
+      );
 
       client.connect();
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -1672,22 +1760,24 @@ describe('Connection Health Monitoring (Task 6)', () => {
     });
 
     it('should update lastMessageTimestamp on heartbeat', async () => {
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        await options.onopen?.({
-          ok: true,
-          status: 200,
-          text: async () => '',
-        } as Response);
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          await options.onopen?.({
+            ok: true,
+            status: 200,
+            text: async () => '',
+          } as Response);
 
-        // Simulate heartbeat message
-        options.onmessage?.({
-          data: JSON.stringify({
-            type: 'heartbeat',
-            correlationId: 'heartbeat',
-            timestamp: Date.now(),
-          }),
-        } as MessageEvent);
-      });
+          // Simulate heartbeat message
+          options.onmessage?.({
+            data: JSON.stringify({
+              type: 'heartbeat',
+              correlationId: 'heartbeat',
+              timestamp: Date.now(),
+            }),
+          } as MessageEvent);
+        }
+      );
 
       client.connect();
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -1701,21 +1791,23 @@ describe('Connection Health Monitoring (Task 6)', () => {
       const loggerModule = await import('../utils/logger.js');
       const { frontendLogger } = loggerModule;
 
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        await options.onopen?.({
-          ok: true,
-          status: 200,
-          text: async () => '',
-        } as Response);
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          await options.onopen?.({
+            ok: true,
+            status: 200,
+            text: async () => '',
+          } as Response);
 
-        options.onmessage?.({
-          data: JSON.stringify({
-            type: 'heartbeat',
-            correlationId: 'heartbeat',
-            timestamp: Date.now(),
-          }),
-        } as MessageEvent);
-      });
+          options.onmessage?.({
+            data: JSON.stringify({
+              type: 'heartbeat',
+              correlationId: 'heartbeat',
+              timestamp: Date.now(),
+            }),
+          } as MessageEvent);
+        }
+      );
 
       client.connect();
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -1730,13 +1822,15 @@ describe('Connection Health Monitoring (Task 6)', () => {
   // Task 6.2: Connection health tracking tests
   describe('Connection Health Tracking (Task 6.2)', () => {
     it('should track lastMessageTimestamp on connection open', async () => {
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        await options.onopen?.({
-          ok: true,
-          status: 200,
-          text: async () => '',
-        } as Response);
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          await options.onopen?.({
+            ok: true,
+            status: 200,
+            text: async () => '',
+          } as Response);
+        }
+      );
 
       client.connect();
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -1747,37 +1841,39 @@ describe('Connection Health Monitoring (Task 6)', () => {
     });
 
     it('should update lastMessageTimestamp on every message received', async () => {
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        await options.onopen?.({
-          ok: true,
-          status: 200,
-          text: async () => '',
-        } as Response);
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          await options.onopen?.({
+            ok: true,
+            status: 200,
+            text: async () => '',
+          } as Response);
 
-        // Send multiple messages with delays
-        setTimeout(() => {
-          options.onmessage?.({
-            data: JSON.stringify({
-              type: 'start',
-              messageId: 'msg-1',
-              correlationId: 'corr-1',
-              timestamp: Date.now(),
-            }),
-          } as MessageEvent);
-        }, 100);
+          // Send multiple messages with delays
+          setTimeout(() => {
+            options.onmessage?.({
+              data: JSON.stringify({
+                type: 'start',
+                messageId: 'msg-1',
+                correlationId: 'corr-1',
+                timestamp: Date.now(),
+              }),
+            } as MessageEvent);
+          }, 100);
 
-        setTimeout(() => {
-          options.onmessage?.({
-            data: JSON.stringify({
-              type: 'chunk',
-              content: 'test',
-              messageId: 'msg-1',
-              correlationId: 'corr-1',
-              timestamp: Date.now(),
-            }),
-          } as MessageEvent);
-        }, 200);
-      });
+          setTimeout(() => {
+            options.onmessage?.({
+              data: JSON.stringify({
+                type: 'chunk',
+                content: 'test',
+                messageId: 'msg-1',
+                correlationId: 'corr-1',
+                timestamp: Date.now(),
+              }),
+            } as MessageEvent);
+          }, 200);
+        }
+      );
 
       client.connect();
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -1814,13 +1910,15 @@ describe('Connection Health Monitoring (Task 6)', () => {
     });
 
     it('should calculate timeSinceLastMessage correctly', async () => {
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        await options.onopen?.({
-          ok: true,
-          status: 200,
-          text: async () => '',
-        } as Response);
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          await options.onopen?.({
+            ok: true,
+            status: 200,
+            text: async () => '',
+          } as Response);
+        }
+      );
 
       client.connect();
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -1843,13 +1941,15 @@ describe('Connection Health Monitoring (Task 6)', () => {
     });
 
     it('should indicate connection is not stale when messages are recent', async () => {
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        await options.onopen?.({
-          ok: true,
-          status: 200,
-          text: async () => '',
-        } as Response);
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          await options.onopen?.({
+            ok: true,
+            status: 200,
+            text: async () => '',
+          } as Response);
+        }
+      );
 
       client.connect();
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -1864,13 +1964,15 @@ describe('Connection Health Monitoring (Task 6)', () => {
     it('should detect stale connection after 5 minutes of no messages', async () => {
       vi.useFakeTimers();
 
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        await options.onopen?.({
-          ok: true,
-          status: 200,
-          text: async () => '',
-        } as Response);
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          await options.onopen?.({
+            ok: true,
+            status: 200,
+            text: async () => '',
+          } as Response);
+        }
+      );
 
       client.connect();
       await vi.advanceTimersByTimeAsync(50);
@@ -1890,14 +1992,16 @@ describe('Connection Health Monitoring (Task 6)', () => {
       vi.useFakeTimers();
 
       let connectionAttempts = 0;
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        connectionAttempts++;
-        await options.onopen?.({
-          ok: true,
-          status: 200,
-          text: async () => '',
-        } as Response);
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          connectionAttempts++;
+          await options.onopen?.({
+            ok: true,
+            status: 200,
+            text: async () => '',
+          } as Response);
+        }
+      );
 
       client.connect();
       await vi.advanceTimersByTimeAsync(50);
@@ -1924,13 +2028,15 @@ describe('Connection Health Monitoring (Task 6)', () => {
       const loggerModule = await import('../utils/logger.js');
       const { frontendLogger } = loggerModule;
 
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        await options.onopen?.({
-          ok: true,
-          status: 200,
-          text: async () => '',
-        } as Response);
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          await options.onopen?.({
+            ok: true,
+            status: 200,
+            text: async () => '',
+          } as Response);
+        }
+      );
 
       client.connect();
       await vi.advanceTimersByTimeAsync(50);
@@ -1955,27 +2061,29 @@ describe('Connection Health Monitoring (Task 6)', () => {
     it('should not detect stale connection if messages are being received', async () => {
       vi.useFakeTimers();
 
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        await options.onopen?.({
-          ok: true,
-          status: 200,
-          text: async () => '',
-        } as Response);
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          await options.onopen?.({
+            ok: true,
+            status: 200,
+            text: async () => '',
+          } as Response);
 
-        // Send heartbeat every minute
-        const heartbeatInterval = setInterval(() => {
-          options.onmessage?.({
-            data: JSON.stringify({
-              type: 'heartbeat',
-              correlationId: 'heartbeat',
-              timestamp: Date.now(),
-            }),
-          } as MessageEvent);
-        }, 60 * 1000);
+          // Send heartbeat every minute
+          const heartbeatInterval = setInterval(() => {
+            options.onmessage?.({
+              data: JSON.stringify({
+                type: 'heartbeat',
+                correlationId: 'heartbeat',
+                timestamp: Date.now(),
+              }),
+            } as MessageEvent);
+          }, 60 * 1000);
 
-        // Clean up interval when connection closes
-        return () => clearInterval(heartbeatInterval);
-      });
+          // Clean up interval when connection closes
+          return () => clearInterval(heartbeatInterval);
+        }
+      );
 
       client.connect();
       await vi.advanceTimersByTimeAsync(50);
@@ -1996,14 +2104,16 @@ describe('Connection Health Monitoring (Task 6)', () => {
       vi.useFakeTimers();
 
       let connectionAttempts = 0;
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        connectionAttempts++;
-        await options.onopen?.({
-          ok: true,
-          status: 200,
-          text: async () => '',
-        } as Response);
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          connectionAttempts++;
+          await options.onopen?.({
+            ok: true,
+            status: 200,
+            text: async () => '',
+          } as Response);
+        }
+      );
 
       client.connect();
       await vi.advanceTimersByTimeAsync(50);
@@ -2032,13 +2142,15 @@ describe('Connection Health Monitoring (Task 6)', () => {
       const healthChangeCallback = vi.fn();
       client.on('connectionHealthChange', healthChangeCallback);
 
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        await options.onopen?.({
-          ok: true,
-          status: 200,
-          text: async () => '',
-        } as Response);
-      });
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          await options.onopen?.({
+            ok: true,
+            status: 200,
+            text: async () => '',
+          } as Response);
+        }
+      );
 
       client.connect();
       await vi.advanceTimersByTimeAsync(50);
@@ -2061,26 +2173,28 @@ describe('Connection Health Monitoring (Task 6)', () => {
     it('should maintain healthy connection with regular heartbeats', async () => {
       vi.useFakeTimers();
 
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        await options.onopen?.({
-          ok: true,
-          status: 200,
-          text: async () => '',
-        } as Response);
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          await options.onopen?.({
+            ok: true,
+            status: 200,
+            text: async () => '',
+          } as Response);
 
-        // Simulate backend sending heartbeats every 30 seconds
-        const heartbeatInterval = setInterval(() => {
-          options.onmessage?.({
-            data: JSON.stringify({
-              type: 'heartbeat',
-              correlationId: 'heartbeat',
-              timestamp: Date.now(),
-            }),
-          } as MessageEvent);
-        }, 30 * 1000);
+          // Simulate backend sending heartbeats every 30 seconds
+          const heartbeatInterval = setInterval(() => {
+            options.onmessage?.({
+              data: JSON.stringify({
+                type: 'heartbeat',
+                correlationId: 'heartbeat',
+                timestamp: Date.now(),
+              }),
+            } as MessageEvent);
+          }, 30 * 1000);
 
-        return () => clearInterval(heartbeatInterval);
-      });
+          return () => clearInterval(heartbeatInterval);
+        }
+      );
 
       client.connect();
       await vi.advanceTimersByTimeAsync(50);
@@ -2105,29 +2219,31 @@ describe('Connection Health Monitoring (Task 6)', () => {
       vi.useFakeTimers();
 
       let connectionAttempts = 0;
-      fetchEventSourceSpy.mockImplementation(async (_url: string, options: FetchEventSourceOptions) => {
-        connectionAttempts++;
-        await options.onopen?.({
-          ok: true,
-          status: 200,
-          text: async () => '',
-        } as Response);
+      fetchEventSourceSpy.mockImplementation(
+        async (_url: string, options: FetchEventSourceOptions) => {
+          connectionAttempts++;
+          await options.onopen?.({
+            ok: true,
+            status: 200,
+            text: async () => '',
+          } as Response);
 
-        // Only send heartbeats on second connection
-        if (connectionAttempts > 1) {
-          const heartbeatInterval = setInterval(() => {
-            options.onmessage?.({
-              data: JSON.stringify({
-                type: 'heartbeat',
-                correlationId: 'heartbeat',
-                timestamp: Date.now(),
-              }),
-            } as MessageEvent);
-          }, 30 * 1000);
+          // Only send heartbeats on second connection
+          if (connectionAttempts > 1) {
+            const heartbeatInterval = setInterval(() => {
+              options.onmessage?.({
+                data: JSON.stringify({
+                  type: 'heartbeat',
+                  correlationId: 'heartbeat',
+                  timestamp: Date.now(),
+                }),
+              } as MessageEvent);
+            }, 30 * 1000);
 
-          return () => clearInterval(heartbeatInterval);
+            return () => clearInterval(heartbeatInterval);
+          }
         }
-      });
+      );
 
       client.connect();
       await vi.advanceTimersByTimeAsync(50);

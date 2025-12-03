@@ -5,13 +5,13 @@
  * timeout handling, and various retry scenarios.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   RetryManager,
-  retryManager,
+  type RetryOptions,
   executeWithRetry,
   executeWithRetrySafe,
-  type RetryOptions,
+  retryManager,
 } from '../utils/retry-manager.js';
 
 // Type guard for Error
@@ -202,19 +202,25 @@ describe('RetryManager', () => {
         .mockImplementation(() => Promise.reject(new Error('not found')));
 
       const validationPromise = manager.execute(validationError);
-      const validationRejection = validationPromise.catch((error: unknown) => error);
+      const validationRejection = validationPromise.catch(
+        (error: unknown) => error
+      );
       await vi.runAllTimersAsync();
       await validationRejection;
       expect(validationError).toHaveBeenCalledTimes(1);
 
       const unauthorizedPromise = manager.execute(unauthorizedError);
-      const unauthorizedRejection = unauthorizedPromise.catch((error: unknown) => error);
+      const unauthorizedRejection = unauthorizedPromise.catch(
+        (error: unknown) => error
+      );
       await vi.runAllTimersAsync();
       await unauthorizedRejection;
       expect(unauthorizedError).toHaveBeenCalledTimes(1);
 
       const notFoundPromise = manager.execute(notFoundError);
-      const notFoundRejection = notFoundPromise.catch((error: unknown) => error);
+      const notFoundRejection = notFoundPromise.catch(
+        (error: unknown) => error
+      );
       await vi.runAllTimersAsync();
       await notFoundRejection;
       expect(notFoundError).toHaveBeenCalledTimes(1);
@@ -600,7 +606,9 @@ describe('RetryManager', () => {
         .mockImplementation(() => Promise.reject(new Error('network error')));
 
       const retryablePromise = manager.execute(retryableOp, { maxAttempts: 2 });
-      const retryableRejection = retryablePromise.catch((error: unknown) => error);
+      const retryableRejection = retryablePromise.catch(
+        (error: unknown) => error
+      );
       await vi.runAllTimersAsync();
       const retryableError = await retryableRejection;
       expect(retryableError).toBeInstanceOf(Error);
@@ -617,7 +625,9 @@ describe('RetryManager', () => {
       const nonRetryablePromise = manager.execute(nonRetryableOp, {
         maxAttempts: 3,
       });
-      const nonRetryableRejection = nonRetryablePromise.catch((error: unknown) => error);
+      const nonRetryableRejection = nonRetryablePromise.catch(
+        (error: unknown) => error
+      );
       await vi.runAllTimersAsync();
       const nonRetryableError = await nonRetryableRejection;
       expect(nonRetryableError).toBeInstanceOf(Error);

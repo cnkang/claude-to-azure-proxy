@@ -13,8 +13,8 @@
  * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 6.1-6.5
  */
 
-import { test, expect, type BrowserContext, type Page } from '@playwright/test';
-import { UIActions, TestSetup, Assertions } from './helpers/index.js';
+import { type BrowserContext, type Page, expect, test } from '@playwright/test';
+import { Assertions, TestSetup, UIActions } from './helpers/index.js';
 
 test.describe('E2E: Cross-Tab Synchronization (UI-Based)', () => {
   let context1: BrowserContext;
@@ -152,14 +152,14 @@ test.describe('E2E: Cross-Tab Synchronization (UI-Based)', () => {
       // Wait a bit more and check again
       await TestSetup.waitForStorageSync(page1, 1000);
       await TestSetup.waitForStorageSync(page2, 1000);
-      
+
       const retryTitle1 = await page1
         .locator(`[data-testid="conversation-title-${conversationId}"]`)
         .textContent();
       const retryTitle2 = await page2
         .locator(`[data-testid="conversation-title-${conversationId}"]`)
         .textContent();
-      
+
       expect(retryTitle1).toBe(retryTitle2);
     }
 

@@ -7,8 +7,8 @@
  * Tests that lists exceeding 50 items use virtualization to render only visible items.
  */
 
-import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
+import { describe, expect, it } from 'vitest';
 
 // Virtualization threshold constants from the components
 const MESSAGE_LIST_THRESHOLD = 60;
@@ -183,23 +183,36 @@ describe('Property-Based Tests: Virtualization', () => {
             // Property: Different list types should have appropriate thresholds
             // MessageList threshold (60) is higher than ConversationList threshold (50)
             // This is because messages are typically larger and more complex to render
-            
+
             const messageListVirtualizes = listSize > MESSAGE_LIST_THRESHOLD;
-            const conversationListVirtualizes = listSize > CONVERSATION_LIST_THRESHOLD;
+            const conversationListVirtualizes =
+              listSize > CONVERSATION_LIST_THRESHOLD;
 
             // If list size is between thresholds (51-60), only ConversationList virtualizes
-            if (listSize > CONVERSATION_LIST_THRESHOLD && listSize <= MESSAGE_LIST_THRESHOLD) {
-              return conversationListVirtualizes === true && messageListVirtualizes === false;
+            if (
+              listSize > CONVERSATION_LIST_THRESHOLD &&
+              listSize <= MESSAGE_LIST_THRESHOLD
+            ) {
+              return (
+                conversationListVirtualizes === true &&
+                messageListVirtualizes === false
+              );
             }
-            
+
             // If list size is above both thresholds, both virtualize
             if (listSize > MESSAGE_LIST_THRESHOLD) {
-              return conversationListVirtualizes === true && messageListVirtualizes === true;
+              return (
+                conversationListVirtualizes === true &&
+                messageListVirtualizes === true
+              );
             }
-            
+
             // If list size is below both thresholds, neither virtualizes
             if (listSize <= CONVERSATION_LIST_THRESHOLD) {
-              return conversationListVirtualizes === false && messageListVirtualizes === false;
+              return (
+                conversationListVirtualizes === false &&
+                messageListVirtualizes === false
+              );
             }
 
             return true;

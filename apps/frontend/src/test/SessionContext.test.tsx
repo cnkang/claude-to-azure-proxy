@@ -1,11 +1,11 @@
-import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import { renderHook, act } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
+import type React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  SessionProvider,
-  SessionGuard,
   SessionDebugInfo,
+  SessionGuard,
+  SessionProvider,
   useSessionContext,
   useSessionError,
   useSessionPreferences,

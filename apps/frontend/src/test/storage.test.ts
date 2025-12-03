@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConversationStorage } from '../services/storage.js';
-import { frontendLogger } from '../utils/logger.js';
 import type { Conversation } from '../types/index.js';
+import { frontendLogger } from '../utils/logger.js';
 
 const createConversation = (id: string, sessionId: string): Conversation => {
   const now = new Date('2024-02-10T10:00:00.000Z');
@@ -190,7 +190,10 @@ describe('ConversationStorage local fallback', () => {
     if (originalStorage) {
       Object.defineProperty(navigator, 'storage', originalStorage);
     } else {
-      delete (navigator as unknown as { storage?: unknown }).storage;
+      Reflect.deleteProperty(
+        navigator as unknown as { storage?: unknown },
+        'storage'
+      );
     }
   });
 
@@ -223,7 +226,10 @@ describe('ConversationStorage local fallback', () => {
         value: undefined,
       });
     } else {
-      delete (navigator as unknown as { storage?: unknown }).storage;
+      Reflect.deleteProperty(
+        navigator as unknown as { storage?: unknown },
+        'storage'
+      );
     }
 
     const quota = await storage.getStorageQuota();
@@ -256,7 +262,10 @@ describe('ConversationStorage local fallback', () => {
     if (originalStorage) {
       Object.defineProperty(navigator, 'storage', originalStorage);
     } else {
-      delete (navigator as unknown as { storage?: unknown }).storage;
+      Reflect.deleteProperty(
+        navigator as unknown as { storage?: unknown },
+        'storage'
+      );
     }
   });
 

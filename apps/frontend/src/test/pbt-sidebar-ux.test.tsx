@@ -8,8 +8,8 @@
  * tooltips, enhanced visual prominence, onboarding, and accessibility features.
  */
 
-import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
+import { describe, expect, it } from 'vitest';
 import { BREAKPOINTS } from '../constants/breakpoints.js';
 
 // Constants
@@ -32,13 +32,13 @@ describe('Property-Based Tests: Sidebar UX Improvements', () => {
             // Property: For any desktop viewport (> 1024px), when the application loads
             // for the first time, the Sidebar SHALL be in the open state by default
             const isDesktop = windowWidth > BREAKPOINTS.TABLET;
-            
+
             if (isDesktop) {
               // On desktop, sidebar should be open by default
               const defaultSidebarState = true;
               return defaultSidebarState === true;
             }
-            
+
             return true;
           }
         ),
@@ -54,13 +54,13 @@ describe('Property-Based Tests: Sidebar UX Improvements', () => {
           (windowWidth) => {
             // Property: Sidebar should be closed by default on mobile/tablet
             const isMobileOrTablet = windowWidth <= BREAKPOINTS.TABLET;
-            
+
             if (isMobileOrTablet) {
               // On mobile/tablet, sidebar should be closed by default
               const defaultSidebarState = false;
               return defaultSidebarState === false;
             }
-            
+
             return true;
           }
         ),
@@ -77,9 +77,12 @@ describe('Property-Based Tests: Sidebar UX Improvements', () => {
             // Property: Default state should be determined by viewport size
             const isDesktop = windowWidth > BREAKPOINTS.TABLET;
             const expectedDefaultState = isDesktop;
-            
+
             // Verify the logic is consistent
-            return (isDesktop && expectedDefaultState) || (!isDesktop && !expectedDefaultState);
+            return (
+              (isDesktop && expectedDefaultState) ||
+              (!isDesktop && !expectedDefaultState)
+            );
           }
         ),
         { numRuns: 100 }
@@ -99,8 +102,10 @@ describe('Property-Based Tests: Sidebar UX Improvements', () => {
             // is closed, a floating action button SHALL be visible
             const isMobileOrTablet = windowWidth <= BREAKPOINTS.TABLET;
             const shouldShowFloatingButton = isMobileOrTablet && !sidebarOpen;
-            
-            return shouldShowFloatingButton === (isMobileOrTablet && !sidebarOpen);
+
+            return (
+              shouldShowFloatingButton === (isMobileOrTablet && !sidebarOpen)
+            );
           }
         ),
         { numRuns: 100 }
@@ -117,7 +122,7 @@ describe('Property-Based Tests: Sidebar UX Improvements', () => {
             const isMobileOrTablet = windowWidth <= BREAKPOINTS.TABLET;
             const sidebarOpen = true;
             const shouldShowFloatingButton = isMobileOrTablet && !sidebarOpen;
-            
+
             return shouldShowFloatingButton === false;
           }
         ),
@@ -135,11 +140,11 @@ describe('Property-Based Tests: Sidebar UX Improvements', () => {
             // Property: Floating button should never be visible on desktop
             const isDesktop = windowWidth > BREAKPOINTS.TABLET;
             const shouldShowFloatingButton = !isDesktop && !sidebarOpen;
-            
+
             if (isDesktop) {
               return shouldShowFloatingButton === false;
             }
-            
+
             return true;
           }
         ),
@@ -231,8 +236,9 @@ describe('Property-Based Tests: Sidebar UX Improvements', () => {
           fc.constantFrom('Open sidebar', 'Close sidebar'), // tooltip text
           (tooltipText) => {
             // Property: Tooltip SHALL have descriptive text explaining button function
-            const isDescriptive = tooltipText.length > 0 && 
-                                 (tooltipText.includes('Open') || tooltipText.includes('Close'));
+            const isDescriptive =
+              tooltipText.length > 0 &&
+              (tooltipText.includes('Open') || tooltipText.includes('Close'));
             return isDescriptive === true;
           }
         ),
@@ -313,8 +319,10 @@ describe('Property-Based Tests: Sidebar UX Improvements', () => {
             // mobile or tablet, an onboarding message SHALL appear after 1 second delay
             const isMobileOrTablet = windowWidth <= BREAKPOINTS.TABLET;
             const shouldShowOnboarding = isMobileOrTablet && !hasSeenOnboarding;
-            
-            return shouldShowOnboarding === (isMobileOrTablet && !hasSeenOnboarding);
+
+            return (
+              shouldShowOnboarding === (isMobileOrTablet && !hasSeenOnboarding)
+            );
           }
         ),
         { numRuns: 100 }
@@ -345,11 +353,11 @@ describe('Property-Based Tests: Sidebar UX Improvements', () => {
             // Property: Onboarding should not show on desktop
             const isDesktop = windowWidth > BREAKPOINTS.TABLET;
             const shouldShowOnboarding = !isDesktop && !hasSeenOnboarding;
-            
+
             if (isDesktop) {
               return shouldShowOnboarding === false;
             }
-            
+
             return true;
           }
         ),
@@ -397,11 +405,11 @@ describe('Property-Based Tests: Sidebar UX Improvements', () => {
             // Property: For any user who dismisses the onboarding message,
             // the system SHALL NOT display the onboarding message again
             const shouldShowOnboarding = !hasDismissed;
-            
+
             if (hasDismissed) {
               return shouldShowOnboarding === false;
             }
-            
+
             return true;
           }
         ),
@@ -416,8 +424,10 @@ describe('Property-Based Tests: Sidebar UX Improvements', () => {
           fc.boolean(), // localStorage flag exists
           (flagExists) => {
             // Property: Dismissal flag SHALL persist across browser sessions
-            // This is guaranteed by localStorage API behavior
-            return flagExists === flagExists; // tautology to verify logic
+            // Simulate persistence by serializing and deserializing the flag
+            const serialized = JSON.stringify(flagExists);
+            const restored = JSON.parse(serialized);
+            return restored === flagExists;
           }
         ),
         { numRuns: 100 }
@@ -435,11 +445,11 @@ describe('Property-Based Tests: Sidebar UX Improvements', () => {
             // Property: For any floating action button click event, the Sidebar
             // SHALL transition to the open state
             const sidebarOpenAfterClick = true;
-            
+
             if (!initialSidebarOpen) {
               return sidebarOpenAfterClick === true;
             }
-            
+
             return true;
           }
         ),
@@ -469,7 +479,7 @@ describe('Property-Based Tests: Sidebar UX Improvements', () => {
           (prefersReducedMotion) => {
             // Property: Animation SHALL respect user's prefers-reduced-motion preference
             const animationDuration = prefersReducedMotion ? 0 : 300;
-            
+
             if (prefersReducedMotion) {
               return animationDuration === 0;
             } else {
@@ -611,8 +621,9 @@ describe('Property-Based Tests: Sidebar UX Improvements', () => {
           fc.constantFrom('Open sidebar', 'Close sidebar'), // aria-label text
           (ariaLabel) => {
             // Property: aria-label SHALL clearly describe button purpose
-            const isDescriptive = ariaLabel.length > 0 && 
-                                 (ariaLabel.includes('Open') || ariaLabel.includes('Close'));
+            const isDescriptive =
+              ariaLabel.length > 0 &&
+              (ariaLabel.includes('Open') || ariaLabel.includes('Close'));
             return isDescriptive === true;
           }
         ),
@@ -627,11 +638,13 @@ describe('Property-Based Tests: Sidebar UX Improvements', () => {
           fc.boolean(), // sidebar open state
           (sidebarOpen) => {
             // Property: aria-label SHALL update based on sidebar state
-            const expectedLabel = sidebarOpen ? 'Close sidebar' : 'Open sidebar';
-            const labelMatchesState = 
+            const expectedLabel = sidebarOpen
+              ? 'Close sidebar'
+              : 'Open sidebar';
+            const labelMatchesState =
               (sidebarOpen && expectedLabel === 'Close sidebar') ||
               (!sidebarOpen && expectedLabel === 'Open sidebar');
-            
+
             return labelMatchesState === true;
           }
         ),

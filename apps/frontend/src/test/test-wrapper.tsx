@@ -5,11 +5,11 @@
  * that depend on i18n, theme, or other global contexts.
  */
 
-import React from 'react';
-import { I18nProvider } from '../contexts/I18nContext';
-import { ThemeProvider } from '../contexts/ThemeContext';
+import type React from 'react';
 import { AppProvider } from '../contexts/AppContext';
+import { I18nProvider } from '../contexts/I18nContext';
 import { SessionProvider } from '../contexts/SessionContext';
+import { ThemeProvider } from '../contexts/ThemeContext';
 
 interface TestWrapperProps {
   children: React.ReactNode;

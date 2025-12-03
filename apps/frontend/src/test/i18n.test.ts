@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import i18n, { i18nUtils, DEFAULT_LANGUAGE } from '../i18n/index';
 
 describe('i18n Utilities', () => {

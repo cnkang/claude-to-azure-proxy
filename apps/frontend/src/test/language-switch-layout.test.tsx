@@ -4,10 +4,10 @@
  * Tests to verify that language switching doesn't cause UI layout shifts
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import { I18nProvider, LanguageSelector } from '../contexts/I18nContext';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppProvider } from '../contexts/AppContext';
+import { I18nProvider, LanguageSelector } from '../contexts/I18nContext';
 import { SessionProvider } from '../contexts/SessionContext';
 
 // Mock i18next

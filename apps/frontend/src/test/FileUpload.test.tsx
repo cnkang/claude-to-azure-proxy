@@ -1,12 +1,12 @@
-import React from 'react';
 import {
+  fireEvent,
   render,
   screen,
-  fireEvent,
   waitFor,
   within,
 } from '@testing-library/react';
-import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+import type React from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { scanFileMock, validateFileMock } = vi.hoisted(() => ({
   scanFileMock: vi.fn(),
@@ -18,13 +18,13 @@ vi.mock('../utils/security.js', async () => {
     '../utils/security.js'
   );
 
+  class MockSecurityScanner {
+    public scanFile = scanFileMock;
+  }
+
   return {
     ...actual,
-    SecurityScanner: vi.fn().mockImplementation(function () {
-      return {
-        scanFile: scanFileMock,
-      };
-    }),
+    SecurityScanner: MockSecurityScanner,
   };
 });
 
@@ -185,7 +185,9 @@ describe('FileUpload component', () => {
 
     await waitFor(() => {
       // Check that the threat message is displayed
-      expect(screen.getByText(/Threat detected: Suspicious pattern/)).toBeDefined();
+      expect(
+        screen.getByText(/Threat detected: Suspicious pattern/)
+      ).toBeDefined();
       // Check that the file name is shown
       expect(screen.getByText(file.name)).toBeDefined();
     });

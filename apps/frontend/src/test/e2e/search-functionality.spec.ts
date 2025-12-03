@@ -14,8 +14,8 @@
  * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 6.1-6.5
  */
 
-import { test, expect, type BrowserContext, type Page } from '@playwright/test';
-import { UIActions, TestSetup, Assertions } from './helpers/index.js';
+import { type BrowserContext, type Page, expect, test } from '@playwright/test';
+import { Assertions, TestSetup, UIActions } from './helpers/index.js';
 
 test.describe('E2E: Search Functionality (UI-Based)', () => {
   let context: BrowserContext;
@@ -27,10 +27,10 @@ test.describe('E2E: Search Functionality (UI-Based)', () => {
     context = await browser.newContext();
     page = await context.newPage();
     await page.goto('http://localhost:3000');
-    
+
     // Wait for navigation to complete (app redirects to /chat)
     await page.waitForURL('**/chat**', { timeout: 10000 });
-    
+
     // Wait for app container to be visible
     await page.waitForSelector('[data-testid="app-container"]', {
       state: 'visible',
@@ -46,28 +46,36 @@ test.describe('E2E: Search Functionality (UI-Based)', () => {
     // Clear any existing conversations to ensure clean state
     // Use a more robust clearing approach
     try {
-      const conversationCount = await page.locator('[data-testid^="conversation-item-"]').count();
+      const conversationCount = await page
+        .locator('[data-testid^="conversation-item-"]')
+        .count();
       if (conversationCount > 0) {
         await ui.clearAllConversations();
         // Wait for clearing to complete
         await page.waitForTimeout(1000);
         // Verify all conversations are cleared
-        const remainingCount = await page.locator('[data-testid^="conversation-item-"]').count();
+        const remainingCount = await page
+          .locator('[data-testid^="conversation-item-"]')
+          .count();
         if (remainingCount > 0) {
-          console.warn(`Warning: ${remainingCount} conversations remain after clearing`);
+          console.warn(
+            `Warning: ${remainingCount} conversations remain after clearing`
+          );
         }
-      }
-    } catch (error) {
-      // Ignore errors if there are no conversations to clear
-      console.log('No conversations to clear or clearing failed:', error);
     }
-  });
+  } catch (error) {
+    // Ignore errors if there are no conversations to clear
+    console.info('No conversations to clear or clearing failed:', error);
+  }
+});
 
   test.afterEach(async () => {
     await context.close();
   });
 
-  test('should search and display all matching conversations', async ({ page }) => {
+  test('should search and display all matching conversations', async ({
+    page,
+  }) => {
     // Create multiple conversations with specific titles
     const conversationId1 = await ui.createConversation();
     await ui.updateConversationTitle(conversationId1, 'React Hooks Tutorial');
@@ -96,9 +104,13 @@ test.describe('E2E: Search Functionality (UI-Based)', () => {
       await assert.expectSearchResults(2);
 
       // Verify correct conversations appear in search results
-      const searchResult1 = page.locator(`[data-testid="search-result-${conversationId1}"]`);
-      const searchResult3 = page.locator(`[data-testid="search-result-${conversationId3}"]`);
-      
+      const searchResult1 = page.locator(
+        `[data-testid="search-result-${conversationId1}"]`
+      );
+      const searchResult3 = page.locator(
+        `[data-testid="search-result-${conversationId3}"]`
+      );
+
       await expect(searchResult1).toBeVisible({ timeout: 5000 });
       await expect(searchResult3).toBeVisible({ timeout: 5000 });
     } else {
@@ -106,14 +118,18 @@ test.describe('E2E: Search Functionality (UI-Based)', () => {
       // Verify the filtered conversations are visible in the sidebar
       await assert.expectConversationInList(conversationId1);
       await assert.expectConversationInList(conversationId3);
-      
+
       // Verify the non-matching conversation is not visible
-      const conversationItem2 = page.locator(`[data-testid="conversation-item-${conversationId2}"]`);
+      const conversationItem2 = page.locator(
+        `[data-testid="conversation-item-${conversationId2}"]`
+      );
       await expect(conversationItem2).not.toBeVisible({ timeout: 5000 });
     }
   });
 
-  test('should restore all conversations when search is cleared', async ({ page }) => {
+  test('should restore all conversations when search is cleared', async ({
+    page,
+  }) => {
     // Create multiple conversations
     const conversationId1 = await ui.createConversation();
     await ui.updateConversationTitle(conversationId1, 'First Conversation');
@@ -151,10 +167,12 @@ test.describe('E2E: Search Functionality (UI-Based)', () => {
     const isStillVisible = await searchResults.isVisible().catch(() => false);
     if (isStillVisible) {
       // If visible, it should have no results
-      const resultCount = await page.locator('[data-testid^="search-result-"]').count();
+      const resultCount = await page
+        .locator('[data-testid^="search-result-"]')
+        .count();
       expect(resultCount).toBe(0);
     }
-    
+
     // All conversations should be visible in the sidebar
     await assert.expectConversationCount(3);
   });
