@@ -299,8 +299,8 @@ class AzureResponseFactoryImpl {
     };
   }
 
-  static createWithMultipleChoices(count: number): OpenAIResponse {
-    const response = AzureResponseFactory.create();
+  createWithMultipleChoices(count: number): OpenAIResponse {
+    const response = this.create();
     const choices = Array.from({ length: count }, (_, i) => ({
       index: i,
       message: {
@@ -316,10 +316,10 @@ class AzureResponseFactoryImpl {
     };
   }
 
-  static createMalformed(
+  createMalformed(
     type: 'missing_id' | 'invalid_object' | 'empty_choices' | 'invalid_choice'
   ): Record<string, unknown> {
-    const base = AzureResponseFactory.create();
+    const base = this.create();
 
     switch (type) {
       case 'missing_id': {
@@ -367,6 +367,8 @@ class AzureResponseFactoryImpl {
     }
   }
 }
+
+export const AzureResponseFactory = new AzureResponseFactoryImpl();
 
 const azureErrorMessages: Record<string, string> = {
   invalid_request_error: 'The request is invalid',
