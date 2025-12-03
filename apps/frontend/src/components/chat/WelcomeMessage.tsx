@@ -31,14 +31,20 @@ const WelcomeMessageComponent = ({
   const primarySuggestion = suggestions[0] ?? t('welcome.startChat');
 
   return (
-    <div className="flex flex-col items-center justify-center p-6 sm:p-10 text-center max-w-3xl mx-auto min-h-[50vh]" role="region" aria-label={t('welcome.title')}>
+    <section
+      className="flex flex-col items-center justify-center p-6 sm:p-10 text-center max-w-3xl mx-auto min-h-[50vh]"
+      aria-label={t('welcome.title')}
+    >
       <Glass
         intensity="low"
         border={true}
         className="w-full bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-blue-950/40 dark:via-slate-900 dark:to-indigo-950/30 shadow-lg"
       >
         <div className="flex flex-col sm:flex-row sm:items-center sm:text-left text-center gap-6 p-6 sm:p-8">
-          <div className="flex-shrink-0 text-5xl sm:text-6xl" aria-hidden="true">
+          <div
+            className="flex-shrink-0 text-5xl sm:text-6xl"
+            aria-hidden="true"
+          >
             🤖
           </div>
           <div className="flex-1">
@@ -79,9 +85,9 @@ const WelcomeMessageComponent = ({
             {t('welcome.youCanTry')}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {suggestions.map((suggestion, index) => (
+            {suggestions.map((suggestion) => (
               <Glass
-                key={index}
+                key={suggestion}
                 as="button"
                 intensity="low"
                 border={true}
@@ -96,7 +102,7 @@ const WelcomeMessageComponent = ({
           </div>
         </div>
       ) : null}
-    </div>
+    </section>
   );
 };
 

@@ -5,7 +5,7 @@
  * and jump directly to main content areas. This is a WCAG 2.2 AAA requirement.
  */
 
-import React from 'react';
+import type React from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface SkipLinkProps {

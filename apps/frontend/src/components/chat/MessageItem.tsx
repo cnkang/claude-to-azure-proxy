@@ -1,4 +1,6 @@
-import React, {
+import Prism from 'prismjs';
+import type React from 'react';
+import {
   Fragment,
   memo,
   useCallback,
@@ -8,12 +10,11 @@ import React, {
   useState,
 } from 'react';
 import type { JSX } from 'react';
-import Prism from 'prismjs';
 import 'prismjs/themes/prism.css';
 import 'prismjs/themes/prism-dark.css';
 import { useI18n } from '../../contexts/I18nContext.js';
 import { useTheme } from '../../contexts/ThemeContext.js';
-import type { Message, CodeBlock } from '../../types/index.js';
+import type { CodeBlock, Message } from '../../types/index.js';
 import { frontendLogger } from '../../utils/logger.js';
 import { cn } from '../ui/Glass.js';
 
@@ -364,22 +365,28 @@ function highlightKeywordsInText(
   // eslint-disable-next-line security/detect-non-literal-regexp -- Pattern is sanitized above
   const regex = new RegExp(`(${pattern})`, 'gi');
   const parts = text.split(regex);
+  let partOffset = 0;
 
   return parts.map((part, index) => {
     // Check if this part matches any keyword (case-insensitive)
     const isKeyword = keywords.some(
       (keyword) => part.toLowerCase() === keyword.toLowerCase()
     );
+    const key = `${part}-${partOffset}`;
+    partOffset += part.length + index;
 
     if (isKeyword) {
       return (
-        <mark key={`highlight-${index}`} className="bg-yellow-200 dark:bg-yellow-800 text-gray-900 dark:text-gray-100 rounded px-0.5">
+        <mark
+          key={key}
+          className="bg-yellow-200 dark:bg-yellow-800 text-gray-900 dark:text-gray-100 rounded px-0.5"
+        >
           {part}
         </mark>
       );
     }
 
-    return <Fragment key={`text-${index}`}>{part}</Fragment>;
+    return <Fragment key={key}>{part}</Fragment>;
   });
 }
 
@@ -392,13 +399,19 @@ function renderTextContent(
   }
 
   const lines = text.split('\n');
+  let offset = 0;
 
-  return lines.map((line, index) => (
-    <Fragment key={`line-${index}`}>
-      {highlightKeywordsInText(line, highlightKeywords)}
-      {index < lines.length - 1 ? <br /> : null}
-    </Fragment>
-  ));
+  return lines.map((line, index) => {
+    const key = `${line}-${offset}`;
+    offset += line.length + 1;
+
+    return (
+      <Fragment key={key}>
+        {highlightKeywordsInText(line, highlightKeywords)}
+        {index < lines.length - 1 ? <br /> : null}
+      </Fragment>
+    );
+  });
 }
 
 const CodeBlockView = memo<CodeBlockViewProps>(
@@ -422,6 +435,7 @@ const CodeBlockView = memo<CodeBlockViewProps>(
     useEffect(() => {
       const highlightCode = async (): Promise<void> => {
         if (codeRef.current && resolvedLanguage) {
+          codeRef.current.textContent = code;
           await loadPrismLanguage(resolvedLanguage);
           Prism.highlightElement(codeRef.current);
         }
@@ -435,7 +449,7 @@ const CodeBlockView = memo<CodeBlockViewProps>(
           },
         });
       });
-    }, [code, resolvedLanguage, theme]);
+    }, [code, resolvedLanguage]);
 
     const handleCopyClick = useCallback((): void => {
       onCopy(code, blockId);
@@ -452,7 +466,10 @@ const CodeBlockView = memo<CodeBlockViewProps>(
               {t('chat.codeLanguage', { language: resolvedLanguage })}
             </span>
             {safeFilename.length > 0 ? (
-              <span className="text-xs text-gray-700 dark:text-gray-300" title={safeFilename}>
+              <span
+                className="text-xs text-gray-700 dark:text-gray-300"
+                title={safeFilename}
+              >
                 {t('chat.codeFile', { filename: safeFilename })}
               </span>
             ) : null}
@@ -468,10 +485,10 @@ const CodeBlockView = memo<CodeBlockViewProps>(
           <button
             type="button"
             className={cn(
-              "text-xs px-2 py-1 rounded transition-colors",
-              isCopied 
-                ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300" 
-                : "hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+              'text-xs px-2 py-1 rounded transition-colors',
+              isCopied
+                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                : 'hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
             )}
             onClick={handleCopyClick}
             aria-label={isCopied ? t('chat.copied') : t('chat.copyCode')}
@@ -480,7 +497,9 @@ const CodeBlockView = memo<CodeBlockViewProps>(
           </button>
         </div>
         <div className="p-4 overflow-x-auto">
-          <pre className={`text-sm font-mono leading-relaxed language-${resolvedLanguage}`}>
+          <pre
+            className={`text-sm font-mono leading-relaxed language-${resolvedLanguage}`}
+          >
             <code ref={codeRef} className={`language-${resolvedLanguage}`}>
               {code}
             </code>
@@ -579,29 +598,39 @@ const MessageItemComponent = ({
   return (
     <div
       className={cn(
-        "flex gap-4 w-full max-w-4xl mx-auto p-4 rounded-2xl transition-all duration-200",
-        isUser ? "flex-row-reverse bg-blue-50/50 dark:bg-blue-900/10" : "bg-white/50 dark:bg-gray-800/50",
-        isStreaming && "animate-pulse"
+        'flex gap-4 w-full max-w-4xl mx-auto p-4 rounded-2xl transition-all duration-200',
+        isUser
+          ? 'flex-row-reverse bg-blue-50/50 dark:bg-blue-900/10'
+          : 'bg-white/50 dark:bg-gray-800/50',
+        isStreaming && 'animate-pulse'
       )}
       data-message-id={message.id}
     >
       <div className="flex-shrink-0">
-        <div className={cn(
-          "w-10 h-10 rounded-full flex items-center justify-center text-xl shadow-sm",
-          isUser ? "bg-blue-100 dark:bg-blue-900" : "bg-green-100 dark:bg-green-900"
-        )}>
+        <div
+          className={cn(
+            'w-10 h-10 rounded-full flex items-center justify-center text-xl shadow-sm',
+            isUser
+              ? 'bg-blue-100 dark:bg-blue-900'
+              : 'bg-green-100 dark:bg-green-900'
+          )}
+        >
           {isUser ? '👤' : '🤖'}
         </div>
       </div>
 
-      <div className={cn(
-        "flex-1 min-w-0 flex flex-col gap-2",
-        isUser && "items-end"
-      )}>
-        <div className={cn(
-          "flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300",
-          isUser && "flex-row-reverse"
-        )}>
+      <div
+        className={cn(
+          'flex-1 min-w-0 flex flex-col gap-2',
+          isUser && 'items-end'
+        )}
+      >
+        <div
+          className={cn(
+            'flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300',
+            isUser && 'flex-row-reverse'
+          )}
+        >
           <span className="font-medium">
             {isUser ? t('chat.you') : t('chat.assistant')}
           </span>
@@ -619,14 +648,19 @@ const MessageItemComponent = ({
           </time>
         </div>
 
-        <div className={cn(
-          "prose dark:prose-invert max-w-none break-words",
-          isUser ? "text-right" : "text-left"
-        )}>
+        <div
+          className={cn(
+            'prose dark:prose-invert max-w-none break-words',
+            isUser ? 'text-right' : 'text-left'
+          )}
+        >
           {hasAttachments ? (
             <div className="flex flex-wrap gap-2 mb-2">
               {message.files?.map((file) => (
-                <div key={file.id} className="flex items-center gap-2 px-3 py-1.5 bg-white/50 dark:bg-black/20 border border-gray-200 dark:border-gray-700 rounded-lg text-sm">
+                <div
+                  key={file.id}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-white/50 dark:bg-black/20 border border-gray-200 dark:border-gray-700 rounded-lg text-sm"
+                >
                   <span className="text-lg" aria-hidden="true">
                     📎
                   </span>
@@ -673,7 +707,10 @@ const MessageItemComponent = ({
 
           {isStreaming ? (
             <div className="inline-block ml-1 animate-pulse" aria-live="polite">
-              <span className="text-blue-700 dark:text-blue-200" aria-label="Streaming">
+              <span
+                className="text-blue-700 dark:text-blue-200"
+                aria-label="Streaming"
+              >
                 ▋
               </span>
             </div>
@@ -681,10 +718,12 @@ const MessageItemComponent = ({
         </div>
 
         {hasContextTokens || showRetryButton ? (
-          <div className={cn(
-            "flex items-center gap-3 mt-1 text-xs text-gray-700 dark:text-gray-300",
-            isUser && "flex-row-reverse"
-          )}>
+          <div
+            className={cn(
+              'flex items-center gap-3 mt-1 text-xs text-gray-700 dark:text-gray-300',
+              isUser && 'flex-row-reverse'
+            )}
+          >
             {hasContextTokens ? (
               <span className="font-mono">
                 {t('chat.contextTokens', { count: message.contextTokens })}

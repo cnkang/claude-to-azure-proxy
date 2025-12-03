@@ -7,7 +7,8 @@
  * Requirements: 16.4, 16.5
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import type React from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { CompressionOptions } from '../../hooks/useContextManagement.js';
 import { frontendLogger } from '../../utils/logger.js';
@@ -134,7 +135,9 @@ export const ContextCompressionDialog: React.FC<
   const renderConfigureStep = (): React.JSX.Element => (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('context.compression.title')}</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          {t('context.compression.title')}
+        </h3>
         <button
           onClick={onClose}
           className="text-gray-700 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-200"
@@ -231,7 +234,7 @@ export const ContextCompressionDialog: React.FC<
               onChange={(e) =>
                 setOptions((prev) => ({
                   ...prev,
-                  targetReduction: parseFloat(e.target.value),
+                  targetReduction: Number.parseFloat(e.target.value),
                 }))
               }
               className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
@@ -259,7 +262,10 @@ export const ContextCompressionDialog: React.FC<
           {showAdvanced && (
             <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl animate-in slide-in-from-top-2 duration-200">
               <div className="space-y-2">
-                <label htmlFor="preserve-code-blocks" className="flex items-start gap-3 cursor-pointer">
+                <label
+                  htmlFor="preserve-code-blocks"
+                  className="flex items-start gap-3 cursor-pointer"
+                >
                   <input
                     id="preserve-code-blocks"
                     type="checkbox"
@@ -300,7 +306,10 @@ export const ContextCompressionDialog: React.FC<
                   onChange={(e) =>
                     setOptions((prev) => ({
                       ...prev,
-                      preserveRecentMessages: parseInt(e.target.value, 10),
+                      preserveRecentMessages: Number.parseInt(
+                        e.target.value,
+                        10
+                      ),
                     }))
                   }
                   className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
@@ -314,7 +323,9 @@ export const ContextCompressionDialog: React.FC<
         </div>
 
         <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl">
-          <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">{t('context.compression.benefits.title')}</h4>
+          <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
+            {t('context.compression.benefits.title')}
+          </h4>
           <ul className="space-y-1 text-sm text-blue-800 dark:text-blue-200 list-disc list-inside">
             <li>{t('context.compression.benefits.preserve')}</li>
             <li>{t('context.compression.benefits.reduce')}</li>
@@ -340,7 +351,10 @@ export const ContextCompressionDialog: React.FC<
         >
           {isCompressing ? (
             <>
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true" />
+              <div
+                className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
+                aria-hidden="true"
+              />
               {t('context.compression.compressing')}
             </>
           ) : (
@@ -359,7 +373,9 @@ export const ContextCompressionDialog: React.FC<
     return (
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('context.compression.preview.title')}</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            {t('context.compression.preview.title')}
+          </h3>
           <button
             onClick={onClose}
             className="text-gray-700 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-200"
@@ -404,7 +420,9 @@ export const ContextCompressionDialog: React.FC<
             </div>
 
             <div className="space-y-2">
-              <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">{t('context.compression.preview.content')}</h4>
+              <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                {t('context.compression.preview.content')}
+              </h4>
               <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm text-gray-700 dark:text-gray-300 font-mono h-48 overflow-y-auto border border-gray-200 dark:border-gray-700">
                 {compressionResult.compressedContext.substring(0, 500)}
                 {compressionResult.compressedContext.length > 500 && '...'}
@@ -414,7 +432,9 @@ export const ContextCompressionDialog: React.FC<
             <div className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
               <p>{t('context.compression.preview.description')}</p>
               <p>
-                <strong className="text-gray-900 dark:text-gray-100">{t('context.compression.newConversation')}:</strong>{' '}
+                <strong className="text-gray-900 dark:text-gray-100">
+                  {t('context.compression.newConversation')}:
+                </strong>{' '}
                 {conversationTitle} ({t('context.compression.compressed')})
               </p>
             </div>
@@ -443,8 +463,13 @@ export const ContextCompressionDialog: React.FC<
 
   const renderCreatingStep = (): React.JSX.Element => (
     <div className="flex flex-col items-center justify-center h-full p-8 text-center space-y-4">
-      <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" aria-hidden="true" />
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('context.compression.creating.title')}</h3>
+      <div
+        className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"
+        aria-hidden="true"
+      />
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+        {t('context.compression.creating.title')}
+      </h3>
       <p className="text-sm text-gray-700 dark:text-gray-300 max-w-xs">
         {t('context.compression.creating.message')}
       </p>
@@ -475,14 +500,12 @@ export const ContextCompressionDialog: React.FC<
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-      role="button"
-      tabIndex={0}
-      aria-label={t('common.close')}
       onClick={handleOverlayClick}
       onKeyDown={handleOverlayKeyDown}
+      role="presentation"
     >
-      <Glass 
-        className="w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl" 
+      <Glass
+        className="w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl"
         intensity="high"
         role="dialog"
         aria-modal="true"

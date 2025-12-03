@@ -7,17 +7,18 @@
  * Requirements: 4.1, 4.2, 4.3, 4.4, 4.5
  */
 
-import React, { memo, useCallback, useState, useRef, useEffect } from 'react';
+import type React from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useI18n } from '../../contexts/I18nContext.js';
 import { getChatService } from '../../services/chat';
-import { FilePreview } from './FilePreview';
-import {
-  SecurityScanner,
-  type SecurityScanResult,
-} from '../../utils/security.js';
 import { frontendLogger } from '../../utils/logger.js';
+import {
+  type SecurityScanResult,
+  SecurityScanner,
+} from '../../utils/security.js';
 import { Glass } from '../ui/Glass.js';
 import { cn } from '../ui/Glass.js';
+import { FilePreview } from './FilePreview';
 
 interface FileUploadProps {
   readonly acceptedTypes: string[];
@@ -476,11 +477,12 @@ const FileUploadComponent = ({
         intensity="low"
         border={true}
         className={cn(
-          "relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer",
-          isDragOver 
-            ? "border-blue-500 bg-blue-50/20 dark:bg-blue-900/20 scale-[1.02]" 
-            : "border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 hover:bg-white/5 dark:hover:bg-white/5",
-          disabled && "opacity-50 cursor-not-allowed hover:border-gray-300 dark:hover:border-gray-600 hover:bg-transparent"
+          'relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer',
+          isDragOver
+            ? 'border-blue-500 bg-blue-50/20 dark:bg-blue-900/20 scale-[1.02]'
+            : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 hover:bg-white/5 dark:hover:bg-white/5',
+          disabled &&
+            'opacity-50 cursor-not-allowed hover:border-gray-300 dark:hover:border-gray-600 hover:bg-transparent'
         )}
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
@@ -543,10 +545,17 @@ const FileUploadComponent = ({
                 : null;
 
             return (
-              <Glass key={uploadingFile.id} intensity="low" border={true} className="p-3">
+              <Glass
+                key={uploadingFile.id}
+                intensity="low"
+                border={true}
+                className="p-3"
+              >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2 overflow-hidden">
-                    <span className="font-medium truncate max-w-[200px]">{uploadingFile.file.name}</span>
+                    <span className="font-medium truncate max-w-[200px]">
+                      {uploadingFile.file.name}
+                    </span>
                     <span className="text-xs text-gray-700 dark:text-gray-300">
                       {formatFileSize(uploadingFile.file.size)}
                     </span>
@@ -605,7 +614,9 @@ const FileUploadComponent = ({
                 </div>
 
                 {errorMessage !== null && (
-                  <div className="mt-2 text-xs text-red-700">{errorMessage}</div>
+                  <div className="mt-2 text-xs text-red-700">
+                    {errorMessage}
+                  </div>
                 )}
 
                 {uploadingFile.securityScan?.safe === true && (
@@ -632,7 +643,9 @@ const FileUploadComponent = ({
                           className="max-h-32 rounded object-contain"
                         />
                       ) : (
-                        <pre className="text-xs font-mono overflow-x-auto p-1">{previewContent}</pre>
+                        <pre className="text-xs font-mono overflow-x-auto p-1">
+                          {previewContent}
+                        </pre>
                       )}
                     </div>
                   )}

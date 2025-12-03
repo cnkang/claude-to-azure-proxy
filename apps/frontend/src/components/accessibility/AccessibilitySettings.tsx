@@ -7,12 +7,16 @@
  * Requirements: 1.5, 10.4
  */
 
-import React, { useState } from 'react';
+import type React from 'react';
+import { useState } from 'react';
 import { useI18n } from '../../contexts/I18nContext.js';
-import { useAccessibility, useWCAGCompliance } from './AccessibilityProvider.js';
+import { cn } from '../ui/Glass.js';
+import {
+  useAccessibility,
+  useWCAGCompliance,
+} from './AccessibilityProvider.js';
 import { HighContrastToggle } from './HighContrastMode.js';
 import { useScreenReaderAnnouncer } from './ScreenReaderAnnouncer.js';
-import { cn } from '../ui/Glass.js';
 
 interface AccessibilitySettingsProps {
   className?: string;
@@ -71,9 +75,11 @@ export const AccessibilitySettings: React.FC<AccessibilitySettingsProps> = ({
   };
 
   return (
-    <div className={cn("flex flex-col gap-8 p-6", className)}>
+    <div className={cn('flex flex-col gap-8 p-6', className)}>
       <div className="space-y-2">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t('accessibility.settings.title')}</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          {t('accessibility.settings.title')}
+        </h2>
         <p className="text-gray-700 dark:text-gray-300">
           {t('accessibility.settings.description')}
         </p>
@@ -93,12 +99,14 @@ export const AccessibilitySettings: React.FC<AccessibilitySettingsProps> = ({
 
           <div className="space-y-4">
             <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
-              <span className={cn(
-                "inline-flex items-center px-3 py-1 rounded-full text-sm font-medium",
-                screenReaderEnabled 
-                  ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200"
-                  : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200"
-              )}>
+              <span
+                className={cn(
+                  'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium',
+                  screenReaderEnabled
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200'
+                    : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+                )}
+              >
                 {screenReaderEnabled
                   ? t('accessibility.screenReader.detected')
                   : t('accessibility.screenReader.notDetected')}
@@ -107,6 +115,7 @@ export const AccessibilitySettings: React.FC<AccessibilitySettingsProps> = ({
 
             <div className="flex items-start gap-3 p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl">
               <input
+                id="announcements-toggle"
                 type="checkbox"
                 checked={announcements}
                 onChange={toggleAnnouncements}
@@ -114,10 +123,16 @@ export const AccessibilitySettings: React.FC<AccessibilitySettingsProps> = ({
                 className="mt-1 w-4 h-4 text-blue-700 border-gray-300 rounded focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
               />
               <div>
-                <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+                <label
+                  className="block text-sm font-medium text-gray-900 dark:text-gray-100"
+                  htmlFor="announcements-toggle"
+                >
                   {t('accessibility.announcements.enable')}
                 </label>
-                <p id="announcements-description" className="text-xs text-gray-700 dark:text-gray-300 mt-1">
+                <p
+                  id="announcements-description"
+                  className="text-xs text-gray-700 dark:text-gray-300 mt-1"
+                >
                   {t('accessibility.announcements.description')}
                 </p>
               </div>
@@ -128,7 +143,9 @@ export const AccessibilitySettings: React.FC<AccessibilitySettingsProps> = ({
         {/* Visual Accessibility */}
         <section className="space-y-4">
           <div className="border-b border-gray-200 dark:border-gray-700 pb-2">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('accessibility.visual.title')}</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              {t('accessibility.visual.title')}
+            </h3>
             <p className="text-sm text-gray-700 dark:text-gray-300">
               {t('accessibility.visual.description')}
             </p>
@@ -137,9 +154,9 @@ export const AccessibilitySettings: React.FC<AccessibilitySettingsProps> = ({
           <div className="space-y-6">
             {/* High Contrast Mode */}
             <div className="space-y-3">
-              <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+              <p className="block text-sm font-medium text-gray-900 dark:text-gray-100">
                 {t('accessibility.highContrast.title')}
-              </label>
+              </p>
               <div className="flex items-center gap-4">
                 <HighContrastToggle
                   enabled={highContrastMode}
@@ -165,19 +182,19 @@ export const AccessibilitySettings: React.FC<AccessibilitySettingsProps> = ({
 
             {/* Font Size */}
             <div className="space-y-3">
-              <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+              <p className="block text-sm font-medium text-gray-900 dark:text-gray-100">
                 {t('accessibility.fontSize.title')}
-              </label>
+              </p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {(['small', 'medium', 'large', 'extra-large'] as const).map(
                   (size) => (
-                    <label 
-                      key={size} 
+                    <label
+                      key={size}
                       className={cn(
-                        "flex items-center justify-center p-3 border rounded-xl cursor-pointer transition-all",
-                        fontSize === size 
-                          ? "bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300 ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-900" 
-                          : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700"
+                        'flex items-center justify-center p-3 border rounded-xl cursor-pointer transition-all',
+                        fontSize === size
+                          ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300 ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-900'
+                          : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700'
                       )}
                     >
                       <input
@@ -200,10 +217,15 @@ export const AccessibilitySettings: React.FC<AccessibilitySettingsProps> = ({
             {/* Zoom Level */}
             <div className="space-y-3">
               <div className="flex justify-between">
-                <label className="text-sm font-medium text-gray-900 dark:text-gray-100" htmlFor="zoom-slider">
+                <label
+                  className="text-sm font-medium text-gray-900 dark:text-gray-100"
+                  htmlFor="zoom-slider"
+                >
                   {t('accessibility.zoom.title')}
                 </label>
-                <span className="text-sm font-mono text-gray-700 dark:text-gray-300">{Math.round(zoomLevel * 100)}%</span>
+                <span className="text-sm font-mono text-gray-700 dark:text-gray-300">
+                  {Math.round(zoomLevel * 100)}%
+                </span>
               </div>
               <input
                 id="zoom-slider"
@@ -212,11 +234,16 @@ export const AccessibilitySettings: React.FC<AccessibilitySettingsProps> = ({
                 max="3"
                 step="0.1"
                 value={zoomLevel}
-                onChange={(e) => handleZoomChange(parseFloat(e.target.value))}
+                onChange={(e) =>
+                  handleZoomChange(Number.parseFloat(e.target.value))
+                }
                 className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
                 aria-describedby="zoom-description"
               />
-              <p id="zoom-description" className="text-xs text-gray-700 dark:text-gray-300">
+              <p
+                id="zoom-description"
+                className="text-xs text-gray-700 dark:text-gray-300"
+              >
                 {t('accessibility.zoom.description')}
               </p>
             </div>
@@ -226,7 +253,9 @@ export const AccessibilitySettings: React.FC<AccessibilitySettingsProps> = ({
         {/* Motion and Animation */}
         <section className="space-y-4">
           <div className="border-b border-gray-200 dark:border-gray-700 pb-2">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('accessibility.motion.title')}</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              {t('accessibility.motion.title')}
+            </h3>
             <p className="text-sm text-gray-700 dark:text-gray-300">
               {t('accessibility.motion.description')}
             </p>
@@ -235,6 +264,7 @@ export const AccessibilitySettings: React.FC<AccessibilitySettingsProps> = ({
           <div className="space-y-4">
             <div className="flex items-start gap-3 p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl">
               <input
+                id="reduced-motion-toggle"
                 type="checkbox"
                 checked={reducedMotion}
                 onChange={toggleReducedMotion}
@@ -243,7 +273,10 @@ export const AccessibilitySettings: React.FC<AccessibilitySettingsProps> = ({
               />
               <div className="flex-1">
                 <div className="flex items-center justify-between">
-                  <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <label
+                    className="block text-sm font-medium text-gray-900 dark:text-gray-100"
+                    htmlFor="reduced-motion-toggle"
+                  >
                     {t('accessibility.reducedMotion.enable')}
                   </label>
                   {systemPrefersReducedMotion !== reducedMotion && (
@@ -251,13 +284,18 @@ export const AccessibilitySettings: React.FC<AccessibilitySettingsProps> = ({
                       type="button"
                       onClick={resetReducedMotion}
                       className="text-xs text-blue-700 dark:text-blue-200 hover:underline"
-                      aria-label={t('accessibility.reducedMotion.resetToSystem')}
+                      aria-label={t(
+                        'accessibility.reducedMotion.resetToSystem'
+                      )}
                     >
                       {t('common.reset')}
                     </button>
                   )}
                 </div>
-                <p id="reduced-motion-description" className="text-xs text-gray-700 dark:text-gray-300 mt-1">
+                <p
+                  id="reduced-motion-description"
+                  className="text-xs text-gray-700 dark:text-gray-300 mt-1"
+                >
                   {systemPrefersReducedMotion
                     ? t('accessibility.reducedMotion.systemEnabled')
                     : t('accessibility.reducedMotion.systemDisabled')}
@@ -270,7 +308,9 @@ export const AccessibilitySettings: React.FC<AccessibilitySettingsProps> = ({
         {/* Keyboard Navigation */}
         <section className="space-y-4">
           <div className="border-b border-gray-200 dark:border-gray-700 pb-2">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('accessibility.keyboard.title')}</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              {t('accessibility.keyboard.title')}
+            </h3>
             <p className="text-sm text-gray-700 dark:text-gray-300">
               {t('accessibility.keyboard.description')}
             </p>
@@ -279,6 +319,7 @@ export const AccessibilitySettings: React.FC<AccessibilitySettingsProps> = ({
           <div className="space-y-4">
             <div className="flex items-start gap-3 p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl">
               <input
+                id="keyboard-navigation-toggle"
                 type="checkbox"
                 checked={keyboardNavigation}
                 onChange={toggleKeyboardNavigation}
@@ -286,10 +327,16 @@ export const AccessibilitySettings: React.FC<AccessibilitySettingsProps> = ({
                 className="mt-1 w-4 h-4 text-blue-700 border-gray-300 rounded focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
               />
               <div>
-                <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+                <label
+                  className="block text-sm font-medium text-gray-900 dark:text-gray-100"
+                  htmlFor="keyboard-navigation-toggle"
+                >
                   {t('accessibility.keyboardNavigation.enable')}
                 </label>
-                <p id="keyboard-description" className="text-xs text-gray-700 dark:text-gray-300 mt-1">
+                <p
+                  id="keyboard-description"
+                  className="text-xs text-gray-700 dark:text-gray-300 mt-1"
+                >
                   {t('accessibility.keyboardNavigation.instructions')}
                 </p>
               </div>
@@ -307,13 +354,19 @@ export const AccessibilitySettings: React.FC<AccessibilitySettingsProps> = ({
             aria-controls="advanced-settings"
           >
             {t('accessibility.advanced.title')}
-            <span className={`transform transition-transform duration-200 ${showAdvanced ? 'rotate-90' : ''}`} aria-hidden="true">
+            <span
+              className={`transform transition-transform duration-200 ${showAdvanced ? 'rotate-90' : ''}`}
+              aria-hidden="true"
+            >
               ▶
             </span>
           </button>
 
           {showAdvanced && (
-            <div id="advanced-settings" className="space-y-4 animate-in slide-in-from-top-2 duration-200">
+            <div
+              id="advanced-settings"
+              className="space-y-4 animate-in slide-in-from-top-2 duration-200"
+            >
               <p className="text-sm text-gray-700 dark:text-gray-300">
                 {t('accessibility.advanced.description')}
               </p>
@@ -321,18 +374,18 @@ export const AccessibilitySettings: React.FC<AccessibilitySettingsProps> = ({
               <div className="space-y-4">
                 {/* WCAG Compliance Level */}
                 <div className="space-y-3">
-                  <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <p className="block text-sm font-medium text-gray-900 dark:text-gray-100">
                     {t('accessibility.wcag.title')}
-                  </label>
+                  </p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {(['A', 'AA', 'AAA'] as const).map((level) => (
-                      <label 
-                        key={level} 
+                      <label
+                        key={level}
                         className={cn(
-                          "flex flex-col p-3 border rounded-xl cursor-pointer transition-all",
-                          wcagLevel === level 
-                            ? "bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800 ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-900" 
-                            : "bg-white border-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
+                          'flex flex-col p-3 border rounded-xl cursor-pointer transition-all',
+                          wcagLevel === level
+                            ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800 ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-900'
+                            : 'bg-white border-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700'
                         )}
                       >
                         <div className="flex items-center gap-2 mb-1">
@@ -344,15 +397,21 @@ export const AccessibilitySettings: React.FC<AccessibilitySettingsProps> = ({
                             onChange={() => handleWcagLevelChange(level)}
                             className="sr-only"
                           />
-                          <span className={cn(
-                            "text-sm font-bold",
-                            wcagLevel === level ? "text-blue-700 dark:text-blue-300" : "text-gray-900 dark:text-gray-100"
-                          )}>
+                          <span
+                            className={cn(
+                              'text-sm font-bold',
+                              wcagLevel === level
+                                ? 'text-blue-700 dark:text-blue-300'
+                                : 'text-gray-900 dark:text-gray-100'
+                            )}
+                          >
                             WCAG {level}
                           </span>
                         </div>
                         <span className="text-xs text-gray-700 dark:text-gray-300">
-                          {t(`accessibility.wcag.${level.toLowerCase()}.description`)}
+                          {t(
+                            `accessibility.wcag.${level.toLowerCase()}.description`
+                          )}
                         </span>
                       </label>
                     ))}

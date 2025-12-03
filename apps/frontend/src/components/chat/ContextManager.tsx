@@ -7,15 +7,16 @@
  * Requirements: 16.1, 16.2, 16.3, 16.4, 16.5
  */
 
-import React, { useCallback } from 'react';
-import type { Conversation } from '../../types/index';
+import type React from 'react';
+import { useCallback } from 'react';
 import {
-  useContextManagement,
   useContextCompression,
+  useContextManagement,
 } from '../../hooks/useContextManagement';
-import { ContextWarning, ContextUsageIndicator } from './ContextWarning';
-import { ContextCompressionDialog } from './ContextCompressionDialog';
+import type { Conversation } from '../../types/index';
 import { frontendLogger } from '../../utils/logger';
+import { ContextCompressionDialog } from './ContextCompressionDialog';
+import { ContextUsageIndicator, ContextWarning } from './ContextWarning';
 
 export interface ContextManagerProps {
   conversation: Conversation;

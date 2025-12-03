@@ -7,7 +7,8 @@
  * Requirements: 1.5, 10.4
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import type React from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useI18n } from '../../contexts/I18nContext';
 
 declare global {
@@ -48,41 +49,31 @@ export const ScreenReaderAnnouncer: React.FC<ScreenReaderAnnouncerProps> = ({
   /**
    * Announce a message to screen readers
    */
-  const announce = (
-    message: string,
-    priority: 'polite' | 'assertive' = 'polite',
-    clearAfter = 5000
-  ): void => {
-    if (message.trim().length === 0) {
-      return;
-    }
-
-    if (priority === 'assertive') {
-      // Clear any existing timeout
-      if (assertiveTimeoutRef.current !== null) {
-        globalThis.clearTimeout(assertiveTimeoutRef.current);
+  const announce = useCallback(
+    (
+      message: string,
+      priority: 'polite' | 'assertive' = 'polite',
+      clearAfter = 5000
+    ): void => {
+      if (message.trim().length === 0) {
+        return;
       }
 
-      setAssertiveMessage(message);
+      const isAssertive = priority === 'assertive';
+      const setMessage = isAssertive ? setAssertiveMessage : setPoliteMessage;
+      const timeoutRef = isAssertive ? assertiveTimeoutRef : politeTimeoutRef;
 
-      // Clear message after specified time
-      assertiveTimeoutRef.current = globalThis.setTimeout(() => {
-        setAssertiveMessage('');
-      }, clearAfter);
-    } else {
-      // Clear any existing timeout
-      if (politeTimeoutRef.current !== null) {
-        globalThis.clearTimeout(politeTimeoutRef.current);
+      setMessage(message);
+      if (timeoutRef.current !== null) {
+        globalThis.clearTimeout(timeoutRef.current);
       }
 
-      setPoliteMessage(message);
-
-      // Clear message after specified time
-      politeTimeoutRef.current = globalThis.setTimeout(() => {
-        setPoliteMessage('');
+      timeoutRef.current = globalThis.setTimeout(() => {
+        setMessage('');
       }, clearAfter);
-    }
-  };
+    },
+    []
+  );
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -106,34 +97,32 @@ export const ScreenReaderAnnouncer: React.FC<ScreenReaderAnnouncerProps> = ({
 
     return (): void => {
       if (window.announceToScreenReader) {
-        delete window.announceToScreenReader;
+        window.announceToScreenReader = undefined;
       }
     };
-  }, []);
+  }, [announce]);
 
   return (
     <div className={`screen-reader-announcer ${className}`}>
       {/* Polite announcements - won't interrupt current speech */}
-      <div
-        role="status"
+      <output
         aria-live="polite"
         aria-atomic="true"
         className="sr-only"
         data-testid="polite-announcer"
       >
         {politeMessage}
-      </div>
+      </output>
 
       {/* Assertive announcements - will interrupt current speech */}
-      <div
-        role="alert"
+      <output
         aria-live="assertive"
         aria-atomic="true"
         className="sr-only"
         data-testid="assertive-announcer"
       >
         {assertiveMessage}
-      </div>
+      </output>
     </div>
   );
 };
@@ -223,26 +212,16 @@ export const Announcement: React.FC<AnnouncementProps> = ({
 
   if (priority === 'assertive') {
     return (
-      <div
-        role="alert"
-        aria-live="assertive"
-        aria-atomic="true"
-        className="sr-only"
-      >
+      <output aria-live="assertive" aria-atomic="true" className="sr-only">
         {currentMessage}
-      </div>
+      </output>
     );
   }
 
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      aria-atomic="true"
-      className="sr-only"
-    >
+    <output aria-live="polite" aria-atomic="true" className="sr-only">
       {currentMessage}
-    </div>
+    </output>
   );
 };
 

@@ -7,13 +7,14 @@
  * Requirements: 3.1, 4.1, 4.2, 4.3
  */
 
-import React, { memo, useCallback, useState, useRef, useEffect } from 'react';
+import type React from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import { useI18n } from '../../contexts/I18nContext.js';
-import { FileUpload } from './FileUpload.js';
 import { frontendLogger } from '../../utils/logger.js';
 import { Glass } from '../ui/Glass.js';
 import { cn } from '../ui/Glass.js';
+import { FileUpload } from './FileUpload.js';
 // import type { FileInfo } from '../../types/index';
 
 interface MessageInputProps {
@@ -197,7 +198,10 @@ const MessageInputComponent = ({
    * Auto-resize textarea on content change
    */
   useEffect(() => {
-    adjustTextareaHeight();
+    const messageLength = message.length;
+    if (messageLength >= 0) {
+      adjustTextareaHeight();
+    }
   }, [message, adjustTextareaHeight]);
 
   /**
@@ -227,8 +231,8 @@ const MessageInputComponent = ({
 
           <div className="flex flex-wrap gap-2">
             {attachedFiles.map((file, index) => (
-              <div 
-                key={`${file.name}-${index}`} 
+              <div
+                key={`${file.name}-${index}`}
                 className="flex items-center gap-2 px-3 py-1.5 bg-white/10 border border-white/20 rounded-lg text-sm text-gray-700 dark:text-gray-300"
               >
                 <div className="flex items-center gap-2">
@@ -269,19 +273,22 @@ const MessageInputComponent = ({
 
       {/* Error Message */}
       {error !== null && (
-        <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-200 flex items-center gap-2" role="alert">
+        <div
+          className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-200 flex items-center gap-2"
+          role="alert"
+        >
           <span className="text-lg">⚠️</span>
           <span className="text-sm font-medium">{error}</span>
         </div>
       )}
 
       {/* Input Area */}
-      <Glass 
+      <Glass
         intensity="medium"
         border={true}
         className={cn(
-          "relative rounded-2xl transition-all duration-200",
-          disabled && "opacity-60 cursor-not-allowed"
+          'relative rounded-2xl transition-all duration-200',
+          disabled && 'opacity-60 cursor-not-allowed'
         )}
       >
         <div className="flex items-end gap-2 p-2">
@@ -289,8 +296,8 @@ const MessageInputComponent = ({
           <button
             type="button"
             className={cn(
-              "p-3 rounded-xl hover:bg-white/10 transition-colors text-gray-700 dark:text-gray-300",
-              showFileUpload && "bg-white/10 text-blue-700 dark:text-blue-200"
+              'p-3 rounded-xl hover:bg-white/10 transition-colors text-gray-700 dark:text-gray-300',
+              showFileUpload && 'bg-white/10 text-blue-700 dark:text-blue-200'
             )}
             onClick={toggleFileUpload}
             disabled={disabled}
@@ -318,10 +325,10 @@ const MessageInputComponent = ({
           <button
             type="button"
             className={cn(
-              "p-3 rounded-xl transition-all duration-200",
-              canSend 
-                ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 active:scale-95" 
-                : "bg-gray-200 dark:bg-gray-700 text-gray-700 cursor-not-allowed"
+              'p-3 rounded-xl transition-all duration-200',
+              canSend
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 active:scale-95'
+                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 cursor-not-allowed'
             )}
             onClick={handleSendMessage}
             disabled={!canSend}
@@ -334,16 +341,16 @@ const MessageInputComponent = ({
 
         {/* Footer info */}
         <div className="px-4 pb-2 flex justify-between items-center text-xs text-gray-700 dark:text-gray-300">
-          <div className="flex-1 text-center">
-            {t('chat.keyboardHint')}
-          </div>
-          
+          <div className="flex-1 text-center">{t('chat.keyboardHint')}</div>
+
           {/* Character Count */}
           {isNearLimit && (
-            <div className={cn(
-              "font-mono",
-              characterCount >= maxLength ? "text-red-700" : "text-yellow-700"
-            )}>
+            <div
+              className={cn(
+                'font-mono',
+                characterCount >= maxLength ? 'text-red-700' : 'text-yellow-700'
+              )}
+            >
               {characterCount}/{maxLength}
             </div>
           )}

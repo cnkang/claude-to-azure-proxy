@@ -35,7 +35,7 @@ const TypingIndicatorComponent = ({
   return (
     <div
       className={cn(
-        "flex items-center gap-3 p-3 rounded-2xl bg-white/50 dark:bg-gray-800/50 w-fit",
+        'flex items-center gap-3 p-3 rounded-2xl bg-white/50 dark:bg-gray-800/50 w-fit',
         sizeClasses[size]
       )}
       role="status"

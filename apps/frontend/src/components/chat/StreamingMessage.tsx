@@ -9,9 +9,9 @@
 
 import React, { memo, useState, useRef, useEffect } from 'react';
 import type { JSX } from 'react';
-import { MessageItem } from './MessageItem.js';
 import type { Message } from '../../types/index.js';
 import { cn } from '../ui/Glass.js';
+import { MessageItem } from './MessageItem.js';
 
 interface StreamingMessageProps {
   readonly message: Partial<Message>;
@@ -119,10 +119,12 @@ const StreamingMessageComponent = ({
   };
 
   return (
-    <div className={cn(
-      "relative transition-all duration-200",
-      isTyping ? "opacity-100" : "opacity-100"
-    )}>
+    <div
+      className={cn(
+        'relative transition-all duration-200',
+        isTyping ? 'opacity-100' : 'opacity-100'
+      )}
+    >
       <MessageItem
         message={displayMessage}
         isStreaming={isTyping}

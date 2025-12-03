@@ -5,9 +5,9 @@
  * and other accessibility requirements.
  */
 
-import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
 import * as fc from 'fast-check';
+import { describe, expect, it } from 'vitest';
 
 /**
  * Calculate relative luminance of an RGB color
@@ -16,7 +16,7 @@ import * as fc from 'fast-check';
 function getRelativeLuminance(r: number, g: number, b: number): number {
   const [rs, gs, bs] = [r, g, b].map((c) => {
     const sRGB = c / 255;
-    return sRGB <= 0.03928 ? sRGB / 12.92 : Math.pow((sRGB + 0.055) / 1.055, 2.4);
+    return sRGB <= 0.03928 ? sRGB / 12.92 : ((sRGB + 0.055) / 1.055) ** 2.4;
   });
   return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
 }
@@ -39,14 +39,16 @@ function getContrastRatio(
 /**
  * Parse RGB color from various formats
  */
-function parseRGBColor(color: string): { r: number; g: number; b: number } | null {
+function parseRGBColor(
+  color: string
+): { r: number; g: number; b: number } | null {
   // Handle rgb() format
   const rgbMatch = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
   if (rgbMatch) {
     return {
-      r: parseInt(rgbMatch[1], 10),
-      g: parseInt(rgbMatch[2], 10),
-      b: parseInt(rgbMatch[3], 10),
+      r: Number.parseInt(rgbMatch[1], 10),
+      g: Number.parseInt(rgbMatch[2], 10),
+      b: Number.parseInt(rgbMatch[3], 10),
     };
   }
 
@@ -54,9 +56,9 @@ function parseRGBColor(color: string): { r: number; g: number; b: number } | nul
   const rgbaMatch = color.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*[\d.]+\)/);
   if (rgbaMatch) {
     return {
-      r: parseInt(rgbaMatch[1], 10),
-      g: parseInt(rgbaMatch[2], 10),
-      b: parseInt(rgbaMatch[3], 10),
+      r: Number.parseInt(rgbaMatch[1], 10),
+      g: Number.parseInt(rgbaMatch[2], 10),
+      b: Number.parseInt(rgbaMatch[3], 10),
     };
   }
 
@@ -65,9 +67,9 @@ function parseRGBColor(color: string): { r: number; g: number; b: number } | nul
   if (hexMatch) {
     const hex = hexMatch[1];
     return {
-      r: parseInt(hex.substring(0, 2), 16),
-      g: parseInt(hex.substring(2, 4), 16),
-      b: parseInt(hex.substring(4, 6), 16),
+      r: Number.parseInt(hex.substring(0, 2), 16),
+      g: Number.parseInt(hex.substring(2, 4), 16),
+      b: Number.parseInt(hex.substring(4, 6), 16),
     };
   }
 
@@ -111,7 +113,14 @@ describe('Accessibility Property-Based Tests', () => {
     fc.assert(
       fc.property(
         fc.constantFrom('light', 'dark'),
-        fc.constantFrom('primaryText', 'secondaryText', 'primary', 'error', 'success', 'warning'),
+        fc.constantFrom(
+          'primaryText',
+          'secondaryText',
+          'primary',
+          'error',
+          'success',
+          'warning'
+        ),
         (theme, textType) => {
           const colors = wcagColors[theme];
           const textColor = colors[textType as keyof typeof colors];
@@ -263,6 +272,66 @@ describe('Accessibility Property-Based Tests', () => {
   });
 });
 
+/**
+ * Helper Functions for Keyboard Navigation Tests
+ */
+
+/**
+ * Create an interactive element of the specified type
+ */
+function createInteractiveElement(
+  elementType: string,
+  index: number
+): HTMLElement {
+  const element = document.createElement(
+    elementType.startsWith('[') ? 'div' : elementType
+  );
+  if (elementType.startsWith('[tabindex')) {
+    element.setAttribute('tabindex', '0');
+  }
+  element.textContent = `Element ${index}`;
+  return element;
+}
+
+/**
+ * Create a container with multiple interactive elements
+ */
+function createInteractiveContainer(
+  elementType: string,
+  count: number
+): HTMLDivElement {
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+
+  for (let i = 0; i < count; i++) {
+    const element = createInteractiveElement(elementType, i);
+    container.appendChild(element);
+  }
+
+  return container;
+}
+
+/**
+ * Get all focusable elements in a container
+ */
+function getFocusableElements(container: HTMLElement): NodeListOf<Element> {
+  const focusableSelector =
+    'button, input, select, textarea, [tabindex]:not([tabindex="-1"])';
+  return container.querySelectorAll(focusableSelector);
+}
+
+/**
+ * Verify all elements can receive focus
+ */
+function verifyAllElementsFocusable(elements: NodeListOf<Element>): boolean {
+  for (const el of Array.from(elements)) {
+    (el as HTMLElement).focus();
+    if (document.activeElement !== el) {
+      return false;
+    }
+  }
+  return true;
+}
 
 describe('Keyboard Navigation Property-Based Tests', () => {
   // Feature: liquid-glass-frontend-redesign, Property 13: Keyboard Navigation Completeness
@@ -282,40 +351,12 @@ describe('Keyboard Navigation Property-Based Tests', () => {
         fc.constantFrom(...interactiveElements),
         fc.integer({ min: 1, max: 10 }),
         (elementType, count) => {
-          // Create a container with multiple interactive elements
-          const container = document.createElement('div');
-          document.body.appendChild(container);
+          const container = createInteractiveContainer(elementType, count);
+          const focusableElements = getFocusableElements(container);
 
-          for (let i = 0; i < count; i++) {
-            const element = document.createElement(
-              elementType.startsWith('[') ? 'div' : elementType
-            );
-            if (elementType.startsWith('[tabindex')) {
-              element.setAttribute('tabindex', '0');
-            }
-            element.textContent = `Element ${i}`;
-            container.appendChild(element);
-          }
-
-          // Get all focusable elements
-          const focusableSelector =
-            'button, input, select, textarea, [tabindex]:not([tabindex="-1"])';
-          const focusableElements = container.querySelectorAll(focusableSelector);
-
-          // Verify all elements match the count
           const countMatches = focusableElements.length === count;
+          const allFocusable = verifyAllElementsFocusable(focusableElements);
 
-          // Verify each element can actually receive focus
-          let allFocusable = true;
-          for (const el of Array.from(focusableElements)) {
-            (el as HTMLElement).focus();
-            if (document.activeElement !== el) {
-              allFocusable = false;
-              break;
-            }
-          }
-
-          // Clean up
           document.body.removeChild(container);
 
           return countMatches && allFocusable;
@@ -361,48 +402,45 @@ describe('Keyboard Navigation Property-Based Tests', () => {
   it('Tab order follows logical document flow', () => {
     // Test that tabbing through elements follows the DOM order
     fc.assert(
-      fc.property(
-        fc.integer({ min: 2, max: 10 }),
-        (elementCount) => {
-          // Create a container with multiple buttons
-          const container = document.createElement('div');
-          const buttons: HTMLButtonElement[] = [];
+      fc.property(fc.integer({ min: 2, max: 10 }), (elementCount) => {
+        // Create a container with multiple buttons
+        const container = document.createElement('div');
+        const buttons: HTMLButtonElement[] = [];
 
-          for (let i = 0; i < elementCount; i++) {
-            const button = document.createElement('button');
-            button.textContent = `Button ${i}`;
-            button.setAttribute('data-index', i.toString());
-            container.appendChild(button);
-            buttons.push(button);
-          }
-
-          document.body.appendChild(container);
-
-          // Simulate Tab navigation
-          let currentIndex = 0;
-          buttons[currentIndex].focus();
-
-          // Verify each button can be focused in order
-          for (let i = 0; i < elementCount - 1; i++) {
-            const currentButton = buttons[i];
-            const nextButton = buttons[i + 1];
-
-            // Simulate Tab key press (in real scenario, this would move focus)
-            // For testing, we manually move focus
-            nextButton.focus();
-
-            // Verify focus moved to next element
-            if (document.activeElement !== nextButton) {
-              document.body.removeChild(container);
-              return false;
-            }
-          }
-
-          // Clean up
-          document.body.removeChild(container);
-          return true;
+        for (let i = 0; i < elementCount; i++) {
+          const button = document.createElement('button');
+          button.textContent = `Button ${i}`;
+          button.setAttribute('data-index', i.toString());
+          container.appendChild(button);
+          buttons.push(button);
         }
-      ),
+
+        document.body.appendChild(container);
+
+        // Simulate Tab navigation
+        const currentIndex = 0;
+        buttons[currentIndex].focus();
+
+        // Verify each button can be focused in order
+        for (let i = 0; i < elementCount - 1; i++) {
+          const currentButton = buttons[i];
+          const nextButton = buttons[i + 1];
+
+          // Simulate Tab key press (in real scenario, this would move focus)
+          // For testing, we manually move focus
+          nextButton.focus();
+
+          // Verify focus moved to next element
+          if (document.activeElement !== nextButton) {
+            document.body.removeChild(container);
+            return false;
+          }
+        }
+
+        // Clean up
+        document.body.removeChild(container);
+        return true;
+      }),
       { numRuns: 100 }
     );
   });
@@ -410,44 +448,41 @@ describe('Keyboard Navigation Property-Based Tests', () => {
   it('Arrow keys navigate through list items', () => {
     // Test that arrow keys can navigate through list items
     fc.assert(
-      fc.property(
-        fc.integer({ min: 2, max: 10 }),
-        (itemCount) => {
-          // Create a listbox with multiple options
-          const listbox = document.createElement('div');
-          listbox.setAttribute('role', 'listbox');
-          const items: HTMLDivElement[] = [];
+      fc.property(fc.integer({ min: 2, max: 10 }), (itemCount) => {
+        // Create a listbox with multiple options
+        const listbox = document.createElement('div');
+        listbox.setAttribute('role', 'listbox');
+        const items: HTMLDivElement[] = [];
 
-          for (let i = 0; i < itemCount; i++) {
-            const item = document.createElement('div');
-            item.setAttribute('role', 'option');
-            item.setAttribute('tabindex', '0');
-            item.textContent = `Item ${i}`;
-            listbox.appendChild(item);
-            items.push(item);
-          }
-
-          document.body.appendChild(listbox);
-
-          // Focus first item
-          items[0].focus();
-
-          // Verify all items are focusable
-          let allFocusable = true;
-          for (const item of items) {
-            item.focus();
-            if (document.activeElement !== item) {
-              allFocusable = false;
-              break;
-            }
-          }
-
-          // Clean up
-          document.body.removeChild(listbox);
-
-          return allFocusable;
+        for (let i = 0; i < itemCount; i++) {
+          const item = document.createElement('div');
+          item.setAttribute('role', 'option');
+          item.setAttribute('tabindex', '0');
+          item.textContent = `Item ${i}`;
+          listbox.appendChild(item);
+          items.push(item);
         }
-      ),
+
+        document.body.appendChild(listbox);
+
+        // Focus first item
+        items[0].focus();
+
+        // Verify all items are focusable
+        let allFocusable = true;
+        for (const item of items) {
+          item.focus();
+          if (document.activeElement !== item) {
+            allFocusable = false;
+            break;
+          }
+        }
+
+        // Clean up
+        document.body.removeChild(listbox);
+
+        return allFocusable;
+      }),
       { numRuns: 100 }
     );
   });
@@ -455,43 +490,40 @@ describe('Keyboard Navigation Property-Based Tests', () => {
   it('Home and End keys navigate to first and last elements', () => {
     // Test that Home/End keys work for navigation
     fc.assert(
-      fc.property(
-        fc.integer({ min: 3, max: 10 }),
-        (itemCount) => {
-          // Create a listbox with multiple options
-          const listbox = document.createElement('div');
-          listbox.setAttribute('role', 'listbox');
-          const items: HTMLDivElement[] = [];
+      fc.property(fc.integer({ min: 3, max: 10 }), (itemCount) => {
+        // Create a listbox with multiple options
+        const listbox = document.createElement('div');
+        listbox.setAttribute('role', 'listbox');
+        const items: HTMLDivElement[] = [];
 
-          for (let i = 0; i < itemCount; i++) {
-            const item = document.createElement('div');
-            item.setAttribute('role', 'option');
-            item.setAttribute('tabindex', '0');
-            item.textContent = `Item ${i}`;
-            listbox.appendChild(item);
-            items.push(item);
-          }
-
-          document.body.appendChild(listbox);
-
-          // Focus middle item
-          const middleIndex = Math.floor(itemCount / 2);
-          items[middleIndex].focus();
-
-          // Simulate Home key (focus first item)
-          items[0].focus();
-          const homeWorks = document.activeElement === items[0];
-
-          // Simulate End key (focus last item)
-          items[itemCount - 1].focus();
-          const endWorks = document.activeElement === items[itemCount - 1];
-
-          // Clean up
-          document.body.removeChild(listbox);
-
-          return homeWorks && endWorks;
+        for (let i = 0; i < itemCount; i++) {
+          const item = document.createElement('div');
+          item.setAttribute('role', 'option');
+          item.setAttribute('tabindex', '0');
+          item.textContent = `Item ${i}`;
+          listbox.appendChild(item);
+          items.push(item);
         }
-      ),
+
+        document.body.appendChild(listbox);
+
+        // Focus middle item
+        const middleIndex = Math.floor(itemCount / 2);
+        items[middleIndex].focus();
+
+        // Simulate Home key (focus first item)
+        items[0].focus();
+        const homeWorks = document.activeElement === items[0];
+
+        // Simulate End key (focus last item)
+        items[itemCount - 1].focus();
+        const endWorks = document.activeElement === items[itemCount - 1];
+
+        // Clean up
+        document.body.removeChild(listbox);
+
+        return homeWorks && endWorks;
+      }),
       { numRuns: 100 }
     );
   });
@@ -518,7 +550,7 @@ describe('Keyboard Navigation Property-Based Tests', () => {
         // For testing, we just verify the modal exists and can receive events
         const canReceiveEvents = modal.dispatchEvent(escapeEvent);
 
-          // Clean up
+        // Clean up
         document.body.removeChild(modal);
 
         return canReceiveEvents;

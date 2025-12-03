@@ -1,20 +1,21 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import {
+  afterEach,
+  beforeAll,
+  beforeEach,
   describe,
   expect,
   it,
   vi,
-  beforeEach,
-  afterEach,
-  beforeAll,
 } from 'vitest';
 import { FilePreview } from './FilePreview.js';
 
 vi.mock('../../contexts/I18nContext', () => ({
   useI18n: () => ({
     t: (key: string): string => key,
-    formatFileSize: (bytes: number): string => `${(bytes / 1024).toFixed(1)} KB`,
+    formatFileSize: (bytes: number): string =>
+      `${(bytes / 1024).toFixed(1)} KB`,
   }),
 }));
 
@@ -66,8 +67,9 @@ describe('FilePreview component', () => {
       'console.log("hello");'
     );
 
-    const overlay = screen.getByRole('button', { name: 'common.close' });
-    fireEvent.keyDown(overlay, { key: 'Enter' });
+    // Test keyboard navigation on the dialog
+    const dialog = screen.getByRole('dialog');
+    fireEvent.keyDown(dialog.parentElement!, { key: 'Escape' });
     expect(onClose).toHaveBeenCalled();
   });
 
@@ -134,10 +136,11 @@ describe('FilePreview component', () => {
       );
     });
 
-    // The overlay is the outer div with role="button" and aria-label="common.close"
+    // The overlay is the outer div with role="presentation"
     // Clicking on it directly (not on child elements) should close
-    const overlay = screen.getAllByRole('button', { name: 'common.close' })[0];
-    
+    const dialog = screen.getByRole('dialog');
+    const overlay = dialog.parentElement!;
+
     // Click on the overlay itself should close
     fireEvent.click(overlay);
     expect(onClose).toHaveBeenCalledTimes(1);
@@ -157,7 +160,9 @@ describe('FilePreview component', () => {
       ).toBeInstanceOf(HTMLElement);
     });
 
-    const overlay = screen.getByRole('button', { name: 'common.close' });
+    // Test keyboard navigation on the overlay
+    const dialog = screen.getByRole('dialog');
+    const overlay = dialog.parentElement!;
     fireEvent.keyDown(overlay, { key: ' ' });
     fireEvent.keyDown(overlay, { key: 'Escape' });
 

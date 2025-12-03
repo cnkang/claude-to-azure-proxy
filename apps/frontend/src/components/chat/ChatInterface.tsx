@@ -12,22 +12,32 @@ import React, { memo, useCallback, useState, useRef, useEffect } from 'react';
 import { useI18n } from '../../contexts/I18nContext.js';
 import { useConversations } from '../../hooks/useConversations.js';
 import {
-  getChatService,
-  chatUtils,
   type SSEConnectionState,
+  chatUtils,
+  getChatService,
 } from '../../services/chat.js';
-import { OptimizedMessageList } from './OptimizedMessageList.js';
-import { MessageInput } from './MessageInput.js';
-import { TypingIndicator } from './TypingIndicator.js';
-import { useScreenReaderAnnouncer, KeyboardNavigation } from '../accessibility/index.js';
-import { frontendLogger } from '../../utils/logger.js';
 import type {
-  Conversation,
-  Message,
-  FileInfo,
   ClientConfig,
+  Conversation,
+  FileInfo,
+  Message,
 } from '../../types/index.js';
+import { frontendLogger } from '../../utils/logger.js';
+import {
+  KeyboardNavigation,
+  useScreenReaderAnnouncer,
+} from '../accessibility/index.js';
 import { Glass, cn } from '../ui/Glass.js';
+import {
+  calculateNextIndex,
+  calculateTotalOccurrences,
+  convertFileInfoToFiles,
+  scrollToHighlight,
+  updateMessageRetryFlag,
+} from './chatInterfaceHelpers.js';
+import { MessageInput } from './MessageInput.js';
+import { OptimizedMessageList } from './OptimizedMessageList.js';
+import { TypingIndicator } from './TypingIndicator.js';
 
 interface ChatInterfaceProps {
   readonly conversation: Conversation;
@@ -84,13 +94,13 @@ export const ChatInterface = memo<ChatInterfaceProps>(
     const sseConnectionRef = useRef(
       getChatService().getSSEConnection(conversation.id)
     );
+    const conversationId = conversation.id;
 
     // Update connection ref when conversation changes
     useEffect(() => {
-      sseConnectionRef.current = getChatService().getSSEConnection(
-        conversation.id
-      );
-    }, [conversation.id]);
+      sseConnectionRef.current =
+        getChatService().getSSEConnection(conversationId);
+    }, [conversationId]);
 
     /**
      * Handle sending a new message
@@ -457,25 +467,25 @@ export const ChatInterface = memo<ChatInterfaceProps>(
           (candidate: Message) => candidate.id === messageId
         );
         if (message?.role === 'user') {
+          const updatedMessages = updateMessageRetryFlag(
+            conversation.messages,
+            messageId,
+            false
+          );
+
           const clearedRetryConversation: Conversation = {
             ...conversation,
-            messages: conversation.messages.map((candidate: Message) =>
-              candidate.id === messageId
-                ? { ...candidate, retryable: false }
-                : candidate
-            ),
+            messages: updatedMessages,
           };
+
           void updateConversationWithPersistence(clearedRetryConversation.id, {
             messages: clearedRetryConversation.messages,
           });
           onConversationUpdate?.(clearedRetryConversation);
 
-          // Convert FileInfo[] back to File[] for retry (this is a limitation - we lose the actual file data)
-          // In a real implementation, you'd want to store the original File objects
-          const files = message.files?.map(
-            (fileInfo: FileInfo) =>
-              new File([], fileInfo.name, { type: fileInfo.type })
-          );
+          // Convert FileInfo[] back to File[] for retry
+          const files = convertFileInfoToFiles(message.files);
+
           handleSendMessage(message.content, files).catch(
             (retryError: unknown) => {
               frontendLogger.error('Failed to retry sending message', {
@@ -507,11 +517,19 @@ export const ChatInterface = memo<ChatInterfaceProps>(
      */
     useEffect(() => {
       const connection = sseConnectionRef.current;
+      const currentConversationId = conversationId;
+
+      frontendLogger.debug('Connecting SSE stream', {
+        metadata: { conversationId: currentConversationId },
+      });
 
       // Connect to SSE stream only once per conversation
       connection.connect();
 
       return (): void => {
+        frontendLogger.debug('Cleaning up SSE listeners', {
+          metadata: { conversationId: currentConversationId },
+        });
         // Cleanup listeners when conversation changes
         connection.off('messageStart');
         connection.off('messageChunk');
@@ -520,7 +538,7 @@ export const ChatInterface = memo<ChatInterfaceProps>(
         connection.off('connectionStateChange');
         connection.off('connectionError');
       };
-    }, [conversation.id]); // Only depend on conversation.id
+    }, [conversationId]); // Only depend on conversation.id
 
     /**
      * Update event listeners when callbacks change
@@ -571,23 +589,11 @@ export const ChatInterface = memo<ChatInterfaceProps>(
         return;
       }
 
-      let count = 0;
-      const messages = [...conversation.messages];
-      if (streamingMessage) {
-        messages.push(streamingMessage as Message);
-      }
-
-      for (const message of messages) {
-        const content = message.content?.toLowerCase() || '';
-        for (const keyword of highlightKeywords) {
-          const keywordLower = keyword.toLowerCase();
-          let position = 0;
-          while ((position = content.indexOf(keywordLower, position)) !== -1) {
-            count++;
-            position += keyword.length;
-          }
-        }
-      }
+      const count = calculateTotalOccurrences(
+        conversation.messages,
+        streamingMessage,
+        highlightKeywords
+      );
 
       setTotalOccurrences(count);
       setCurrentOccurrenceIndex(count > 0 ? 1 : 0);
@@ -627,38 +633,21 @@ export const ChatInterface = memo<ChatInterfaceProps>(
           return;
         }
 
-        let newIndex = currentOccurrenceIndex;
-        if (direction === 'next') {
-          newIndex =
-            currentOccurrenceIndex < totalOccurrences
-              ? currentOccurrenceIndex + 1
-              : 1;
-        } else {
-          newIndex =
-            currentOccurrenceIndex > 1
-              ? currentOccurrenceIndex - 1
-              : totalOccurrences;
-        }
+        const newIndex = calculateNextIndex(
+          currentOccurrenceIndex,
+          totalOccurrences,
+          direction
+        );
 
         setCurrentOccurrenceIndex(newIndex);
 
         // Find and scroll to the nth occurrence
-        const allHighlights =
-          messagesContainerRef.current.querySelectorAll('.keyword-highlight');
-        const targetHighlight = allHighlights[newIndex - 1];
+        const targetHighlight = scrollToHighlight(
+          messagesContainerRef.current,
+          newIndex
+        );
 
         if (targetHighlight) {
-          targetHighlight.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center',
-          });
-
-          // Add temporary focus indicator
-          targetHighlight.classList.add('keyword-highlight-active');
-          setTimeout(() => {
-            targetHighlight.classList.remove('keyword-highlight-active');
-          }, 2000);
-
           // Announce to screen readers
           announce(
             t('chat.navigatedToOccurrence', {
@@ -692,9 +681,7 @@ export const ChatInterface = memo<ChatInterfaceProps>(
               aria-live="assertive"
             >
               <div className="flex items-center gap-2">
-                <span aria-hidden="true">
-                  ⚠️
-                </span>
+                <span aria-hidden="true">⚠️</span>
                 <span>{connectionError}</span>
               </div>
               <button
@@ -713,9 +700,17 @@ export const ChatInterface = memo<ChatInterfaceProps>(
           ) : null}
 
           {/* Chat Header */}
-          <Glass intensity="low" border={true} className="flex-none p-4 border-b border-gray-200 dark:border-gray-800 z-10" role="banner">
+          <Glass
+            intensity="low"
+            border={true}
+            className="flex-none p-4 border-b border-gray-200 dark:border-gray-800 z-10"
+            role="banner"
+          >
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate" id="conversation-title">
+              <h2
+                className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate"
+                id="conversation-title"
+              >
                 {conversation.title}
               </h2>
               <div
@@ -738,10 +733,12 @@ export const ChatInterface = memo<ChatInterfaceProps>(
                 {conversation.contextUsage ? (
                   <span
                     className={cn(
-                      "font-mono",
-                      (conversation.contextUsage.currentTokens / conversation.contextUsage.maxTokens) > 0.8 
-                        ? "text-amber-600 dark:text-amber-400" 
-                        : "text-gray-700 dark:text-gray-300"
+                      'font-mono',
+                      conversation.contextUsage.currentTokens /
+                        conversation.contextUsage.maxTokens >
+                        0.8
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-gray-700 dark:text-gray-300'
                     )}
                     aria-label={t('context.usage.tooltip', {
                       current: conversation.contextUsage.currentTokens,
@@ -774,7 +771,10 @@ export const ChatInterface = memo<ChatInterfaceProps>(
                 role="toolbar"
                 aria-label={t('chat.keywordNavigation')}
               >
-                <span className="text-xs font-medium text-gray-700 dark:text-gray-300 mr-2" aria-live="polite">
+                <span
+                  className="text-xs font-medium text-gray-700 dark:text-gray-300 mr-2"
+                  aria-live="polite"
+                >
                   {t('chat.occurrenceCounter', {
                     current: currentOccurrenceIndex,
                     total: totalOccurrences,
@@ -835,7 +835,11 @@ export const ChatInterface = memo<ChatInterfaceProps>(
 
           {/* Loading Indicator */}
           {isLoading && !streamingMessage ? (
-            <div className="flex justify-center p-2" role="status" aria-live="polite">
+            <div
+              className="flex justify-center p-2"
+              role="status"
+              aria-live="polite"
+            >
               <TypingIndicator />
               <span className="sr-only">{t('chat.aiTyping')}</span>
             </div>

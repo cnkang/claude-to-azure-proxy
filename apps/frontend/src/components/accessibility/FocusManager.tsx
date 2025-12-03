@@ -7,12 +7,13 @@
  * Requirements: 1.5, 10.4
  */
 
-import React, {
+import type React from 'react';
+import {
+  type ReactNode,
+  useCallback,
   useEffect,
   useRef,
-  useCallback,
   useState,
-  type ReactNode,
 } from 'react';
 
 export interface FocusManagerProps {

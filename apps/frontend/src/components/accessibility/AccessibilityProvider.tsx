@@ -7,17 +7,18 @@
  * Requirements: 1.5, 10.4
  */
 
-import React, {
+import {
   createContext,
+  useCallback,
   useContext,
-  useState,
   useEffect,
-  type ReactNode,
+  useState,
 } from 'react';
+import type { FC, ReactNode } from 'react';
 import { useI18n } from '../../contexts/I18nContext';
-import { ScreenReaderAnnouncer } from './ScreenReaderAnnouncer';
-import { HighContrastMode } from './HighContrastMode';
 import { FocusManager } from './FocusManager';
+import { HighContrastMode } from './HighContrastMode';
+import { ScreenReaderAnnouncer } from './ScreenReaderAnnouncer';
 
 interface AccessibilityState {
   // Screen reader support
@@ -85,7 +86,7 @@ export interface AccessibilityProviderProps {
 /**
  * Accessibility provider component
  */
-export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
+export const AccessibilityProvider: FC<AccessibilityProviderProps> = ({
   children,
   wcagLevel = 'AAA',
 }) => {
@@ -109,7 +110,7 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
   /**
    * Detect screen reader usage
    */
-  const detectScreenReader = (): boolean => {
+  const detectScreenReader = useCallback((): boolean => {
     // Check for common screen reader indicators
     if (typeof window === 'undefined') {
       return false;
@@ -128,12 +129,12 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
       document.querySelector('[role="alert"]') !== null;
 
     return hasSpeechSynthesis || hasKnownScreenReaderUA || hasLiveRegion;
-  };
+  }, []);
 
   /**
    * Check system preferences
    */
-  const checkSystemPreferences = (): void => {
+  const checkSystemPreferences = useCallback((): void => {
     if (
       typeof window === 'undefined' ||
       typeof window.matchMedia !== 'function'
@@ -177,12 +178,12 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
         }));
       }
     );
-  };
+  }, []);
 
   /**
    * Load saved preferences
    */
-  const loadPreferences = (): void => {
+  const loadPreferences = useCallback((): void => {
     try {
       const saved = localStorage.getItem('accessibilityPreferences');
       if (saved !== null) {
@@ -192,26 +193,32 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
     } catch {
       // Ignore localStorage errors
     }
-  };
+  }, []);
 
   /**
    * Save preferences
    */
-  const savePreferences = (newState: Partial<AccessibilityState>): void => {
-    try {
-      const current = localStorage.getItem('accessibilityPreferences');
-      const existing =
-        current !== null
-          ? (JSON.parse(current) as Record<string, unknown>)
-          : {};
-      const updated: Record<string, unknown> = { ...existing, ...newState };
-      localStorage.setItem('accessibilityPreferences', JSON.stringify(updated));
-    } catch {
-      // Ignore localStorage errors
-    }
-  };
+  const savePreferences = useCallback(
+    (newState: Partial<AccessibilityState>): void => {
+      try {
+        const current = localStorage.getItem('accessibilityPreferences');
+        const existing =
+          current !== null
+            ? (JSON.parse(current) as Record<string, unknown>)
+            : {};
+        const updated: Record<string, unknown> = { ...existing, ...newState };
+        localStorage.setItem(
+          'accessibilityPreferences',
+          JSON.stringify(updated)
+        );
+      } catch {
+        // Ignore localStorage errors
+      }
+    },
+    []
+  );
 
-  const clearPreference = (key: keyof AccessibilityState): void => {
+  const clearPreference = useCallback((key: keyof AccessibilityState): void => {
     try {
       const current = localStorage.getItem('accessibilityPreferences');
       if (current === null) {
@@ -246,7 +253,7 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
     } catch {
       // Ignore localStorage errors
     }
-  };
+  }, []);
 
   /**
    * Actions
@@ -382,7 +389,7 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
 
     // Load saved preferences
     loadPreferences();
-  }, []);
+  }, [checkSystemPreferences, detectScreenReader, loadPreferences]);
 
   /**
    * Apply accessibility settings to document
@@ -486,10 +493,8 @@ export const useWCAGCompliance = (): {
       }
 
       const [r, g, b] = rgb.map((c) => {
-        const val = parseInt(c, 10) / 255;
-        return val <= 0.03928
-          ? val / 12.92
-          : Math.pow((val + 0.055) / 1.055, 2.4);
+        const val = Number.parseInt(c, 10) / 255;
+        return val <= 0.03928 ? val / 12.92 : ((val + 0.055) / 1.055) ** 2.4;
       });
 
       return 0.2126 * r + 0.7152 * g + 0.0722 * b;

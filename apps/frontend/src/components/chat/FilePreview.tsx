@@ -6,10 +6,20 @@
  * Requirements: 4.1, 4.3
  */
 
-import React, { memo, useCallback, useState, useEffect } from 'react';
+import type React from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { useI18n } from '../../contexts/I18nContext.js';
 import { frontendLogger } from '../../utils/logger.js';
 import { Glass, cn } from '../ui/Glass.js';
+import {
+  CodePreview,
+  ImagePreview,
+  UnknownFilePreview,
+  determineFileType,
+  extractFileExtension,
+  getSyntaxClassForExtension,
+  loadFileContentByType,
+} from './filePreviewHelpers.js';
 
 interface FilePreviewProps {
   readonly file: File;
@@ -40,19 +50,6 @@ const CODE_EXTENSIONS = new Set([
 ]);
 const TEXT_EXTENSIONS = new Set(['.txt', '.md', '.json', '.xml', '.csv']);
 
-const readFileAsDataURL = (targetFile: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (): void => {
-      resolve(typeof reader.result === 'string' ? reader.result : '');
-    };
-    reader.onerror = (): void => {
-      reject(reader.error ?? new Error('Failed to read file'));
-    };
-    reader.readAsDataURL(targetFile);
-  });
-};
-
 export const FilePreview = memo<FilePreviewProps>(({ file, onClose }) => {
   const { t, formatFileSize } = useI18n();
   const [content, setContent] = useState<string>('');
@@ -60,8 +57,7 @@ export const FilePreview = memo<FilePreviewProps>(({ file, onClose }) => {
   const [error, setError] = useState<string | null>(null);
 
   const getFileExtension = useCallback((): string => {
-    const segments = file.name.split('.');
-    return segments.length > 1 ? `.${segments.pop()?.toLowerCase() ?? ''}` : '';
+    return extractFileExtension(file.name);
   }, [file.name]);
 
   /**
@@ -73,14 +69,12 @@ export const FilePreview = memo<FilePreviewProps>(({ file, onClose }) => {
 
     try {
       const extension = getFileExtension();
-
-      if (IMAGE_EXTENSIONS.has(extension)) {
-        const dataUrl = await readFileAsDataURL(file);
-        setContent(dataUrl);
-      } else {
-        const textContent = await file.text();
-        setContent(textContent);
-      }
+      const fileContent = await loadFileContentByType(
+        file,
+        extension,
+        IMAGE_EXTENSIONS
+      );
+      setContent(fileContent);
     } catch (readError) {
       setError(t('fileUpload.preview.loadError'));
       frontendLogger.error('Failed to load file preview content', {
@@ -110,17 +104,12 @@ export const FilePreview = memo<FilePreviewProps>(({ file, onClose }) => {
    */
   const getFileType = useCallback((): 'image' | 'code' | 'text' | 'unknown' => {
     const extension = getFileExtension();
-
-    if (IMAGE_EXTENSIONS.has(extension)) {
-      return 'image';
-    }
-    if (CODE_EXTENSIONS.has(extension)) {
-      return 'code';
-    }
-    if (TEXT_EXTENSIONS.has(extension)) {
-      return 'text';
-    }
-    return 'unknown';
+    return determineFileType(
+      extension,
+      IMAGE_EXTENSIONS,
+      CODE_EXTENSIONS,
+      TEXT_EXTENSIONS
+    );
   }, [getFileExtension]);
 
   /**
@@ -128,34 +117,7 @@ export const FilePreview = memo<FilePreviewProps>(({ file, onClose }) => {
    */
   const getSyntaxClass = useCallback((): string => {
     const extension = getFileExtension();
-
-    switch (extension) {
-      case '.js':
-        return 'language-javascript';
-      case '.ts':
-        return 'language-typescript';
-      case '.py':
-        return 'language-python';
-      case '.java':
-        return 'language-java';
-      case '.cpp':
-        return 'language-cpp';
-      case '.c':
-      case '.h':
-        return 'language-c';
-      case '.css':
-        return 'language-css';
-      case '.html':
-        return 'language-html';
-      case '.json':
-        return 'language-json';
-      case '.xml':
-        return 'language-xml';
-      case '.md':
-        return 'language-markdown';
-      default:
-        return 'language-text';
-    }
+    return getSyntaxClassForExtension(extension);
   }, [getFileExtension]);
 
   /**
@@ -219,17 +181,24 @@ export const FilePreview = memo<FilePreviewProps>(({ file, onClose }) => {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-      role="button"
-      tabIndex={0}
-      aria-label={t('common.close')}
       onClick={handleOverlayClick}
       onKeyDown={handleOverlayKeyDown}
+      role="presentation"
     >
-      <Glass className="w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl" intensity="high" border={true}>
+      <Glass
+        className="w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl"
+        intensity="high"
+        border={true}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="file-preview-title"
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 backdrop-blur-md">
           <div className="flex flex-col gap-1">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate max-w-md">{file.name}</h3>
+            <h3 id="file-preview-title" className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate max-w-md">
+              {file.name}
+            </h3>
             <div className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
               <span className="font-mono">{formatFileSize(file.size)}</span>
               <span>•</span>
@@ -267,7 +236,9 @@ export const FilePreview = memo<FilePreviewProps>(({ file, onClose }) => {
           {isLoading && (
             <div className="flex flex-col items-center justify-center h-full text-gray-700 gap-3">
               <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-              <p className="text-sm font-medium">{t('fileUpload.preview.loading')}</p>
+              <p className="text-sm font-medium">
+                {t('fileUpload.preview.loading')}
+              </p>
             </div>
           )}
 
@@ -289,35 +260,21 @@ export const FilePreview = memo<FilePreviewProps>(({ file, onClose }) => {
           {!isLoading && error === null && (
             <>
               {fileType === 'image' && (
-                <div className="flex items-center justify-center h-full">
-                  <img
-                    src={content}
-                    alt={file.name}
-                    className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
-                  />
-                </div>
+                <ImagePreview content={content} fileName={file.name} />
               )}
 
               {(fileType === 'code' || fileType === 'text') && (
-                <div className="h-full">
-                  <pre className={cn("p-4 rounded-lg bg-gray-50 dark:bg-gray-800 overflow-auto text-sm font-mono h-full", getSyntaxClass())}>
-                    <code>{content}</code>
-                  </pre>
-                </div>
+                <CodePreview content={content} getSyntaxClass={getSyntaxClass} />
               )}
 
               {fileType === 'unknown' && (
-                <div className="flex flex-col items-center justify-center h-full text-gray-700 gap-4">
-                  <div className="text-6xl opacity-50">📄</div>
-                  <p className="text-lg font-medium">{t('fileUpload.preview.unsupportedType')}</p>
-                  <p className="text-sm text-center max-w-md">
-                    {t('fileUpload.preview.fileInfo', {
-                      name: file.name,
-                      size: formatFileSize(file.size),
-                      type: file.type || t('fileUpload.preview.unknownType'),
-                    })}
-                  </p>
-                </div>
+                <UnknownFilePreview
+                  fileName={file.name}
+                  fileSize={file.size}
+                  fileType={file.type}
+                  formatFileSize={formatFileSize}
+                  t={t}
+                />
               )}
             </>
           )}

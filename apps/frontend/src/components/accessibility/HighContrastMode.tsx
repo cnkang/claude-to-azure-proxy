@@ -7,7 +7,8 @@
  * Requirements: 1.5, 10.4
  */
 
-import React, { useState, useCallback, useEffect, type ReactNode } from 'react';
+import type React from 'react';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { useI18n } from '../../contexts/I18nContext';
 import { useScreenReaderAnnouncer } from './ScreenReaderAnnouncer';
 
@@ -211,7 +212,7 @@ export const HighContrastMode: React.FC<HighContrastModeProps> = ({
 
     return (): void => {
       if (window.highContrastMode) {
-        delete window.highContrastMode;
+        window.highContrastMode = undefined;
       }
     };
   }, [

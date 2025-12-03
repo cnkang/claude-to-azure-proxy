@@ -1,5 +1,5 @@
-import { logger } from '../../utils/logger.js';
-import React, {
+import type React from 'react';
+import {
   forwardRef,
   memo,
   useCallback,
@@ -12,12 +12,13 @@ import React, {
 import type { JSX } from 'react';
 import { useTranslation } from 'react-i18next';
 import { List } from 'react-window';
-import { MessageItem } from './MessageItem.js';
-import { TypingIndicator } from './TypingIndicator.js';
-import { StreamingMessage } from './StreamingMessage.js';
-import { WelcomeMessage } from './WelcomeMessage.js';
 import type { Message } from '../../types/index.js';
+import { logger } from '../../utils/logger.js';
 import { Glass } from '../ui/Glass.js';
+import { MessageItem } from './MessageItem.js';
+import { StreamingMessage } from './StreamingMessage.js';
+import { TypingIndicator } from './TypingIndicator.js';
+import { WelcomeMessage } from './WelcomeMessage.js';
 
 export interface MessageListProps {
   readonly messages: Message[];
@@ -193,8 +194,23 @@ const MessageListComponent = forwardRef<MessageListHandle, MessageListProps>(
       scrollToBottomRegular,
     ]);
 
+    const scrollTrigger = useMemo(
+      () => ({
+        messageCount: messages.length,
+        streamingContent: streamingMessage?.content ?? '',
+      }),
+      [messages.length, streamingMessage?.content]
+    );
+
     useEffect(() => {
       if (!autoScrollEnabled || !autoScroll) {
+        return;
+      }
+
+      if (
+        scrollTrigger.messageCount === 0 &&
+        scrollTrigger.streamingContent === ''
+      ) {
         return;
       }
 
@@ -206,8 +222,7 @@ const MessageListComponent = forwardRef<MessageListHandle, MessageListProps>(
     }, [
       autoScroll,
       autoScrollEnabled,
-      messages.length,
-      streamingMessage?.content,
+      scrollTrigger,
       shouldUseVirtualScrolling,
       scrollToBottomRegular,
       scrollToBottomVirtual,
@@ -329,7 +344,7 @@ const MessageListComponent = forwardRef<MessageListHandle, MessageListProps>(
         ) : null}
 
         {showScrollButton ? (
-          <Glass 
+          <Glass
             intensity="low"
             className="fixed bottom-24 right-8 z-20 rounded-full cursor-pointer hover:scale-110 transition-transform duration-200"
           >
