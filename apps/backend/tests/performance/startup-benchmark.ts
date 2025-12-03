@@ -3,9 +3,9 @@
  * Measures Node.js 24 startup performance improvements
  */
 
-import { performance } from 'node:perf_hooks';
 import { spawn } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
+import { performance } from 'node:perf_hooks';
 
 interface StartupMetrics {
   readonly nodeVersion: string;
@@ -182,8 +182,7 @@ function calculateStats(values: number[]): {
   const max = sorted[sorted.length - 1];
 
   const variance =
-    values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) /
-    values.length;
+    values.reduce((sum, val) => sum + (val - mean) ** 2, 0) / values.length;
   const stdDev = Math.sqrt(variance);
 
   return { mean, median, min, max, stdDev };

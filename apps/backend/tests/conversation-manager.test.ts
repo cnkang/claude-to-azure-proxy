@@ -7,11 +7,11 @@
  * conversation state management.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
-  ConversationManager,
-  ConversationConfig,
   ClaudeRequest,
+  ConversationConfig,
+  ConversationManager,
 } from '../src/types/index';
 import {
   ConversationManagerImpl,

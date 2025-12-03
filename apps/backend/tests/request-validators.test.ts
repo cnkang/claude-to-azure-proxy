@@ -2,21 +2,21 @@
  * Tests for request validation functionality
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import type { Request, Response, NextFunction } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { validationResult } from 'express-validator';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { RequestWithCorrelationId } from '../src/types/index';
 import {
-  validateClaudeCompletionRequest,
-  validateOpenAICompletionRequest,
-  validateHeaders,
+  ALLOWED_MODELS,
+  VALIDATION_LIMITS,
   handleValidationErrors,
   sanitizeRequest,
+  validateClaudeCompletionRequest,
   validateContentType,
+  validateHeaders,
+  validateOpenAICompletionRequest,
   validateRequestSize,
-  VALIDATION_LIMITS,
-  ALLOWED_MODELS,
 } from '../src/validation/request-validators';
-import type { RequestWithCorrelationId } from '../src/types/index';
 
 // Mock express-validator
 vi.mock('express-validator', () => ({
@@ -438,7 +438,10 @@ describe('Request Validators', () => {
     });
 
     it('should handle undefined correlation ID (joi validation used instead)', () => {
-      delete (mockReq as any).correlationId;
+      Reflect.deleteProperty(
+        mockReq as Record<string, unknown>,
+        'correlationId'
+      );
 
       const mockValidationErrors = [
         {

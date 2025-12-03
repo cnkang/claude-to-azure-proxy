@@ -8,10 +8,10 @@
  * - AbortController cleanup
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
-  StreamingResponseHandler,
   ChatStreamRequest,
+  StreamingResponseHandler,
 } from '../src/services/streaming-service.js';
 import { createStreamingService } from '../src/services/streaming-service.js';
 

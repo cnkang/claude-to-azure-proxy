@@ -1,6 +1,6 @@
+import type { NextFunction, Request } from 'express';
 // Test utility types for proper TypeScript support
-import { vi, expect } from 'vitest';
-import type { Request, NextFunction } from 'express';
+import { expect, vi } from 'vitest';
 import type { MockedFunction } from 'vitest';
 
 // Mock Express objects with proper typing

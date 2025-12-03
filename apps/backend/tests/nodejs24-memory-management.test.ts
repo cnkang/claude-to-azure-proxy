@@ -3,14 +3,14 @@
  * Tests for enhanced memory management features in Node.js 24
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { performance } from 'node:perf_hooks';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+  GCMonitor,
+  type MemorySnapshot,
+  assertMemoryUsage,
   measurePerformance,
   takeMemorySnapshot,
-  GCMonitor,
-  assertMemoryUsage,
-  type MemorySnapshot,
 } from './utils/nodejs24-test-utils';
 
 describe('Node.js 24 Memory Management', () => {

@@ -3,17 +3,17 @@
  * Covers content-based optimizations, fast-path detection, and enhanced reasoning analysis
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import type { ClaudeRequest, ConversationContext } from '../src/types/index';
 import {
   ContentBasedOptimizerService,
-  EnhancedReasoningEffortAnalyzer,
-  createEnhancedReasoningEffortAnalyzer,
-  createContentBasedOptimizer,
-  analyzeReasoningEffortWithOptimizations,
   DEVELOPMENT_TASK_PATTERNS,
-  LANGUAGE_OPTIMIZATIONS,
+  EnhancedReasoningEffortAnalyzer,
   FRAMEWORK_OPTIMIZATIONS,
+  LANGUAGE_OPTIMIZATIONS,
+  analyzeReasoningEffortWithOptimizations,
+  createContentBasedOptimizer,
+  createEnhancedReasoningEffortAnalyzer,
 } from '../src/utils/content-based-optimizer';
 
 describe('ContentBasedOptimizerService', () => {

@@ -1,14 +1,14 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import type express from 'express';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MockedFunction } from 'vitest';
-import express from 'express';
-import {
-  GracefulDegradationManager,
-  gracefulDegradationManager,
-  checkFeatureAvailability,
-  type DegradationContext,
-} from '../src/resilience/graceful-degradation';
 import { ServiceUnavailableError } from '../src/errors/index';
 import { circuitBreakerRegistry } from '../src/resilience/circuit-breaker';
+import {
+  type DegradationContext,
+  GracefulDegradationManager,
+  checkFeatureAvailability,
+  gracefulDegradationManager,
+} from '../src/resilience/graceful-degradation';
 
 // Mock the logger
 vi.mock('../src/middleware/logging.js', () => ({
@@ -440,7 +440,7 @@ describe('Feature Availability Middleware', () => {
   it('should handle missing correlation ID', () => {
     const middleware = checkFeatureAvailability('streaming');
 
-    delete mockReq.correlationId;
+    Reflect.deleteProperty(mockReq, 'correlationId');
     gracefulDegradationManager.degradeServiceLevel(
       'Test degradation',
       'test-correlation-id'

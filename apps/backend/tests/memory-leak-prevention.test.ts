@@ -3,18 +3,18 @@
  * Tests memory management under load and resource cleanup scenarios
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { Readable } from 'node:stream';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   MemoryManager,
+  type MemoryMetrics,
   ResourceManager,
   createHTTPConnectionResource,
-  createStreamResource,
   createManagedTimeout,
-  withResources,
+  createStreamResource,
   disposeAllResources,
-  type MemoryMetrics,
+  withResources,
 } from '../src/utils/index';
-import { Readable } from 'node:stream';
 
 // Mock logger to reduce test noise
 vi.mock('../src/middleware/logging.js', () => ({
@@ -444,8 +444,8 @@ describe('Memory Leak Prevention Integration Tests', () => {
         rss: -1,
         heapTotal: 0,
         heapUsed: -1,
-        external: NaN,
-        arrayBuffers: Infinity,
+        external: Number.NaN,
+        arrayBuffers: Number.POSITIVE_INFINITY,
       }));
 
       // Should not throw

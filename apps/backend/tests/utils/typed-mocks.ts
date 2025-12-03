@@ -3,15 +3,15 @@
  * Provides strongly typed mock implementations for all external dependencies.
  */
 
-import { vi, type MockedFunction } from 'vitest';
+import { type MockedFunction, vi } from 'vitest';
 import type {
-  ResponsesCreateParams,
-  ResponsesResponse,
-  ResponsesStreamChunk,
   ConversationContext,
   ConversationMetrics,
   IncomingRequest,
   ReasoningEffort,
+  ResponsesCreateParams,
+  ResponsesResponse,
+  ResponsesStreamChunk,
 } from '../../src/types/index';
 import type { UniversalProcessingResult } from '../../src/utils/universal-request-processor';
 

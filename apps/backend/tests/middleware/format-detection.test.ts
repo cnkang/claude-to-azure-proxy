@@ -2,8 +2,8 @@
  * Tests for format detection middleware
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { Request, Response, NextFunction } from 'express';
+import type { NextFunction, Request, Response } from 'express';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   formatDetectionMiddleware,
   hasFormatDetection,

@@ -2,16 +2,16 @@
  * @fileoverview Tests for static assets middleware
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
 import express from 'express';
 import request from 'supertest';
-import { promises as fs } from 'fs';
-import path from 'path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  createStaticAssetsMiddleware,
-  createSPAFallbackMiddleware,
-  createDevelopmentProxyMiddleware,
   checkFrontendBuildExists,
+  createDevelopmentProxyMiddleware,
+  createSPAFallbackMiddleware,
+  createStaticAssetsMiddleware,
   logFrontendBuildStatus,
 } from '../../src/middleware/static-assets.js';
 

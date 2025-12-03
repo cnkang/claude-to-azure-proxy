@@ -3,8 +3,8 @@
  * Extends the base test configuration with Node.js 24 features
  */
 
-import { testConfig, createMockConfig } from './test-config';
 import type { Config } from '../src/config/index';
+import { createMockConfig, testConfig } from './test-config';
 
 /**
  * Node.js 24 enhanced test configuration
@@ -77,7 +77,10 @@ export const nodejs24TestUtils = {
    */
   isNodeJS24(): boolean {
     const version = process.version;
-    const majorVersion = parseInt(version.slice(1, 10).split('.')[0], 10);
+    const majorVersion = Number.parseInt(
+      version.slice(1, 10).split('.')[0],
+      10
+    );
     return majorVersion >= 24;
   },
 
@@ -86,7 +89,7 @@ export const nodejs24TestUtils = {
    */
   isV8Compatible(): boolean {
     const v8Version = process.versions.v8;
-    const majorVersion = parseInt(v8Version.split('.', 10)[0], 10);
+    const majorVersion = Number.parseInt(v8Version.split('.', 10)[0], 10);
     return majorVersion >= 13;
   },
 
@@ -125,11 +128,17 @@ export const nodejs24TestUtils = {
  * Clean up Node.js 24 specific environment variables
  */
 export const cleanupNodeJS24TestEnvironment = (): void => {
-  delete process.env.NODE_VERSION;
-  delete process.env.V8_VERSION;
-  delete process.env.ENABLE_GC_MONITORING;
-  delete process.env.ENABLE_PERFORMANCE_PROFILING;
-  delete process.env.MEMORY_LEAK_DETECTION;
+  const keysToClear: Array<keyof NodeJS.ProcessEnv> = [
+    'NODE_VERSION',
+    'V8_VERSION',
+    'ENABLE_GC_MONITORING',
+    'ENABLE_PERFORMANCE_PROFILING',
+    'MEMORY_LEAK_DETECTION',
+  ];
+
+  for (const key of keysToClear) {
+    Reflect.deleteProperty(process.env, key);
+  }
 
   // Clean up Node.js options
   if (process.env.NODE_OPTIONS) {
@@ -139,7 +148,7 @@ export const cleanupNodeJS24TestEnvironment = (): void => {
     ).trim();
 
     if (!process.env.NODE_OPTIONS) {
-      delete process.env.NODE_OPTIONS;
+      Reflect.deleteProperty(process.env, 'NODE_OPTIONS');
     }
   }
 };

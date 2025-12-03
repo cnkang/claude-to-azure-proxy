@@ -8,7 +8,7 @@
  * - Message validation (Task 3.7)
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock dependencies
 vi.mock('../../src/services/streaming-service.js', () => ({

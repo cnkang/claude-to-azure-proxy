@@ -1,4 +1,4 @@
-import { it, expect } from 'vitest';
+import { expect, it } from 'vitest';
 
 it('re-exports core transform utilities', async () => {
   const utils = await import('../../src/utils/index.js');

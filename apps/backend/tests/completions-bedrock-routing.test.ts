@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import express, { json } from 'express';
 import type { Request } from 'express';
 import request from 'supertest';
-import { setupAllMocks, mockResponses } from './utils/typed-mocks';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMockConfig, testServerConfig, validApiKey } from './test-config';
+import { mockResponses, setupAllMocks } from './utils/typed-mocks';
 
 const createBedrockProcessingResult = (stream = false) => {
   const base = mockResponses.universalProcessingResult();
@@ -60,7 +60,7 @@ describe('Completions handler - Bedrock routing', () => {
     vi.doMock('../src/clients/azure-responses-client.js', () => ({
       AzureResponsesClient: class MockAzureResponsesClient {
         constructor(_config: unknown) {
-          return mocks.azureClient;
+          Object.assign(this, mocks.azureClient);
         }
       },
     }));
@@ -68,7 +68,7 @@ describe('Completions handler - Bedrock routing', () => {
     vi.doMock('../src/clients/aws-bedrock-client.js', () => ({
       AWSBedrockClient: class MockAWSBedrockClient {
         constructor(_config: unknown) {
-          return mocks.bedrockClient;
+          Object.assign(this, mocks.bedrockClient);
         }
       },
     }));

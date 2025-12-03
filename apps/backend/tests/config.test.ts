@@ -1,6 +1,12 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.doUnmock('../src/config/index.js');
+
+const clearEnvKeys = (keys: Array<keyof NodeJS.ProcessEnv>): void => {
+  for (const key of keys) {
+    Reflect.deleteProperty(process.env, key);
+  }
+};
 
 describe('Configuration Module', () => {
   let originalEnv: NodeJS.ProcessEnv;
@@ -17,12 +23,14 @@ describe('Configuration Module', () => {
     process.exit = exitSpy;
 
     // Clear all environment variables that might affect the config
-    delete process.env.PROXY_API_KEY;
-    delete process.env.AZURE_OPENAI_ENDPOINT;
-    delete process.env.AZURE_OPENAI_API_KEY;
-    delete process.env.AZURE_OPENAI_MODEL;
-    delete process.env.PORT;
-    delete process.env.NODE_ENV;
+    clearEnvKeys([
+      'PROXY_API_KEY',
+      'AZURE_OPENAI_ENDPOINT',
+      'AZURE_OPENAI_API_KEY',
+      'AZURE_OPENAI_MODEL',
+      'PORT',
+      'NODE_ENV',
+    ]);
   });
 
   afterEach(() => {
@@ -158,7 +166,7 @@ describe('Configuration Module', () => {
       process.env.PROXY_API_KEY = 'a'.repeat(32);
       process.env.AZURE_OPENAI_ENDPOINT = 'https://test.openai.azure.com';
       process.env.AZURE_OPENAI_API_KEY = 'b'.repeat(32);
-      delete process.env.AZURE_OPENAI_MODEL; // Allow it to be missing
+      clearEnvKeys(['AZURE_OPENAI_MODEL']); // Allow it to be missing
 
       const configModule = await import(
         '../src/config/index.js?t=' + Date.now()

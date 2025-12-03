@@ -1,13 +1,13 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import type { Request, Response, NextFunction } from 'express';
+import type { NextFunction, Request, Response } from 'express';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   correlationIdMiddleware,
-  securityHeadersMiddleware,
+  rateLimitConfig,
   requestSizeMiddleware,
   requestTimeoutMiddleware,
   sanitizeInput,
+  securityHeadersMiddleware,
   validateContentType,
-  rateLimitConfig,
 } from '../src/middleware/security';
 import type { RequestWithCorrelationId } from '../src/types/index';
 
@@ -283,7 +283,10 @@ describe('Security Middleware', () => {
 
     it('should handle missing setTimeout method', () => {
       const middleware = requestTimeoutMiddleware(5000);
-      delete (mockRequest as Record<string, unknown>).setTimeout;
+      Reflect.deleteProperty(
+        mockRequest as Record<string, unknown>,
+        'setTimeout'
+      );
 
       middleware(mockRequest as Request, mockResponse as Response, mockNext);
 

@@ -3,7 +3,7 @@
  * Tests the performance monitoring and alerting functionality
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import PerformanceAlertSystem, {
   type AlertConfig,
   type PerformanceAlert,

@@ -2,15 +2,15 @@
  * @fileoverview Tests for memory management middleware with Node.js 24 features
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import type { Request, Response, NextFunction } from 'express';
+import type { NextFunction, Request, Response } from 'express';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  memoryManagementMiddleware,
-  getMemoryMiddlewareStats,
-  resetMemoryMiddlewareStats,
-  hasMemoryTracking,
-  getRequestMemoryInfo,
   type RequestWithMemoryTracking,
+  getMemoryMiddlewareStats,
+  getRequestMemoryInfo,
+  hasMemoryTracking,
+  memoryManagementMiddleware,
+  resetMemoryMiddlewareStats,
 } from '../../src/middleware/memory-management';
 
 // Mock dependencies

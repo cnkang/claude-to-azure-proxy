@@ -1,12 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import type { IncomingRequest } from '../../src/types/index';
 import {
+  ClaudeFormatAnalyzer,
+  FormatDetectionService,
+  OpenAIFormatAnalyzer,
   detectRequestFormat,
   getResponseFormat,
-  FormatDetectionService,
-  ClaudeFormatAnalyzer,
-  OpenAIFormatAnalyzer,
 } from '../../src/utils/format-detection';
-import type { IncomingRequest } from '../../src/types/index';
 
 describe('Format Detection Service', () => {
   const formatDetector = new FormatDetectionService();

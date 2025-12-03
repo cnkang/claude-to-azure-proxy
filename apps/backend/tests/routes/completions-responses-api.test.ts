@@ -3,22 +3,22 @@
  * Tests complete request-response cycles, format detection, streaming, and error handling
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import request from 'supertest';
 import express from 'express';
-import type {
-  ServerConfig,
-  ResponsesResponse,
-  ResponsesStreamChunk,
-  ClaudeRequest,
-  OpenAIRequest,
-} from '../../src/types/index';
-import { completionsHandler } from '../../src/routes/completions';
+import request from 'supertest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AzureResponsesClient } from '../../src/clients/azure-responses-client';
 import {
   correlationIdMiddleware,
   requestLoggingMiddleware,
 } from '../../src/middleware/index';
-import { AzureResponsesClient } from '../../src/clients/azure-responses-client';
+import { completionsHandler } from '../../src/routes/completions';
+import type {
+  ClaudeRequest,
+  OpenAIRequest,
+  ResponsesResponse,
+  ResponsesStreamChunk,
+  ServerConfig,
+} from '../../src/types/index';
 
 // Mock the Azure Responses client
 vi.mock('../../src/clients/azure-responses-client.js');
@@ -339,7 +339,10 @@ describe('Completions Route - Responses API Integration', () => {
         ...openAIRequest,
         max_completion_tokens: 1500,
       };
-      delete (openAIRequestWithMaxCompletionTokens as any).max_tokens;
+      Reflect.deleteProperty(
+        openAIRequestWithMaxCompletionTokens as Record<string, unknown>,
+        'max_tokens'
+      );
 
       mockResponsesClient.createResponse.mockResolvedValue(
         mockResponsesAPIResponse
@@ -430,9 +433,9 @@ describe('Completions Route - Responses API Integration', () => {
         .send(claudeStreamingRequest)
         .expect(200);
 
-      expect(response.headers['content-type']).toBe('text/event-stream');
-      expect(response.headers['cache-control']).toBe('no-cache');
-      expect(response.headers['connection']).toBe('keep-alive');
+      expect(response.get('content-type')).toBe('text/event-stream');
+      expect(response.get('cache-control')).toBe('no-cache');
+      expect(response.get('connection')).toBe('keep-alive');
 
       // Verify non-streaming was called (simulated streaming)
       expect(mockResponsesClient.createResponse).toHaveBeenCalledWith(
@@ -466,7 +469,7 @@ describe('Completions Route - Responses API Integration', () => {
         .send(openAIStreamingRequest)
         .expect(200);
 
-      expect(response.headers['content-type']).toBe('text/event-stream');
+      expect(response.get('content-type')).toBe('text/event-stream');
       expect(mockResponsesClient.createResponse).toHaveBeenCalledWith(
         expect.any(Object),
         expect.any(AbortSignal)

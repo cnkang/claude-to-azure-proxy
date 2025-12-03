@@ -9,15 +9,15 @@
  * Requirements covered: 4.1, 4.2, 8.4, 10.1, 10.2, 11.1-11.9
  */
 
-import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
-import { UniversalRequestProcessor } from '../src/utils/universal-request-processor';
-import { sanitizeErrorMessage, ValidationError } from '../src/errors/index';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ValidationError, sanitizeErrorMessage } from '../src/errors/index';
 import type {
   ClaudeRequest,
   OpenAIRequest,
-  ResponsesResponse,
   ReasoningEffort,
+  ResponsesResponse,
 } from '../src/types/index';
+import { UniversalRequestProcessor } from '../src/utils/universal-request-processor';
 import { ClaudeRequestFactory, MaliciousDataFactory } from './test-factories';
 
 // Mock Azure Responses Client
@@ -30,7 +30,7 @@ const mockAzureClient = {
 vi.mock('../src/clients/azure-responses-client.js', () => ({
   AzureResponsesClient: class MockAzureResponsesClient {
     constructor(_config: unknown) {
-      return mockAzureClient;
+      Object.assign(this, mockAzureClient);
     }
   },
 }));

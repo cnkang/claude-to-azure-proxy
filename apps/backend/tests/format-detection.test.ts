@@ -3,16 +3,16 @@
  * Tests Claude vs OpenAI format detection accuracy and edge cases
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import type { IncomingRequest } from '../src/types/index';
 import {
-  FormatDetectionService,
   ClaudeFormatAnalyzer,
+  FormatDetectionService,
   OpenAIFormatAnalyzer,
   createFormatDetectionService,
   detectRequestFormat,
   getResponseFormat,
 } from '../src/utils/format-detection';
-import type { IncomingRequest } from '../src/types/index';
 
 describe('FormatDetectionService', () => {
   let service: FormatDetectionService;

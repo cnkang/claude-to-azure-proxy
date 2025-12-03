@@ -1,11 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { NetworkError, TimeoutError } from '../src/errors/index';
 import {
   RetryStrategy,
   RetryStrategyRegistry,
-  withRetry,
   retryStrategyRegistry,
+  withRetry,
 } from '../src/resilience/retry';
-import { TimeoutError, NetworkError } from '../src/errors/index';
 
 describe('Retry Strategy', () => {
   let retryStrategy: RetryStrategy;

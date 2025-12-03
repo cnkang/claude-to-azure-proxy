@@ -3,31 +3,31 @@
  * Tests explicit resource management, automatic cleanup, and resource tracking
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { Readable, Writable } from 'node:stream';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Socket } from 'node:net';
+import { Readable, type Writable } from 'node:stream';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  ResourceManager,
-  BaseDisposableResource,
   BaseAsyncDisposableResource,
+  BaseDisposableResource,
+  type DisposableResource,
   HTTPConnectionResource,
+  ResourceManager,
   StreamResource,
   TimerResource,
+  cleanupDisposedResources,
+  createAsyncDisposableResource,
+  createDisposableResource,
   createHTTPConnectionResource,
+  createManagedImmediate,
+  createManagedInterval,
+  createManagedTimeout,
   createStreamResource,
   createTimerResource,
-  createDisposableResource,
-  createAsyncDisposableResource,
-  withResources,
-  createManagedTimeout,
-  createManagedInterval,
-  createManagedImmediate,
-  getResourceStats,
-  getAllResourceInfo,
-  cleanupDisposedResources,
   disposeAllResources,
-  type DisposableResource,
+  getAllResourceInfo,
+  getResourceStats,
+  withResources,
 } from '../../src/runtime/resource-manager';
 
 // Mock logger

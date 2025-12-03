@@ -8,19 +8,19 @@
  * Requirements covered: 8.2
  */
 
+import { performance } from 'node:perf_hooks';
 import {
-  describe,
-  it,
-  expect,
+  afterEach,
   beforeAll,
   beforeEach,
-  afterEach,
+  describe,
+  expect,
+  it,
   vi,
 } from 'vitest';
-import { performance } from 'perf_hooks';
-import { UniversalRequestProcessor } from '../src/utils/universal-request-processor';
-import { createConversationManager } from '../src/utils/conversation-manager';
 import type { ClaudeRequest, ResponsesResponse } from '../src/types/index';
+import { createConversationManager } from '../src/utils/conversation-manager';
+import { UniversalRequestProcessor } from '../src/utils/universal-request-processor';
 import { ClaudeRequestFactory, TestDataUtils } from './test-factories';
 
 // Mock Azure Responses Client
@@ -33,7 +33,7 @@ const mockAzureClient = {
 vi.mock('../src/clients/azure-responses-client.js', () => ({
   AzureResponsesClient: class MockAzureResponsesClient {
     constructor(_config: unknown) {
-      return mockAzureClient;
+      Object.assign(this, mockAzureClient);
     }
   },
 }));
@@ -291,7 +291,7 @@ class PerformanceResponseFactory {
     return new Promise((resolve) => {
       setTimeout(() => {
         resolve(
-          this.createResponseWithTokens({
+          PerformanceResponseFactory.createResponseWithTokens({
             responseTime: latency,
             promptTokens: Math.floor(Math.random() * 200) + 50,
             completionTokens: Math.floor(Math.random() * 500) + 100,

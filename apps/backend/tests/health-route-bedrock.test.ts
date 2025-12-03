@@ -10,9 +10,9 @@
  * @since 1.0.0
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { healthCheckHandler } from '../src/routes/health';
 import type { ServerConfig } from '../src/types/index';
 

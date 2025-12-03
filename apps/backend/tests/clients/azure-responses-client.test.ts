@@ -11,7 +11,7 @@
  * @since 1.0.0
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AzureResponsesClient } from '../../src/clients/azure-responses-client';
 import type {
   AzureOpenAIConfig,
@@ -68,7 +68,7 @@ describe('AzureResponsesClient', () => {
 
     it('should create client without apiVersion (GA v1 API)', () => {
       const configWithoutApiVersion = { ...validConfig };
-      delete configWithoutApiVersion.apiVersion;
+      Reflect.deleteProperty(configWithoutApiVersion, 'apiVersion');
       expect(
         () => new AzureResponsesClient(configWithoutApiVersion)
       ).not.toThrow();
@@ -290,7 +290,7 @@ describe('AzureResponsesClient', () => {
 
     it('should return sanitized configuration without apiVersion for GA v1 API', () => {
       const configWithoutApiVersion = { ...validConfig };
-      delete configWithoutApiVersion.apiVersion;
+      Reflect.deleteProperty(configWithoutApiVersion, 'apiVersion');
       const client = new AzureResponsesClient(configWithoutApiVersion);
       const sanitizedConfig = client.getConfig();
 

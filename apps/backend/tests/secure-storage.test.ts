@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  secureCredentialManager,
-  secureConfigManager,
   SecureCredentialManager,
+  secureConfigManager,
+  secureCredentialManager,
 } from '../src/utils/secure-storage';
 import { validApiKey } from './test-config';
 
@@ -104,7 +104,7 @@ describe('Secure credential storage', () => {
 
 describe('Secure config manager', () => {
   afterEach(() => {
-    delete process.env.DEMO_SECRET;
+    Reflect.deleteProperty(process.env, 'DEMO_SECRET');
   });
 
   it('redacts sensitive configuration values', () => {

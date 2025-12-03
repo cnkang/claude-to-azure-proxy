@@ -96,14 +96,19 @@ export const setupTestEnvironment = (): void => {
  * Clean up environment variables after tests
  */
 export const cleanupTestEnvironment = (): void => {
-  delete process.env.PROXY_API_KEY;
-  delete process.env.AZURE_OPENAI_ENDPOINT;
-  delete process.env.AZURE_OPENAI_API_KEY;
-  delete process.env.AZURE_OPENAI_MODEL;
+  const keysToClear: Array<keyof NodeJS.ProcessEnv> = [
+    'PROXY_API_KEY',
+    'AZURE_OPENAI_ENDPOINT',
+    'AZURE_OPENAI_API_KEY',
+    'AZURE_OPENAI_MODEL',
+    'AZURE_OPENAI_TIMEOUT',
+    'AZURE_OPENAI_MAX_RETRIES',
+    'DEFAULT_REASONING_EFFORT',
+    'PORT',
+    'NODE_ENV',
+  ];
 
-  delete process.env.AZURE_OPENAI_TIMEOUT;
-  delete process.env.AZURE_OPENAI_MAX_RETRIES;
-  delete process.env.DEFAULT_REASONING_EFFORT;
-  delete process.env.PORT;
-  delete process.env.NODE_ENV;
+  for (const key of keysToClear) {
+    Reflect.deleteProperty(process.env, key);
+  }
 };

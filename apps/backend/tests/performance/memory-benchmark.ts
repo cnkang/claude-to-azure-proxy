@@ -3,13 +3,13 @@
  * Tests Node.js 24 memory usage improvements and garbage collection efficiency
  */
 
-import { performance } from 'node:perf_hooks';
 import { writeFile } from 'node:fs/promises';
+import { performance } from 'node:perf_hooks';
 import {
-  GCMonitor,
-  takeMemorySnapshot,
-  type MemorySnapshot,
   type GCEvent,
+  GCMonitor,
+  type MemorySnapshot,
+  takeMemorySnapshot,
 } from '../utils/nodejs24-test-utils';
 
 interface MemoryBenchmarkResult {

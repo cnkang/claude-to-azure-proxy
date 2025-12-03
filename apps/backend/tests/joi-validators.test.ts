@@ -1,11 +1,11 @@
-import { describe, it, expect, vi } from 'vitest';
-import type { Request, Response, NextFunction } from 'express';
+import type { NextFunction, Request, Response } from 'express';
+import { describe, expect, it, vi } from 'vitest';
+import type { RequestWithCorrelationId } from '../src/types/index';
 import {
   claudeCompletionSchema,
   createJoiValidator,
   validateHeadersWithJoi,
 } from '../src/validation/joi-validators';
-import type { RequestWithCorrelationId } from '../src/types/index';
 import { createMockResponse } from './types';
 
 const { loggerWarn } = vi.hoisted(() => ({

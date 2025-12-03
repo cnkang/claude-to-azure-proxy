@@ -6,19 +6,19 @@
  * session isolation, and accessibility compliance.
  */
 
+import type { Express } from 'express';
+import request from 'supertest';
 import {
-  describe,
-  it,
-  expect,
-  beforeAll,
-  afterAll,
-  beforeEach,
   afterEach as _afterEach,
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
   vi,
 } from 'vitest';
-import request from 'supertest';
 import { createServer } from '../../src/index.js';
-import type { Express } from 'express';
 
 vi.mock('express-rate-limit', () => ({
   default: () => (_req: unknown, _res: unknown, next: () => void) => next(),

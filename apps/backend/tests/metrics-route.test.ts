@@ -10,10 +10,10 @@
  * @since 1.0.0
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
-import { metricsHandler, detailedMetricsHandler } from '../src/routes/metrics';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { detailedMetricsHandler, metricsHandler } from '../src/routes/metrics';
 
 // Mock the metrics collector
 const mockMetrics = [

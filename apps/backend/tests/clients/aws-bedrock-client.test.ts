@@ -11,15 +11,42 @@
  * @since 1.0.0
  */
 
-import { PassThrough } from 'stream';
+import { PassThrough } from 'node:stream';
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AWSBedrockClient } from '../../src/clients/aws-bedrock-client';
 import type {
   AWSBedrockConfig,
   ResponsesCreateParams,
 } from '../../src/types/index';
 import * as abortUtils from '../../src/utils/abort-utils';
+
+const getInternalClient = (
+  bedrockClient: AWSBedrockClient
+): { post: (...args: unknown[]) => unknown } =>
+  (
+    bedrockClient as unknown as {
+      client: { post: (...args: unknown[]) => unknown };
+    }
+  ).client;
+
+const getBuildBedrockRequest = (
+  bedrockClient: AWSBedrockClient
+): AWSBedrockClient['buildBedrockRequest'] =>
+  (
+    bedrockClient as unknown as {
+      buildBedrockRequest: AWSBedrockClient['buildBedrockRequest'];
+    }
+  ).buildBedrockRequest.bind(bedrockClient);
+
+const getTransformBedrockResponse = (
+  bedrockClient: AWSBedrockClient
+): AWSBedrockClient['transformBedrockResponse'] =>
+  (
+    bedrockClient as unknown as {
+      transformBedrockResponse: AWSBedrockClient['transformBedrockResponse'];
+    }
+  ).transformBedrockResponse.bind(bedrockClient);
 
 describe('AWSBedrockClient', () => {
   let validConfig: AWSBedrockConfig;
@@ -187,14 +214,7 @@ describe('AWSBedrockClient', () => {
       const controller = new AbortController();
       controller.abort();
 
-      const postSpy = vi.spyOn(
-        (
-          client as unknown as {
-            client: { post: (typeof client)['client']['post'] };
-          }
-        ).client,
-        'post'
-      );
+      const postSpy = vi.spyOn(getInternalClient(client), 'post');
 
       await expect(
         client.createResponse(validParams, controller.signal)
@@ -213,14 +233,7 @@ describe('AWSBedrockClient', () => {
       const controller = new AbortController();
       controller.abort();
 
-      const postSpy = vi.spyOn(
-        (
-          client as unknown as {
-            client: { post: (typeof client)['client']['post'] };
-          }
-        ).client,
-        'post'
-      );
+      const postSpy = vi.spyOn(getInternalClient(client), 'post');
 
       const stream = client.createResponseStream(
         { ...validParams, stream: true },
@@ -248,14 +261,7 @@ describe('AWSBedrockClient', () => {
       const controller = new AbortController();
       const registerSpy = vi.spyOn(abortUtils, 'registerAbortListener');
 
-      const postSpy = vi.spyOn(
-        (
-          client as unknown as {
-            client: { post: (typeof client)['client']['post'] };
-          }
-        ).client,
-        'post'
-      );
+      const postSpy = vi.spyOn(getInternalClient(client), 'post');
 
       const dataStream = new PassThrough();
       dataStream.on('error', () => {});
@@ -354,7 +360,7 @@ describe('AWSBedrockClient', () => {
       };
 
       // Mock axios to simulate timeout
-      vi.spyOn(client['client'], 'post').mockRejectedValue(
+      vi.spyOn(getInternalClient(client), 'post').mockRejectedValue(
         new Error('timeout of 30000ms exceeded')
       );
 
@@ -370,7 +376,9 @@ describe('AWSBedrockClient', () => {
       // Mock axios to simulate network error
       const networkError = new Error('ECONNREFUSED');
       (networkError as any).code = 'ECONNREFUSED';
-      vi.spyOn(client['client'], 'post').mockRejectedValue(networkError);
+      vi.spyOn(getInternalClient(client), 'post').mockRejectedValue(
+        networkError
+      );
 
       await expect(client.createResponse(params)).rejects.toThrow();
     });
@@ -390,7 +398,7 @@ describe('AWSBedrockClient', () => {
         },
         message: 'Request failed with status code 400',
       };
-      vi.spyOn(client['client'], 'post').mockRejectedValue(apiError);
+      vi.spyOn(getInternalClient(client), 'post').mockRejectedValue(apiError);
 
       await expect(client.createResponse(params)).rejects.toThrow();
     });
@@ -409,7 +417,7 @@ describe('AWSBedrockClient', () => {
         input: 'Hello, world!',
       };
 
-      const bedrockRequest = client['buildBedrockRequest'](params);
+      const bedrockRequest = getBuildBedrockRequest(client)(params);
 
       expect(bedrockRequest.messages).toEqual([
         {
@@ -429,7 +437,7 @@ describe('AWSBedrockClient', () => {
         ],
       };
 
-      const bedrockRequest = client['buildBedrockRequest'](params);
+      const bedrockRequest = getBuildBedrockRequest(client)(params);
 
       expect(bedrockRequest.messages).toEqual([
         { role: 'user', content: [{ text: 'Hello' }] },
@@ -447,7 +455,7 @@ describe('AWSBedrockClient', () => {
         ],
       };
 
-      const bedrockRequest = client['buildBedrockRequest'](params);
+      const bedrockRequest = getBuildBedrockRequest(client)(params);
 
       expect(bedrockRequest.system).toEqual([
         { text: 'You are a helpful assistant' },
@@ -467,7 +475,7 @@ describe('AWSBedrockClient', () => {
         stop: ['END', 'STOP'],
       };
 
-      const bedrockRequest = client['buildBedrockRequest'](params);
+      const bedrockRequest = getBuildBedrockRequest(client)(params);
 
       expect(bedrockRequest.inferenceConfig).toEqual({
         maxTokens: 1000,
@@ -505,7 +513,7 @@ describe('AWSBedrockClient', () => {
         },
       };
 
-      const transformed = client['transformBedrockResponse'](
+      const transformed = getTransformBedrockResponse(client)(
         bedrockResponse,
         'qwen-3-coder'
       );
@@ -554,7 +562,7 @@ describe('AWSBedrockClient', () => {
         },
       };
 
-      const transformed = client['transformBedrockResponse'](
+      const transformed = getTransformBedrockResponse(client)(
         bedrockResponse,
         'qwen-3-coder'
       );

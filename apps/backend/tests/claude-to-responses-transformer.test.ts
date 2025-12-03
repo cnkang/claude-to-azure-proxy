@@ -1,16 +1,16 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { ValidationError } from '../src/errors/index';
+import type {
+  ClaudeContentBlock,
+  ClaudeMessage,
+  ClaudeRequest,
+  ConversationContext,
+} from '../src/types/index';
 import {
   ClaudeToResponsesTransformer,
   createClaudeToResponsesTransformer,
   transformClaudeToResponses,
 } from '../src/utils/claude-to-responses-transformer';
-import type {
-  ClaudeRequest,
-  ClaudeMessage,
-  ClaudeContentBlock,
-  ConversationContext,
-} from '../src/types/index';
-import { ValidationError } from '../src/errors/index';
 
 describe('ClaudeToResponsesTransformer', () => {
   let transformer: ClaudeToResponsesTransformer;

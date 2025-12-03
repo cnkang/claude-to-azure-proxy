@@ -8,28 +8,28 @@
  * Requirements covered: 8.2, 8.4, 4.1, 4.2, 10.1, 10.2, 11.1-11.9
  */
 
-import {
-  describe,
-  it,
-  expect,
-  beforeAll,
-  beforeEach,
-  afterEach,
-  vi,
-} from 'vitest';
+import type { Application } from 'express';
 import request from 'supertest';
 import type { Test as SupertestTest } from 'supertest';
-import type { Application } from 'express';
-import { testConfig, testServerConfig } from './test-config';
-import { sanitizeErrorMessage, ValidationError } from '../src/errors/index';
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
+import { ValidationError, sanitizeErrorMessage } from '../src/errors/index';
 import type { ClaudeRequest, OpenAIRequest } from '../src/types/index';
+import { conversationManager } from '../src/utils/conversation-manager';
+import { testConfig, testServerConfig } from './test-config';
 import {
   ClaudeRequestFactory,
   OpenAIRequestFactory,
   ResponsesResponseFactory,
   TestDataUtils,
 } from './test-factories';
-import { conversationManager } from '../src/utils/conversation-manager';
 
 type ProxyServerCtor = typeof import('../src/index.js').ProxyServer;
 let ProxyServer: ProxyServerCtor;
@@ -44,7 +44,7 @@ const mockAzureClient = {
 vi.mock('../src/clients/azure-responses-client.js', () => ({
   AzureResponsesClient: class MockAzureResponsesClient {
     constructor(_config: unknown) {
-      return mockAzureClient;
+      Object.assign(this, mockAzureClient);
     }
   },
 }));
@@ -282,7 +282,7 @@ describe('Responses API Integration Tests', () => {
 
   afterAll(() => {
     if (previousRateLimitTestMaxRequests === undefined) {
-      delete process.env.RATE_LIMIT_TEST_MAX_REQUESTS;
+      Reflect.deleteProperty(process.env, 'RATE_LIMIT_TEST_MAX_REQUESTS');
     } else {
       process.env.RATE_LIMIT_TEST_MAX_REQUESTS =
         previousRateLimitTestMaxRequests;

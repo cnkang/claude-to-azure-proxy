@@ -1,16 +1,16 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import type {
+  ResponsesAPIError,
+  ResponsesResponse,
+  ResponsesStreamChunk,
+} from '../src/types/index';
 import {
   ResponsesToClaudeTransformer,
   createResponsesToClaudeTransformer,
-  transformResponsesToClaude,
-  transformResponsesStreamToClaude,
   transformResponsesErrorToClaude,
+  transformResponsesStreamToClaude,
+  transformResponsesToClaude,
 } from '../src/utils/responses-to-claude-transformer';
-import type {
-  ResponsesResponse,
-  ResponsesStreamChunk,
-  ResponsesAPIError,
-} from '../src/types/index';
 
 describe('ResponsesToClaudeTransformer', () => {
   let transformer: ResponsesToClaudeTransformer;

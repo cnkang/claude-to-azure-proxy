@@ -2,7 +2,7 @@
  * Tests for Azure Responses API monitoring functionality
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   AzureResponsesMonitor,
   createHealthCheckHandler,
@@ -118,7 +118,7 @@ describe('AzureResponsesMonitor', () => {
       expect(metrics.requestCount).toBe(1);
       expect(metrics.successCount).toBe(0);
       expect(metrics.errorCount).toBe(1);
-      expect(metrics.errorDistribution['rate_limit_error']).toBe(1);
+      expect(metrics.errorDistribution.rate_limit_error).toBe(1);
     });
 
     it('should track reasoning effort distribution', () => {
@@ -135,9 +135,9 @@ describe('AzureResponsesMonitor', () => {
       monitor.recordRequest(noReasoningParams, mockResponse, mockMetadata);
 
       const metrics = monitor.getMetrics();
-      expect(metrics.reasoningEffortDistribution['medium']).toBe(1);
-      expect(metrics.reasoningEffortDistribution['high']).toBe(1);
-      expect(metrics.reasoningEffortDistribution['none']).toBe(1);
+      expect(metrics.reasoningEffortDistribution.medium).toBe(1);
+      expect(metrics.reasoningEffortDistribution.high).toBe(1);
+      expect(metrics.reasoningEffortDistribution.none).toBe(1);
     });
 
     it('should track format distribution', () => {
@@ -150,8 +150,8 @@ describe('AzureResponsesMonitor', () => {
       monitor.recordRequest(mockParams, mockResponse, openaiMetadata);
 
       const metrics = monitor.getMetrics();
-      expect(metrics.formatDistribution['claude']).toBe(1);
-      expect(metrics.formatDistribution['openai']).toBe(1);
+      expect(metrics.formatDistribution.claude).toBe(1);
+      expect(metrics.formatDistribution.openai).toBe(1);
     });
 
     it('should track circuit breaker and retry usage', () => {

@@ -3,13 +3,13 @@
  * Tests Requirements: 4.3, 4.7, 4.8 - Sensitive data redaction in errors and logs
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  sanitizeErrorMessage,
   AuthenticationError,
-  ValidationError,
   AzureOpenAIError,
   ErrorFactory,
+  ValidationError,
+  sanitizeErrorMessage,
 } from '../src/errors/index';
 import { logger } from '../src/middleware/logging';
 import { StructuredLogger } from '../src/utils/structured-logger';
@@ -20,8 +20,12 @@ const mockConsoleError = vi.fn();
 const mockStdoutWrite = vi.fn();
 const mockStderrWrite = vi.fn();
 
-let stdoutSpy: ReturnType<typeof vi.spyOn<typeof process.stdout, 'write'>> | undefined;
-let stderrSpy: ReturnType<typeof vi.spyOn<typeof process.stderr, 'write'>> | undefined;
+let stdoutSpy:
+  | ReturnType<typeof vi.spyOn<typeof process.stdout, 'write'>>
+  | undefined;
+let stderrSpy:
+  | ReturnType<typeof vi.spyOn<typeof process.stderr, 'write'>>
+  | undefined;
 
 describe('Sensitive Data Redaction', () => {
   beforeEach(() => {

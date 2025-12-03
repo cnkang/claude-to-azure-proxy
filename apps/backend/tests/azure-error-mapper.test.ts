@@ -2,20 +2,20 @@
  * Tests for Azure OpenAI error mapping functionality
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import {
+  AuthenticationError,
+  AzureOpenAIError,
+  NetworkError,
+  RateLimitError,
+  ServiceUnavailableError,
+  TimeoutError,
+  ValidationError,
+} from '../src/errors/index';
 import {
   AzureErrorMapper,
   type ErrorMappingContext,
 } from '../src/utils/azure-error-mapper';
-import {
-  AzureOpenAIError,
-  ValidationError,
-  AuthenticationError,
-  RateLimitError,
-  ServiceUnavailableError,
-  NetworkError,
-  TimeoutError,
-} from '../src/errors/index';
 
 describe('AzureErrorMapper', () => {
   const mockCorrelationId = 'test-correlation-id';

@@ -4,9 +4,9 @@
  * Measures startup time improvements and memory usage efficiency
  */
 
-import { bench, describe } from 'vitest';
-import { performance } from 'node:perf_hooks';
 import { spawn } from 'node:child_process';
+import { performance } from 'node:perf_hooks';
+import { bench, describe } from 'vitest';
 
 // Node.js version detection for comparison benchmarks
 const NODE_VERSION = process.version;

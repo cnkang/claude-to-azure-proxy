@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 let app: express.Application;
 let restoreConfig: (() => void) | undefined;

@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { Request, Response, NextFunction } from 'express';
-import { ValidationError, CircuitBreakerError } from '../../src/errors/index';
+import type { NextFunction, Request, Response } from 'express';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { CircuitBreakerError, ValidationError } from '../../src/errors/index';
 import { EnhancedErrorHandler } from '../../src/middleware/error-handler';
 import { createMockRequest } from '../types';
 

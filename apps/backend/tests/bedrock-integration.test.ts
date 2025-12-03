@@ -9,20 +9,20 @@
  * @since 1.0.0
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import axios from 'axios';
-import {
-  UniversalRequestProcessor,
-  createUniversalRequestProcessor,
-  type UniversalProcessorConfig,
-} from '../src/utils/universal-request-processor';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AWSBedrockClient } from '../src/clients/aws-bedrock-client';
 import type {
-  IncomingRequest,
-  ClaudeRequest,
   AWSBedrockConfig,
+  ClaudeRequest,
+  IncomingRequest,
   ResponsesCreateParams,
 } from '../src/types/index';
+import {
+  type UniversalProcessorConfig,
+  type UniversalRequestProcessor,
+  createUniversalRequestProcessor,
+} from '../src/utils/universal-request-processor';
 
 // Mock configuration with Bedrock enabled
 vi.mock('../src/config/index.js', () => ({

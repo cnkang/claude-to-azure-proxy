@@ -1,8 +1,8 @@
 import http from 'node:http';
 import type { IncomingHttpHeaders, ServerResponse } from 'node:http';
+import type { Socket } from 'node:net';
 import { PassThrough } from 'node:stream';
 import type { Duplex } from 'node:stream';
-import type { Socket } from 'node:net';
 
 type RequestLike = http.RequestListener | http.Server;
 
@@ -95,7 +95,7 @@ const buildBodyBuffer = (
   );
 };
 
-class TestRequest implements PromiseLike<TestResponse> {
+class TestRequest {
   private readonly headers = new Map<string, string>();
   private body: unknown;
   private expectedStatus?: number;
@@ -145,25 +145,6 @@ class TestRequest implements PromiseLike<TestResponse> {
   public expect(status: number): this {
     this.expectedStatus = status;
     return this;
-  }
-
-  public then<TResult1 = TestResponse, TResult2 = never>(
-    onfulfilled?:
-      | ((value: TestResponse) => TResult1 | PromiseLike<TResult1>)
-      | null,
-    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
-  ): Promise<TResult1 | TResult2> {
-    return this.execute().then(onfulfilled, onrejected);
-  }
-
-  public catch<TResult = never>(
-    onrejected?: ((reason: unknown) => TResult | PromiseLike<TResult>) | null
-  ): Promise<TestResponse | TResult> {
-    return this.execute().catch(onrejected);
-  }
-
-  public finally(onfinally?: (() => void) | null): Promise<TestResponse> {
-    return this.execute().finally(onfinally ?? undefined);
   }
 
   private execute(): Promise<TestResponse> {

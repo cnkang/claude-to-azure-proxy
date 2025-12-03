@@ -1,11 +1,11 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
-import request from 'supertest';
 import express from 'express';
 import { json } from 'express';
+import request from 'supertest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { ServerConfig } from '../src/types/index';
-import { testServerConfig, validApiKey, createMockConfig } from './test-config';
+import { createMockConfig, testServerConfig, validApiKey } from './test-config';
 import type { TestResponseBody } from './types/test-types';
-import { setupAllMocks, mockResponses } from './utils/typed-mocks';
+import { mockResponses, setupAllMocks } from './utils/typed-mocks';
 
 // Mock configuration to prevent environment variable loading
 vi.mock('../src/config/index.js', () => createMockConfig());
@@ -17,7 +17,7 @@ const mocks = setupAllMocks();
 vi.mock('../src/clients/azure-responses-client.js', () => ({
   AzureResponsesClient: class MockAzureResponsesClient {
     constructor(_config: unknown) {
-      return mocks.azureClient;
+      Object.assign(this, mocks.azureClient);
     }
   },
 }));
@@ -26,7 +26,7 @@ vi.mock('../src/clients/azure-responses-client.js', () => ({
 vi.mock('../src/clients/aws-bedrock-client.js', () => ({
   AWSBedrockClient: class MockAWSBedrockClient {
     constructor(_config: unknown) {
-      return mocks.bedrockClient;
+      Object.assign(this, mocks.bedrockClient);
     }
   },
 }));
@@ -42,7 +42,7 @@ vi.mock('../src/utils/universal-request-processor.js', () => ({
 vi.mock('../src/utils/reasoning-effort-analyzer.js', () => ({
   ReasoningEffortAnalysisService: class MockReasoningEffortAnalysisService {
     constructor() {
-      return mocks.reasoningAnalyzer;
+      Object.assign(this, mocks.reasoningAnalyzer);
     }
   },
   createReasoningEffortAnalyzer: vi

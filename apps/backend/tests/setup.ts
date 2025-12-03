@@ -1,10 +1,10 @@
 import _net from 'node:net';
 import { vi } from 'vitest';
-import { setupTestEnvironment, createMockConfig } from './test-config';
 import {
-  setupNodeJS24TestEnvironment,
   nodejs24TestUtils,
+  setupNodeJS24TestEnvironment,
 } from './nodejs24-test-config';
+import { createMockConfig, setupTestEnvironment } from './test-config';
 
 declare global {
   var __AZURE_OPENAI_AXIOS_MOCK__:

@@ -1,9 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  validateClaudeRequest,
-  transformClaudeToAzureRequest,
   type ClaudeChatCompletionRequest,
   type ClaudeCompletionRequest,
+  transformClaudeToAzureRequest,
+  validateClaudeRequest,
 } from '../src/utils/request-transformer';
 
 describe('Chat Completions Support', () => {

@@ -6,17 +6,17 @@
  * memory usage, and scalability testing.
  */
 
-import {
-  describe,
-  it,
-  expect,
-  beforeAll,
-  afterAll,
-  beforeEach as _beforeEach,
-} from 'vitest';
-import request from 'supertest';
-import { createServer } from '../../src/index.js';
 import type { Express } from 'express';
+import request from 'supertest';
+import {
+  beforeEach as _beforeEach,
+  afterAll,
+  beforeAll,
+  describe,
+  expect,
+  it,
+} from 'vitest';
+import { createServer } from '../../src/index.js';
 
 describe('End-to-End Performance Tests', () => {
   let app: Express;

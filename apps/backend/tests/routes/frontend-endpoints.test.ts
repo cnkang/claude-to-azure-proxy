@@ -5,10 +5,10 @@
  * conversation CRUD, chat streaming, and context management.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
-import { ProxyServer, createServerConfig } from '../../src/index.js';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import config from '../../src/config/index.js';
+import { ProxyServer, createServerConfig } from '../../src/index.js';
 
 describe('Frontend API Endpoints', () => {
   let server: ProxyServer;

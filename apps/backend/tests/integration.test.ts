@@ -1,19 +1,19 @@
-import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
-import request from 'supertest';
+import axios from 'axios';
 import express from 'express';
 import { json } from 'express';
-import axios from 'axios';
-import {
-  ClaudeRequestFactory,
-  AzureResponseFactory,
-  AzureErrorFactory,
-  MaliciousDataFactory,
-  AuthTestDataFactory,
-  TestDataUtils,
-  ResponsesResponseFactory,
-} from './test-factories';
-import type { ServerConfig } from '../src/types/index';
+import request from 'supertest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { gracefulDegradationManager } from '../src/resilience/index';
+import type { ServerConfig } from '../src/types/index';
+import {
+  AuthTestDataFactory,
+  AzureErrorFactory,
+  AzureResponseFactory,
+  ClaudeRequestFactory,
+  MaliciousDataFactory,
+  ResponsesResponseFactory,
+  TestDataUtils,
+} from './test-factories';
 
 // Mock configuration
 vi.mock('../src/config/index.js', () => ({
@@ -78,12 +78,14 @@ const mockHealthMonitor = {
   }),
 };
 
-vi.mock('../src/monitoring/health-monitor.ts', () => {
+vi.mock('../src/monitoring/health-monitor.js', () => {
+  class MockHealthMonitor {
+    public getHealthStatus = mockHealthMonitor.getHealthStatus;
+  }
+
   return {
-    HealthMonitor: vi.fn().mockImplementation(function () {
-      return mockHealthMonitor;
-    }),
-    healthMonitor: mockHealthMonitor,
+    HealthMonitor: MockHealthMonitor,
+    healthMonitor: new MockHealthMonitor(),
   };
 });
 

@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { StructuredLogger } from '../src/utils/structured-logger';
 import type {
+  GCLogEntry,
   SecurityEventContext,
   StructuredSecurityEvent,
-  GCLogEntry,
 } from '../src/utils/structured-logger';
 
 // Mock the logger using vi.hoisted

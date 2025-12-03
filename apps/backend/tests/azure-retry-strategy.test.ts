@@ -2,14 +2,14 @@
  * Tests for Azure OpenAI retry strategy functionality
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import {
-  AzureRetryStrategy,
-  withAzureRetry,
-  createAzureRetryConfig,
-  type AzureRetryContext,
-} from '../src/utils/azure-retry-strategy';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ResponsesCreateParams } from '../src/types/index';
+import {
+  type AzureRetryContext,
+  AzureRetryStrategy,
+  createAzureRetryConfig,
+  withAzureRetry,
+} from '../src/utils/azure-retry-strategy';
 
 describe('AzureRetryStrategy', () => {
   let retryStrategy: AzureRetryStrategy;

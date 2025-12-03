@@ -3,9 +3,9 @@
  * Tests Requirement 8.1: Server SHALL process concurrent requests without crashing
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { Express } from 'express';
 import request from 'supertest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createServer } from '../src/index.js';
 
 describe('Server Load Testing', () => {
@@ -30,8 +30,9 @@ describe('Server Load Testing', () => {
 
   it('should handle 100 concurrent health check requests without crashing', async () => {
     // Requirement 8.1: Process concurrent requests without crashing
-    const requests = Array.from({ length: 100 }, () =>
-      request(app).get('/health').timeout(5000) // 5 second timeout per request
+    const requests = Array.from(
+      { length: 100 },
+      () => request(app).get('/health').timeout(5000) // 5 second timeout per request
     );
 
     const responses = await Promise.allSettled(requests);
@@ -94,7 +95,10 @@ describe('Server Load Testing', () => {
       shed.forEach((result) => {
         if (result.status === 'fulfilled') {
           expect(result.value.body).toHaveProperty('error');
-          expect(result.value.body.error).toHaveProperty('type', 'service_unavailable');
+          expect(result.value.body.error).toHaveProperty(
+            'type',
+            'service_unavailable'
+          );
           expect(result.value.body.error).toHaveProperty('retryAfter');
         }
       });
@@ -150,7 +154,7 @@ describe('Server Load Testing', () => {
 
     // Most health checks should succeed
     expect(healthRequests.length).toBeGreaterThan(15);
-    
+
     // Auth errors should be present
     expect(authErrors.length).toBeGreaterThan(0);
 

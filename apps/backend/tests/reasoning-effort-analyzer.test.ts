@@ -3,16 +3,16 @@
  * Covers complexity detection, language detection, and reasoning decision logic
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import type { ClaudeRequest, ConversationContext } from '../src/types/index';
 import {
-  ReasoningEffortAnalysisService,
-  LanguageDetectionService,
   ComplexityAnalysisService,
+  LanguageDetectionService,
   ReasoningDecisionEngineService,
+  ReasoningEffortAnalysisService,
   TASK_COMPLEXITY_INDICATORS,
-  createReasoningEffortAnalyzer,
   analyzeReasoningEffort,
+  createReasoningEffortAnalyzer,
 } from '../src/utils/reasoning-effort-analyzer';
 
 describe('LanguageDetectionService', () => {

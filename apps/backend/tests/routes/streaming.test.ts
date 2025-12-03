@@ -2,18 +2,18 @@
  * Tests for streaming functionality in completions route
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import request from 'supertest';
 import express from 'express';
+import request from 'supertest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AzureResponsesClient } from '../../src/clients/azure-responses-client';
+import { correlationIdMiddleware } from '../../src/middleware/index';
+import { completionsHandler } from '../../src/routes/completions';
 import type {
-  ServerConfig,
-  ResponsesStreamChunk,
   ClaudeRequest,
   OpenAIRequest,
+  ResponsesStreamChunk,
+  ServerConfig,
 } from '../../src/types/index';
-import { completionsHandler } from '../../src/routes/completions';
-import { correlationIdMiddleware } from '../../src/middleware/index';
-import { AzureResponsesClient } from '../../src/clients/azure-responses-client';
 
 // Mock the Azure Responses client
 vi.mock('../../src/clients/azure-responses-client.js');
@@ -187,10 +187,10 @@ describe('Streaming Functionality', () => {
         .expect(200);
 
       // Verify streaming headers
-      expect(response.headers['content-type']).toBe('text/event-stream');
-      expect(response.headers['cache-control']).toBe('no-cache');
-      expect(response.headers['connection']).toBe('keep-alive');
-      expect(response.headers['access-control-allow-origin']).toBe('*');
+      expect(response.get('content-type')).toBe('text/event-stream');
+      expect(response.get('cache-control')).toBe('no-cache');
+      expect(response.get('connection')).toBe('keep-alive');
+      expect(response.get('access-control-allow-origin')).toBe('*');
 
       // Verify non-streaming was called (simulated streaming)
       expect(mockResponsesClient.createResponse).toHaveBeenCalledWith(
@@ -310,7 +310,7 @@ describe('Streaming Functionality', () => {
         .send(complexStreamingRequest)
         .expect(200);
 
-      expect(response.headers['content-type']).toBe('text/event-stream');
+      expect(response.get('content-type')).toBe('text/event-stream');
       expect(mockResponsesClient.createResponse).toHaveBeenCalledWith(
         expect.objectContaining({
           reasoning: expect.objectContaining({
@@ -398,9 +398,9 @@ describe('Streaming Functionality', () => {
         .expect(200);
 
       // Verify streaming headers
-      expect(response.headers['content-type']).toBe('text/event-stream');
-      expect(response.headers['cache-control']).toBe('no-cache');
-      expect(response.headers['connection']).toBe('keep-alive');
+      expect(response.get('content-type')).toBe('text/event-stream');
+      expect(response.get('cache-control')).toBe('no-cache');
+      expect(response.get('connection')).toBe('keep-alive');
 
       // Verify non-streaming was called (simulated streaming)
       expect(mockResponsesClient.createResponse).toHaveBeenCalledWith(
@@ -502,7 +502,7 @@ describe('Streaming Functionality', () => {
         .send(streamingRequest)
         .expect(200);
 
-      expect(response.headers['content-type']).toBe('text/event-stream');
+      expect(response.get('content-type')).toBe('text/event-stream');
       // Simulated streaming should work even with malformed stream chunks
       expect(response.text).toContain('data:');
     });
@@ -580,7 +580,7 @@ describe('Streaming Functionality', () => {
         .expect(200);
       const endTime = Date.now();
 
-      expect(response.headers['content-type']).toBe('text/event-stream');
+      expect(response.get('content-type')).toBe('text/event-stream');
       expect(endTime - startTime).toBeLessThan(5000); // Should complete within 5 seconds
 
       // Simulated streaming should contain data
@@ -652,7 +652,7 @@ describe('Streaming Functionality', () => {
         .send(streamingRequest)
         .expect(200);
 
-      expect(response.headers['content-type']).toBe('text/event-stream');
+      expect(response.get('content-type')).toBe('text/event-stream');
 
       // Simulated streaming uses different conversation tracking
       expect(mockResponsesClient.createResponse).toHaveBeenCalledWith(

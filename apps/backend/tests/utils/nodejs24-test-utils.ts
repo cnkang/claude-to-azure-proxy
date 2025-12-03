@@ -3,8 +3,8 @@
  * Provides utilities for testing Node.js 24 features and performance
  */
 
-import { performance, PerformanceObserver } from 'node:perf_hooks';
 import { AsyncResource } from 'node:async_hooks';
+import { PerformanceObserver, performance } from 'node:perf_hooks';
 
 /**
  * Memory usage snapshot for testing memory leaks
@@ -182,7 +182,7 @@ export function nextTick(): Promise<void> {
 /**
  * Wait for multiple ticks to ensure async operations complete
  */
-export async function waitForTicks(count: number = 3): Promise<void> {
+export async function waitForTicks(count = 3): Promise<void> {
   for (let i = 0; i < count; i++) {
     await nextTick();
   }
@@ -194,7 +194,7 @@ export async function waitForTicks(count: number = 3): Promise<void> {
 export function assertMemoryUsage(
   before: MemorySnapshot,
   after: MemorySnapshot,
-  maxDeltaMB: number = 10
+  maxDeltaMB = 10
 ): void {
   const deltaMB = (after.heapUsed - before.heapUsed) / (1024 * 1024);
 

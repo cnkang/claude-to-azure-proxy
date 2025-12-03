@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { Request, Response } from 'express';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { completionsRateLimitHandler } from '../../src/routes/completions-rate-limit-handler';
 
 vi.mock('../../src/middleware/logging.js', () => ({

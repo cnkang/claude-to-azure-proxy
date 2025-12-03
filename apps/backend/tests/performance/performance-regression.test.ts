@@ -3,16 +3,16 @@
  * Validates performance improvements and prevents regressions
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { readFile, unlink, writeFile } from 'node:fs/promises';
 import { performance } from 'node:perf_hooks';
-import { writeFile, readFile, unlink } from 'node:fs/promises';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
+  GCMonitor,
   measurePerformance,
   takeMemorySnapshot,
-  GCMonitor,
 } from '../utils/nodejs24-test-utils';
-import { runStartupBenchmarks } from './startup-benchmark';
 import { runMemoryBenchmarks } from './memory-benchmark';
+import { runStartupBenchmarks } from './startup-benchmark';
 
 /**
  * Performance thresholds for regression detection

@@ -1,15 +1,15 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { ValidationError } from '../src/errors/index';
+import type {
+  ConversationContext,
+  OpenAIMessage,
+  OpenAIRequest,
+} from '../src/types/index';
 import {
   OpenAIToResponsesTransformer,
   createOpenAIToResponsesTransformer,
   transformOpenAIToResponses,
 } from '../src/utils/openai-to-responses-transformer';
-import type {
-  OpenAIRequest,
-  OpenAIMessage,
-  ConversationContext,
-} from '../src/types/index';
-import { ValidationError } from '../src/errors/index';
 
 describe('OpenAIToResponsesTransformer', () => {
   let transformer: OpenAIToResponsesTransformer;

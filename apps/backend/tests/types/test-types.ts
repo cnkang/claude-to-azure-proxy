@@ -124,7 +124,9 @@ export interface MockUniversalRequestProcessor {
   } & ((
     request: import('../../src/types/index.js').IncomingRequest,
     context?: import('../../src/types/index.js').ConversationContext
-  ) => import('../../src/utils/universal-request-processor.js').UniversalProcessingResult);
+  ) => import(
+    '../../src/utils/universal-request-processor.js'
+  ).UniversalProcessingResult);
 }
 
 /**

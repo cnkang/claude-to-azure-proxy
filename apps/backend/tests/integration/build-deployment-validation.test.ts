@@ -5,11 +5,11 @@
  * and production readiness validation.
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { execSync, spawn as _spawn } from 'child_process';
-import { existsSync, readFileSync, statSync, readdirSync } from 'fs';
-import { join } from 'path';
+import { spawn as _spawn, execSync } from 'node:child_process';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import request from 'supertest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createServer } from '../../src/index.js';
 
 describe('Build and Deployment Validation', () => {
@@ -153,10 +153,10 @@ describe('Build and Deployment Validation', () => {
           const [, size, unit] = sizeMatch;
           const sizeInMB =
             unit === 'K'
-              ? parseFloat(size) / 1024
+              ? Number.parseFloat(size) / 1024
               : unit === 'M'
-                ? parseFloat(size)
-                : parseFloat(size) * 1024;
+                ? Number.parseFloat(size)
+                : Number.parseFloat(size) * 1024;
           expect(sizeInMB).toBeLessThan(50); // Less than 50MB
         }
       }
@@ -302,8 +302,8 @@ describe('Build and Deployment Validation', () => {
 
       // Even for 404, cache headers should be present for static routes
       if (response.status === 200) {
-        expect(response.headers['cache-control']).toBeDefined();
-        expect(response.headers['etag']).toBeDefined();
+        expect(response.get('cache-control')).toBeDefined();
+        expect(response.get('etag')).toBeDefined();
       }
     });
 

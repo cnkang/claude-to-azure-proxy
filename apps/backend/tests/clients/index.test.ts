@@ -1,4 +1,4 @@
-import { it, expect } from 'vitest';
+import { expect, it } from 'vitest';
 
 it('exposes client factory exports', async () => {
   const clients = await import('../../src/clients/index.js');

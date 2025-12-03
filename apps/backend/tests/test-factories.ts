@@ -4,10 +4,10 @@
  */
 
 import type {
-  OpenAIResponse,
-  OpenAIRequest,
-  OpenAIError,
   ClaudeError,
+  OpenAIError,
+  OpenAIRequest,
+  OpenAIResponse,
   ResponsesResponse,
 } from '../src/types/index';
 import type { ClaudeRequest } from '../src/types/index';
@@ -363,10 +363,7 @@ export class AzureResponseFactory {
  * Factory for creating Azure OpenAI errors
  */
 export class AzureErrorFactory {
-  static create(
-    type: string = 'invalid_request_error',
-    message?: string
-  ): OpenAIError {
+  static create(type = 'invalid_request_error', message?: string): OpenAIError {
     const messages: Record<string, string> = {
       invalid_request_error: 'The request is invalid',
       authentication_error: 'Invalid API key',
@@ -582,7 +579,7 @@ export class ClaudeResponseFactory {
   }
 
   static createError(
-    type: string = 'invalid_request_error',
+    type = 'invalid_request_error',
     message?: string
   ): ClaudeError {
     return {

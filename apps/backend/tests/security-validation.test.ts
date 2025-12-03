@@ -3,23 +3,23 @@
  * Tests Requirements: 4.2, 4.6 - Input sanitization and validation
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import request from 'supertest';
 import express from 'express';
-import {
-  createJoiValidator,
-  validateClaudeCompletionRequest,
-  sanitizeRequest,
-  validateContentType,
-  validateRequestSize,
-  VALIDATION_LIMITS,
-} from '../src/validation/request-validators';
+import request from 'supertest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   enhancedApiKeyValidation,
-  validateRequestIntegrity,
   enhancedSecurityHeaders,
+  validateRequestIntegrity,
 } from '../src/middleware/enhanced-security';
 import { correlationIdMiddleware } from '../src/middleware/security';
+import {
+  VALIDATION_LIMITS,
+  createJoiValidator,
+  sanitizeRequest,
+  validateClaudeCompletionRequest,
+  validateContentType,
+  validateRequestSize,
+} from '../src/validation/request-validators';
 
 const SCRIPT_PROTOCOL = ['java', 'script:'].join('');
 const buildScriptUrl = (payload: string): string =>

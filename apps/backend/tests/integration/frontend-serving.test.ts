@@ -2,11 +2,11 @@
  * @fileoverview Integration tests for frontend asset serving
  */
 
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
-import request from 'supertest';
-import { ProxyServer, createServerConfig } from '../../src/index.js';
-import type { Config } from '../../src/config/index.js';
 import type { Request, Response } from 'express';
+import request from 'supertest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import type { Config } from '../../src/config/index.js';
+import { ProxyServer, createServerConfig } from '../../src/index.js';
 
 const FALLBACK_HTML =
   '<!DOCTYPE html><html><head><title>Test</title></head><body><div id="root"></div></body></html>';

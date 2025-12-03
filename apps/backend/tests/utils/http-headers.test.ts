@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  normalizeHeaderValue,
   getHeaderValue,
+  normalizeHeaderValue,
 } from '../../src/utils/http-headers';
 
 describe('HTTP header utilities', () => {

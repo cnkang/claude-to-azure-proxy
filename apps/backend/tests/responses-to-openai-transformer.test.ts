@@ -1,16 +1,16 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import type {
+  ResponsesAPIError,
+  ResponsesResponse,
+  ResponsesStreamChunk,
+} from '../src/types/index';
 import {
   ResponsesToOpenAITransformer,
   createResponsesToOpenAITransformer,
-  transformResponsesToOpenAI,
-  transformResponsesStreamToOpenAI,
   transformResponsesErrorToOpenAI,
+  transformResponsesStreamToOpenAI,
+  transformResponsesToOpenAI,
 } from '../src/utils/responses-to-openai-transformer';
-import type {
-  ResponsesResponse,
-  ResponsesStreamChunk,
-  ResponsesAPIError,
-} from '../src/types/index';
 
 describe('ResponsesToOpenAITransformer', () => {
   let transformer: ResponsesToOpenAITransformer;

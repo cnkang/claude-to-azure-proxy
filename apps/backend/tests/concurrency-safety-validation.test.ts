@@ -7,19 +7,19 @@
  * Requirements: 6.1, 6.4, 6.5, 6.6
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import request from 'supertest';
 import express from 'express';
-import { CircuitBreaker } from '../src/resilience/circuit-breaker';
-import { RetryManager } from '../src/resilience/retry';
+import request from 'supertest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AzureResponsesClient } from '../src/clients/azure-responses-client';
-import { ConversationManagerImpl } from '../src/utils/conversation-manager';
-import { MultiTurnConversationHandlerImpl } from '../src/utils/multi-turn-conversation';
+import type { Config } from '../src/config/index';
 import {
   correlationIdMiddleware,
   globalRateLimit,
 } from '../src/middleware/security';
-import type { Config } from '../src/config/index';
+import { CircuitBreaker } from '../src/resilience/circuit-breaker';
+import { RetryManager } from '../src/resilience/retry';
+import { ConversationManagerImpl } from '../src/utils/conversation-manager';
+import { MultiTurnConversationHandlerImpl } from '../src/utils/multi-turn-conversation';
 
 // Mock external dependencies
 vi.mock('axios');

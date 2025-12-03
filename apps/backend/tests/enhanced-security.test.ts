@@ -2,14 +2,14 @@
  * Tests for enhanced security middleware functionality
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import type { Request, Response, NextFunction } from 'express';
+import type { NextFunction, Request, Response } from 'express';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   enhancedApiKeyValidation,
-  validateRequestOrigin,
-  validateRequestIntegrity,
-  enhancedSecurityHeaders,
   enhancedRateLimiters,
+  enhancedSecurityHeaders,
+  validateRequestIntegrity,
+  validateRequestOrigin,
 } from '../src/middleware/enhanced-security';
 import type { RequestWithCorrelationId } from '../src/types/index';
 

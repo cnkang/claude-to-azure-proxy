@@ -10,13 +10,13 @@
  * @since 1.0.0
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { performance } from 'node:perf_hooks';
-import { AzureResponsesClient } from '../../src/clients/azure-responses-client';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AWSBedrockClient } from '../../src/clients/aws-bedrock-client';
+import { AzureResponsesClient } from '../../src/clients/azure-responses-client';
 import type {
-  AzureOpenAIConfig,
   AWSBedrockConfig,
+  AzureOpenAIConfig,
   ResponsesCreateParams,
   ResponsesStreamChunk,
 } from '../../src/types/index';
@@ -122,7 +122,7 @@ class ClientPerformanceMetrics {
  * Mock response factory for performance testing.
  */
 class MockResponseFactory {
-  public static createMockResponse(delay: number = 100) {
+  public static createMockResponse(delay = 100) {
     return new Promise((resolve) => {
       setTimeout(() => {
         resolve({
@@ -147,8 +147,8 @@ class MockResponseFactory {
   }
 
   public static async *createMockStreamResponse(
-    chunkCount: number = 5,
-    chunkDelay: number = 50
+    chunkCount = 5,
+    chunkDelay = 50
   ): AsyncIterable<ResponsesStreamChunk> {
     for (let i = 0; i < chunkCount; i++) {
       await new Promise((resolve) => setTimeout(resolve, chunkDelay));

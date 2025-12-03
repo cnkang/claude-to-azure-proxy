@@ -10,10 +10,24 @@
  * @since 1.0.0
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AWSBedrockClient } from '../src/clients/aws-bedrock-client';
-import type { AWSBedrockConfig } from '../src/types/index';
 import { ValidationError } from '../src/errors/index';
+import type { AWSBedrockConfig } from '../src/types/index';
+
+const getInternalClient = (
+  bedrockClient: AWSBedrockClient
+): { post: (...args: unknown[]) => unknown } =>
+  (
+    bedrockClient as unknown as {
+      client: { post: (...args: unknown[]) => unknown };
+    }
+  ).client;
+
+const getClientConfig = (
+  bedrockClient: AWSBedrockClient
+): AWSBedrockClient['config'] =>
+  (bedrockClient as unknown as { config: AWSBedrockClient['config'] }).config;
 
 // Mock logger to capture log messages
 vi.mock('../src/middleware/logging.js', () => ({
@@ -92,7 +106,9 @@ describe('Bedrock Security Tests', () => {
       const networkError = new Error('ECONNREFUSED');
       (networkError as any).code = 'ECONNREFUSED';
 
-      vi.spyOn(client['client'], 'post').mockRejectedValue(networkError);
+      vi.spyOn(getInternalClient(client), 'post').mockRejectedValue(
+        networkError
+      );
 
       try {
         await client.createResponse({
@@ -111,7 +127,9 @@ describe('Bedrock Security Tests', () => {
 
       // Mock timeout error
       const timeoutError = new Error('timeout of 30000ms exceeded');
-      vi.spyOn(client['client'], 'post').mockRejectedValue(timeoutError);
+      vi.spyOn(getInternalClient(client), 'post').mockRejectedValue(
+        timeoutError
+      );
 
       try {
         await client.createResponse({
@@ -143,7 +161,7 @@ describe('Bedrock Security Tests', () => {
         message: 'Request failed with status code 401',
       };
 
-      vi.spyOn(client['client'], 'post').mockRejectedValue(apiError);
+      vi.spyOn(getInternalClient(client), 'post').mockRejectedValue(apiError);
 
       try {
         await client.createResponse({
@@ -350,7 +368,9 @@ describe('Bedrock Security Tests', () => {
         message: 'Request failed with status code 400',
       };
 
-      vi.spyOn(client['client'], 'post').mockRejectedValue(complexError);
+      vi.spyOn(getInternalClient(client), 'post').mockRejectedValue(
+        complexError
+      );
 
       try {
         await client.createResponse({
@@ -439,7 +459,7 @@ describe('Bedrock Security Tests', () => {
       const client = new AWSBedrockClient(validConfig);
 
       // Access the private config
-      const config = client['config'];
+      const config = getClientConfig(client);
 
       // Should be frozen
       expect(Object.isFrozen(config)).toBe(true);
@@ -462,7 +482,7 @@ describe('Bedrock Security Tests', () => {
       expect(clientConfig.apiKey).toBe('[REDACTED]');
 
       // Internal config should not be affected
-      expect(client['config'].apiKey).toBe(validConfig.apiKey);
+      expect(getClientConfig(client).apiKey).toBe(validConfig.apiKey);
     });
   });
 });

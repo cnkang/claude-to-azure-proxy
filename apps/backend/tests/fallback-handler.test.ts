@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ClaudeRequest, OpenAIRequest } from '../src/types/index';
 import { FallbackHandler } from '../src/utils/fallback-handler';
 import type { FallbackContext } from '../src/utils/fallback-handler';
-import type { ClaudeRequest, OpenAIRequest } from '../src/types/index';
 
 const { executeGracefulDegradation, mapAzureError, loggerMock } = vi.hoisted(
   () => {

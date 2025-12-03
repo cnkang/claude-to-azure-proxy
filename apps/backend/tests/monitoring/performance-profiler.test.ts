@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { performance } from 'perf_hooks';
+import { performance } from 'node:perf_hooks';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   PerformanceProfiler,
   performanceProfiler,
@@ -43,13 +43,16 @@ describe('PerformanceProfiler', () => {
     let heapUsed = 10_000_000;
     const memoryUsageSpy = vi
       .spyOn(process, 'memoryUsage')
-      .mockImplementation(() => ({
-        rss: 20_000_000,
-        heapTotal: 40_000_000,
-        heapUsed: (heapUsed += 2_000_000),
-        external: 0,
-        arrayBuffers: 0,
-      }));
+      .mockImplementation(() => {
+        heapUsed += 2_000_000;
+        return {
+          rss: 20_000_000,
+          heapTotal: 40_000_000,
+          heapUsed,
+          external: 0,
+          arrayBuffers: 0,
+        };
+      });
 
     const profiler = new PerformanceProfiler(25, 10);
     profiler.startProfiling();
@@ -267,13 +270,16 @@ describe('PerformanceProfiler', () => {
       let heapUsed = 50_000_000;
       const memoryUsageSpy = vi
         .spyOn(process, 'memoryUsage')
-        .mockImplementation(() => ({
-          rss: 100_000_000,
-          heapTotal: 80_000_000,
-          heapUsed: (heapUsed += 500_000), // Steady 500KB growth per sample
-          external: 10_000_000,
-          arrayBuffers: 5_000_000,
-        }));
+        .mockImplementation(() => {
+          heapUsed += 500_000; // Steady 500KB growth per sample
+          return {
+            rss: 100_000_000,
+            heapTotal: 80_000_000,
+            heapUsed,
+            external: 10_000_000,
+            arrayBuffers: 5_000_000,
+          };
+        });
 
       const profiler = new PerformanceProfiler(20, 50);
       profiler.startProfiling();

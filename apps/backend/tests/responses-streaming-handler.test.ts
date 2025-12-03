@@ -1,16 +1,16 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import {
-  ResponsesStreamingHandler,
-  createResponsesStreamingHandler,
-  ResponsesStreamProcessor,
-  createResponsesStreamProcessor,
-} from '../src/utils/responses-streaming-handler';
+import { beforeEach, describe, expect, it } from 'vitest';
 import type {
-  ResponsesStreamChunk,
-  ResponsesAPIError,
   ClaudeStreamChunk,
   OpenAIStreamChunk,
+  ResponsesAPIError,
+  ResponsesStreamChunk,
 } from '../src/types/index';
+import {
+  ResponsesStreamProcessor,
+  ResponsesStreamingHandler,
+  createResponsesStreamProcessor,
+  createResponsesStreamingHandler,
+} from '../src/utils/responses-streaming-handler';
 
 describe('ResponsesStreamingHandler', () => {
   let claudeHandler: ResponsesStreamingHandler;
@@ -603,8 +603,8 @@ describe('ResponsesStreamProcessor', () => {
 
     it('should handle empty stream', async () => {
       async function* mockStream() {
-        // Empty stream
-        return;
+        const emptyChunks: ResponsesStreamChunk[] = [];
+        yield* emptyChunks;
       }
 
       const results: (ClaudeStreamChunk | OpenAIStreamChunk)[] = [];

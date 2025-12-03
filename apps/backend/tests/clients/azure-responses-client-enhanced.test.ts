@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { EnhancedAzureResponsesClient } from '../../src/clients/azure-responses-client-enhanced';
 import type {
   ResponsesCreateParams,
   ResponsesResponse,
   UniversalRequest,
 } from '../../src/types/index';
-import { EnhancedAzureResponsesClient } from '../../src/clients/azure-responses-client-enhanced';
 import { testServerConfig } from '../test-config';
 
 const axiosMocks = vi.hoisted(() => {
@@ -67,10 +67,6 @@ const retryStrategyMocks = vi.hoisted(() => {
     executeWithRetry = executeWithRetry;
     getMetrics = getMetrics;
     resetMetrics = resetMetrics;
-
-    constructor(_name: string, _config?: unknown) {
-      // Mock constructor
-    }
   }
 
   return {

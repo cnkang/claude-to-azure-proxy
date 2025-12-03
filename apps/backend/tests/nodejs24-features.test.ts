@@ -3,15 +3,15 @@
  * Tests new language features, performance optimizations, and memory management
  */
 
-import { describe, it, expect, vi } from 'vitest';
 import { performance } from 'node:perf_hooks';
+import { describe, expect, it, vi } from 'vitest';
 import {
-  measurePerformance,
-  takeMemorySnapshot,
   GCMonitor,
   TestResourceManager,
-  createTestAsyncResource,
   assertMemoryUsage,
+  createTestAsyncResource,
+  measurePerformance,
+  takeMemorySnapshot,
   withTimeout,
 } from './utils/nodejs24-test-utils';
 
@@ -19,7 +19,10 @@ describe('Node.js 24 Features', () => {
   describe('Runtime Environment', () => {
     it('should be running on Node.js 24+', () => {
       const version = process.version;
-      const majorVersion = parseInt(version.slice(1, 10).split('.')[0], 10);
+      const majorVersion = Number.parseInt(
+        version.slice(1, 10).split('.')[0],
+        10
+      );
 
       if (majorVersion < 24) {
         console.warn(
@@ -33,7 +36,10 @@ describe('Node.js 24 Features', () => {
 
     it('should have V8 13.6+ engine', () => {
       const version = process.version;
-      const majorVersion = parseInt(version.slice(1, 10).split('.')[0], 10);
+      const majorVersion = Number.parseInt(
+        version.slice(1, 10).split('.')[0],
+        10
+      );
 
       if (majorVersion < 24) {
         console.warn(
@@ -43,8 +49,8 @@ describe('Node.js 24 Features', () => {
       }
 
       const v8Version = process.versions.v8;
-      const v8MajorVersion = parseInt(v8Version.split('.', 10)[0], 10);
-      const v8MinorVersion = parseInt(v8Version.split('.', 10)[1], 10);
+      const v8MajorVersion = Number.parseInt(v8Version.split('.', 10)[0], 10);
+      const v8MinorVersion = Number.parseInt(v8Version.split('.', 10)[1], 10);
 
       expect(v8MajorVersion).toBeGreaterThanOrEqual(13);
       if (v8MajorVersion === 13) {

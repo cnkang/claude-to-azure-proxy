@@ -3,17 +3,17 @@
  * Tests memory leak detection, GC monitoring, and memory metrics collection
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  type MemoryLeakDetection,
   MemoryManager,
-  memoryManager,
-  startMemoryMonitoring,
-  getCurrentMemoryMetrics,
+  type MemoryManagerConfig,
+  type MemoryMetrics,
   detectMemoryLeaks,
   forceGarbageCollection,
-  type MemoryMetrics,
-  type MemoryLeakDetection,
-  type MemoryManagerConfig,
+  getCurrentMemoryMetrics,
+  memoryManager,
+  startMemoryMonitoring,
 } from '../../src/utils/memory-manager';
 
 // Mock performance hooks
@@ -72,7 +72,7 @@ describe('MemoryManager', () => {
     if (originalGC !== undefined) {
       global.gc = originalGC;
     } else {
-      delete (global as { gc?: typeof global.gc }).gc;
+      Reflect.deleteProperty(global as { gc?: typeof global.gc }, 'gc');
     }
 
     // Stop monitoring
@@ -298,7 +298,7 @@ describe('MemoryManager', () => {
       if (typeof originalGC === 'function') {
         globalWithGC.gc = originalGC;
       } else {
-        delete globalWithGC.gc;
+        Reflect.deleteProperty(globalWithGC, 'gc');
       }
     });
   });

@@ -1,6 +1,12 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import request from 'supertest';
 import express from 'express';
+import request from 'supertest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+const clearEnvKeys = (keys: Array<keyof NodeJS.ProcessEnv>): void => {
+  for (const key of keys) {
+    Reflect.deleteProperty(process.env, key);
+  }
+};
 
 // Type for test response body
 interface TestResponseBody {
@@ -53,11 +59,13 @@ describe('Models Endpoint', () => {
 
   afterAll(() => {
     // Clean up environment variables
-    delete process.env.PROXY_API_KEY;
-    delete process.env.AZURE_OPENAI_ENDPOINT;
-    delete process.env.AZURE_OPENAI_API_KEY;
-    delete process.env.AZURE_OPENAI_MODEL;
-    delete process.env.NODE_ENV;
+    clearEnvKeys([
+      'PROXY_API_KEY',
+      'AZURE_OPENAI_ENDPOINT',
+      'AZURE_OPENAI_API_KEY',
+      'AZURE_OPENAI_MODEL',
+      'NODE_ENV',
+    ]);
   });
 
   describe('Authentication Required', () => {

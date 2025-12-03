@@ -1,13 +1,13 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  AuthenticationMethod,
+  AuthenticationResult,
   authenticationMiddleware,
   secureAuthenticationMiddleware,
-  AuthenticationResult,
-  AuthenticationMethod,
 } from '../src/middleware/authentication';
 import type { AuthenticationRequest } from '../src/types/index';
-import type { MockRequest, MockResponse, MockNextFunction } from './types';
+import type { MockNextFunction, MockRequest, MockResponse } from './types';
 
 // Mock the config module
 vi.mock('../src/config/index.js', () => ({

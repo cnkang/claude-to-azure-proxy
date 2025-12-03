@@ -1,15 +1,15 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  BaseError,
   AuthenticationError,
-  ValidationError,
-  NetworkError,
-  TimeoutError,
+  BaseError,
   CircuitBreakerError,
   ErrorFactory,
+  NetworkError,
+  TimeoutError,
+  ValidationError,
   isBaseError,
-  isOperationalError,
   isError,
+  isOperationalError,
   preserveErrorContext,
 } from '../src/errors/index';
 

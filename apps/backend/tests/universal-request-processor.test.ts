@@ -1,17 +1,17 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { InternalServerError, ValidationError } from '../src/errors/index';
+import type {
+  ClaudeRequest,
+  ConversationContext,
+  IncomingRequest,
+  OpenAIRequest,
+} from '../src/types/index';
 import {
+  type UniversalProcessorConfig,
   UniversalRequestProcessor,
   createUniversalRequestProcessor,
   defaultUniversalProcessorConfig,
-  type UniversalProcessorConfig,
 } from '../src/utils/universal-request-processor';
-import type {
-  IncomingRequest,
-  ClaudeRequest,
-  OpenAIRequest,
-  ConversationContext,
-} from '../src/types/index';
-import { ValidationError, InternalServerError } from '../src/errors/index';
 
 const expectSyncError = <T extends Error>(
   fn: () => unknown,

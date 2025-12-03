@@ -1,12 +1,12 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import request from 'supertest';
 import type { Application } from 'express';
-import type { ServerConfig } from '../src/types/index';
+import request from 'supertest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ProxyServer,
   createServerConfig,
   setupGracefulShutdown,
 } from '../src/index';
+import type { ServerConfig } from '../src/types/index';
 import { testConfig, testServerConfig, validApiKey } from './test-config';
 
 const {

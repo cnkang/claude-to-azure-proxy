@@ -7,17 +7,17 @@
  * reliable conversation state management and continuity.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ClaudeRequest, ResponsesResponse } from '../src/types/index';
+import { createConversationManager } from '../src/utils/conversation-manager';
 import type {
-  MultiTurnConversationHandler,
   MultiTurnConversationConfig,
+  MultiTurnConversationHandler,
 } from '../src/utils/multi-turn-conversation';
 import {
   MultiTurnConversationHandlerImpl,
   createMultiTurnConversationHandler,
 } from '../src/utils/multi-turn-conversation';
-import { createConversationManager } from '../src/utils/conversation-manager';
 
 describe('MultiTurnConversationHandler', () => {
   let handler: MultiTurnConversationHandler;
