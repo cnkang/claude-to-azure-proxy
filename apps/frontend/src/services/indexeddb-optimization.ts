@@ -200,7 +200,7 @@ export class IndexedDBOptimizer {
   private async executeWithCache<T>(
     cacheKey: string,
     queryFn: () => Promise<T>,
-    ttl: number = 300000 // 5 minutes default
+    ttl = 300000 // 5 minutes default
   ): Promise<T> {
     // Check cache first
     const cached = this.queryCache.get(cacheKey);
@@ -434,7 +434,7 @@ export class IndexedDBOptimizer {
   async searchConversations(
     sessionId: string,
     query: string,
-    limit: number = 50
+    limit = 50
   ): Promise<Conversation[]> {
     const cacheKey = `search_${sessionId}_${query}_${limit}`;
 
@@ -464,7 +464,7 @@ export class IndexedDBOptimizer {
   /**
    * Clean up old data and optimize storage
    */
-  async cleanup(olderThanDays: number = 30): Promise<void> {
+  async cleanup(olderThanDays = 30): Promise<void> {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
 

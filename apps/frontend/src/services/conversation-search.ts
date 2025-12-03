@@ -9,8 +9,8 @@
  */
 
 import type { Conversation as _Conversation } from '../types/index.js';
-import type { ConversationStorage } from './storage.js';
 import { frontendLogger } from '../utils/logger.js';
+import type { ConversationStorage } from './storage.js';
 
 const isE2ETestMode = (): boolean =>
   typeof window !== 'undefined' &&
@@ -355,7 +355,7 @@ export class ConversationSearchService {
   ): Promise<SearchResponse> {
     // Try to use IndexedDB full-text index first
     const db = await this.storage.getDatabase();
-    if (db && db.objectStoreNames.contains('search_index')) {
+    if (db?.objectStoreNames.contains('search_index')) {
       try {
         return await this.searchWithFullTextIndex(query, options);
       } catch (error) {
@@ -568,13 +568,14 @@ export class ConversationSearchService {
       const searchKeyword = caseSensitive ? keyword : keyword.toLowerCase();
       let position = 0;
 
-      while ((position = searchText.indexOf(searchKeyword, position)) !== -1) {
+      position = searchText.indexOf(searchKeyword, position);
+      while (position !== -1) {
         ranges.push({
           start: position,
           end: position + keyword.length,
           keyword,
         });
-        position += keyword.length;
+        position = searchText.indexOf(searchKeyword, position + keyword.length);
       }
     }
 

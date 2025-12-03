@@ -1,19 +1,20 @@
 /**
  * useScrollEdge Hook
- * 
+ *
  * Detects proximity to scroll edges (top/bottom) and provides visual feedback.
  * Useful for indicating when there's more content to scroll.
- * 
+ *
  * @param containerRef - Ref to scrollable container
  * @param threshold - Distance from edge in pixels (default: 10)
  * @returns Scroll edge state
- * 
+ *
  * @example
  * const containerRef = useRef<HTMLDivElement>(null);
  * const { isNearTop, isNearBottom, topOpacity, bottomOpacity } = useScrollEdge(containerRef);
  */
 
-import React, { useState, useEffect, RefObject } from 'react';
+import type React from 'react';
+import { type RefObject, useEffect, useState } from 'react';
 
 export interface ScrollEdgeState {
   /** Whether scrolled to within threshold of top */
@@ -35,7 +36,7 @@ export interface ScrollEdgeState {
  */
 export function useScrollEdge(
   containerRef: RefObject<HTMLElement>,
-  threshold: number = 10
+  threshold = 10
 ): ScrollEdgeState {
   const [edgeState, setEdgeState] = useState<ScrollEdgeState>({
     isNearTop: true,
@@ -54,25 +55,23 @@ export function useScrollEdge(
 
     const handleScroll = () => {
       const { scrollTop, scrollHeight, clientHeight } = container;
-      
+
       // Calculate distances from edges
       const distanceFromTop = scrollTop;
       const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
-      
+
       // Determine if near edges
       const isNearTop = distanceFromTop <= threshold;
       const isNearBottom = distanceFromBottom <= threshold;
-      
+
       // Calculate opacity based on distance (fade in as approaching edge)
       // Opacity is 1 at edge, 0 at threshold distance
-      const topOpacity = isNearTop 
-        ? 1 - (distanceFromTop / threshold)
-        : 0;
-      
+      const topOpacity = isNearTop ? 1 - distanceFromTop / threshold : 0;
+
       const bottomOpacity = isNearBottom
-        ? 1 - (distanceFromBottom / threshold)
+        ? 1 - distanceFromBottom / threshold
         : 0;
-      
+
       setEdgeState({
         isNearTop,
         isNearBottom,
@@ -107,7 +106,7 @@ export function useScrollEdge(
  */
 export function useScrollEdgeIndicator(
   containerRef: RefObject<HTMLElement>,
-  threshold: number = 10
+  threshold = 10
 ) {
   const edgeState = useScrollEdge(containerRef, threshold);
 

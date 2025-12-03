@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  useReducedMotion,
   getAnimationDuration,
   getSpringConfig,
+  useReducedMotion,
 } from './useReducedMotion';
 
 describe('useReducedMotion', () => {
@@ -92,8 +92,7 @@ describe('useReducedMotion', () => {
 
   it('should handle missing matchMedia gracefully', () => {
     // Remove matchMedia
-    // @ts-expect-error - Testing missing matchMedia
-    delete window.matchMedia;
+    Reflect.deleteProperty(window, 'matchMedia');
 
     const { result } = renderHook(() => useReducedMotion());
     expect(result.current).toBe(false);

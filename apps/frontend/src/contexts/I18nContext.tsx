@@ -7,15 +7,16 @@
  * Requirements: 9.1, 9.2, 9.3, 9.4
  */
 
-import React, {
+import type { TFunction } from 'i18next';
+import type React from 'react';
+import {
+  type ReactNode,
   createContext,
   useContext,
   useEffect,
   useState,
-  type ReactNode,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { TFunction } from 'i18next';
 import { useAppContext } from './AppContext.js';
 
 /**
@@ -204,7 +205,7 @@ export function I18nProvider({
         : ['B', 'KB', 'MB', 'GB', 'TB'];
 
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    const size = parseFloat((bytes / Math.pow(k, i)).toFixed(2));
+    const size = Number.parseFloat((bytes / k ** i).toFixed(2));
 
     const unit = sizes[i];
     if (!unit) {
@@ -348,7 +349,7 @@ export function LanguageSelector({
   const { language, supportedLanguages, setLanguage, t } = useI18n();
 
   // Get display text for current language
-  const getDisplayText = (lang: typeof supportedLanguages[0]): string => {
+  const getDisplayText = (lang: (typeof supportedLanguages)[0]): string => {
     if (compact) {
       // In compact mode, just show the flag (which is already short: "EN", "中")
       return lang.flag;

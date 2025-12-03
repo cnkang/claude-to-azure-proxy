@@ -17,7 +17,7 @@
  * - Concurrent prefetch request handling
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   ConversationSearchService,
   SearchResponse,
@@ -292,7 +292,7 @@ export function useSearchWithPrefetch(
    * Requirement 6.1: Target sub-100ms for cached results
    */
   const searchWithPrefetch = useCallback(
-    async (query: string, page: number = 0): Promise<SearchResponse> => {
+    async (query: string, page = 0): Promise<SearchResponse> => {
       const trimmedQuery = query.trim();
 
       if (trimmedQuery.length === 0) {

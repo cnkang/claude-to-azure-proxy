@@ -7,9 +7,9 @@
  * Requirements: 13.2, 13.3, 13.5
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-import type { SessionState, UserPreferences } from '../types/index.js';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { getSessionManager, sessionUtils } from '../services/session.js';
+import type { SessionState, UserPreferences } from '../types/index.js';
 import { frontendLogger } from '../utils/logger.js';
 
 /**
@@ -285,7 +285,7 @@ export function useSessionStorage<T>(
       });
       return defaultValue;
     }
-  }, [getStorageKey, defaultValue, isSessionValid]);
+  }, [getStorageKey, defaultValue, isSessionValid, key]);
 
   // Save value to storage
   const saveValue = useCallback(
@@ -310,7 +310,7 @@ export function useSessionStorage<T>(
         setStoredValue(value);
       }
     },
-    [getStorageKey, isSessionValid]
+    [getStorageKey, isSessionValid, key]
   );
 
   // Load initial value

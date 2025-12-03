@@ -28,13 +28,13 @@
  * ```
  */
 
-import { useReducedMotion } from './useReducedMotion';
-import {
-  springPresets,
-  durationPresets,
-  type SpringPreset,
-} from '../config/animations';
 import type { Transition } from 'framer-motion';
+import {
+  type SpringPreset,
+  durationPresets,
+  springPresets,
+} from '../config/animations';
+import { useReducedMotion } from './useReducedMotion';
 
 export function useAccessibleAnimation(
   preset: SpringPreset = 'default'

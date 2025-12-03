@@ -294,7 +294,7 @@ export class NetworkErrorHandler {
 
         // Calculate delay with exponential backoff
         const delay = Math.min(
-          config.initialDelay * Math.pow(config.backoffFactor, attempt - 1),
+          config.initialDelay * config.backoffFactor ** (attempt - 1),
           config.maxDelay
         );
 

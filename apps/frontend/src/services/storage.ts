@@ -8,9 +8,9 @@
  */
 
 import type { Conversation, Message } from '../types/index.js';
-import { getSessionManager } from './session.js';
 import { frontendLogger } from '../utils/logger.js';
-import { measureAsync, OperationType } from '../utils/performance-metrics.js';
+import { OperationType, measureAsync } from '../utils/performance-metrics.js';
+import { getSessionManager } from './session.js';
 
 // Storage configuration
 const DB_NAME = 'claude-proxy-storage';
@@ -518,9 +518,10 @@ export class ConversationStorage {
 
         // Read compressed chunks
         const readPromise = (async (): Promise<void> => {
-          let result;
-          while (!(result = await reader.read()).done) {
+          let result = await reader.read();
+          while (!result.done) {
             chunks.push(result.value);
+            result = await reader.read();
           }
         })();
 
@@ -576,9 +577,10 @@ export class ConversationStorage {
 
         // Read decompressed chunks
         const readPromise = (async (): Promise<void> => {
-          let result;
-          while (!(result = await reader.read()).done) {
+          let result = await reader.read();
+          while (!result.done) {
             chunks.push(result.value);
+            result = await reader.read();
           }
         })();
 
@@ -626,7 +628,7 @@ export class ConversationStorage {
   private simpleDecompress(data: string): string {
     // Reverse simple run-length encoding
     return data.replace(/(.)\d+\1/g, (match, char) => {
-      const count = parseInt(match.slice(1, -1), 10);
+      const count = Number.parseInt(match.slice(1, -1), 10);
       return char.repeat(count);
     });
   }
@@ -971,7 +973,7 @@ export class ConversationStorage {
 
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key !== null && key.startsWith(`${sessionPrefix}_conversation_`)) {
+        if (key?.startsWith(`${sessionPrefix}_conversation_`)) {
           const stored = localStorage.getItem(key);
           if (stored) {
             try {
@@ -2027,7 +2029,7 @@ export const storageUtils = {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
 
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
   },
 
   /**

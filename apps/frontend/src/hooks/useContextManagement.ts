@@ -7,14 +7,14 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type {
-  Conversation,
-  CompressionEvent,
-  ContextUsage,
-  Message,
-} from '../types/index.js';
 import { ContextService } from '../services/context.js';
 import { getModelService, modelUtils } from '../services/models.js';
+import type {
+  CompressionEvent,
+  ContextUsage,
+  Conversation,
+  Message,
+} from '../types/index.js';
 import { frontendLogger } from '../utils/logger.js';
 
 /**

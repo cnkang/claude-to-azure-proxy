@@ -23,7 +23,7 @@
  * ```
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export interface ScrollBehavior {
   /** Current scroll direction */
@@ -131,7 +131,7 @@ export function useScrollBehavior(): ScrollBehavior {
  * @param threshold - Distance from top in pixels (default: 10)
  * @returns true if within threshold of top
  */
-export function useIsNearTop(threshold: number = 10): boolean {
+export function useIsNearTop(threshold = 10): boolean {
   const { scrollY } = useScrollBehavior();
   return scrollY < threshold;
 }
@@ -142,7 +142,7 @@ export function useIsNearTop(threshold: number = 10): boolean {
  * @param threshold - Distance from bottom in pixels (default: 10)
  * @returns true if within threshold of bottom
  */
-export function useIsNearBottom(threshold: number = 10): boolean {
+export function useIsNearBottom(threshold = 10): boolean {
   const [isNearBottom, setIsNearBottom] = useState(false);
 
   useEffect(() => {

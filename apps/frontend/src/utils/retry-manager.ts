@@ -384,7 +384,7 @@ export class RetryManager {
         }, timeout);
       } catch (error) {
         // setTimeout should never fail, but handle it just in case
-        safeReject(new Error('Failed to set timeout: ' + String(error)));
+        safeReject(new Error(`Failed to set timeout: ${String(error)}`));
         return;
       }
 
@@ -424,8 +424,7 @@ export class RetryManager {
     useJitter: boolean
   ): number {
     // Exponential backoff: baseDelay * (backoffMultiplier ^ (attempt - 1))
-    const exponentialDelay =
-      baseDelay * Math.pow(backoffMultiplier, attempt - 1);
+    const exponentialDelay = baseDelay * backoffMultiplier ** (attempt - 1);
 
     // Add jitter (0-100% random variation) to prevent thundering herd
     let delay = exponentialDelay;

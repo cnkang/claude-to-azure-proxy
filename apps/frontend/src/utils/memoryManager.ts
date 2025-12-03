@@ -120,7 +120,7 @@ export function suggestGarbageCollection(): void {
  *
  * Task 11.2: Periodic memory monitoring
  */
-export function startMemoryMonitoring(intervalMs: number = 30000): () => void {
+export function startMemoryMonitoring(intervalMs = 30000): () => void {
   const intervalId = setInterval(() => {
     const stats = getMemoryStats();
 

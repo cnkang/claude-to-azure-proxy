@@ -7,7 +7,7 @@
  * Requirements: 5.4
  */
 
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { PerformanceMonitor, getMemoryUsage } from '../utils/performance';
 
 /**

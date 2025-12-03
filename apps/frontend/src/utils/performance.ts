@@ -7,14 +7,14 @@
  */
 
 import {
+  type CSSProperties,
+  type DependencyList,
+  type RefObject,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type DependencyList,
-  type CSSProperties,
-  type RefObject,
 } from 'react';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -124,7 +124,7 @@ export function useMemoizedObject<T extends Record<string, unknown>>(
   obj: T,
   deps: DependencyList
 ): T {
-  return useMemo(() => obj, deps);
+  return useMemo(() => obj, [obj, ...deps]);
 }
 
 interface DeepMemoRef<T> {
@@ -211,6 +211,7 @@ export function useIntersectionObserver(
   options: IntersectionObserverInit = {}
 ): IntersectionObserverEntry | null {
   const [entry, setEntry] = useState<IntersectionObserverEntry | null>(null);
+  const { root, rootMargin, threshold } = options;
 
   useEffect(() => {
     const currentElement = elementRef.current;
@@ -218,18 +219,23 @@ export function useIntersectionObserver(
       return undefined;
     }
 
+    const observerOptions: IntersectionObserverInit = {
+      root,
+      rootMargin,
+      threshold,
+    };
     const observer = new IntersectionObserver((observerEntries) => {
       if (observerEntries.length > 0) {
         setEntry(observerEntries[0]);
       }
-    }, options);
+    }, observerOptions);
 
     observer.observe(currentElement);
 
     return (): void => {
       observer.disconnect();
     };
-  }, [elementRef, options.root, options.rootMargin, options.threshold]);
+  }, [elementRef, root, rootMargin, threshold]);
 
   return entry;
 }
@@ -316,11 +322,11 @@ export class PerformanceMonitor {
   private static readonly measurements = new Map<string, number>();
 
   public static startMeasurement(name: string): void {
-    this.measurements.set(name, performance.now());
+    PerformanceMonitor.measurements.set(name, performance.now());
   }
 
   public static endMeasurement(name: string): number {
-    const startTime = this.measurements.get(name);
+    const startTime = PerformanceMonitor.measurements.get(name);
     if (startTime === undefined) {
       if (devConsole) {
         devConsole.warn(`No measurement started for: ${name}`);
@@ -329,7 +335,7 @@ export class PerformanceMonitor {
     }
 
     const duration = performance.now() - startTime;
-    this.measurements.delete(name);
+    PerformanceMonitor.measurements.delete(name);
 
     if (duration > 16 && devConsole) {
       devConsole.warn(
@@ -344,20 +350,20 @@ export class PerformanceMonitor {
     name: string,
     fn: () => Promise<T>
   ): Promise<T> {
-    this.startMeasurement(name);
+    PerformanceMonitor.startMeasurement(name);
     try {
       return await fn();
     } finally {
-      this.endMeasurement(name);
+      PerformanceMonitor.endMeasurement(name);
     }
   }
 
   public static measureSync<T>(name: string, fn: () => T): T {
-    this.startMeasurement(name);
+    PerformanceMonitor.startMeasurement(name);
     try {
       return fn();
     } finally {
-      this.endMeasurement(name);
+      PerformanceMonitor.endMeasurement(name);
     }
   }
 }

@@ -10,12 +10,12 @@
 import { useCallback, useRef } from 'react';
 import type { ErrorInfo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNotifications } from '../components/common/NotificationSystem.js';
+import { frontendLogger } from '../utils/logger.js';
 import {
   NetworkError,
   networkErrorHandler,
 } from '../utils/networkErrorHandler.js';
-import { useNotifications } from '../components/common/NotificationSystem.js';
-import { frontendLogger } from '../utils/logger.js';
 
 /**
  * Error handling options
@@ -211,7 +211,7 @@ export function useErrorHandling() {
           }
 
           retryCount++;
-          const delay = Math.min(1000 * Math.pow(2, retryCount - 1), 10000);
+          const delay = Math.min(1000 * 2 ** (retryCount - 1), 10000);
 
           setTimeout(async () => {
             try {

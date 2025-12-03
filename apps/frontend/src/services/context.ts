@@ -7,10 +7,10 @@
  * Requirements: 16.1, 16.2, 16.3, 16.4, 16.5
  */
 
-import type { CompressionEvent, ContextUsage } from '../types/index.js';
 import type { CompressionOptions } from '../hooks/useContextManagement.js';
-import { getSessionManager } from './session.js';
+import type { CompressionEvent, ContextUsage } from '../types/index.js';
 import { frontendLogger } from '../utils/logger.js';
+import { getSessionManager } from './session.js';
 
 // API endpoints
 const CONTEXT_EXTEND_ENDPOINT =

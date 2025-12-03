@@ -19,7 +19,7 @@ import React from 'react';
  * @returns React nodes with highlighted keywords
  *
  * @example
- * highlightKeywords("Hello world", ["hello"]) 
+ * highlightKeywords("Hello world", ["hello"])
  * // Returns: <><mark>Hello</mark> world</>
  */
 export function highlightKeywords(
@@ -48,7 +48,8 @@ export function highlightKeywords(
   const parts = text.split(pattern);
 
   // Map parts to JSX, highlighting matches
-  return parts.map((part, index) => {
+  let keyCounter = 0;
+  return parts.map((part) => {
     if (!part) {
       return null; // Skip empty strings
     }
@@ -59,9 +60,10 @@ export function highlightKeywords(
     );
 
     if (isMatch) {
+      const key = `${part}-${keyCounter++}`;
       return (
         <mark
-          key={index}
+          key={key}
           className="bg-yellow-200 dark:bg-yellow-900/50 text-gray-900 dark:text-gray-100 font-medium px-0.5 rounded"
         >
           {part}
@@ -69,7 +71,8 @@ export function highlightKeywords(
       );
     }
 
-    return <React.Fragment key={index}>{part}</React.Fragment>;
+    const fragmentKey = `${part}-fragment-${keyCounter++}`;
+    return <React.Fragment key={fragmentKey}>{part}</React.Fragment>;
   });
 }
 

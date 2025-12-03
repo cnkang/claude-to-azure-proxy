@@ -20,7 +20,7 @@
  * ```
  */
 
-import { useState, useEffect, CSSProperties } from 'react';
+import { type CSSProperties, useEffect, useState } from 'react';
 
 export interface MobileSearchPosition {
   /** CSS styles for positioning */

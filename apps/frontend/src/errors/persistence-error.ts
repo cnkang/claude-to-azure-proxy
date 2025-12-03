@@ -667,6 +667,25 @@ export class PersistenceErrorFactory {
   }
 
   /**
+   * Create network error
+   */
+  static createNetworkError(
+    operation: string,
+    originalError?: Error
+  ): PersistenceError {
+    return new PersistenceError(
+      PersistenceErrorType.NETWORK_ERROR,
+      operation,
+      'Network error. Please check your connection and try again.',
+      {
+        originalError,
+        retryable: true,
+        recoveryStrategy: RecoveryStrategy.RETRY,
+      }
+    );
+  }
+
+  /**
    * Create storage unavailable error
    */
   static createStorageUnavailableError(reason: string): PersistenceError {
@@ -708,7 +727,7 @@ export class PersistenceErrorFactory {
    */
   static fromError(
     error: Error,
-    operation: string = 'unknown',
+    operation = 'unknown',
     conversationId?: string
   ): PersistenceError {
     const message = error.message.toLowerCase();
@@ -895,6 +914,12 @@ export const createConflictError = (
 ): PersistenceError =>
   PersistenceErrorFactory.createConflictError(operation, conversationId);
 
+export const createNetworkError = (
+  operation: string,
+  originalError?: Error
+): PersistenceError =>
+  PersistenceErrorFactory.createNetworkError(operation, originalError);
+
 export const createTimeoutError = (
   operation: string,
   timeout?: number
@@ -922,7 +947,7 @@ export const createUnknownError = (
  */
 export function createPersistenceError(
   error: unknown,
-  operation: string = 'unknown'
+  operation = 'unknown'
 ): PersistenceError {
   if (error instanceof PersistenceError) {
     return error;

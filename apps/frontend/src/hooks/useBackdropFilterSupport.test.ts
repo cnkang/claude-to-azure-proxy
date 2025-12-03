@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useBackdropFilterSupport } from './useBackdropFilterSupport';
 
 describe('useBackdropFilterSupport', () => {
@@ -13,8 +13,7 @@ describe('useBackdropFilterSupport', () => {
     if (originalCSS) {
       globalThis.CSS = originalCSS;
     } else {
-      // @ts-expect-error - Deleting CSS for test purposes
-      delete globalThis.CSS;
+      Reflect.deleteProperty(globalThis, 'CSS');
     }
   });
 
@@ -54,8 +53,7 @@ describe('useBackdropFilterSupport', () => {
 
   it('should return false when CSS.supports is not available', () => {
     // Remove CSS object
-    // @ts-expect-error - Deleting CSS for test purposes
-    delete globalThis.CSS;
+    Reflect.deleteProperty(globalThis, 'CSS');
 
     const { result } = renderHook(() => useBackdropFilterSupport());
     expect(result.current).toBe(false);

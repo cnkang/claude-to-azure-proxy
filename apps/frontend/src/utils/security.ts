@@ -8,6 +8,14 @@
  */
 
 import { frontendLogger } from './logger.js';
+import {
+  extractExtension,
+  findHiddenExecutableExtensions,
+  hasEmbeddedPE,
+  hasEmbeddedZip,
+  isExtensionMalicious,
+  scanBase64Content,
+} from './securityHelpers.js';
 
 export interface SecurityScanResult {
   readonly safe: boolean;
@@ -217,25 +225,18 @@ export class SecurityScanner {
    */
   private checkFileExtension(fileName: string): string[] {
     const threats: string[] = [];
-    const extension = '.' + (fileName.split('.').pop() ?? '').toLowerCase();
+    const extension = extractExtension(fileName);
 
-    if (this.maliciousExtensions.has(extension)) {
+    if (isExtensionMalicious(extension, this.maliciousExtensions)) {
       threats.push(`Potentially dangerous file extension: ${extension}`);
     }
 
     // Check for double extensions (e.g., .txt.exe)
-    const parts = fileName.toLowerCase().split('.');
-    if (parts.length > 2) {
-      for (let i = 1; i < parts.length - 1; i++) {
-        const segment = parts.at(i) ?? '';
-        if (/^[a-z0-9]+$/.test(segment)) {
-          const hiddenExt = `.${segment}`;
-          if (this.maliciousExtensions.has(hiddenExt)) {
-            threats.push(`Hidden executable extension detected: ${hiddenExt}`);
-          }
-        }
-      }
-    }
+    const hiddenThreats = findHiddenExecutableExtensions(
+      fileName,
+      this.maliciousExtensions
+    );
+    threats.push(...hiddenThreats);
 
     return threats;
   }
@@ -349,44 +350,23 @@ export class SecurityScanner {
     const threats: string[] = [];
 
     // Check for embedded ZIP files
-    const zipSignature = new Uint8Array([0x50, 0x4b, 0x03, 0x04]);
-    if (this.findBytes(content, zipSignature) !== -1) {
+    if (hasEmbeddedZip(content, this.findBytes.bind(this))) {
       threats.push('Embedded ZIP archive detected');
     }
 
     // Check for embedded PE files
-    const peSignature = new Uint8Array([0x4d, 0x5a]);
-    if (this.findBytes(content, peSignature) !== -1) {
+    if (hasEmbeddedPE(content, this.findBytes.bind(this))) {
       threats.push('Embedded executable detected');
     }
 
     // Check for base64 encoded content (might hide malicious payload)
     try {
       const text = new TextDecoder('utf-8', { fatal: false }).decode(content);
-      const base64Pattern = /[A-Za-z0-9+/]{100,}={0,2}/g;
-      const matches = text.match(base64Pattern);
-
-      if (matches && matches.length > 0) {
-        // Try to decode and check if it contains executable signatures
-        for (const match of matches.slice(0, 5)) {
-          // Limit checks
-          try {
-            const decoded = atob(match);
-            const decodedBytes = Uint8Array.from(Array.from(decoded), (char) =>
-              char.charCodeAt(0)
-            );
-
-            const embeddedThreats =
-              this.checkExecutableSignatures(decodedBytes);
-            if (embeddedThreats.length > 0) {
-              threats.push('Base64 encoded executable detected');
-              break;
-            }
-          } catch {
-            // Ignore decode errors
-          }
-        }
-      }
+      const base64Threats = scanBase64Content(
+        text,
+        this.checkExecutableSignatures.bind(this)
+      );
+      threats.push(...base64Threats);
     } catch {
       // Ignore text decoding errors
     }

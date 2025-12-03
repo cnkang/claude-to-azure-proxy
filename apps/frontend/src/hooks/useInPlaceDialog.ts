@@ -27,7 +27,7 @@
  * ```
  */
 
-import { useState, useEffect, RefObject } from 'react';
+import { type RefObject, useEffect, useState } from 'react';
 
 export interface DialogPosition {
   /** Transform origin CSS value (e.g., "100px 200px") */
@@ -43,7 +43,7 @@ export interface DialogPosition {
  */
 export function useInPlaceDialog(
   triggerRef: RefObject<HTMLElement>,
-  isOpen: boolean = false
+  isOpen = false
 ): DialogPosition {
   const [position, setPosition] = useState<DialogPosition>({
     transformOrigin: 'center center',

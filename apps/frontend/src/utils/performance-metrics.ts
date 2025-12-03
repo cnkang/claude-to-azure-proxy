@@ -91,7 +91,7 @@ export class PerformanceMetrics {
    *
    * @param maxEntriesPerType - Maximum number of entries to keep per operation type (default: 100)
    */
-  private constructor(maxEntriesPerType: number = 100) {
+  private constructor(maxEntriesPerType = 100) {
     this.metrics = new Map();
     this.maxEntriesPerType = maxEntriesPerType;
 
@@ -261,7 +261,7 @@ export class PerformanceMetrics {
    */
   public getRecentEntries(
     type: OperationType,
-    count: number = 10
+    count = 10
   ): readonly MetricEntry[] {
     const entries = this.metrics.get(type) ?? [];
     return entries.slice(-count);

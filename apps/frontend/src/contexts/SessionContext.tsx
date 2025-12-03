@@ -7,15 +7,16 @@
  * Requirements: 13.2, 13.3, 13.5
  */
 
-import React, {
+import type React from 'react';
+import {
+  type ReactNode,
   createContext,
   useContext,
   useEffect,
   useState,
-  type ReactNode,
 } from 'react';
+import { type UseSessionReturn, useSession } from '../hooks/useSession.js';
 import type { UserPreferences } from '../types/index.js';
-import { useSession, type UseSessionReturn } from '../hooks/useSession.js';
 
 /**
  * Session context type

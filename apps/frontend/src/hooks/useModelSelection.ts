@@ -7,16 +7,16 @@
  * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 12.1, 12.2, 12.3, 12.4
  */
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
-import type { Conversation, ModelChange } from '../types/index.js';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type {
   EnhancedModelInfo,
+  ModelConfiguration,
   ModelSelectionCriteria,
   ModelSwitchOptions,
-  ModelConfiguration,
 } from '../services/models.js';
 import { getModelService, modelUtils } from '../services/models.js';
 import { getSessionManager } from '../services/session.js';
+import type { Conversation, ModelChange } from '../types/index.js';
 
 export interface ModelSelectionState {
   /** Available models */

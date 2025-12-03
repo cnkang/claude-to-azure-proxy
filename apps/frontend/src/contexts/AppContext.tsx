@@ -7,27 +7,28 @@
  * Requirements: 1.1, 5.1, 5.2, 5.3, 10.1
  */
 
-import React, {
+import type React from 'react';
+import {
+  type ReactNode,
   createContext,
   useContext,
   useEffect,
   useReducer,
   useRef,
-  type ReactNode,
 } from 'react';
+import { BREAKPOINTS } from '../constants/breakpoints.js';
+import { getCrossTabSyncService } from '../services/cross-tab-sync.js';
+import type { SyncEvent } from '../services/cross-tab-sync.js';
+import { getSessionManager } from '../services/session.js';
+import { getConversationStorage } from '../services/storage.js';
 import type {
   AppState,
   ConfigState,
   Conversation,
   ConversationFilters,
 } from '../types/index.js';
-import { useSessionContext } from './SessionContext';
-import { getCrossTabSyncService } from '../services/cross-tab-sync.js';
-import type { SyncEvent } from '../services/cross-tab-sync.js';
-import { getSessionManager } from '../services/session.js';
-import { getConversationStorage } from '../services/storage.js';
 import { frontendLogger } from '../utils/logger.js';
-import { BREAKPOINTS } from '../constants/breakpoints.js';
+import { useSessionContext } from './SessionContext';
 
 /**
  * App actions
@@ -122,7 +123,10 @@ const createInitialState = (): AppState => ({
     theme: 'auto',
     language: 'en',
     // Requirement 21.1: Sidebar open by default on desktop (> 1024px), closed on mobile/tablet (≤ 1024px)
-    sidebarOpen: typeof window !== 'undefined' ? window.innerWidth > BREAKPOINTS.TABLET : false,
+    sidebarOpen:
+      typeof window !== 'undefined'
+        ? window.innerWidth > BREAKPOINTS.TABLET
+        : false,
     isLoading: false,
     error: undefined,
   },

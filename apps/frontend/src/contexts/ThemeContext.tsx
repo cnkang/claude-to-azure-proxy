@@ -7,16 +7,20 @@
  * Requirements: 10.2, 10.3, 10.4, 10.5
  */
 
-import React, {
+import { motion } from 'framer-motion';
+import type React from 'react';
+import {
+  type ReactNode,
   createContext,
   useContext,
   useEffect,
   useState,
-  type ReactNode,
 } from 'react';
-import { motion } from 'framer-motion';
+import {
+  useAccessibleAnimation,
+  useAccessibleGestures,
+} from '../hooks/useAccessibleAnimation';
 import { useAppContext } from './AppContext.js';
-import { useAccessibleAnimation, useAccessibleGestures } from '../hooks/useAccessibleAnimation';
 
 /**
  * Theme types
@@ -320,7 +324,7 @@ export function ThemeToggle({
   size = 'md',
 }: ThemeToggleProps): React.JSX.Element {
   const { resolvedTheme, themeMode, setThemeMode, isAutoMode } = useTheme();
-  
+
   // Get accessible animation configuration with bouncy spring for quick feedback
   const animation = useAccessibleAnimation('bouncy');
   const gestures = useAccessibleGestures();
@@ -392,9 +396,9 @@ export function ThemeToggle({
       transition={animation}
       {...gestures}
     >
-      <motion.span 
-        className="theme-toggle-icon" 
-        role="img" 
+      <motion.span
+        className="theme-toggle-icon"
+        role="img"
         aria-hidden="true"
         animate={{ rotate: [0, 10, -10, 0] }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
@@ -434,7 +438,7 @@ export const _themeTransitions = {
   /**
    * Disable transitions temporarily
    */
-  disable: (duration: number = 100): void => {
+  disable: (duration = 100): void => {
     document.documentElement.classList.add('theme-loading');
     setTimeout(() => {
       document.documentElement.classList.remove('theme-loading');
@@ -455,12 +459,12 @@ export const _wcagUtils = {
     const getLuminance = (color: string): number => {
       // This is a simplified version - use a proper color library in production
       const hex = color.replace('#', '');
-      const r = parseInt(hex.substr(0, 2), 16) / 255;
-      const g = parseInt(hex.substr(2, 2), 16) / 255;
-      const b = parseInt(hex.substr(4, 2), 16) / 255;
+      const r = Number.parseInt(hex.substr(0, 2), 16) / 255;
+      const g = Number.parseInt(hex.substr(2, 2), 16) / 255;
+      const b = Number.parseInt(hex.substr(4, 2), 16) / 255;
 
       const sRGB = [r, g, b].map((c) => {
-        return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+        return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
       });
 
       return 0.2126 * sRGB[0] + 0.7152 * sRGB[1] + 0.0722 * sRGB[2];

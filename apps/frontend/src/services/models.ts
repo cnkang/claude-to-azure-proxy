@@ -7,10 +7,8 @@
  * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 12.1, 12.2, 12.3, 12.4
  */
 
-import type { ModelInfo, ClientConfig } from '../types/index.js';
-import {
-  getAuthHeaders,
-} from '../utils/networkErrorHandler.js';
+import type { ClientConfig, ModelInfo } from '../types/index.js';
+import { getAuthHeaders } from '../utils/networkErrorHandler.js';
 
 // API endpoints
 const MODELS_ENDPOINT = '/api/models';
@@ -109,7 +107,7 @@ export class ModelService {
   private static instance: ModelService | null = null;
   private modelsCache: ModelInfo[] | null = null;
   private configCache: ClientConfig | null = null;
-  private cacheTimestamp: number = 0;
+  private cacheTimestamp = 0;
   private readonly cacheTimeout = 5 * 60 * 1000; // 5 minutes
 
   private constructor() {}

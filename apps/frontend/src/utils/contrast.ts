@@ -22,9 +22,9 @@ export function hexToRgb(hex: string): RGBColor | null {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result
     ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16),
+        r: Number.parseInt(result[1], 16),
+        g: Number.parseInt(result[2], 16),
+        b: Number.parseInt(result[3], 16),
       }
     : null;
 }
@@ -43,7 +43,7 @@ export function getRelativeLuminance(rgb: RGBColor): number {
 
   // Linearize RGB values
   const linearize = (val: number): number => {
-    return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
+    return val <= 0.03928 ? val / 12.92 : ((val + 0.055) / 1.055) ** 2.4;
   };
 
   const rLinear = linearize(r);
@@ -79,10 +79,7 @@ export function getContrastRatio(color1: RGBColor, color2: RGBColor): number {
  * @param isLargeText - Whether text is large (18pt+ or 14pt+ bold)
  * @returns Whether contrast meets WCAG AAA
  */
-export function meetsWCAGAAA(
-  ratio: number,
-  isLargeText: boolean = false
-): boolean {
+export function meetsWCAGAAA(ratio: number, isLargeText = false): boolean {
   const threshold = isLargeText ? 4.5 : 7.0;
   return ratio >= threshold;
 }
@@ -100,7 +97,7 @@ export function calculateRequiredOpacity(
   foreground: RGBColor,
   background: RGBColor,
   glassColor: RGBColor,
-  targetRatio: number = 7.0
+  targetRatio = 7.0
 ): number | null {
   // Try opacity values from 0.1 to 1.0
   for (let opacity = 0.1; opacity <= 1.0; opacity += 0.05) {

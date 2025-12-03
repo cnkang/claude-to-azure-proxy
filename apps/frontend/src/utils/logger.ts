@@ -9,14 +9,14 @@ export const logger = {
   debug: (...args: unknown[]): void => {
     if (isDevelopment) {
       // eslint-disable-next-line no-console
-      console.log('[DEBUG]', ...args);
+      console.debug('[DEBUG]', ...args);
     }
   },
 
   log: (...args: unknown[]): void => {
     if (isDevelopment) {
       // eslint-disable-next-line no-console
-      console.log(...args);
+      console.info(...args);
     }
   },
 

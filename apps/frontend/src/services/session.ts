@@ -266,10 +266,10 @@ export class SessionManager {
       return false;
     }
 
-    const currentWidth = parseInt(currentMatch[1], 10);
-    const currentHeight = parseInt(currentMatch[2], 10);
-    const storedWidth = parseInt(storedMatch[1], 10);
-    const storedHeight = parseInt(storedMatch[2], 10);
+    const currentWidth = Number.parseInt(currentMatch[1], 10);
+    const currentHeight = Number.parseInt(currentMatch[2], 10);
+    const storedWidth = Number.parseInt(storedMatch[1], 10);
+    const storedHeight = Number.parseInt(storedMatch[2], 10);
 
     // Allow 10% variation in screen resolution
     const widthDiff = Math.abs(currentWidth - storedWidth) / storedWidth;

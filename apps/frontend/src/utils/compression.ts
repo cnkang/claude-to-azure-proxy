@@ -66,12 +66,12 @@ export class CompressionUtils {
 
     try {
       // Try modern Compression Streams first
-      if (this.isCompressionStreamAvailable()) {
-        return await this.compressWithStreams(data, originalSize);
-      } else {
-        // Fallback to simple compression
-        return this.compressSimple(data, originalSize);
+      if (CompressionUtils.isCompressionStreamAvailable()) {
+        return await CompressionUtils.compressWithStreams(data, originalSize);
       }
+
+      // Fallback to simple compression
+      return CompressionUtils.compressSimple(data, originalSize);
     } catch {
       // Compression failed, using uncompressed data
       // Note: In production, this should use proper logging
@@ -97,9 +97,9 @@ export class CompressionUtils {
     try {
       switch (result.method) {
         case 'gzip':
-          return await this.decompressWithStreams(result.data);
+          return await CompressionUtils.decompressWithStreams(result.data);
         case 'simple':
-          return this.decompressSimple(result.data);
+          return CompressionUtils.decompressSimple(result.data);
         default:
           return result.data;
       }
@@ -131,9 +131,10 @@ export class CompressionUtils {
 
     // Read compressed chunks
     const readPromise = (async (): Promise<void> => {
-      let result;
-      while (!(result = await reader.read()).done) {
+      let result = await reader.read();
+      while (!result.done) {
         chunks.push(result.value);
+        result = await reader.read();
       }
     })();
 
@@ -150,13 +151,13 @@ export class CompressionUtils {
 
     const compressedData = btoa(String.fromCharCode(...combined));
     const compressedSize = compressedData.length;
-    const compressionRatio = this.calculateCompressionRatio(
+    const compressionRatio = CompressionUtils.calculateCompressionRatio(
       originalSize,
       compressedSize
     );
 
     // Update statistics
-    this.updateStats(originalSize, compressedSize, 'gzip');
+    CompressionUtils.updateStats(originalSize, compressedSize, 'gzip');
 
     return {
       data: compressedData,
@@ -192,9 +193,10 @@ export class CompressionUtils {
 
     // Read decompressed chunks
     const readPromise = (async (): Promise<void> => {
-      let result;
-      while (!(result = await reader.read()).done) {
+      let result = await reader.read();
+      while (!result.done) {
         chunks.push(result.value);
+        result = await reader.read();
       }
     })();
 
@@ -221,15 +223,15 @@ export class CompressionUtils {
     originalSize: number
   ): CompressionResult {
     // Dictionary-based compression for JSON data
-    const compressed = this.compressWithDictionary(data);
+    const compressed = CompressionUtils.compressWithDictionary(data);
     const compressedSize = compressed.length;
-    const compressionRatio = this.calculateCompressionRatio(
+    const compressionRatio = CompressionUtils.calculateCompressionRatio(
       originalSize,
       compressedSize
     );
 
     // Update statistics
-    this.updateStats(originalSize, compressedSize, 'simple');
+    CompressionUtils.updateStats(originalSize, compressedSize, 'simple');
 
     return {
       data: compressed,
@@ -245,7 +247,7 @@ export class CompressionUtils {
    * Simple decompression fallback
    */
   private static decompressSimple(compressedData: string): string {
-    return this.decompressWithDictionary(compressedData);
+    return CompressionUtils.decompressWithDictionary(compressedData);
   }
 
   /**
@@ -312,7 +314,7 @@ export class CompressionUtils {
         return compressedData; // Not compressed with dictionary
       }
 
-      const headerLength = parseInt(
+      const headerLength = Number.parseInt(
         compressedData.substring(0, colonIndex),
         36
       );
@@ -375,15 +377,16 @@ export class CompressionUtils {
     compressedSize: number,
     method: string
   ): void {
-    this.stats.totalOriginalSize += originalSize;
-    this.stats.totalCompressedSize += compressedSize;
-    this.stats.compressionCount++;
-    this.stats.method = method;
+    CompressionUtils.stats.totalOriginalSize += originalSize;
+    CompressionUtils.stats.totalCompressedSize += compressedSize;
+    CompressionUtils.stats.compressionCount++;
+    CompressionUtils.stats.method = method;
 
-    if (this.stats.totalOriginalSize > 0) {
-      this.stats.averageCompressionRatio =
-        ((this.stats.totalOriginalSize - this.stats.totalCompressedSize) /
-          this.stats.totalOriginalSize) *
+    if (CompressionUtils.stats.totalOriginalSize > 0) {
+      CompressionUtils.stats.averageCompressionRatio =
+        ((CompressionUtils.stats.totalOriginalSize -
+          CompressionUtils.stats.totalCompressedSize) /
+          CompressionUtils.stats.totalOriginalSize) *
         100;
     }
   }
@@ -392,14 +395,14 @@ export class CompressionUtils {
    * Get compression statistics
    */
   public static getStats(): CompressionStats {
-    return { ...this.stats };
+    return { ...CompressionUtils.stats };
   }
 
   /**
    * Reset compression statistics
    */
   public static resetStats(): void {
-    this.stats = {
+    CompressionUtils.stats = {
       totalOriginalSize: 0,
       totalCompressedSize: 0,
       averageCompressionRatio: 0,
@@ -418,7 +421,7 @@ export class CompressionUtils {
 
     for (const item of items) {
       try {
-        const result = await this.compress(item);
+        const result = await CompressionUtils.compress(item);
         results.push(result);
       } catch {
         // Batch compression failed for item
@@ -449,7 +452,7 @@ export class CompressionUtils {
 
     for (const result of results) {
       try {
-        const item = await this.decompress(result);
+        const item = await CompressionUtils.decompress(result);
         items.push(item);
       } catch {
         // Batch decompression failed for result
@@ -488,7 +491,7 @@ export class CompressionUtils {
       estimatedRatio = 60; // 60% compression ratio for JSON
     }
     // Text data with repetition
-    else if (this.hasRepetitivePatterns(data)) {
+    else if (CompressionUtils.hasRepetitivePatterns(data)) {
       estimatedRatio = 40; // 40% compression ratio for repetitive text
     }
     // General text
@@ -579,6 +582,6 @@ export const compressionUtils = {
     const index = Math.min(units.length - 1, Math.max(0, rawIndex));
 
     const sizeUnit = units.at(index) ?? 'Bytes';
-    return `${(bytes / Math.pow(k, index)).toFixed(2)} ${sizeUnit}`;
+    return `${(bytes / k ** index).toFixed(2)} ${sizeUnit}`;
   },
 };

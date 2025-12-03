@@ -10,24 +10,24 @@
 
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import type {
-  Message,
-  StreamChunk,
   ChatRequest,
   FileInfo,
+  Message,
+  StreamChunk,
 } from '../types/index.js';
-import { getSessionManager } from './session.js';
 import { frontendLogger } from '../utils/logger.js';
 import {
-  NetworkError,
-  networkErrorHandler,
-  networkUtils,
-  getAuthHeaders,
-} from '../utils/networkErrorHandler.js';
-import {
+  getMemoryStats,
   isMemoryHigh,
   suggestGarbageCollection,
-  getMemoryStats,
 } from '../utils/memoryManager.js';
+import {
+  NetworkError,
+  getAuthHeaders,
+  networkErrorHandler,
+  networkUtils,
+} from '../utils/networkErrorHandler.js';
+import { getSessionManager } from './session.js';
 
 // API endpoints
 const CHAT_SEND_ENDPOINT = '/api/chat/send';
@@ -115,7 +115,7 @@ export class ChatSSEClient {
   private offlineListener: (() => void) | null = null;
 
   // Task 1.6: Debounce mechanism to prevent rapid connect() calls
-  private lastConnectAttempt: number = 0;
+  private lastConnectAttempt = 0;
   private readonly connectDebounceMs = 1000; // 1 second debounce
 
   // Task 6.2: Connection health tracking
@@ -630,8 +630,7 @@ export class ChatSSEClient {
 
     // Calculate delay with exponential backoff
     const baseDelay = Math.min(
-      this.reconnectDelay *
-        Math.pow(this.backoffFactor, this.reconnectAttempts),
+      this.reconnectDelay * this.backoffFactor ** this.reconnectAttempts,
       this.maxReconnectDelay
     );
 
@@ -1195,7 +1194,7 @@ export class ChatService {
     excludeConversationId: string
   ): void {
     let oldestConversationId: string | null = null;
-    let oldestAccessTime = Infinity;
+    let oldestAccessTime = Number.POSITIVE_INFINITY;
 
     // Find least recently used connection (excluding the one we're about to create)
     for (const [convId, accessTime] of this.connectionAccessTimes.entries()) {
@@ -1472,7 +1471,7 @@ export class ChatService {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
 
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
   }
 }
 

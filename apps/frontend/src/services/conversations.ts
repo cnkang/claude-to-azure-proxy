@@ -8,16 +8,16 @@
  */
 
 import type {
+  Conversation,
   ConversationRequest,
   ConversationResponse,
-  Conversation,
 } from '../types/index.js';
-import { getSessionManager } from './session.js';
 import { frontendLogger } from '../utils/logger.js';
 import {
   NetworkError,
   networkErrorHandler,
 } from '../utils/networkErrorHandler.js';
+import { getSessionManager } from './session.js';
 import { getConversationStorage } from './storage.js';
 
 // API endpoints

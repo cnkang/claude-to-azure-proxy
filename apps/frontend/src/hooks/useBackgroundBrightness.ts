@@ -21,7 +21,7 @@
  * ```
  */
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 
 /**
@@ -89,7 +89,7 @@ export function useAdaptiveGlassOpacity(
  * @param threshold - Brightness change threshold (default: 20)
  * @returns Whether brightness has changed significantly
  */
-export function useBackgroundBrightnessChange(threshold: number = 20): boolean {
+export function useBackgroundBrightnessChange(threshold = 20): boolean {
   const brightness = useBackgroundBrightness();
   const [previousBrightness, setPreviousBrightness] = useState(brightness);
   const [hasChanged, setHasChanged] = useState(false);
