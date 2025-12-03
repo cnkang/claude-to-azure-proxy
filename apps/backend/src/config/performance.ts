@@ -3,10 +3,10 @@
  * Configures optimal garbage collection settings and HTTP performance enhancements
  */
 
-import { performance } from 'node:perf_hooks';
-import { cpus } from 'node:os';
 import type { Agent as HttpAgent } from 'node:http';
 import type { Agent as HttpsAgent } from 'node:https';
+import { cpus } from 'node:os';
+import { performance } from 'node:perf_hooks';
 import { logger } from '../middleware/logging';
 
 /**
@@ -48,7 +48,7 @@ export interface PerformanceConfig {
 export function getPerformanceConfig(): PerformanceConfig {
   const cpuCount = cpus().length;
   const isProduction = process.env.NODE_ENV === 'production';
-  const memoryLimit = parseInt(process.env.MEMORY_LIMIT ?? '1024', 10);
+  const memoryLimit = Number.parseInt(process.env.MEMORY_LIMIT ?? '1024', 10);
 
   return {
     gc: {

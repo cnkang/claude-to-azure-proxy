@@ -20,13 +20,13 @@
  * ```
  */
 
+import { config as dotenvConfig } from 'dotenv';
 import Joi from 'joi';
 import type {
   ValidationError,
   ValidationErrorItem,
   ValidationResult,
 } from 'joi';
-import { config as dotenvConfig } from 'dotenv';
 import { ConfigurationError } from '../errors/index';
 
 const shouldLoadDotenv =
@@ -424,10 +424,6 @@ const configSchema = Joi.object<Config>({
     .max(256)
     .allow('')
     .optional()
-    .when('E2E_AUTH_BYPASS_ENABLED', {
-      is: true,
-      then: Joi.string().min(8).max(256).required(),
-    })
     .description(
       'Secret token required in x-e2e-auth-bypass header when bypass is enabled'
     ),
@@ -500,8 +496,7 @@ const configSchema = Joi.object<Config>({
     .max(98)
     .default(
       // Higher threshold in test/dev (95%) to reduce noise, production uses 80%
-      process.env.NODE_ENV === 'test' ||
-        process.env.NODE_ENV === 'development'
+      process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development'
         ? 95
         : 80
     )
@@ -541,13 +536,10 @@ const configSchema = Joi.object<Config>({
 });
 
 /**
- * Validates and creates the configuration object
- * @returns Validated and frozen configuration object
- * @throws Error if validation fails with detailed error messages
+ * Extracts environment variables into a configuration object
  */
-function createConfig(): Readonly<Config> {
-  // Extract environment variables
-  const envVars = {
+function extractEnvironmentVariables(): Record<string, string | undefined> {
+  return {
     PROXY_API_KEY: process.env.PROXY_API_KEY,
     AZURE_OPENAI_ENDPOINT: process.env.AZURE_OPENAI_ENDPOINT,
     AZURE_OPENAI_API_KEY: process.env.AZURE_OPENAI_API_KEY,
@@ -567,7 +559,6 @@ function createConfig(): Readonly<Config> {
     AWS_BEDROCK_MODELS: process.env.AWS_BEDROCK_MODELS,
     AWS_BEDROCK_TIMEOUT: process.env.AWS_BEDROCK_TIMEOUT,
     AWS_BEDROCK_MAX_RETRIES: process.env.AWS_BEDROCK_MAX_RETRIES,
-    // Node.js 24 configuration
     ENABLE_MEMORY_MANAGEMENT: process.env.ENABLE_MEMORY_MANAGEMENT,
     MEMORY_SAMPLE_INTERVAL: process.env.MEMORY_SAMPLE_INTERVAL,
     MEMORY_PRESSURE_THRESHOLD: process.env.MEMORY_PRESSURE_THRESHOLD,
@@ -577,13 +568,112 @@ function createConfig(): Readonly<Config> {
     HTTP_HEADERS_TIMEOUT: process.env.HTTP_HEADERS_TIMEOUT,
     HTTP_MAX_CONNECTIONS: process.env.HTTP_MAX_CONNECTIONS,
   };
+}
 
-  // Validate against schema
+/**
+ * Formats validation error details into user-friendly messages
+ */
+function formatValidationErrorMessages(
+  errorDetails: readonly ValidationErrorItem[]
+): string[] {
+  const errorMessages: string[] = [];
+  for (const detail of errorDetails) {
+    const { path, message, context } = detail;
+    const key = path[0];
+    const hasContextValue =
+      context?.value !== undefined && context.value !== null;
+
+    const receivedValue = hasContextValue
+      ? JSON.stringify(context.value)
+      : undefined;
+
+    const formattedMessage = `${key}: ${message}${receivedValue !== undefined ? ` (received: ${receivedValue})` : ''}`;
+    errorMessages.push(formattedMessage);
+  }
+  return errorMessages;
+}
+
+/**
+ * Creates the complete validation error message with documentation
+ */
+function createValidationErrorMessage(errorMessages: string[]): string {
+  return [
+    'Configuration validation failed:',
+    ...errorMessages.map((msg) => `  - ${msg}`),
+    '',
+    'Required environment variables:',
+    '  - PROXY_API_KEY: API key for client authentication (32-256 characters)',
+    '  - AZURE_OPENAI_ENDPOINT: Azure OpenAI endpoint URL (must be HTTPS)',
+    '  - AZURE_OPENAI_API_KEY: Azure OpenAI API key (32-256 characters)',
+    '  - AZURE_OPENAI_MODEL: Azure OpenAI model deployment name (alphanumeric, hyphens, underscores)',
+    '',
+    'Optional environment variables:',
+    '  - AZURE_OPENAI_TIMEOUT: Request timeout in ms (5000-300000, default: 120000)',
+    '  - AZURE_OPENAI_MAX_RETRIES: Max retry attempts (0-10, default: 3)',
+    '  - DEFAULT_REASONING_EFFORT: Default reasoning effort (minimal|low|medium|high, default: medium)',
+    '  - ENABLE_CONTENT_SECURITY_VALIDATION: Enable content security validation (true|false, default: true)',
+    '  - E2E_AUTH_BYPASS_ENABLED: Enable E2E auth bypass (true|false, default: false)',
+    '  - E2E_AUTH_BYPASS_TOKEN: Secret token for E2E auth bypass (required when bypass is enabled)',
+    '  - PORT: Server port number (1024-65535, default: 8080)',
+    '  - NODE_ENV: Node.js environment (development|production|test, default: production)',
+    '  - AWS_BEDROCK_API_KEY: AWS Bedrock API key (optional, 16-256 characters)',
+    '  - AWS_BEDROCK_REGION: AWS Bedrock region (optional, default: us-west-2)',
+    '  - AWS_BEDROCK_TIMEOUT: AWS Bedrock request timeout in ms (optional, 5000-300000, default: 120000)',
+    '  - AWS_BEDROCK_MAX_RETRIES: AWS Bedrock max retry attempts (optional, 0-10, default: 3)',
+    '',
+    'Node.js 24 Configuration (optional):',
+    '  - ENABLE_MEMORY_MANAGEMENT: Enable memory management features (true|false, default: true)',
+    '  - MEMORY_SAMPLE_INTERVAL: Memory sampling interval in ms (1000-60000, default: 10000)',
+    '  - MEMORY_PRESSURE_THRESHOLD: Memory pressure threshold % (50-95, default: 80)',
+    '  - ENABLE_AUTO_GC: Enable automatic garbage collection (true|false, default: true)',
+    '  - ENABLE_RESOURCE_MONITORING: Enable resource monitoring (true|false, default: true)',
+    '  - HTTP_KEEP_ALIVE_TIMEOUT: HTTP keep-alive timeout in ms (30000-300000, default: 65000)',
+    '  - HTTP_HEADERS_TIMEOUT: HTTP headers timeout in ms (30000-300000, default: 66000)',
+    '  - HTTP_MAX_CONNECTIONS: Maximum HTTP connections (100-10000, default: 1000)',
+  ].join('\n');
+}
+
+/**
+ * Validates business rules for the configuration
+ */
+function validateBusinessRules(validatedValue: Config): void {
+  if (
+    validatedValue.E2E_AUTH_BYPASS_ENABLED === true &&
+    (!validatedValue.E2E_AUTH_BYPASS_TOKEN ||
+      validatedValue.E2E_AUTH_BYPASS_TOKEN.length < 8)
+  ) {
+    throw new ConfigurationError(
+      'E2E_AUTH_BYPASS_TOKEN must be provided and at least 8 characters when E2E_AUTH_BYPASS_ENABLED is true',
+      'config-validation',
+      'configuration_validation'
+    );
+  }
+
+  if (
+    validatedValue.NODE_ENV === 'production' &&
+    validatedValue.E2E_AUTH_BYPASS_ENABLED === true
+  ) {
+    throw new ConfigurationError(
+      'E2E authentication bypass cannot be enabled in production',
+      'config-validation',
+      'configuration_validation'
+    );
+  }
+}
+
+/**
+ * Validates and creates the configuration object
+ * @returns Validated and frozen configuration object
+ * @throws Error if validation fails with detailed error messages
+ */
+function createConfig(): Readonly<Config> {
+  const envVars = extractEnvironmentVariables();
+
   const validationResult: ValidationResult<Config> = configSchema.validate(
     envVars,
     {
-      abortEarly: false, // Collect all validation errors
-      allowUnknown: false, // Reject unknown environment variables
+      abortEarly: false,
+      allowUnknown: false,
       stripUnknown: false,
     }
   );
@@ -591,60 +681,11 @@ function createConfig(): Readonly<Config> {
   const validationError: ValidationError | undefined = validationResult.error;
   const validatedValueRaw: unknown = validationResult.value;
 
-  // Implement fail-fast principle with detailed error messages
   if (validationError) {
     const errorDetails: readonly ValidationErrorItem[] =
       validationError.details;
-    const errorMessages: string[] = [];
-    for (const detail of errorDetails) {
-      const { path, message, context } = detail;
-      const key = path[0];
-      const hasContextValue =
-        context?.value !== undefined && context.value !== null;
-
-      const receivedValue = hasContextValue
-        ? JSON.stringify(context.value)
-        : undefined;
-
-      const formattedMessage = `${key}: ${message}${receivedValue !== undefined ? ` (received: ${receivedValue})` : ''}`;
-      errorMessages.push(formattedMessage);
-    }
-
-    const errorMessage = [
-      'Configuration validation failed:',
-      ...errorMessages.map((msg) => `  - ${msg}`),
-      '',
-      'Required environment variables:',
-      '  - PROXY_API_KEY: API key for client authentication (32-256 characters)',
-      '  - AZURE_OPENAI_ENDPOINT: Azure OpenAI endpoint URL (must be HTTPS)',
-      '  - AZURE_OPENAI_API_KEY: Azure OpenAI API key (32-256 characters)',
-      '  - AZURE_OPENAI_MODEL: Azure OpenAI model deployment name (alphanumeric, hyphens, underscores)',
-      '',
-      'Optional environment variables:',
-
-      '  - AZURE_OPENAI_TIMEOUT: Request timeout in ms (5000-300000, default: 120000)',
-      '  - AZURE_OPENAI_MAX_RETRIES: Max retry attempts (0-10, default: 3)',
-      '  - DEFAULT_REASONING_EFFORT: Default reasoning effort (minimal|low|medium|high, default: medium)',
-      '  - ENABLE_CONTENT_SECURITY_VALIDATION: Enable content security validation (true|false, default: true)',
-      '  - E2E_AUTH_BYPASS_ENABLED: Enable E2E auth bypass (true|false, default: false)',
-      '  - E2E_AUTH_BYPASS_TOKEN: Secret token for E2E auth bypass (required when bypass is enabled)',
-      '  - PORT: Server port number (1024-65535, default: 8080)',
-      '  - NODE_ENV: Node.js environment (development|production|test, default: production)',
-      '  - AWS_BEDROCK_API_KEY: AWS Bedrock API key (optional, 16-256 characters)',
-      '  - AWS_BEDROCK_REGION: AWS Bedrock region (optional, default: us-west-2)',
-      '  - AWS_BEDROCK_TIMEOUT: AWS Bedrock request timeout in ms (optional, 5000-300000, default: 120000)',
-      '  - AWS_BEDROCK_MAX_RETRIES: AWS Bedrock max retry attempts (optional, 0-10, default: 3)',
-      '',
-      'Node.js 24 Configuration (optional):',
-      '  - ENABLE_MEMORY_MANAGEMENT: Enable memory management features (true|false, default: true)',
-      '  - MEMORY_SAMPLE_INTERVAL: Memory sampling interval in ms (1000-60000, default: 10000)',
-      '  - MEMORY_PRESSURE_THRESHOLD: Memory pressure threshold % (50-95, default: 80)',
-      '  - ENABLE_AUTO_GC: Enable automatic garbage collection (true|false, default: true)',
-      '  - ENABLE_RESOURCE_MONITORING: Enable resource monitoring (true|false, default: true)',
-      '  - HTTP_KEEP_ALIVE_TIMEOUT: HTTP keep-alive timeout in ms (30000-300000, default: 65000)',
-      '  - HTTP_HEADERS_TIMEOUT: HTTP headers timeout in ms (30000-300000, default: 66000)',
-      '  - HTTP_MAX_CONNECTIONS: Maximum HTTP connections (100-10000, default: 1000)',
-    ].join('\n');
+    const errorMessages = formatValidationErrorMessages(errorDetails);
+    const errorMessage = createValidationErrorMessage(errorMessages);
 
     throw new ConfigurationError(
       errorMessage,
@@ -664,19 +705,8 @@ function createConfig(): Readonly<Config> {
   assertIsConfig(validatedValueRaw);
   const validatedValue: Config = validatedValueRaw;
 
-  // Disallow E2E bypass in production for safety
-  if (
-    validatedValue.NODE_ENV === 'production' &&
-    validatedValue.E2E_AUTH_BYPASS_ENABLED === true
-  ) {
-    throw new ConfigurationError(
-      'E2E authentication bypass cannot be enabled in production',
-      'config-validation',
-      'configuration_validation'
-    );
-  }
+  validateBusinessRules(validatedValue);
 
-  // Freeze configuration to prevent runtime modifications
   return Object.freeze(validatedValue);
 }
 
@@ -709,6 +739,112 @@ export interface SanitizedConfig {
   readonly HTTP_MAX_CONNECTIONS: number;
 }
 
+/**
+ * Validates a required string field in the configuration
+ */
+function validateRequiredStringField(
+  candidate: { [key: string]: unknown },
+  fieldName: string
+): void {
+  if (typeof candidate[fieldName] !== 'string') {
+    throw new ConfigurationError(
+      `Configuration key ${fieldName} is missing or not a string`,
+      'config-validation',
+      'configuration_validation'
+    );
+  }
+}
+
+/**
+ * Validates a required number field in the configuration
+ */
+function validateRequiredNumberField(
+  candidate: { [key: string]: unknown },
+  fieldName: string
+): void {
+  if (typeof candidate[fieldName] !== 'number') {
+    throw new ConfigurationError(
+      `Configuration key ${fieldName} is missing or not a number`,
+      'config-validation',
+      'configuration_validation'
+    );
+  }
+}
+
+/**
+ * Validates a required boolean field in the configuration
+ */
+function validateRequiredBooleanField(
+  candidate: { [key: string]: unknown },
+  fieldName: string
+): void {
+  if (typeof candidate[fieldName] !== 'boolean') {
+    throw new ConfigurationError(
+      `Configuration key ${fieldName} is missing or not a boolean`,
+      'config-validation',
+      'configuration_validation'
+    );
+  }
+}
+
+/**
+ * Validates an optional string field in the configuration
+ */
+function validateOptionalStringField(
+  candidate: { [key: string]: unknown },
+  fieldName: string
+): void {
+  if (
+    candidate[fieldName] !== undefined &&
+    typeof candidate[fieldName] !== 'string'
+  ) {
+    throw new ConfigurationError(
+      `Configuration key ${fieldName} must be a string when provided`,
+      'config-validation',
+      'configuration_validation'
+    );
+  }
+}
+
+/**
+ * Validates an optional number field in the configuration
+ */
+function validateOptionalNumberField(
+  candidate: { [key: string]: unknown },
+  fieldName: string
+): void {
+  if (
+    candidate[fieldName] !== undefined &&
+    typeof candidate[fieldName] !== 'number'
+  ) {
+    throw new ConfigurationError(
+      `Configuration key ${fieldName} must be a number when provided`,
+      'config-validation',
+      'configuration_validation'
+    );
+  }
+}
+
+/**
+ * Validates an optional string field with null check
+ */
+function validateOptionalStringFieldWithNull(
+  candidate: { [key: string]: unknown },
+  fieldName: string
+): void {
+  if (
+    candidate[fieldName] !== undefined &&
+    candidate[fieldName] !== null &&
+    typeof candidate[fieldName] !== 'string'
+  ) {
+    throw new ConfigurationError(
+      `Configuration key ${fieldName} must be a string when provided`,
+      'config-validation',
+      'configuration_validation'
+    );
+  }
+}
+
 function assertIsConfig(value: unknown): asserts value is Config {
   if (typeof value !== 'object' || value === null) {
     throw new ConfigurationError(
@@ -720,215 +856,40 @@ function assertIsConfig(value: unknown): asserts value is Config {
 
   const candidate = value as { [K in keyof Config]?: unknown };
 
-  if (typeof candidate.PROXY_API_KEY !== 'string') {
-    throw new ConfigurationError(
-      'Configuration key PROXY_API_KEY is missing or not a string',
-      'config-validation',
-      'configuration_validation'
-    );
-  }
+  // Validate required string fields
+  validateRequiredStringField(candidate, 'PROXY_API_KEY');
+  validateRequiredStringField(candidate, 'AZURE_OPENAI_ENDPOINT');
+  validateRequiredStringField(candidate, 'AZURE_OPENAI_API_KEY');
+  validateRequiredStringField(candidate, 'AZURE_OPENAI_MODEL');
+  validateRequiredStringField(candidate, 'NODE_ENV');
+  validateRequiredStringField(candidate, 'DEFAULT_REASONING_EFFORT');
 
-  if (typeof candidate.AZURE_OPENAI_ENDPOINT !== 'string') {
-    throw new ConfigurationError(
-      'Configuration key AZURE_OPENAI_ENDPOINT is missing or not a string',
-      'config-validation',
-      'configuration_validation'
-    );
-  }
+  // Validate required number fields
+  validateRequiredNumberField(candidate, 'PORT');
+  validateRequiredNumberField(candidate, 'AZURE_OPENAI_TIMEOUT');
+  validateRequiredNumberField(candidate, 'AZURE_OPENAI_MAX_RETRIES');
+  validateRequiredNumberField(candidate, 'MEMORY_SAMPLE_INTERVAL');
+  validateRequiredNumberField(candidate, 'MEMORY_PRESSURE_THRESHOLD');
+  validateRequiredNumberField(candidate, 'HTTP_KEEP_ALIVE_TIMEOUT');
+  validateRequiredNumberField(candidate, 'HTTP_HEADERS_TIMEOUT');
+  validateRequiredNumberField(candidate, 'HTTP_MAX_CONNECTIONS');
 
-  if (typeof candidate.AZURE_OPENAI_API_KEY !== 'string') {
-    throw new ConfigurationError(
-      'Configuration key AZURE_OPENAI_API_KEY is missing or not a string',
-      'config-validation',
-      'configuration_validation'
-    );
-  }
+  // Validate required boolean fields
+  validateRequiredBooleanField(candidate, 'ENABLE_CONTENT_SECURITY_VALIDATION');
+  validateRequiredBooleanField(candidate, 'E2E_AUTH_BYPASS_ENABLED');
+  validateRequiredBooleanField(candidate, 'ENABLE_MEMORY_MANAGEMENT');
+  validateRequiredBooleanField(candidate, 'ENABLE_AUTO_GC');
+  validateRequiredBooleanField(candidate, 'ENABLE_RESOURCE_MONITORING');
 
-  if (typeof candidate.AZURE_OPENAI_MODEL !== 'string') {
-    throw new ConfigurationError(
-      'Configuration key AZURE_OPENAI_MODEL is missing or not a string',
-      'config-validation',
-      'configuration_validation'
-    );
-  }
+  // Validate optional string fields
+  validateOptionalStringFieldWithNull(candidate, 'E2E_AUTH_BYPASS_TOKEN');
+  validateOptionalStringField(candidate, 'CORS_ALLOWED_ORIGINS');
+  validateOptionalStringField(candidate, 'AWS_BEDROCK_API_KEY');
+  validateOptionalStringField(candidate, 'AWS_BEDROCK_REGION');
 
-  if (typeof candidate.PORT !== 'number') {
-    throw new ConfigurationError(
-      'Configuration key PORT is missing or not a number',
-      'config-validation',
-      'configuration_validation'
-    );
-  }
-
-  if (typeof candidate.NODE_ENV !== 'string') {
-    throw new ConfigurationError(
-      'Configuration key NODE_ENV is missing or not a string',
-      'config-validation',
-      'configuration_validation'
-    );
-  }
-
-  if (typeof candidate.AZURE_OPENAI_TIMEOUT !== 'number') {
-    throw new Error(
-      'Configuration key AZURE_OPENAI_TIMEOUT is missing or not a number'
-    );
-  }
-
-  if (typeof candidate.AZURE_OPENAI_MAX_RETRIES !== 'number') {
-    throw new Error(
-      'Configuration key AZURE_OPENAI_MAX_RETRIES is missing or not a number'
-    );
-  }
-
-  if (typeof candidate.DEFAULT_REASONING_EFFORT !== 'string') {
-    throw new Error(
-      'Configuration key DEFAULT_REASONING_EFFORT is missing or not a string'
-    );
-  }
-
-  if (typeof candidate.ENABLE_CONTENT_SECURITY_VALIDATION !== 'boolean') {
-    throw new Error(
-      'Configuration key ENABLE_CONTENT_SECURITY_VALIDATION is missing or not a boolean'
-    );
-  }
-
-  if (typeof candidate.E2E_AUTH_BYPASS_ENABLED !== 'boolean') {
-    throw new Error(
-      'Configuration key E2E_AUTH_BYPASS_ENABLED is missing or not a boolean'
-    );
-  }
-
-  if (
-    candidate.E2E_AUTH_BYPASS_TOKEN !== undefined &&
-    candidate.E2E_AUTH_BYPASS_TOKEN !== null &&
-    typeof candidate.E2E_AUTH_BYPASS_TOKEN !== 'string'
-  ) {
-    throw new ConfigurationError(
-      'Configuration key E2E_AUTH_BYPASS_TOKEN must be a string when provided',
-      'config-validation',
-      'configuration_validation'
-    );
-  }
-
-  if (
-    candidate.CORS_ALLOWED_ORIGINS !== undefined &&
-    typeof candidate.CORS_ALLOWED_ORIGINS !== 'string'
-  ) {
-    throw new ConfigurationError(
-      'Configuration key CORS_ALLOWED_ORIGINS must be a string when provided',
-      'config-validation',
-      'configuration_validation'
-    );
-  }
-
-  if (
-    candidate.AWS_BEDROCK_API_KEY !== undefined &&
-    typeof candidate.AWS_BEDROCK_API_KEY !== 'string'
-  ) {
-    throw new ConfigurationError(
-      'Configuration key AWS_BEDROCK_API_KEY must be a string when provided',
-      'config-validation',
-      'configuration_validation'
-    );
-  }
-
-  if (
-    candidate.AWS_BEDROCK_REGION !== undefined &&
-    typeof candidate.AWS_BEDROCK_REGION !== 'string'
-  ) {
-    throw new ConfigurationError(
-      'Configuration key AWS_BEDROCK_REGION must be a string when provided',
-      'config-validation',
-      'configuration_validation'
-    );
-  }
-
-  if (
-    candidate.AWS_BEDROCK_TIMEOUT !== undefined &&
-    typeof candidate.AWS_BEDROCK_TIMEOUT !== 'number'
-  ) {
-    throw new ConfigurationError(
-      'Configuration key AWS_BEDROCK_TIMEOUT must be a number when provided',
-      'config-validation',
-      'configuration_validation'
-    );
-  }
-
-  if (
-    candidate.AWS_BEDROCK_MAX_RETRIES !== undefined &&
-    typeof candidate.AWS_BEDROCK_MAX_RETRIES !== 'number'
-  ) {
-    throw new ConfigurationError(
-      'Configuration key AWS_BEDROCK_MAX_RETRIES must be a number when provided',
-      'config-validation',
-      'configuration_validation'
-    );
-  }
-
-  // Node.js 24 configuration validation
-  if (typeof candidate.ENABLE_MEMORY_MANAGEMENT !== 'boolean') {
-    throw new ConfigurationError(
-      'Configuration key ENABLE_MEMORY_MANAGEMENT is missing or not a boolean',
-      'config-validation',
-      'configuration_validation'
-    );
-  }
-
-  if (typeof candidate.MEMORY_SAMPLE_INTERVAL !== 'number') {
-    throw new ConfigurationError(
-      'Configuration key MEMORY_SAMPLE_INTERVAL is missing or not a number',
-      'config-validation',
-      'configuration_validation'
-    );
-  }
-
-  if (typeof candidate.MEMORY_PRESSURE_THRESHOLD !== 'number') {
-    throw new ConfigurationError(
-      'Configuration key MEMORY_PRESSURE_THRESHOLD is missing or not a number',
-      'config-validation',
-      'configuration_validation'
-    );
-  }
-
-  if (typeof candidate.ENABLE_AUTO_GC !== 'boolean') {
-    throw new ConfigurationError(
-      'Configuration key ENABLE_AUTO_GC is missing or not a boolean',
-      'config-validation',
-      'configuration_validation'
-    );
-  }
-
-  if (typeof candidate.ENABLE_RESOURCE_MONITORING !== 'boolean') {
-    throw new ConfigurationError(
-      'Configuration key ENABLE_RESOURCE_MONITORING is missing or not a boolean',
-      'config-validation',
-      'configuration_validation'
-    );
-  }
-
-  if (typeof candidate.HTTP_KEEP_ALIVE_TIMEOUT !== 'number') {
-    throw new ConfigurationError(
-      'Configuration key HTTP_KEEP_ALIVE_TIMEOUT is missing or not a number',
-      'config-validation',
-      'configuration_validation'
-    );
-  }
-
-  if (typeof candidate.HTTP_HEADERS_TIMEOUT !== 'number') {
-    throw new ConfigurationError(
-      'Configuration key HTTP_HEADERS_TIMEOUT is missing or not a number',
-      'config-validation',
-      'configuration_validation'
-    );
-  }
-
-  if (typeof candidate.HTTP_MAX_CONNECTIONS !== 'number') {
-    throw new ConfigurationError(
-      'Configuration key HTTP_MAX_CONNECTIONS is missing or not a number',
-      'config-validation',
-      'configuration_validation'
-    );
-  }
+  // Validate optional number fields
+  validateOptionalNumberField(candidate, 'AWS_BEDROCK_TIMEOUT');
+  validateOptionalNumberField(candidate, 'AWS_BEDROCK_MAX_RETRIES');
 }
 
 function sanitizeConfig(value: Readonly<Config>): SanitizedConfig {
@@ -1069,7 +1030,7 @@ export function isValidConfig(value: unknown): value is Config {
 export function validateEnvironmentVariable(
   name: string,
   value: string | undefined,
-  required: boolean = true
+  required = true
 ): string | undefined {
   if (required && (value === undefined || value === '')) {
     throw new Error(

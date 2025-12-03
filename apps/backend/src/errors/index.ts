@@ -94,7 +94,7 @@ export abstract class BaseError extends Error {
     statusCode: number,
     errorCode: string,
     correlationId: string,
-    isOperational: boolean = true,
+    isOperational = true,
     operation?: string,
     metadata?: Record<string, unknown>
   ) {
@@ -248,7 +248,7 @@ export class ValidationError extends BaseError {
     correlationId: string,
     field?: string,
     value?: unknown,
-    isOperational: boolean = true,
+    isOperational = true,
     operation?: string
   ) {
     super(
@@ -277,7 +277,7 @@ export class RateLimitError extends BaseError {
   constructor(
     message: string,
     correlationId: string,
-    retryAfter: number = 60,
+    retryAfter = 60,
     operation?: string
   ) {
     super(message, 429, 'RATE_LIMIT_ERROR', correlationId, true, operation, {
@@ -492,6 +492,53 @@ export function isError(error: unknown): error is Error {
 }
 
 /**
+ * Set error cause property
+ */
+function setErrorCause(originalError: Error, newError: BaseError): void {
+  if (newError.cause === undefined) {
+    Object.defineProperty(newError, 'cause', {
+      value: originalError,
+      writable: false,
+      enumerable: false,
+      configurable: true,
+    });
+  }
+}
+
+/**
+ * Preserve error code property
+ */
+function preserveErrorCode(originalError: Error, newError: BaseError): void {
+  if ('code' in originalError && typeof originalError.code === 'string') {
+    Object.assign(newError.context.metadata ?? {}, {
+      originalErrorCode: originalError.code,
+    });
+  }
+}
+
+/**
+ * Preserve error errno property
+ */
+function preserveErrorErrno(originalError: Error, newError: BaseError): void {
+  if ('errno' in originalError && typeof originalError.errno === 'number') {
+    Object.assign(newError.context.metadata ?? {}, {
+      originalErrno: originalError.errno,
+    });
+  }
+}
+
+/**
+ * Preserve error syscall property
+ */
+function preserveErrorSyscall(originalError: Error, newError: BaseError): void {
+  if ('syscall' in originalError && typeof originalError.syscall === 'string') {
+    Object.assign(newError.context.metadata ?? {}, {
+      originalSyscall: originalError.syscall,
+    });
+  }
+}
+
+/**
  * Enhanced error context preservation for Node.js 24
  * Maintains error cause chain and additional context
  */
@@ -499,41 +546,61 @@ export function preserveErrorContext(
   originalError: unknown,
   newError: BaseError
 ): BaseError {
-  if (isError(originalError)) {
-    // Preserve the original error as cause if not already set
-    if (newError.cause === undefined) {
-      Object.defineProperty(newError, 'cause', {
-        value: originalError,
-        writable: false,
-        enumerable: false,
-        configurable: true,
-      });
-    }
-
-    // Preserve additional error properties
-    if ('code' in originalError && typeof originalError.code === 'string') {
-      Object.assign(newError.context.metadata ?? {}, {
-        originalErrorCode: originalError.code,
-      });
-    }
-
-    if ('errno' in originalError && typeof originalError.errno === 'number') {
-      Object.assign(newError.context.metadata ?? {}, {
-        originalErrno: originalError.errno,
-      });
-    }
-
-    if (
-      'syscall' in originalError &&
-      typeof originalError.syscall === 'string'
-    ) {
-      Object.assign(newError.context.metadata ?? {}, {
-        originalSyscall: originalError.syscall,
-      });
-    }
+  if (!isError(originalError)) {
+    return newError;
   }
 
+  setErrorCause(originalError, newError);
+  preserveErrorCode(originalError, newError);
+  preserveErrorErrno(originalError, newError);
+  preserveErrorSyscall(originalError, newError);
+
   return newError;
+}
+
+/**
+ * Map Azure error types to HTTP status codes
+ */
+function mapAzureErrorTypeToStatusCode(errorType: string): number {
+  const errorTypeMap: Record<string, number> = {
+    invalid_request_error: 400,
+    authentication_error: 401,
+    permission_error: 403,
+    not_found_error: 404,
+    rate_limit_error: 429,
+    api_error: 503,
+    overloaded_error: 503,
+  };
+
+  return errorTypeMap[errorType] ?? 500;
+}
+
+/**
+ * Build AzureOpenAIError with context preservation
+ */
+function buildAzureOpenAIError(
+  message: string,
+  statusCode: number,
+  correlationId: string,
+  type: string,
+  code: string | undefined,
+  operation: string | undefined,
+  originalError: unknown
+): AzureOpenAIError {
+  const azureOpenAIError = new AzureOpenAIError(
+    message,
+    statusCode,
+    correlationId,
+    type,
+    code,
+    operation
+  );
+
+  if (isError(originalError)) {
+    return preserveErrorContext(originalError, azureOpenAIError);
+  }
+
+  return azureOpenAIError;
 }
 
 /**
@@ -548,47 +615,17 @@ export class ErrorFactory {
     const { message, type, code } =
       ErrorFactory.parseAzureOpenAIErrorPayload(azureError);
 
-    // Map Azure error types to appropriate status codes
-    let statusCode = 500;
-    switch (type) {
-      case 'invalid_request_error':
-        statusCode = 400;
-        break;
-      case 'authentication_error':
-        statusCode = 401;
-        break;
-      case 'permission_error':
-        statusCode = 403;
-        break;
-      case 'not_found_error':
-        statusCode = 404;
-        break;
-      case 'rate_limit_error':
-        statusCode = 429;
-        break;
-      case 'api_error':
-      case 'overloaded_error':
-        statusCode = 503;
-        break;
-      default:
-        statusCode = 500;
-    }
+    const statusCode = mapAzureErrorTypeToStatusCode(type);
 
-    const azureOpenAIError = new AzureOpenAIError(
+    return buildAzureOpenAIError(
       message,
       statusCode,
       correlationId,
       type,
       code,
-      operation
+      operation,
+      azureError
     );
-
-    // Preserve original error context if it's an Error object
-    if (isError(azureError)) {
-      return preserveErrorContext(azureError, azureOpenAIError);
-    }
-
-    return azureOpenAIError;
   }
 
   private static parseAzureOpenAIErrorPayload(azureError: unknown): {
@@ -663,57 +700,90 @@ export class ErrorFactory {
   }
 
   /**
-   * Enhanced error transformation with comprehensive context preservation
-   * Handles various error types and maintains error cause chains
+   * Check if error code indicates a network error
    */
-  public static transformError(
+  private static isNetworkErrorCode(code: string): boolean {
+    const networkErrorCodes = [
+      'ECONNREFUSED',
+      'ENOTFOUND',
+      'ECONNRESET',
+      'ETIMEDOUT',
+    ];
+    return networkErrorCodes.includes(code);
+  }
+
+  /**
+   * Check if error code indicates a timeout error
+   */
+  private static isTimeoutErrorCode(code: string): boolean {
+    const timeoutErrorCodes = ['TIMEOUT', 'ESOCKETTIMEDOUT'];
+    return timeoutErrorCodes.includes(code);
+  }
+
+  /**
+   * Transform Error object with code property
+   */
+  private static transformErrorWithCode(
+    error: Error,
+    correlationId: string,
+    operation?: string,
+    defaultMessage?: string
+  ): BaseError {
+    if (!('code' in error)) {
+      return ErrorFactory.transformGenericError(
+        error,
+        correlationId,
+        operation,
+        defaultMessage
+      );
+    }
+
+    const errorWithCode = error as Error & { code: string };
+
+    if (ErrorFactory.isNetworkErrorCode(errorWithCode.code)) {
+      return ErrorFactory.fromNetworkError(error, correlationId, operation);
+    }
+
+    if (ErrorFactory.isTimeoutErrorCode(errorWithCode.code)) {
+      return ErrorFactory.fromTimeout(30000, correlationId, operation);
+    }
+
+    return ErrorFactory.transformGenericError(
+      error,
+      correlationId,
+      operation,
+      defaultMessage
+    );
+  }
+
+  /**
+   * Transform generic Error object
+   */
+  private static transformGenericError(
+    error: Error,
+    correlationId: string,
+    operation?: string,
+    defaultMessage = 'An unexpected error occurred'
+  ): BaseError {
+    const genericError = new InternalServerError(
+      error.message || defaultMessage,
+      correlationId,
+      operation,
+      { originalErrorName: error.name }
+    );
+
+    return preserveErrorContext(error, genericError);
+  }
+
+  /**
+   * Transform non-Error objects
+   */
+  private static transformNonError(
     error: unknown,
     correlationId: string,
     operation?: string,
-    defaultMessage: string = 'An unexpected error occurred'
+    defaultMessage = 'An unexpected error occurred'
   ): BaseError {
-    // Handle BaseError instances - preserve them as-is
-    if (isBaseError(error)) {
-      return error;
-    }
-
-    // Handle standard Error objects
-    if (isError(error)) {
-      // Check for specific error types based on properties
-      if ('code' in error) {
-        const errorWithCode = error as Error & { code: string };
-
-        // Handle network-related errors
-        if (
-          errorWithCode.code === 'ECONNREFUSED' ||
-          errorWithCode.code === 'ENOTFOUND' ||
-          errorWithCode.code === 'ECONNRESET' ||
-          errorWithCode.code === 'ETIMEDOUT'
-        ) {
-          return ErrorFactory.fromNetworkError(error, correlationId, operation);
-        }
-
-        // Handle timeout errors
-        if (
-          errorWithCode.code === 'TIMEOUT' ||
-          errorWithCode.code === 'ESOCKETTIMEDOUT'
-        ) {
-          return ErrorFactory.fromTimeout(30000, correlationId, operation);
-        }
-      }
-
-      // Handle generic Error objects
-      const genericError = new InternalServerError(
-        error.message || defaultMessage,
-        correlationId,
-        operation,
-        { originalErrorName: error.name }
-      );
-
-      return preserveErrorContext(error, genericError);
-    }
-
-    // Handle string errors
     if (typeof error === 'string') {
       return new InternalServerError(
         error || defaultMessage,
@@ -722,7 +792,6 @@ export class ErrorFactory {
       );
     }
 
-    // Handle object-like errors
     if (typeof error === 'object' && error !== null) {
       const errorObj = error as Record<string, unknown>;
       const message =
@@ -735,10 +804,40 @@ export class ErrorFactory {
       });
     }
 
-    // Handle primitive values
     return new InternalServerError(defaultMessage, correlationId, operation, {
       originalError: String(error),
     });
+  }
+
+  /**
+   * Enhanced error transformation with comprehensive context preservation
+   * Handles various error types and maintains error cause chains
+   */
+  public static transformError(
+    error: unknown,
+    correlationId: string,
+    operation?: string,
+    defaultMessage = 'An unexpected error occurred'
+  ): BaseError {
+    if (isBaseError(error)) {
+      return error;
+    }
+
+    if (isError(error)) {
+      return ErrorFactory.transformErrorWithCode(
+        error,
+        correlationId,
+        operation,
+        defaultMessage
+      );
+    }
+
+    return ErrorFactory.transformNonError(
+      error,
+      correlationId,
+      operation,
+      defaultMessage
+    );
   }
 }
 
@@ -747,7 +846,7 @@ export class ErrorFactory {
  */
 export function createErrorResponse(
   error: BaseError,
-  includeStack: boolean = false
+  includeStack = false
 ): Record<string, unknown> {
   const response = error.toClientError();
 
