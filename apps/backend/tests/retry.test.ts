@@ -230,9 +230,9 @@ describe('Retry Strategy', () => {
       const result = await executePromise;
 
       // All delays should be capped at maxDelayMs
-      result.attempts.slice(1).forEach((attempt) => {
+      for (const attempt of result.attempts.slice(1)) {
         expect(attempt.delayMs).toBeLessThanOrEqual(660); // 600 + 10% jitter
-      });
+      }
     });
   });
 

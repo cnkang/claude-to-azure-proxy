@@ -238,7 +238,7 @@ export function enhancedApiKeyValidation(
     // Store sanitized API key info for logging
     (req as RequestWithCorrelationId & { apiKeyInfo?: unknown }).apiKeyInfo = {
       length: apiKey.length,
-      prefix: apiKey.substring(0, 8) + '...',
+      prefix: `${apiKey.substring(0, 8)}...`,
       source: getApiKeySource(req),
     };
 

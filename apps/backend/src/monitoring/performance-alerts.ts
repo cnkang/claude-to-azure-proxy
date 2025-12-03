@@ -172,10 +172,10 @@ export class PerformanceAlertSystem extends EventEmitter {
     super();
 
     // Initialize alert configurations
-    configs.forEach((config) => {
+    for (const config of configs) {
       const key = `${config.metric}_${config.level}`;
       this.alertConfigs.set(key, config);
-    });
+    }
 
     this.setupEventHandlers();
   }

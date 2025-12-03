@@ -75,6 +75,36 @@ import {
   validateResponsesCreateParams,
 } from '../utils/responses-validator';
 
+type ResponseStreamWithController = AsyncIterable<ResponseStreamEvent> & {
+  controller: { abort: () => void };
+};
+
+type StreamProcessingContext = {
+  correlationId: string;
+  responseId: string;
+  createdAt: number;
+  model: string;
+  requestedModel: string;
+  chunkCount: number;
+  startTime: number;
+};
+
+type StreamEventResult = {
+  chunk?: ResponsesStreamChunk;
+  incrementCount?: boolean;
+  completed?: boolean;
+  responseId?: string;
+  createdAt?: number;
+};
+
+type StreamLifecycle = {
+  stream: ResponseStreamWithController;
+  streamResource: StreamResource;
+  removeAbortListener: () => void;
+  wasAborted: () => boolean;
+  markAborted: () => void;
+};
+
 /**
  * Azure OpenAI v1 Responses API client with comprehensive error handling and monitoring.
  * Enhanced for Node.js 24 with improved connection pooling, automatic resource cleanup,
@@ -188,19 +218,40 @@ export class AzureResponsesClient implements AsyncDisposable {
   ): Promise<ResponsesResponse> {
     this.ensureNotDisposed();
     validateResponsesCreateParams(params);
+    const {
+      connectionResource,
+      removeAbortListener,
+      wasAborted,
+    } = this.createConnectionTracker(signal);
 
-    // Check for abort before creating resources
+    try {
+      return await this.executeNonStreamingRequest(params, signal);
+    } catch (error) {
+      if (isAbortError(error)) {
+        throw error;
+      }
+      throw this.handleApiError(error, 'createResponse');
+    } finally {
+      await this.cleanupConnectionResource(
+        connectionResource,
+        wasAborted(),
+        removeAbortListener
+      );
+    }
+  }
+
+  private createConnectionTracker(signal?: AbortSignal): {
+    connectionResource: HTTPConnectionResource;
+    removeAbortListener: () => void;
+    wasAborted: () => boolean;
+  } {
     throwIfAborted(signal);
-
-    // Create connection resource for tracking
     const connectionResource = createHTTPConnectionResource(
       undefined,
       undefined,
       undefined
     );
     this.activeConnections.add(connectionResource);
-
-    // Check for abort again after resource creation to catch aborts during setup
     throwIfAborted(signal);
 
     let aborted = false;
@@ -208,51 +259,57 @@ export class AzureResponsesClient implements AsyncDisposable {
       aborted = true;
     });
 
+    return { connectionResource, removeAbortListener, wasAborted: () => aborted };
+  }
+
+  private async executeNonStreamingRequest(
+    params: ResponsesCreateParams,
+    signal?: AbortSignal
+  ): Promise<ResponsesResponse> {
+    const requestParams = this.buildRequestParams(
+      params,
+      false
+    ) as ResponseCreateParamsNonStreaming;
+
+    const startTime = performance.now();
+    const response: OpenAIResponse = await this.client.responses.create(
+      requestParams,
+      { signal }
+    );
+    const duration = performance.now() - startTime;
+
+    logger.debug('Azure OpenAI API call completed', '', {
+      duration: Math.round(duration),
+      model: params.model,
+      inputTokens: response.usage?.input_tokens ?? 0,
+      outputTokens: response.usage?.output_tokens ?? 0,
+    });
+
+    const normalized = this.normalizeResponsesResponse(response);
+    return assertValidResponsesResponse(normalized);
+  }
+
+  private async cleanupConnectionResource(
+    connectionResource: HTTPConnectionResource,
+    aborted: boolean,
+    removeAbortListener: () => void
+  ): Promise<void> {
+    removeAbortListener();
+    this.activeConnections.delete(connectionResource);
+
+    if (!aborted || connectionResource.disposed) {
+      return;
+    }
+
     try {
-      const requestParams = this.buildRequestParams(
-        params,
-        false
-      ) as ResponseCreateParamsNonStreaming;
-
-      // Make the API call using the OpenAI client with enhanced monitoring
-      const startTime = performance.now();
-      const response: OpenAIResponse = await this.client.responses.create(
-        requestParams,
-        { signal }
-      );
-      const duration = performance.now() - startTime;
-
-      // Log performance metrics
-      logger.debug('Azure OpenAI API call completed', '', {
-        duration: Math.round(duration),
-        model: params.model,
-        inputTokens: response.usage?.input_tokens ?? 0,
-        outputTokens: response.usage?.output_tokens ?? 0,
+      await connectionResource[Symbol.asyncDispose]();
+    } catch (disposeError) {
+      logger.warn('Failed to dispose aborted Azure connection', '', {
+        error:
+          disposeError instanceof Error
+            ? disposeError.message
+            : 'Unknown error',
       });
-
-      const normalized = this.normalizeResponsesResponse(response);
-      return assertValidResponsesResponse(normalized);
-    } catch (error) {
-      if (isAbortError(error)) {
-        aborted = true;
-        throw error;
-      }
-      throw this.handleApiError(error, 'createResponse');
-    } finally {
-      removeAbortListener();
-      this.activeConnections.delete(connectionResource);
-      if (aborted && !connectionResource.disposed) {
-        try {
-          await connectionResource[Symbol.asyncDispose]();
-        } catch (disposeError) {
-          logger.warn('Failed to dispose aborted Azure connection', '', {
-            error:
-              disposeError instanceof Error
-                ? disposeError.message
-                : 'Unknown error',
-          });
-        }
-      }
     }
   }
 
@@ -288,166 +345,14 @@ export class AzureResponsesClient implements AsyncDisposable {
     throwIfAborted(signal);
 
     const correlationId = uuidv4();
-
-    // Create stream resource for tracking and automatic cleanup
-    // Note: We'll create the resource after we have the actual stream
-    let streamResource: StreamResource | undefined;
-    let aborted = false;
-    let removeAbortListener: (() => void) | undefined;
+    const lifecycle = this.createStreamLifecycle(params, signal, correlationId);
+    const context = this.createStreamContext(params, correlationId);
 
     try {
-      const streamParams = this.buildRequestParams(
-        params,
-        true
-      ) as unknown as ResponseCreateParamsStreaming;
-
-      const stream = this.client.responses.stream(streamParams, { signal });
-
-      removeAbortListener = registerAbortListener(signal, () => {
-        aborted = true;
-        try {
-          stream.controller.abort();
-        } catch (abortError) {
-          logger.debug('Failed to abort Azure response stream controller', '', {
-            error:
-              abortError instanceof Error
-                ? abortError.message
-                : 'Unknown error',
-          });
-        }
-      });
-
-      // Create stream resource now that we have the actual stream
-      streamResource = createStreamResource(
-        stream as unknown as NodeJS.ReadableStream,
-        `Azure OpenAI streaming response for model ${params.model}`
-      );
-      this.activeStreams.add(streamResource);
-
-      let responseId = correlationId;
-      let createdAt = Math.floor(Date.now() / 1000);
-      const model = this.config.deployment;
-      let chunkCount = 0;
-      const startTime = performance.now();
-
-      for await (const event of stream as AsyncIterable<ResponseStreamEvent>) {
-        throwIfAborted(signal);
-        // Check memory pressure periodically during streaming
-        if (chunkCount % 10 === 0) {
-          const memoryMetrics = memoryManager.getMemoryMetrics();
-          if (memoryMetrics.pressure.level === 'critical') {
-            logger.warn(
-              'Critical memory pressure during streaming',
-              correlationId,
-              {
-                heapUsage: memoryMetrics.heap.percentage,
-                chunkCount,
-              }
-            );
-          }
-        }
-
-        switch (event.type) {
-          case 'response.created': {
-            responseId = event.response.id;
-            createdAt = this.normalizeTimestamp(event.response.created_at);
-            break;
-          }
-          case 'response.output_text.delta': {
-            const chunk = this.createTextDeltaChunk(
-              event,
-              responseId,
-              createdAt,
-              model
-            );
-            chunkCount++;
-            yield assertValidResponsesStreamChunk(chunk);
-            break;
-          }
-          case 'response.reasoning_text.delta': {
-            const chunk = this.createReasoningDeltaChunk(
-              event,
-              responseId,
-              createdAt,
-              model,
-              'in_progress'
-            );
-            chunkCount++;
-            yield assertValidResponsesStreamChunk(chunk);
-            break;
-          }
-          case 'response.reasoning_text.done': {
-            const chunk = this.createReasoningDoneChunk(
-              event,
-              responseId,
-              createdAt,
-              model
-            );
-            chunkCount++;
-            yield assertValidResponsesStreamChunk(chunk);
-            break;
-          }
-          case 'response.output_item.added': {
-            const chunk = this.createOutputItemChunk(
-              event,
-              responseId,
-              createdAt,
-              model
-            );
-            if (chunk !== undefined) {
-              chunkCount++;
-              yield assertValidResponsesStreamChunk(chunk);
-            }
-            break;
-          }
-          case 'response.completed': {
-            const chunk = this.createCompletedChunk(event);
-            chunkCount++;
-
-            // Log streaming completion metrics
-            const duration = performance.now() - startTime;
-            logger.debug('Azure OpenAI streaming completed', correlationId, {
-              duration: Math.round(duration),
-              chunkCount,
-              model: params.model,
-              responseId,
-            });
-
-            yield assertValidResponsesStreamChunk(chunk);
-            break;
-          }
-          case 'response.failed': {
-            throw ErrorFactory.fromAzureOpenAIError(
-              new Error(`Response ${event.response.id} failed`),
-              correlationId,
-              'createResponseStream'
-            );
-          }
-          case 'error': {
-            throw ErrorFactory.fromAzureOpenAIError(
-              new Error(
-                'message' in event && typeof event.message === 'string'
-                  ? event.message
-                  : 'Response stream error'
-              ),
-              correlationId,
-              'createResponseStream'
-            );
-          }
-          default: {
-            // Ignore other event types but keep debug trace for observability
-            if (!AzureResponsesClient.ignoredStreamEvents.has(event.type)) {
-              logger.debug('Unhandled Responses stream event', correlationId, {
-                eventType: event.type,
-              });
-            }
-            break;
-          }
-        }
-      }
+      yield* this.consumeResponseStream(lifecycle, context, signal);
     } catch (error) {
       if (isAbortError(error)) {
-        aborted = true;
+        lifecycle.markAborted();
         throw error;
       }
       if (error instanceof Error) {
@@ -466,24 +371,252 @@ export class AzureResponsesClient implements AsyncDisposable {
         'createResponseStream'
       );
     } finally {
-      if (removeAbortListener) {
-        removeAbortListener();
-      }
-      if (streamResource) {
-        this.activeStreams.delete(streamResource);
-        if (aborted && !streamResource.disposed) {
-          try {
-            await streamResource[Symbol.asyncDispose]();
-          } catch (disposeError) {
-            logger.warn('Failed to dispose aborted Azure stream resource', '', {
-              error:
-                disposeError instanceof Error
-                  ? disposeError.message
-                  : 'Unknown error',
-            });
-          }
+      await this.cleanupStreamLifecycle(lifecycle);
+    }
+  }
+
+  private createStreamLifecycle(
+    params: ResponsesCreateParams,
+    signal: AbortSignal | undefined,
+    correlationId: string
+  ): StreamLifecycle {
+    const streamParams = this.buildRequestParams(
+      params,
+      true
+    ) as unknown as ResponseCreateParamsStreaming;
+
+    const stream = this.client.responses.stream(
+      streamParams,
+      { signal }
+    ) as ResponseStreamWithController;
+
+    let aborted = false;
+    const removeAbortListener = registerAbortListener(signal, () => {
+      aborted = true;
+      this.abortStreamController(stream, correlationId);
+    });
+
+    const streamResource = createStreamResource(
+      stream as unknown as NodeJS.ReadableStream,
+      `Azure OpenAI streaming response for model ${params.model}`
+    );
+    this.activeStreams.add(streamResource);
+
+    return {
+      stream,
+      streamResource,
+      removeAbortListener,
+      wasAborted: () => aborted,
+      markAborted: () => {
+        aborted = true;
+      },
+    };
+  }
+
+  private abortStreamController(
+    stream: ResponseStreamWithController,
+    correlationId: string
+  ): void {
+    try {
+      stream.controller.abort();
+    } catch (abortError) {
+      logger.debug('Failed to abort Azure response stream controller', correlationId, {
+        error: abortError instanceof Error ? abortError.message : 'Unknown error',
+      });
+    }
+  }
+
+  private createStreamContext(
+    params: ResponsesCreateParams,
+    correlationId: string
+  ): StreamProcessingContext {
+    return {
+      correlationId,
+      responseId: correlationId,
+      createdAt: Math.floor(Date.now() / 1000),
+      model: this.config.deployment,
+      requestedModel: params.model,
+      chunkCount: 0,
+      startTime: performance.now(),
+    };
+  }
+
+  private checkStreamingMemoryPressure(
+    chunkCount: number,
+    correlationId: string
+  ): void {
+    if (chunkCount % 10 !== 0) {
+      return;
+    }
+
+    const memoryMetrics = memoryManager.getMemoryMetrics();
+    if (memoryMetrics.pressure.level === 'critical') {
+      logger.warn('Critical memory pressure during streaming', correlationId, {
+        heapUsage: memoryMetrics.heap.percentage,
+        chunkCount,
+      });
+    }
+  }
+
+  private async *consumeResponseStream(
+    lifecycle: StreamLifecycle,
+    context: StreamProcessingContext,
+    signal?: AbortSignal
+  ): AsyncGenerator<ResponsesStreamChunk> {
+    for await (const event of lifecycle.stream as AsyncIterable<ResponseStreamEvent>) {
+      throwIfAborted(signal);
+      this.checkStreamingMemoryPressure(context.chunkCount, context.correlationId);
+
+      const result = this.processStreamEvent(event, context, context.correlationId);
+      this.updateStreamContext(context, result);
+
+      if (result.chunk !== undefined) {
+        context.chunkCount += result.incrementCount ? 1 : 0;
+        yield assertValidResponsesStreamChunk(result.chunk);
+
+        if (result.completed) {
+          this.logStreamCompletion(context);
         }
       }
+    }
+  }
+
+  private processStreamEvent(
+    event: ResponseStreamEvent,
+    context: StreamProcessingContext,
+    correlationId: string
+  ): StreamEventResult {
+    switch (event.type) {
+      case 'response.created':
+        return {
+          responseId: event.response.id,
+          createdAt: this.normalizeTimestamp(event.response.created_at),
+        };
+      case 'response.output_text.delta':
+        return {
+          chunk: this.createTextDeltaChunk(
+            event,
+            context.responseId,
+            context.createdAt,
+            context.model
+          ),
+          incrementCount: true,
+        };
+      case 'response.reasoning_text.delta':
+        return {
+          chunk: this.createReasoningDeltaChunk(
+            event,
+            context.responseId,
+            context.createdAt,
+            context.model,
+            'in_progress'
+          ),
+          incrementCount: true,
+        };
+      case 'response.reasoning_text.done':
+        return {
+          chunk: this.createReasoningDoneChunk(
+            event,
+            context.responseId,
+            context.createdAt,
+            context.model
+          ),
+          incrementCount: true,
+        };
+      case 'response.output_item.added': {
+        const chunk = this.createOutputItemChunk(
+          event,
+          context.responseId,
+          context.createdAt,
+          context.model
+        );
+
+        if (chunk === undefined) {
+          return {};
+        }
+
+        return { chunk, incrementCount: true };
+      }
+      case 'response.completed':
+        return {
+          chunk: this.createCompletedChunk(event),
+          incrementCount: true,
+          completed: true,
+        };
+      case 'response.failed':
+        throw ErrorFactory.fromAzureOpenAIError(
+          new Error(`Response ${event.response.id} failed`),
+          correlationId,
+          'createResponseStream'
+        );
+      case 'error':
+        throw ErrorFactory.fromAzureOpenAIError(
+          new Error(
+            'message' in event && typeof event.message === 'string'
+              ? event.message
+              : 'Response stream error'
+          ),
+          correlationId,
+          'createResponseStream'
+        );
+      default:
+        this.logUnhandledStreamEvent(event.type, correlationId);
+        return {};
+    }
+  }
+
+  private updateStreamContext(
+    context: StreamProcessingContext,
+    result: StreamEventResult
+  ): void {
+    if (result.responseId !== undefined) {
+      context.responseId = result.responseId;
+    }
+
+    if (result.createdAt !== undefined) {
+      context.createdAt = result.createdAt;
+    }
+  }
+
+  private logStreamCompletion(
+    context: StreamProcessingContext
+  ): void {
+    const duration = performance.now() - context.startTime;
+    logger.debug('Azure OpenAI streaming completed', context.correlationId, {
+      duration: Math.round(duration),
+      chunkCount: context.chunkCount,
+      model: context.requestedModel,
+      responseId: context.responseId,
+    });
+  }
+
+  private logUnhandledStreamEvent(eventType: string, correlationId: string): void {
+    if (AzureResponsesClient.ignoredStreamEvents.has(eventType)) {
+      return;
+    }
+
+    logger.debug('Unhandled Responses stream event', correlationId, {
+      eventType,
+    });
+  }
+
+  private async cleanupStreamLifecycle(lifecycle: StreamLifecycle): Promise<void> {
+    lifecycle.removeAbortListener();
+    this.activeStreams.delete(lifecycle.streamResource);
+
+    if (!lifecycle.wasAborted() || lifecycle.streamResource.disposed) {
+      return;
+    }
+
+    try {
+      await lifecycle.streamResource[Symbol.asyncDispose]();
+    } catch (disposeError) {
+      logger.warn('Failed to dispose aborted Azure stream resource', '', {
+        error:
+          disposeError instanceof Error
+            ? disposeError.message
+            : 'Unknown error',
+      });
     }
   }
 
@@ -758,63 +891,74 @@ export class AzureResponsesClient implements AsyncDisposable {
     const outputs: ResponseOutput[] = [];
 
     for (const item of items) {
-      switch (item.type) {
-        case 'message': {
-          const messageItem: ResponseOutputMessage = item;
-          for (const content of messageItem.content) {
-            if (content.type === 'output_text') {
-              outputs.push({
-                type: 'text',
-                text: content.text,
-              });
-            }
-          }
-          break;
-        }
-        case 'reasoning': {
-          const reasoningItem: ResponseReasoningItem = item;
-          const reasoningContent = Array.isArray(reasoningItem.content)
-            ? reasoningItem.content.map((content) => content.text).join('')
-            : '';
-
-          const status: 'in_progress' | 'completed' =
-            reasoningItem.status === 'in_progress' ||
-            reasoningItem.status === 'incomplete'
-              ? 'in_progress'
-              : 'completed';
-
-          outputs.push({
-            type: 'reasoning',
-            reasoning: {
-              content: reasoningContent,
-              status,
-            },
-          });
-          break;
-        }
-        case 'function_call': {
-          outputs.push(this.transformFunctionToolCall(item));
-          break;
-        }
-        default: {
-          const legacyOutput = this.transformLegacyOutputItem(item);
-          if (legacyOutput !== undefined) {
-            outputs.push(legacyOutput);
-            break;
-          }
-          logger.debug(
-            'Unhandled Responses output item',
-            'azure-responses-client',
-            {
-              itemType: item.type,
-            }
-          );
-          break;
-        }
-      }
+      outputs.push(...this.transformOutputItem(item));
     }
 
     return outputs;
+  }
+
+  private transformOutputItem(item: ResponseOutputItem): ResponseOutput[] {
+    switch (item.type) {
+      case 'message':
+        return this.transformMessageOutput(item);
+      case 'reasoning':
+        return [this.transformReasoningOutput(item)];
+      case 'function_call':
+        return [this.transformFunctionToolCall(item)];
+      default:
+        return this.transformFallbackOutput(item);
+    }
+  }
+
+  private transformMessageOutput(
+    item: ResponseOutputMessage
+  ): ResponseOutput[] {
+    return item.content.flatMap((content) => {
+      if (content.type !== 'output_text') {
+        return [];
+      }
+
+      return [
+        {
+          type: 'text',
+          text: content.text,
+        } as const,
+      ];
+    });
+  }
+
+  private transformReasoningOutput(
+    item: ResponseReasoningItem
+  ): ResponseOutput {
+    const reasoningContent = Array.isArray(item.content)
+      ? item.content.map((content) => content.text).join('')
+      : '';
+
+    const status: 'in_progress' | 'completed' =
+      item.status === 'in_progress' || item.status === 'incomplete'
+        ? 'in_progress'
+        : 'completed';
+
+    return {
+      type: 'reasoning',
+      reasoning: {
+        content: reasoningContent,
+        status,
+      },
+    };
+  }
+
+  private transformFallbackOutput(item: ResponseOutputItem): ResponseOutput[] {
+    const legacyOutput = this.transformLegacyOutputItem(item);
+    if (legacyOutput !== undefined) {
+      return [legacyOutput];
+    }
+
+    logger.debug('Unhandled Responses output item', 'azure-responses-client', {
+      itemType: item.type,
+    });
+
+    return [];
   }
 
   private transformFunctionToolCall(
@@ -884,15 +1028,12 @@ export class AzureResponsesClient implements AsyncDisposable {
    */
   private validateConfig(config: AzureOpenAIConfig): void {
     const correlationId = uuidv4();
-
-    if (typeof config.baseURL !== 'string' || config.baseURL.length === 0) {
-      throw new ValidationError(
-        'Invalid baseURL: must be a non-empty string',
-        correlationId,
-        'baseURL',
-        config.baseURL
-      );
-    }
+    this.validateNonEmptyString(
+      config.baseURL,
+      'baseURL',
+      'Invalid baseURL: must be a non-empty string',
+      correlationId
+    );
 
     if (!config.baseURL.startsWith('https://')) {
       throw new ValidationError(
@@ -903,46 +1044,79 @@ export class AzureResponsesClient implements AsyncDisposable {
       );
     }
 
-    if (typeof config.apiKey !== 'string' || config.apiKey.length === 0) {
-      throw new ValidationError(
-        'Invalid apiKey: must be a non-empty string',
-        correlationId,
-        'apiKey',
-        '[REDACTED]'
-      );
+    this.validateNonEmptyString(
+      config.apiKey,
+      'apiKey',
+      'Invalid apiKey: must be a non-empty string',
+      correlationId,
+      '[REDACTED]'
+    );
+
+    this.validateNonEmptyString(
+      config.deployment,
+      'deployment',
+      'Invalid deployment: must be a non-empty string',
+      correlationId
+    );
+
+    this.validatePositiveNumber(
+      config.timeout,
+      'timeout',
+      'Invalid timeout: must be a positive number',
+      correlationId
+    );
+
+    this.validateNonNegativeNumber(
+      config.maxRetries,
+      'maxRetries',
+      'Invalid maxRetries: must be a non-negative number',
+      correlationId
+    );
+  }
+
+  private validateNonEmptyString(
+    value: unknown,
+    field: keyof AzureOpenAIConfig,
+    message: string,
+    correlationId: string,
+    redactedValue?: unknown
+  ): void {
+    if (typeof value === 'string' && value.length > 0) {
+      return;
     }
 
-    // API version validation removed - using latest stable API
+    throw new ValidationError(
+      message,
+      correlationId,
+      field,
+      redactedValue ?? value
+    );
+  }
 
-    if (
-      typeof config.deployment !== 'string' ||
-      config.deployment.length === 0
-    ) {
-      throw new ValidationError(
-        'Invalid deployment: must be a non-empty string',
-        correlationId,
-        'deployment',
-        config.deployment
-      );
+  private validatePositiveNumber(
+    value: unknown,
+    field: keyof AzureOpenAIConfig,
+    message: string,
+    correlationId: string
+  ): void {
+    if (typeof value === 'number' && value > 0) {
+      return;
     }
 
-    if (typeof config.timeout !== 'number' || config.timeout <= 0) {
-      throw new ValidationError(
-        'Invalid timeout: must be a positive number',
-        correlationId,
-        'timeout',
-        config.timeout
-      );
+    throw new ValidationError(message, correlationId, field, value);
+  }
+
+  private validateNonNegativeNumber(
+    value: unknown,
+    field: keyof AzureOpenAIConfig,
+    message: string,
+    correlationId: string
+  ): void {
+    if (typeof value === 'number' && value >= 0) {
+      return;
     }
 
-    if (typeof config.maxRetries !== 'number' || config.maxRetries < 0) {
-      throw new ValidationError(
-        'Invalid maxRetries: must be a non-negative number',
-        correlationId,
-        'maxRetries',
-        config.maxRetries
-      );
-    }
+    throw new ValidationError(message, correlationId, field, value);
   }
 
   /**

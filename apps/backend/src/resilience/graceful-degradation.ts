@@ -66,7 +66,12 @@ export class GracefulDegradationManager {
       },
     ];
 
-    this.currentServiceLevel = this.serviceLevels[0]!; // Start with full service
+    const initialServiceLevel = this.serviceLevels[0];
+    if (initialServiceLevel === undefined) {
+      throw new Error('No service levels configured for graceful degradation');
+    }
+
+    this.currentServiceLevel = initialServiceLevel; // Start with full service
     this.registerDefaultStrategies();
   }
 

@@ -10,7 +10,10 @@ import { body, validationResult } from 'express-validator';
 import { v4 as uuidv4 } from 'uuid';
 import { ValidationError } from '../errors/index.js';
 import { logger } from '../middleware/logging.js';
-import { getStreamingService } from '../services/streaming-service.js';
+import {
+  type StreamChunk,
+  getStreamingService,
+} from '../services/streaming-service.js';
 import type { RequestWithCorrelationId } from '../types/index.js';
 import { isValidConversationId } from '../utils/validation.js';
 
@@ -84,7 +87,7 @@ export const simpleChatHandler = [
           completeResponse += content;
         },
 
-        onEnd: (msgId: string, usage?: any) => {
+        onEnd: (msgId: string, usage?: StreamChunk['usage']) => {
           logger.info('Simple chat response completed', correlationId, {
             messageId: msgId,
             model,

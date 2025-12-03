@@ -10,6 +10,7 @@
  * @since 1.0.0
  */
 
+import type { PerformanceEntry } from 'node:perf_hooks';
 import { PerformanceObserver, performance } from 'node:perf_hooks';
 import { logger } from '../middleware/logging';
 
@@ -189,6 +190,13 @@ export interface MemorySample {
 export class PerformanceProfiler {
   private readonly memorySamples: MemorySample[] = [];
   private readonly gcProfiles: GCProfile[] = [];
+  private readonly gcTypeNames: Record<number, string> = {
+    1: 'Scavenge',
+    2: 'Mark-Sweep-Compact',
+    4: 'Incremental Marking',
+    8: 'Weak Callbacks',
+    15: 'All',
+  };
   private performanceObserver?: PerformanceObserver;
   private gcObserver?: PerformanceObserver;
   private memoryMonitorInterval?: NodeJS.Timeout;
@@ -439,61 +447,8 @@ export class PerformanceProfiler {
   private setupGCObserver(): void {
     try {
       this.gcObserver = new PerformanceObserver((list) => {
-        const entries = list.getEntries();
-        for (const entry of entries) {
-          const gcEntry = entry as typeof entry & {
-            readonly kind?: number;
-            readonly detail?: {
-              readonly kind?: number;
-              readonly startTime?: number;
-              readonly duration?: number;
-            };
-          };
-
-          // Enhanced GC profiling with Node.js 24 features
-          const gcProfile: GCProfile = {
-            kind: gcEntry.kind ?? gcEntry.detail?.kind ?? 0,
-            duration: entry.duration * 1_000_000, // Convert to nanoseconds
-            timestamp: gcEntry.detail?.startTime ?? entry.startTime,
-          };
-
-          this.gcProfiles.push(gcProfile);
-
-          // Keep only recent GC profiles
-          if (this.gcProfiles.length > this.maxSamples) {
-            this.gcProfiles.shift();
-          }
-
-          // Enhanced logging with GC type names
-          const gcTypeNames: Record<number, string> = {
-            1: 'Scavenge',
-            2: 'Mark-Sweep-Compact',
-            4: 'Incremental Marking',
-            8: 'Weak Callbacks',
-            15: 'All',
-          };
-
-          const gcTypeName = gcTypeNames[gcProfile.kind] ?? 'Unknown';
-          const durationMs = gcProfile.duration / 1_000_000;
-
-          if (durationMs > 100) {
-            logger.warn('Long GC pause detected', '', {
-              kind: gcProfile.kind,
-              typeName: gcTypeName,
-              duration: gcProfile.duration,
-              durationMs,
-              timestamp: gcProfile.timestamp,
-              threshold: 100,
-            });
-          } else {
-            logger.debug('GC event recorded', '', {
-              kind: gcProfile.kind,
-              typeName: gcTypeName,
-              duration: gcProfile.duration,
-              durationMs,
-              timestamp: gcProfile.timestamp,
-            });
-          }
+        for (const entry of list.getEntries()) {
+          this.handleGCEntry(entry);
         }
       });
 
@@ -504,6 +459,48 @@ export class PerformanceProfiler {
         nodeVersion: process.version,
       });
     }
+  }
+
+  private handleGCEntry(entry: PerformanceEntry): void {
+    const gcEntry = entry as typeof entry & {
+      readonly kind?: number;
+      readonly detail?: {
+        readonly kind?: number;
+        readonly startTime?: number;
+        readonly duration?: number;
+      };
+    };
+
+    const gcProfile: GCProfile = {
+      kind: gcEntry.kind ?? gcEntry.detail?.kind ?? 0,
+      duration: entry.duration * 1_000_000, // Convert to nanoseconds
+      timestamp: gcEntry.detail?.startTime ?? entry.startTime,
+    };
+
+    this.gcProfiles.push(gcProfile);
+    if (this.gcProfiles.length > this.maxSamples) {
+      this.gcProfiles.shift();
+    }
+
+    const gcTypeName = this.gcTypeNames[gcProfile.kind] ?? 'Unknown';
+    const durationMs = gcProfile.duration / 1_000_000;
+    const gcLogPayload = {
+      kind: gcProfile.kind,
+      typeName: gcTypeName,
+      duration: gcProfile.duration,
+      durationMs,
+      timestamp: gcProfile.timestamp,
+    };
+
+    if (durationMs > 100) {
+      logger.warn('Long GC pause detected', '', {
+        ...gcLogPayload,
+        threshold: 100,
+      });
+      return;
+    }
+
+    logger.debug('GC event recorded', '', gcLogPayload);
   }
 
   /**

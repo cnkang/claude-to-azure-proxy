@@ -952,7 +952,18 @@ const configurationBootstrap: {
   }
 })();
 
-export const sanitizedConfig = configurationBootstrap.sanitized!;
+function ensureConfigValue<T>(value: T | null, name: string): T {
+  if (value === null) {
+    throw new Error(`Configuration ${name} is not initialized`);
+  }
+
+  return value;
+}
+
+export const sanitizedConfig = ensureConfigValue(
+  configurationBootstrap.sanitized,
+  'sanitizedConfig'
+);
 
 /**
  * Creates an AzureOpenAIConfig from the validated configuration.
@@ -1157,4 +1168,4 @@ export function getConfigurationSummary(): Record<string, unknown> {
   };
 }
 
-export default configurationBootstrap.config!;
+export default ensureConfigValue(configurationBootstrap.config, 'config');

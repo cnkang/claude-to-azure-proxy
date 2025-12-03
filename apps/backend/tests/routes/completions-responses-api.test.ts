@@ -17,6 +17,7 @@ import type {
   OpenAIRequest,
   ResponsesResponse,
   ResponsesStreamChunk,
+  RequestWithCorrelationId,
   ServerConfig,
 } from '../../src/types/index';
 
@@ -66,7 +67,7 @@ vi.mock('../../src/resilience/index.js', () => ({
 describe('Completions Route - Responses API Integration', () => {
   let app: express.Application;
   let mockConfig: ServerConfig;
-  let mockResponsesClient: any;
+  let mockResponsesClient: Partial<AzureResponsesClient>;
 
   beforeEach(() => {
     // Reset all mocks
@@ -89,17 +90,17 @@ describe('Completions Route - Responses API Integration', () => {
       createResponse: vi.fn(),
       createResponseStream: vi.fn(),
       getConfig: vi.fn(() => ({
-        baseURL: mockConfig.azureOpenAI!.baseURL,
+        baseURL: mockConfig.azureOpenAI?.baseURL,
         apiKey: '[REDACTED]',
-        deployment: mockConfig.azureOpenAI!.deployment,
-        timeout: mockConfig.azureOpenAI!.timeout,
-        maxRetries: mockConfig.azureOpenAI!.maxRetries,
+        deployment: mockConfig.azureOpenAI?.deployment,
+        timeout: mockConfig.azureOpenAI?.timeout,
+        maxRetries: mockConfig.azureOpenAI?.maxRetries,
       })),
     };
 
     MockedAzureResponsesClient.mockImplementation(function (
-      this: any,
-      ..._args: any[]
+      this: AzureResponsesClient,
+      ..._args: unknown[]
     ) {
       Object.assign(this, mockResponsesClient);
       return this;
@@ -113,7 +114,7 @@ describe('Completions Route - Responses API Integration', () => {
 
     // Skip authentication for tests
     app.use((req, res, next) => {
-      (req as any).correlationId = 'test-correlation-id';
+      (req as RequestWithCorrelationId).correlationId = 'test-correlation-id';
       next();
     });
 
@@ -490,8 +491,13 @@ describe('Completions Route - Responses API Integration', () => {
     };
 
     it('should handle Azure Responses API errors', async () => {
-      const azureError = new Error('Azure API Error');
-      (azureError as any).response = {
+      const azureError = new Error('Azure API Error') as Error & {
+        response?: {
+          status: number;
+          data: { error: { type: string } };
+        };
+      };
+      azureError.response = {
         status: 400,
         data: {
           error: {
@@ -534,7 +540,7 @@ describe('Completions Route - Responses API Integration', () => {
       appWithoutConfig.use(express.json());
       appWithoutConfig.use(correlationIdMiddleware);
       appWithoutConfig.use((req, res, next) => {
-        (req as any).correlationId = 'test-correlation-id';
+        (req as RequestWithCorrelationId).correlationId = 'test-correlation-id';
         next();
       });
 

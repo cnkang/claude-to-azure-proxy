@@ -77,12 +77,12 @@ describe('Sensitive Data Redaction', () => {
         },
       ];
 
-      testCases.forEach(({ input, expected }) => {
+      for (const { input, expected } of testCases) {
         const sanitized = sanitizeErrorMessage(input);
         expect(sanitized).toBe(expected);
         expect(sanitized).not.toContain('sk-');
         expect(sanitized).not.toContain('abc123def456ghi789');
-      });
+      }
     });
 
     it('should redact URLs and endpoints from error messages', () => {
@@ -102,13 +102,13 @@ describe('Sensitive Data Redaction', () => {
         },
       ];
 
-      testCases.forEach(({ input, expected }) => {
+      for (const { input, expected } of testCases) {
         const sanitized = sanitizeErrorMessage(input);
         expect(sanitized).toBe(expected);
         expect(sanitized).not.toContain('openai.azure.com');
         expect(sanitized).not.toContain('http://');
         expect(sanitized).not.toContain('https://');
-      });
+      }
     });
 
     it('should redact passwords and secrets from error messages', () => {
@@ -128,13 +128,13 @@ describe('Sensitive Data Redaction', () => {
         },
       ];
 
-      testCases.forEach(({ input, expected }) => {
+      for (const { input, expected } of testCases) {
         const sanitized = sanitizeErrorMessage(input);
         expect(sanitized).toBe(expected);
         expect(sanitized).not.toContain('mySecretPassword123');
         expect(sanitized).not.toContain('abc123def456');
         expect(sanitized).not.toContain('test123');
-      });
+      }
     });
 
     it('should redact email addresses from error messages', () => {
@@ -153,11 +153,11 @@ describe('Sensitive Data Redaction', () => {
         },
       ];
 
-      testCases.forEach(({ input, expected }) => {
+      for (const { input, expected } of testCases) {
         const sanitized = sanitizeErrorMessage(input);
         expect(sanitized).toBe(expected);
         expect(sanitized).not.toContain('@');
-      });
+      }
     });
 
     it('should redact long alphanumeric strings that might be keys', () => {
@@ -172,12 +172,12 @@ describe('Sensitive Data Redaction', () => {
         },
       ];
 
-      testCases.forEach(({ input, expected }) => {
+      for (const { input, expected } of testCases) {
         const sanitized = sanitizeErrorMessage(input);
         expect(sanitized).toBe(expected);
         expect(sanitized).not.toContain('abcdef1234567890ghijklmnop');
         expect(sanitized).not.toContain('ABC123DEF456GHI789JKL012');
-      });
+      }
     });
 
     it('should preserve non-sensitive content', () => {
@@ -189,10 +189,10 @@ describe('Sensitive Data Redaction', () => {
         'Model "claude-3-5-sonnet" not found',
       ];
 
-      testCases.forEach((input) => {
+      for (const input of testCases) {
         const sanitized = sanitizeErrorMessage(input);
         expect(sanitized).toBe(input); // Should remain unchanged
-      });
+      }
     });
   });
 

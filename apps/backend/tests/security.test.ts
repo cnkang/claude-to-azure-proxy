@@ -19,6 +19,42 @@ describe('Security Middleware', () => {
   let statusSpy: ReturnType<typeof vi.fn>;
   let setSpy: ReturnType<typeof vi.fn>;
 
+  const buildDeeplyNestedObject = (
+    depth: number,
+    value: string
+  ): Record<string, unknown> => {
+    const deepObject: Record<string, unknown> = { level1: {} };
+    let currentLevel = deepObject.level1 as Record<string, unknown>;
+
+    for (let i = 2; i <= depth; i++) {
+      const nextLevel: Record<string, unknown> = {};
+      currentLevel[`level${i}`] = nextLevel;
+      currentLevel = nextLevel;
+    }
+
+    currentLevel.value = value;
+    return deepObject;
+  };
+
+  const extractDeepValue = (
+    sanitized: Record<string, unknown>,
+    depth: number
+  ): string | undefined => {
+    let current: unknown = sanitized.level1;
+
+    for (let i = 2; i <= depth; i++) {
+      const nextLevel = (current as Record<string, unknown>)[`level${i}`];
+      if (typeof nextLevel !== 'object' || nextLevel === null) {
+        return undefined;
+      }
+
+      current = nextLevel;
+    }
+
+    const value = (current as Record<string, unknown>).value;
+    return typeof value === 'string' ? value : undefined;
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -259,7 +295,7 @@ describe('Security Middleware', () => {
       middleware(mockRequest as Request, mockResponse as Response, mockNext);
 
       // Simulate timeout
-      timeoutCallback!();
+      timeoutCallback?.();
 
       expect(statusSpy).toHaveBeenCalledWith(408);
       expect(jsonSpy).toHaveBeenCalledWith({
@@ -607,49 +643,16 @@ describe('Security Middleware', () => {
     });
 
     it('should handle deeply nested objects in sanitization', () => {
-      const deepObject: Record<string, unknown> = { level1: {} };
-      let current = deepObject.level1 as Record<string, unknown>;
-
-      // Create 10 levels of nesting
-      for (let i = 2; i <= 10; i++) {
-        const levelKey = `level${i}`;
-        const newLevel = {};
-        Object.defineProperty(current, levelKey, {
-          value: newLevel,
-          writable: true,
-          enumerable: true,
-          configurable: true,
-        });
-        current = newLevel as Record<string, unknown>;
-      }
-      Object.defineProperty(current, 'value', {
-        value: '<script>alert("deep")</script>',
-        writable: true,
-        enumerable: true,
-        configurable: true,
-      });
+      const deepObject = buildDeeplyNestedObject(
+        10,
+        '<script>alert("deep")</script>'
+      );
 
       const sanitized = sanitizeInput(deepObject) as Record<string, unknown>;
+      const deepValue = extractDeepValue(sanitized, 10);
 
-      // Navigate to the deep value using Object.prototype.hasOwnProperty for safety
-      let deepValue = sanitized.level1 as Record<string, unknown>;
-      for (let i = 2; i <= 10; i++) {
-        const levelKey = `level${i}`;
-        if (Object.prototype.hasOwnProperty.call(deepValue, levelKey)) {
-          const descriptor = Object.getOwnPropertyDescriptor(
-            deepValue,
-            levelKey
-          );
-          const nextLevel = descriptor?.value as unknown;
-          if (typeof nextLevel === 'object' && nextLevel !== null) {
-            deepValue = nextLevel as Record<string, unknown>;
-          }
-        }
-      }
-
-      if (Object.prototype.hasOwnProperty.call(deepValue, 'value')) {
-        expect(deepValue.value as string).not.toContain('<script>');
-      }
+      expect(deepValue).toBeDefined();
+      expect(deepValue).not.toContain('<script>');
     });
   });
 });

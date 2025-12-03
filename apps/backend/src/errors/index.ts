@@ -603,17 +603,177 @@ function buildAzureOpenAIError(
   return azureOpenAIError;
 }
 
+function parseAzureOpenAIErrorPayload(azureError: unknown): {
+  message: string;
+  type: string;
+  code?: string;
+} {
+  if (!isRecord(azureError)) {
+    return {
+      message: 'Unknown Azure OpenAI error',
+      type: 'unknown_error',
+    };
+  }
+
+  const errorSection = (azureError as { error?: unknown }).error;
+  if (!isRecord(errorSection)) {
+    return {
+      message: 'Unknown Azure OpenAI error',
+      type: 'unknown_error',
+    };
+  }
+
+  const message =
+    typeof errorSection.message === 'string'
+      ? errorSection.message
+      : 'Unknown Azure OpenAI error';
+  const type =
+    typeof errorSection.type === 'string'
+      ? errorSection.type
+      : 'unknown_error';
+  const codeValue = errorSection.code;
+  const code =
+    typeof codeValue === 'string'
+      ? codeValue
+      : typeof codeValue === 'number'
+        ? String(codeValue)
+        : undefined;
+
+  return { message, type, code };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function createNetworkError(
+  error: Error,
+  correlationId: string,
+  operation?: string
+): NetworkError {
+  const networkError = new NetworkError(
+    `Network error: ${error.message}`,
+    correlationId,
+    error,
+    operation
+  );
+
+  return preserveErrorContext(error, networkError) as NetworkError;
+}
+
+function createTimeoutError(
+  timeoutMs: number,
+  correlationId: string,
+  operation?: string
+): TimeoutError {
+  return new TimeoutError(
+    `Operation timed out after ${timeoutMs}ms`,
+    correlationId,
+    timeoutMs,
+    operation
+  );
+}
+
+function isNetworkErrorCode(code: string): boolean {
+  const networkErrorCodes = [
+    'ECONNREFUSED',
+    'ENOTFOUND',
+    'ECONNRESET',
+    'ETIMEDOUT',
+  ];
+  return networkErrorCodes.includes(code);
+}
+
+function isTimeoutErrorCode(code: string): boolean {
+  const timeoutErrorCodes = ['TIMEOUT', 'ESOCKETTIMEDOUT'];
+  return timeoutErrorCodes.includes(code);
+}
+
+function transformGenericError(
+  error: Error,
+  correlationId: string,
+  operation?: string,
+  defaultMessage = 'An unexpected error occurred'
+): BaseError {
+  const genericError = new InternalServerError(
+    error.message || defaultMessage,
+    correlationId,
+    operation,
+    { originalErrorName: error.name }
+  );
+
+  return preserveErrorContext(error, genericError);
+}
+
+function transformNonError(
+  error: unknown,
+  correlationId: string,
+  operation?: string,
+  defaultMessage = 'An unexpected error occurred'
+): BaseError {
+  if (typeof error === 'string') {
+    return new InternalServerError(
+      error || defaultMessage,
+      correlationId,
+      operation
+    );
+  }
+
+  if (typeof error === 'object' && error !== null) {
+    const errorObj = error as Record<string, unknown>;
+    const message =
+      typeof errorObj.message === 'string'
+        ? errorObj.message
+        : defaultMessage;
+
+    return new InternalServerError(message, correlationId, operation, {
+      originalError: errorObj,
+    });
+  }
+
+  return new InternalServerError(defaultMessage, correlationId, operation, {
+    originalError: String(error),
+  });
+}
+
+function transformErrorWithCode(
+  error: Error,
+  correlationId: string,
+  operation?: string,
+  defaultMessage?: string
+): BaseError {
+  if (!('code' in error)) {
+    return transformGenericError(
+      error,
+      correlationId,
+      operation,
+      defaultMessage
+    );
+  }
+
+  const errorWithCode = error as Error & { code: string };
+
+  if (isNetworkErrorCode(errorWithCode.code)) {
+    return createNetworkError(error, correlationId, operation);
+  }
+
+  if (isTimeoutErrorCode(errorWithCode.code)) {
+    return createTimeoutError(30000, correlationId, operation);
+  }
+
+  return transformGenericError(error, correlationId, operation, defaultMessage);
+}
+
 /**
  * Error factory for creating errors from Azure OpenAI responses
  */
-export class ErrorFactory {
-  public static fromAzureOpenAIError(
+export const ErrorFactory = {
+  fromAzureOpenAIError(
     azureError: unknown,
     correlationId: string,
     operation?: string
   ): AzureOpenAIError {
-    const { message, type, code } =
-      ErrorFactory.parseAzureOpenAIErrorPayload(azureError);
+    const { message, type, code } = parseAzureOpenAIErrorPayload(azureError);
 
     const statusCode = mapAzureErrorTypeToStatusCode(type);
 
@@ -626,194 +786,25 @@ export class ErrorFactory {
       operation,
       azureError
     );
-  }
+  },
 
-  private static parseAzureOpenAIErrorPayload(azureError: unknown): {
-    message: string;
-    type: string;
-    code?: string;
-  } {
-    if (!ErrorFactory.isRecord(azureError)) {
-      return {
-        message: 'Unknown Azure OpenAI error',
-        type: 'unknown_error',
-      };
-    }
-
-    const errorSection = (azureError as { error?: unknown }).error;
-    if (!ErrorFactory.isRecord(errorSection)) {
-      return {
-        message: 'Unknown Azure OpenAI error',
-        type: 'unknown_error',
-      };
-    }
-
-    const message =
-      typeof errorSection.message === 'string'
-        ? errorSection.message
-        : 'Unknown Azure OpenAI error';
-    const type =
-      typeof errorSection.type === 'string'
-        ? errorSection.type
-        : 'unknown_error';
-    const codeValue = errorSection.code;
-    const code =
-      typeof codeValue === 'string'
-        ? codeValue
-        : typeof codeValue === 'number'
-          ? String(codeValue)
-          : undefined;
-
-    return { message, type, code };
-  }
-
-  private static isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === 'object' && value !== null;
-  }
-
-  public static fromNetworkError(
+  fromNetworkError(
     error: Error,
     correlationId: string,
     operation?: string
   ): NetworkError {
-    const networkError = new NetworkError(
-      `Network error: ${error.message}`,
-      correlationId,
-      error,
-      operation
-    );
+    return createNetworkError(error, correlationId, operation);
+  },
 
-    return preserveErrorContext(error, networkError) as NetworkError;
-  }
-
-  public static fromTimeout(
+  fromTimeout(
     timeoutMs: number,
     correlationId: string,
     operation?: string
   ): TimeoutError {
-    return new TimeoutError(
-      `Operation timed out after ${timeoutMs}ms`,
-      correlationId,
-      timeoutMs,
-      operation
-    );
-  }
+    return createTimeoutError(timeoutMs, correlationId, operation);
+  },
 
-  /**
-   * Check if error code indicates a network error
-   */
-  private static isNetworkErrorCode(code: string): boolean {
-    const networkErrorCodes = [
-      'ECONNREFUSED',
-      'ENOTFOUND',
-      'ECONNRESET',
-      'ETIMEDOUT',
-    ];
-    return networkErrorCodes.includes(code);
-  }
-
-  /**
-   * Check if error code indicates a timeout error
-   */
-  private static isTimeoutErrorCode(code: string): boolean {
-    const timeoutErrorCodes = ['TIMEOUT', 'ESOCKETTIMEDOUT'];
-    return timeoutErrorCodes.includes(code);
-  }
-
-  /**
-   * Transform Error object with code property
-   */
-  private static transformErrorWithCode(
-    error: Error,
-    correlationId: string,
-    operation?: string,
-    defaultMessage?: string
-  ): BaseError {
-    if (!('code' in error)) {
-      return ErrorFactory.transformGenericError(
-        error,
-        correlationId,
-        operation,
-        defaultMessage
-      );
-    }
-
-    const errorWithCode = error as Error & { code: string };
-
-    if (ErrorFactory.isNetworkErrorCode(errorWithCode.code)) {
-      return ErrorFactory.fromNetworkError(error, correlationId, operation);
-    }
-
-    if (ErrorFactory.isTimeoutErrorCode(errorWithCode.code)) {
-      return ErrorFactory.fromTimeout(30000, correlationId, operation);
-    }
-
-    return ErrorFactory.transformGenericError(
-      error,
-      correlationId,
-      operation,
-      defaultMessage
-    );
-  }
-
-  /**
-   * Transform generic Error object
-   */
-  private static transformGenericError(
-    error: Error,
-    correlationId: string,
-    operation?: string,
-    defaultMessage = 'An unexpected error occurred'
-  ): BaseError {
-    const genericError = new InternalServerError(
-      error.message || defaultMessage,
-      correlationId,
-      operation,
-      { originalErrorName: error.name }
-    );
-
-    return preserveErrorContext(error, genericError);
-  }
-
-  /**
-   * Transform non-Error objects
-   */
-  private static transformNonError(
-    error: unknown,
-    correlationId: string,
-    operation?: string,
-    defaultMessage = 'An unexpected error occurred'
-  ): BaseError {
-    if (typeof error === 'string') {
-      return new InternalServerError(
-        error || defaultMessage,
-        correlationId,
-        operation
-      );
-    }
-
-    if (typeof error === 'object' && error !== null) {
-      const errorObj = error as Record<string, unknown>;
-      const message =
-        typeof errorObj.message === 'string'
-          ? errorObj.message
-          : defaultMessage;
-
-      return new InternalServerError(message, correlationId, operation, {
-        originalError: errorObj,
-      });
-    }
-
-    return new InternalServerError(defaultMessage, correlationId, operation, {
-      originalError: String(error),
-    });
-  }
-
-  /**
-   * Enhanced error transformation with comprehensive context preservation
-   * Handles various error types and maintains error cause chains
-   */
-  public static transformError(
+  transformError(
     error: unknown,
     correlationId: string,
     operation?: string,
@@ -824,7 +815,7 @@ export class ErrorFactory {
     }
 
     if (isError(error)) {
-      return ErrorFactory.transformErrorWithCode(
+      return transformErrorWithCode(
         error,
         correlationId,
         operation,
@@ -832,14 +823,9 @@ export class ErrorFactory {
       );
     }
 
-    return ErrorFactory.transformNonError(
-      error,
-      correlationId,
-      operation,
-      defaultMessage
-    );
-  }
-}
+    return transformNonError(error, correlationId, operation, defaultMessage);
+  },
+};
 
 /**
  * Creates a standardized error response for client consumption

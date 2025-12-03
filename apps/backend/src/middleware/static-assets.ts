@@ -48,6 +48,219 @@ const DEFAULT_CONFIG: StaticAssetsConfig = {
   },
 };
 
+const LONG_CACHE_EXTENSIONS = new Set([
+  '.js',
+  '.css',
+  '.woff',
+  '.woff2',
+  '.ttf',
+  '.eot',
+]);
+
+const SHORT_CACHE_EXTENSIONS = new Set(['.html', '.json']);
+
+const IMAGE_CACHE_EXTENSIONS = new Set([
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.svg',
+  '.ico',
+]);
+
+const applyCustomHeaders = (
+  res: Response,
+  headers?: Record<string, string>
+): void => {
+  if (!headers) {
+    return;
+  }
+
+  for (const [key, value] of Object.entries(headers)) {
+    res.setHeader(key, value);
+  }
+};
+
+const setCacheControlHeader = (
+  res: Response,
+  ext: string,
+  maxAge: number
+): void => {
+  if (LONG_CACHE_EXTENSIONS.has(ext)) {
+    res.setHeader('Cache-Control', `public, max-age=${maxAge}, immutable`);
+    return;
+  }
+
+  if (SHORT_CACHE_EXTENSIONS.has(ext)) {
+    res.setHeader('Cache-Control', 'public, max-age=300, must-revalidate');
+    return;
+  }
+
+  if (IMAGE_CACHE_EXTENSIONS.has(ext)) {
+    res.setHeader('Cache-Control', `public, max-age=${Math.floor(maxAge / 12)}`);
+  }
+};
+
+const applyContentSecurityPolicy = (res: Response, ext: string): void => {
+  if (ext !== '.html') {
+    return;
+  }
+
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; " +
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+      "style-src 'self' 'unsafe-inline'; " +
+      "img-src 'self' data: blob:; " +
+      "font-src 'self' data:; " +
+      "connect-src 'self' ws: wss:; " +
+      "media-src 'self'; " +
+      "object-src 'none'; " +
+      "base-uri 'self'; " +
+      "form-action 'self'"
+  );
+};
+
+const shouldBypassSpaRequest = (req: Request): boolean => {
+  if (
+    req.path.startsWith('/api/') ||
+    req.path.startsWith('/v1/') ||
+    req.path === '/health' ||
+    req.path === '/metrics'
+  ) {
+    return true;
+  }
+
+  if (path.extname(req.path) !== '') {
+    return true;
+  }
+
+  return req.path.startsWith('/assets/') || req.path.startsWith('/static/');
+};
+
+const ensureIndexExists = async (
+  indexPath: string,
+  correlationId: string,
+  requestPath: string
+): Promise<boolean> => {
+  try {
+    await fs.access(indexPath);
+    return true;
+  } catch (error) {
+    logger.warn('SPA index file not found', correlationId, {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      requestPath,
+      indexPath,
+    });
+    return false;
+  }
+};
+
+const shouldServeSpaResponse = async (
+  req: Request,
+  indexPath: string,
+  correlationId: string,
+  next: NextFunction
+): Promise<boolean> => {
+  if (shouldBypassSpaRequest(req)) {
+    next();
+    return false;
+  }
+
+  const indexExists = await ensureIndexExists(indexPath, correlationId, req.path);
+  if (!indexExists) {
+    next();
+    return false;
+  }
+
+  return true;
+};
+
+const processSpaFallback = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+  indexPath: string,
+  correlationId: string,
+  customHeaders?: Record<string, string>
+): Promise<void> => {
+  const shouldServe = await shouldServeSpaResponse(
+    req,
+    indexPath,
+    correlationId,
+    next
+  );
+  if (!shouldServe) {
+    return;
+  }
+
+  logger.debug('Serving SPA fallback for frontend route', correlationId, {
+    requestPath: req.path,
+    indexPath,
+  });
+
+  applySpaHeaders(res, customHeaders);
+  await sendSpaIndexFile(res, req, indexPath, correlationId);
+};
+
+const handleSpaError = (
+  error: unknown,
+  req: Request,
+  res: Response,
+  indexPath: string,
+  correlationId: string,
+  next: NextFunction
+): void => {
+  logger.error('Error serving SPA fallback', correlationId, {
+    error: error instanceof Error ? error.message : 'Unknown error',
+    requestPath: req.path,
+    indexPath,
+  });
+
+  if (!res.headersSent && !res.finished) {
+    next(error);
+  }
+};
+
+const applySpaHeaders = (
+  res: Response,
+  customHeaders?: Record<string, string>
+): void => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=300, must-revalidate');
+  applyCustomHeaders(res, customHeaders);
+  applyContentSecurityPolicy(res, '.html');
+};
+
+const sendSpaIndexFile = async (
+  res: Response,
+  req: Request,
+  indexPath: string,
+  correlationId: string
+): Promise<void> => {
+  await new Promise<void>((resolve, reject) => {
+    res.sendFile(indexPath, (err) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+
+      resolve();
+    });
+  }).catch((err) => {
+    logger.error('Error sending index.html', correlationId, {
+      error: err instanceof Error ? err.message : 'Unknown error',
+      requestPath: req.path,
+      indexPath,
+      headersSent: res.headersSent,
+    });
+
+    if (!res.headersSent && !res.finished) {
+      throw err;
+    }
+  });
+};
+
 /**
  * Creates middleware for serving static assets with proper caching and security headers.
  *
@@ -72,51 +285,14 @@ export const createStaticAssetsMiddleware = (
         return;
       }
 
-      // Add security headers
-      if (finalConfig.customHeaders) {
-        Object.entries(finalConfig.customHeaders).forEach(([key, value]) => {
-          res.setHeader(key, value);
-        });
-      }
-
-      // Set appropriate cache headers based on file type
       const ext = path.extname(filePath).toLowerCase();
 
-      if (['.js', '.css', '.woff', '.woff2', '.ttf', '.eot'].includes(ext)) {
-        // Long cache for versioned assets
-        res.setHeader(
-          'Cache-Control',
-          `public, max-age=${finalConfig.maxAge}, immutable`
-        );
-      } else if (['.html', '.json'].includes(ext)) {
-        // Short cache for HTML and JSON files
-        res.setHeader('Cache-Control', 'public, max-age=300, must-revalidate');
-      } else if (
-        ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico'].includes(ext)
-      ) {
-        // Medium cache for images
-        res.setHeader(
-          'Cache-Control',
-          `public, max-age=${Math.floor(finalConfig.maxAge / 12)}`
-        );
-      }
+      applyCustomHeaders(res, finalConfig.customHeaders);
 
-      // Add Content-Security-Policy for HTML files
-      if (ext === '.html') {
-        res.setHeader(
-          'Content-Security-Policy',
-          "default-src 'self'; " +
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
-            "style-src 'self' 'unsafe-inline'; " +
-            "img-src 'self' data: blob:; " +
-            "font-src 'self' data:; " +
-            "connect-src 'self' ws: wss:; " +
-            "media-src 'self'; " +
-            "object-src 'none'; " +
-            "base-uri 'self'; " +
-            "form-action 'self'"
-        );
-      }
+      // Set appropriate cache headers based on file type
+      setCacheControlHeader(res, ext, finalConfig.maxAge);
+
+      applyContentSecurityPolicy(res, ext);
     },
   });
 
@@ -134,7 +310,7 @@ export const createStaticAssetsMiddleware = (
     };
 
     // Call the static middleware
-    staticMiddleware(req, res, (err?: any) => {
+    staticMiddleware(req, res, (err?: unknown) => {
       // Only call next if response wasn't sent
       if (!responseSent && !res.headersSent && !res.finished) {
         next(err);
@@ -165,121 +341,20 @@ export const createSPAFallbackMiddleware = (
   ): Promise<void> => {
     const { correlationId } = req as RequestWithCorrelationId;
 
-    // Avoid double-processing if headers already sent or response finished
     if (res.headersSent || res.finished) {
       return;
     }
 
-    try {
-      // Skip if this is an API request
-      if (
-        req.path.startsWith('/api/') ||
-        req.path.startsWith('/v1/') ||
-        req.path === '/health' ||
-        req.path === '/metrics'
-      ) {
-        next();
-        return;
-      }
-
-      // Skip if this is a request for a static asset with extension
-      const hasExtension = path.extname(req.path) !== '';
-      if (hasExtension) {
-        next();
-        return;
-      }
-
-      // Skip if this is a request for assets directory
-      if (req.path.startsWith('/assets/') || req.path.startsWith('/static/')) {
-        next();
-        return;
-      }
-
-      // Check if index.html exists
-      try {
-        await fs.access(indexPath);
-      } catch {
-        logger.warn(
-          'Frontend index.html not found, skipping SPA fallback',
-          correlationId,
-          {
-            indexPath,
-            requestPath: req.path,
-          }
-        );
-        next();
-        return;
-      }
-
-      // Serve index.html for SPA routing
-      logger.debug('Serving SPA fallback for frontend route', correlationId, {
-        requestPath: req.path,
-        indexPath,
-      });
-
-      // Double-check headers not sent before setting them
-      if (res.headersSent || res.finished) {
-        logger.debug(
-          'Headers already sent, skipping SPA fallback',
-          correlationId,
-          {
-            requestPath: req.path,
-          }
-        );
-        return;
-      }
-
-      // Set appropriate headers for HTML
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.setHeader('Cache-Control', 'public, max-age=300, must-revalidate');
-
-      // Add security headers
-      if (finalConfig.customHeaders) {
-        Object.entries(finalConfig.customHeaders).forEach(([key, value]) => {
-          res.setHeader(key, value);
-        });
-      }
-
-      // Add CSP header for the main application
-      res.setHeader(
-        'Content-Security-Policy',
-        "default-src 'self'; " +
-          "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
-          "style-src 'self' 'unsafe-inline'; " +
-          "img-src 'self' data: blob:; " +
-          "font-src 'self' data:; " +
-          "connect-src 'self' ws: wss:; " +
-          "media-src 'self'; " +
-          "object-src 'none'; " +
-          "base-uri 'self'; " +
-          "form-action 'self'"
-      );
-
-      res.sendFile(indexPath, (err) => {
-        if (err) {
-          logger.error('Error sending index.html', correlationId, {
-            error: err instanceof Error ? err.message : 'Unknown error',
-            requestPath: req.path,
-            indexPath,
-            headersSent: res.headersSent,
-          });
-          // Only call next if headers haven't been sent yet
-          if (!res.headersSent && !res.finished) {
-            next(err);
-          }
-        }
-      });
-    } catch (error) {
-      logger.error('Error serving SPA fallback', correlationId, {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        requestPath: req.path,
-        indexPath,
-      });
-      // Only call next if response not started
-      if (!res.headersSent && !res.finished) {
-        next(error);
-      }
-    }
+    await processSpaFallback(
+      req,
+      res,
+      next,
+      indexPath,
+      correlationId,
+      finalConfig.customHeaders
+    ).catch((error) =>
+      handleSpaError(error, req, res, indexPath, correlationId, next)
+    );
   };
 };
 

@@ -12,6 +12,7 @@ import type {
   ClaudeRequest,
   OpenAIRequest,
   ResponsesStreamChunk,
+  RequestWithCorrelationId,
   ServerConfig,
 } from '../../src/types/index';
 
@@ -61,7 +62,7 @@ vi.mock('../../src/resilience/index.js', () => ({
 describe('Streaming Functionality', () => {
   let app: express.Application;
   let mockConfig: ServerConfig;
-  let mockResponsesClient: any;
+  let mockResponsesClient: Partial<AzureResponsesClient>;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -80,17 +81,17 @@ describe('Streaming Functionality', () => {
       createResponse: vi.fn(),
       createResponseStream: vi.fn(),
       getConfig: vi.fn(() => ({
-        baseURL: mockConfig.azureOpenAI!.baseURL,
+        baseURL: mockConfig.azureOpenAI?.baseURL,
         apiKey: '[REDACTED]',
-        deployment: mockConfig.azureOpenAI!.deployment,
-        timeout: mockConfig.azureOpenAI!.timeout,
-        maxRetries: mockConfig.azureOpenAI!.maxRetries,
+        deployment: mockConfig.azureOpenAI?.deployment,
+        timeout: mockConfig.azureOpenAI?.timeout,
+        maxRetries: mockConfig.azureOpenAI?.maxRetries,
       })),
     };
 
     MockedAzureResponsesClient.mockImplementation(function (
-      this: any,
-      ..._args: any[]
+      this: AzureResponsesClient,
+      ..._args: unknown[]
     ) {
       Object.assign(this, mockResponsesClient);
       return this;
@@ -100,10 +101,11 @@ describe('Streaming Functionality', () => {
     app.use(express.json());
     app.use(correlationIdMiddleware);
     app.use((req, res, next) => {
-      (req as any).correlationId = 'test-correlation-id';
+      (req as RequestWithCorrelationId).correlationId =
+        'test-correlation-id';
       next();
     });
-    app.post('/v1/completions', completionsHandler(mockConfig) as any);
+    app.post('/v1/completions', completionsHandler(mockConfig));
   });
 
   afterEach(() => {
@@ -462,16 +464,20 @@ describe('Streaming Functionality', () => {
       };
 
       // Mock generator that yields invalid chunks
-      async function* mockInvalidStreamGenerator() {
-        yield { invalid: 'chunk' } as any;
-        yield null as any;
+      async function* mockInvalidStreamGenerator(): AsyncGenerator<
+        ResponsesStreamChunk | null,
+        void,
+        void
+      > {
+        yield { invalid: 'chunk' } as unknown as ResponsesStreamChunk;
+        yield null;
         yield {
           id: 'valid_chunk',
           object: 'response.chunk',
           created: Date.now(),
           model: 'gpt-5-codex',
           output: [{ type: 'text', text: 'Valid content' }],
-        };
+        } as ResponsesStreamChunk;
       }
 
       mockResponsesClient.createResponseStream.mockReturnValue(

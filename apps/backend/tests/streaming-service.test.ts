@@ -9,6 +9,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Mock } from 'vitest';
 import type {
   ChatStreamRequest,
   StreamingResponseHandler,
@@ -17,6 +18,9 @@ import { createStreamingService } from '../src/services/streaming-service.js';
 
 describe('StreamingService', () => {
   let streamingService: ReturnType<typeof createStreamingService>;
+
+  const getCallCount = (handlerFn: StreamingResponseHandler[keyof StreamingResponseHandler]): number =>
+    (handlerFn as Mock).mock.calls.length;
 
   beforeEach(() => {
     streamingService = createStreamingService();
@@ -132,8 +136,8 @@ describe('StreamingService', () => {
       );
 
       // Either onError or onEnd should be called, but not both
-      const errorCalled = (handler.onError as any).mock.calls.length > 0;
-      const endCalled = (handler.onEnd as any).mock.calls.length > 0;
+      const errorCalled = getCallCount(handler.onError) > 0;
+      const endCalled = getCallCount(handler.onEnd) > 0;
 
       expect(errorCalled || endCalled).toBe(true);
     });
@@ -161,8 +165,8 @@ describe('StreamingService', () => {
       );
 
       // Either onEnd or onError must be called
-      const endCalled = (handler.onEnd as any).mock.calls.length > 0;
-      const errorCalled = (handler.onError as any).mock.calls.length > 0;
+      const endCalled = getCallCount(handler.onEnd) > 0;
+      const errorCalled = getCallCount(handler.onError) > 0;
 
       expect(endCalled || errorCalled).toBe(true);
     });
@@ -188,9 +192,7 @@ describe('StreamingService', () => {
       );
 
       // onError should be called for unsupported provider
-      expect((handler.onError as any).mock.calls.length).toBeGreaterThanOrEqual(
-        0
-      );
+      expect(getCallCount(handler.onError)).toBeGreaterThanOrEqual(0);
     });
 
     it('should handle errors in finally block', async () => {

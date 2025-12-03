@@ -155,61 +155,15 @@ export class MemoryManagementMiddleware {
       connectionResource = createHTTPConnectionResource(req, res, req.socket);
     }
 
-    // Set up response cleanup
-    const cleanup = (): void => {
-      const endTime = Date.now();
-      const endMemory = process.memoryUsage();
-      const duration = endTime - startTime;
-      const memoryDelta = endMemory.heapUsed - startMemory.heapUsed;
-
-      // Update memory tracking info
-      if (request.memoryInfo) {
-        request.memoryInfo = {
-          ...request.memoryInfo,
-          endMemory,
-          memoryDelta,
-          duration,
-          resourcesCleanedUp: true,
-        };
-      }
-
-      // Log memory usage for slow requests
-      if (
-        this.config.logSlowRequestMemory &&
-        duration > this.config.slowRequestThreshold
-      ) {
-        logger.warn('Slow request with memory tracking', correlationId, {
-          method: req.method,
-          url: req.originalUrl,
-          duration,
-          memoryDelta,
-          heapUsedStart: startMemory.heapUsed,
-          heapUsedEnd: endMemory.heapUsed,
-          statusCode: res.statusCode,
-        });
-      }
-
-      // Clean up connection resource
-      if (connectionResource && !connectionResource.disposed) {
-        connectionResource[Symbol.asyncDispose]().catch((error: unknown) => {
-          logger.debug('Connection resource cleanup failed', correlationId, {
-            error: error instanceof Error ? error.message : 'Unknown error',
-          });
-        });
-      }
-
-      // Check for memory leaks periodically
-      this.requestCount += 1;
-      if (this.requestCount % 100 === 0) {
-        this.performPeriodicMemoryCheck(correlationId);
-      }
-
-      // Suggest garbage collection for memory-intensive requests
-      if (this.config.enableGCSuggestions && memoryDelta > 10 * 1024 * 1024) {
-        // 10MB
-        this.suggestGarbageCollection(correlationId, memoryDelta);
-      }
-    };
+    const cleanup = this.createCleanup({
+      correlationId,
+      request,
+      startMemory,
+      startTime,
+      connectionResource,
+      req,
+      res,
+    });
 
     // Set up cleanup on response finish
     res.on('finish', cleanup);
@@ -218,6 +172,120 @@ export class MemoryManagementMiddleware {
     // Continue with request processing
     next();
   };
+
+  private createCleanup(options: {
+    correlationId: string;
+    request: RequestWithMemoryTracking;
+    startMemory: NodeJS.MemoryUsage;
+    startTime: number;
+    connectionResource?: ReturnType<typeof createHTTPConnectionResource>;
+    req: Request;
+    res: Response;
+  }): () => void {
+    const {
+      correlationId,
+      request,
+      startMemory,
+      startTime,
+      connectionResource,
+      req,
+      res,
+    } = options;
+
+    return (): void => {
+      const endTime = Date.now();
+      const endMemory = process.memoryUsage();
+      const duration = endTime - startTime;
+      const memoryDelta = endMemory.heapUsed - startMemory.heapUsed;
+
+      this.updateMemoryTracking(request, endMemory, memoryDelta, duration);
+      this.logSlowRequestIfNeeded({
+        correlationId,
+        duration,
+        memoryDelta,
+        startMemory,
+        endMemory,
+        req,
+        res,
+      });
+      this.cleanupConnectionResource(connectionResource, correlationId);
+      this.handlePeriodicChecks(correlationId);
+      this.suggestGarbageCollectionIfNeeded(correlationId, memoryDelta);
+    };
+  }
+
+  private updateMemoryTracking(
+    request: RequestWithMemoryTracking,
+    endMemory: NodeJS.MemoryUsage,
+    memoryDelta: number,
+    duration: number
+  ): void {
+    if (request.memoryInfo) {
+      request.memoryInfo = {
+        ...request.memoryInfo,
+        endMemory,
+        memoryDelta,
+        duration,
+        resourcesCleanedUp: true,
+      };
+    }
+  }
+
+  private logSlowRequestIfNeeded(options: {
+    correlationId: string;
+    duration: number;
+    memoryDelta: number;
+    startMemory: NodeJS.MemoryUsage;
+    endMemory: NodeJS.MemoryUsage;
+    req: Request;
+    res: Response;
+  }): void {
+    const { correlationId, duration, memoryDelta, startMemory, endMemory, req, res } = options;
+
+    if (
+      this.config.logSlowRequestMemory &&
+      duration > this.config.slowRequestThreshold
+    ) {
+      logger.warn('Slow request with memory tracking', correlationId, {
+        method: req.method,
+        url: req.originalUrl,
+        duration,
+        memoryDelta,
+        heapUsedStart: startMemory.heapUsed,
+        heapUsedEnd: endMemory.heapUsed,
+        statusCode: res.statusCode,
+      });
+    }
+  }
+
+  private cleanupConnectionResource(
+    connectionResource: ReturnType<typeof createHTTPConnectionResource> | undefined,
+    correlationId: string
+  ): void {
+    if (connectionResource && !connectionResource.disposed) {
+      connectionResource[Symbol.asyncDispose]().catch((error: unknown) => {
+        logger.debug('Connection resource cleanup failed', correlationId, {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      });
+    }
+  }
+
+  private handlePeriodicChecks(correlationId: string): void {
+    this.requestCount += 1;
+    if (this.requestCount % 100 === 0) {
+      this.performPeriodicMemoryCheck(correlationId);
+    }
+  }
+
+  private suggestGarbageCollectionIfNeeded(
+    correlationId: string,
+    memoryDelta: number
+  ): void {
+    if (this.config.enableGCSuggestions && memoryDelta > 10 * 1024 * 1024) {
+      this.suggestGarbageCollection(correlationId, memoryDelta);
+    }
+  }
 
   /**
    * Checks memory pressure and logs warnings if necessary.
