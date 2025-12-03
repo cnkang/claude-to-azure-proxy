@@ -114,30 +114,9 @@ export class AWSBedrockClient implements AsyncDisposable {
   ): Promise<ResponsesResponse> {
     this.ensureNotDisposed();
     validateResponsesCreateParams(params);
+    const abortContext = this.createAbortContext(signal);
 
-    // Check for abort before creating resources
-    throwIfAborted(signal);
-
-    let aborted = false;
-    const removeAbortListener = registerAbortListener(signal, () => {
-      aborted = true;
-    });
-
-    if (signal?.aborted) {
-      removeAbortListener();
-      throw createAbortError(signal.reason);
-    }
-
-    // Create connection resource for tracking
-    const connectionResource = createHTTPConnectionResource(
-      undefined,
-      undefined,
-      undefined
-    );
-    this.activeConnections.add(connectionResource);
-
-    // Check for abort again after resource creation to catch aborts during setup
-    throwIfAborted(signal);
+    const connectionResource = this.createTrackedConnection(signal);
 
     try {
       const modelId = this.getBedrockModelId(params.model);
@@ -170,25 +149,13 @@ export class AWSBedrockClient implements AsyncDisposable {
       return assertValidResponsesResponse(normalized);
     } catch (error) {
       if (isAbortError(error)) {
-        aborted = true;
+        abortContext.markAborted();
         throw error;
       }
       throw this.handleApiError(error, 'createResponse');
     } finally {
-      removeAbortListener();
-      this.activeConnections.delete(connectionResource);
-      if (aborted && !connectionResource.disposed) {
-        try {
-          await connectionResource[Symbol.asyncDispose]();
-        } catch (disposeError) {
-          logger.warn('Failed to dispose aborted Bedrock connection', '', {
-            error:
-              disposeError instanceof Error
-                ? disposeError.message
-                : 'Unknown error',
-          });
-        }
-      }
+      abortContext.cleanup();
+      await this.cleanupConnectionResource(connectionResource, abortContext.aborted());
     }
   }
 
@@ -204,184 +171,329 @@ export class AWSBedrockClient implements AsyncDisposable {
     throwIfAborted(signal);
 
     const correlationId = uuidv4();
+    const { response, modelId } = await this.requestStreamingResponse(
+      params,
+      signal
+    );
 
-    // Create stream resource for tracking and automatic cleanup
-    // Note: We'll create the resource after we have the actual stream
-    let streamResource: StreamResource | undefined;
-    let aborted = false;
-    let removeAbortListener: (() => void) | undefined;
+    const streamResource = this.createTrackedStreamResource(
+      response.data,
+      params.model
+    );
+    const abortContext = this.createStreamAbortContext(response.data, signal);
 
     try {
-      const modelId = this.getBedrockModelId(params.model);
-      const request = this.buildBedrockRequest(params);
-
-      const response = await this.client.post<BedrockStream>(
-        `/model/${modelId}/converse-stream`,
-        request,
-        {
-          responseType: 'stream',
-          headers: {
-            Accept: 'application/vnd.amazon.eventstream',
-          },
-          signal,
-        }
-      );
-
-      // Create stream resource now that we have the actual stream
-      streamResource = createStreamResource(
-        response.data,
-        `AWS Bedrock streaming response for model ${params.model}`
-      );
-      this.activeStreams.add(streamResource);
-
-      removeAbortListener = registerAbortListener(signal, () => {
-        aborted = true;
-        if (typeof response.data.destroy === 'function') {
-          response.data.destroy(createAbortError(signal?.reason));
-        }
+      yield* this.streamResponseEvents({
+        abortContext,
+        correlationId,
+        model: params.model,
+        modelId,
+        signal,
+        startTime: performance.now(),
+        stream: response.data,
       });
-
-      let responseId = correlationId;
-      let createdAt = Math.floor(Date.now() / 1000);
-      const { model } = params;
-      let chunkCount = 0;
-      const startTime = performance.now();
-
-      for await (const event of this.parseEventStream(
-        response.data,
-        correlationId
-      )) {
-        throwIfAborted(signal);
-        // Check memory pressure periodically during streaming
-        if (chunkCount % 10 === 0) {
-          const memoryMetrics = memoryManager.getMemoryMetrics();
-          if (memoryMetrics.pressure.level === 'critical') {
-            logger.warn(
-              'Critical memory pressure during Bedrock streaming',
-              correlationId,
-              {
-                heapUsage: memoryMetrics.heap.percentage,
-                chunkCount,
-              }
-            );
-          }
-        }
-
-        if (event.messageStart) {
-          responseId = correlationId;
-          createdAt = Math.floor(Date.now() / 1000);
-          continue;
-        }
-
-        if (event.contentBlockStart?.start.toolUse !== undefined) {
-          const chunk = this.createToolUseChunk(
-            event.contentBlockStart.start.toolUse,
-            responseId,
-            createdAt,
-            model
-          );
-          chunkCount++;
-          yield assertValidResponsesStreamChunk(chunk);
-          continue;
-        }
-
-        if (event.contentBlockDelta?.delta.text !== undefined) {
-          const chunk = this.createTextDeltaChunk(
-            event.contentBlockDelta.delta.text,
-            responseId,
-            createdAt,
-            model
-          );
-          chunkCount++;
-          yield assertValidResponsesStreamChunk(chunk);
-          continue;
-        }
-
-        if (event.metadata?.usage !== undefined) {
-          const chunk = this.createUsageChunk(
-            event.metadata.usage,
-            responseId,
-            createdAt,
-            model
-          );
-          chunkCount++;
-          yield assertValidResponsesStreamChunk(chunk);
-          continue;
-        }
-
-        if (event.messageStop !== undefined) {
-          const chunk = this.createCompletionChunk(
-            responseId,
-            createdAt,
-            model,
-            event.metadata?.usage,
-            event.messageStop.stopReason
-          );
-          chunkCount++;
-
-          // Log streaming completion metrics
-          const duration = performance.now() - startTime;
-          logger.debug('AWS Bedrock streaming completed', correlationId, {
-            duration: Math.round(duration),
-            chunkCount,
-            model: params.model,
-            modelId,
-            responseId,
-          });
-
-          yield assertValidResponsesStreamChunk(chunk);
-          continue;
-        }
-
-        if (event.message !== undefined) {
-          const outputs = this.transformContentBlocks(event.message.content);
-          if (outputs.length > 0) {
-            const chunk: ResponsesStreamChunk = {
-              id: responseId,
-              object: 'response.chunk',
-              created: createdAt,
-              model,
-              output: outputs,
-            };
-            chunkCount++;
-            yield assertValidResponsesStreamChunk(chunk);
-          }
-          continue;
-        }
-
-        logger.debug('Unhandled AWS Bedrock stream event', correlationId, {
-          keys: Object.keys(event),
-        });
-      }
     } catch (error) {
       if (isAbortError(error)) {
-        aborted = true;
+        abortContext.markAborted();
         throw error;
       }
       throw this.handleApiError(error, 'createResponseStream');
     } finally {
-      if (removeAbortListener) {
-        removeAbortListener();
+      abortContext.cleanup();
+      await this.cleanupStreamResource(streamResource, abortContext.aborted());
+    }
+  }
+
+  private async requestStreamingResponse(
+    params: ResponsesCreateParams,
+    signal?: AbortSignal
+  ): Promise<{
+    modelId: string;
+    response: AxiosResponse<BedrockStream>;
+  }> {
+    const modelId = this.getBedrockModelId(params.model);
+    const request = this.buildBedrockRequest(params);
+
+    const response = await this.client.post<BedrockStream>(
+      `/model/${modelId}/converse-stream`,
+      request,
+      {
+        responseType: 'stream',
+        headers: {
+          Accept: 'application/vnd.amazon.eventstream',
+        },
+        signal,
       }
-      if (streamResource) {
-        this.activeStreams.delete(streamResource);
-        if (aborted && !streamResource.disposed) {
-          try {
-            await streamResource[Symbol.asyncDispose]();
-          } catch (disposeError) {
-            logger.warn(
-              'Failed to dispose aborted Bedrock stream resource',
-              '',
-              {
-                error:
-                  disposeError instanceof Error
-                    ? disposeError.message
-                    : 'Unknown error',
-              }
-            );
-          }
+    );
+
+    return { modelId, response };
+  }
+
+  private createTrackedStreamResource(
+    stream: BedrockStream['data'],
+    model: string
+  ): StreamResource {
+    const resource = createStreamResource(
+      stream,
+      `AWS Bedrock streaming response for model ${model}`
+    );
+    this.activeStreams.add(resource);
+    return resource;
+  }
+
+  private createStreamAbortContext(
+    stream: BedrockStream['data'],
+    signal?: AbortSignal
+  ): {
+    aborted: () => boolean;
+    cleanup: () => void;
+    markAborted: () => void;
+  } {
+    let aborted = false;
+    const removeAbortListener = registerAbortListener(signal, () => {
+      aborted = true;
+      if (typeof stream.destroy === 'function') {
+        stream.destroy(createAbortError(signal?.reason));
+      }
+    });
+
+    if (signal?.aborted) {
+      removeAbortListener();
+      if (typeof stream.destroy === 'function') {
+        stream.destroy(createAbortError(signal.reason));
+      }
+      throw createAbortError(signal.reason);
+    }
+
+    return {
+      aborted: () => aborted,
+      cleanup: removeAbortListener,
+      markAborted: () => {
+        aborted = true;
+      },
+    };
+  }
+
+  private async *streamResponseEvents(params: {
+    abortContext: { aborted: () => boolean };
+    correlationId: string;
+    model: string;
+    modelId: string;
+    signal?: AbortSignal;
+    startTime: number;
+    stream: BedrockStream['data'];
+  }): AsyncIterable<ResponsesStreamChunk> {
+    let responseId = params.correlationId;
+    let createdAt = Math.floor(Date.now() / 1000);
+    let chunkCount = 0;
+
+    for await (const event of this.parseEventStream(
+      params.stream,
+      params.correlationId
+    )) {
+      throwIfAborted(params.signal);
+      this.logStreamingMemoryPressure(chunkCount, params.correlationId);
+
+      const result = this.transformStreamEvent(event, {
+        correlationId: params.correlationId,
+        createdAt,
+        model: params.model,
+        responseId,
+      });
+
+      if (result.kind === 'reset') {
+        responseId = result.responseId;
+        createdAt = result.createdAt;
+        continue;
+      }
+
+      if (result.kind === 'completion') {
+        chunkCount++;
+        this.logStreamCompletion({
+          chunkCount,
+          correlationId: params.correlationId,
+          durationMs: performance.now() - params.startTime,
+          model: params.model,
+          modelId: params.modelId,
+          responseId,
+        });
+        yield assertValidResponsesStreamChunk(result.chunk);
+        continue;
+      }
+
+      if (result.kind === 'chunks') {
+        chunkCount += result.chunks.length;
+        for (const chunk of result.chunks) {
+          yield assertValidResponsesStreamChunk(chunk);
         }
+        continue;
       }
+
+      this.logUnhandledStreamEvent(event, params.correlationId);
+    }
+  }
+
+  private transformStreamEvent(
+    event: BedrockStreamChunk,
+    context: {
+      correlationId: string;
+      createdAt: number;
+      model: string;
+      responseId: string;
+    }
+  ):
+    | { kind: 'chunks'; chunks: ResponsesStreamChunk[] }
+    | { kind: 'completion'; chunk: ResponsesStreamChunk }
+    | { kind: 'none' }
+    | { kind: 'reset'; createdAt: number; responseId: string } {
+    if (event.messageStart) {
+      return {
+        kind: 'reset',
+        responseId: context.correlationId,
+        createdAt: Math.floor(Date.now() / 1000),
+      };
+    }
+
+    if (event.contentBlockStart?.start.toolUse !== undefined) {
+      return {
+        kind: 'chunks',
+        chunks: [
+          this.createToolUseChunk(
+            event.contentBlockStart.start.toolUse,
+            context.responseId,
+            context.createdAt,
+            context.model
+          ),
+        ],
+      };
+    }
+
+    if (event.contentBlockDelta?.delta.text !== undefined) {
+      return {
+        kind: 'chunks',
+        chunks: [
+          this.createTextDeltaChunk(
+            event.contentBlockDelta.delta.text,
+            context.responseId,
+            context.createdAt,
+            context.model
+          ),
+        ],
+      };
+    }
+
+    if (event.metadata?.usage !== undefined) {
+      return {
+        kind: 'chunks',
+        chunks: [
+          this.createUsageChunk(
+            event.metadata.usage,
+            context.responseId,
+            context.createdAt,
+            context.model
+          ),
+        ],
+      };
+    }
+
+    if (event.messageStop !== undefined) {
+      return {
+        kind: 'completion',
+        chunk: this.createCompletionChunk(
+          context.responseId,
+          context.createdAt,
+          context.model,
+          event.metadata?.usage,
+          event.messageStop.stopReason
+        ),
+      };
+    }
+
+    if (event.message !== undefined) {
+      const outputs = this.transformContentBlocks(event.message.content);
+      if (outputs.length > 0) {
+        return {
+          kind: 'chunks',
+          chunks: [
+            {
+              id: context.responseId,
+              object: 'response.chunk',
+              created: context.createdAt,
+              model: context.model,
+              output: outputs,
+            },
+          ],
+        };
+      }
+    }
+
+    return { kind: 'none' };
+  }
+
+  private logStreamCompletion(params: {
+    chunkCount: number;
+    correlationId: string;
+    durationMs: number;
+    model: string;
+    modelId: string;
+    responseId: string;
+  }): void {
+    logger.debug('AWS Bedrock streaming completed', params.correlationId, {
+      duration: Math.round(params.durationMs),
+      chunkCount: params.chunkCount,
+      model: params.model,
+      modelId: params.modelId,
+      responseId: params.responseId,
+    });
+  }
+
+  private logUnhandledStreamEvent(
+    event: BedrockStreamChunk,
+    correlationId: string
+  ): void {
+    logger.debug('Unhandled AWS Bedrock stream event', correlationId, {
+      keys: Object.keys(event),
+    });
+  }
+
+  private logStreamingMemoryPressure(
+    chunkCount: number,
+    correlationId: string
+  ): void {
+    if (chunkCount % 10 !== 0) {
+      return;
+    }
+
+    const memoryMetrics = memoryManager.getMemoryMetrics();
+    if (memoryMetrics.pressure.level !== 'critical') {
+      return;
+    }
+
+    logger.warn('Critical memory pressure during Bedrock streaming', correlationId, {
+      heapUsage: memoryMetrics.heap.percentage,
+      chunkCount,
+    });
+  }
+
+  private async cleanupStreamResource(
+    streamResource: StreamResource,
+    aborted: boolean
+  ): Promise<void> {
+    this.activeStreams.delete(streamResource);
+
+    if (!aborted || streamResource.disposed) {
+      return;
+    }
+
+    try {
+      await streamResource[Symbol.asyncDispose]();
+    } catch (disposeError) {
+      logger.warn('Failed to dispose aborted Bedrock stream resource', '', {
+        error:
+          disposeError instanceof Error
+            ? disposeError.message
+            : 'Unknown error',
+      });
     }
   }
 
@@ -525,44 +637,8 @@ export class AWSBedrockClient implements AsyncDisposable {
   private buildBedrockRequest(
     params: ResponsesCreateParams
   ): BedrockConverseRequest {
-    const messages: BedrockMessage[] = [];
-    const systemMessages: BedrockSystemMessage[] = [];
-
-    if (typeof params.input === 'string') {
-      messages.push({
-        role: 'user',
-        content: [{ text: params.input }],
-      });
-    } else {
-      for (const message of params.input) {
-        if (message.role === 'system') {
-          systemMessages.push({ text: message.content });
-        } else {
-          messages.push({
-            role: message.role === 'assistant' ? 'assistant' : 'user',
-            content: [{ text: message.content }],
-          });
-        }
-      }
-    }
-
-    const inferenceConfig =
-      params.max_output_tokens !== undefined ||
-      params.temperature !== undefined ||
-      params.top_p !== undefined ||
-      params.stop !== undefined
-        ? ({
-            ...(params.max_output_tokens !== undefined && {
-              maxTokens: params.max_output_tokens,
-            }),
-            ...(params.temperature !== undefined && {
-              temperature: params.temperature,
-            }),
-            ...(params.top_p !== undefined && { topP: params.top_p }),
-            ...(params.stop !== undefined && { stopSequences: params.stop }),
-          } as const)
-        : undefined;
-
+    const { messages, systemMessages } = this.buildMessageBlocks(params);
+    const inferenceConfig = this.buildInferenceConfig(params);
     const toolConfig = this.buildToolConfig(params);
 
     return {
@@ -573,6 +649,66 @@ export class AWSBedrockClient implements AsyncDisposable {
       ...(inferenceConfig !== undefined && { inferenceConfig }),
       ...(toolConfig !== undefined && { toolConfig }),
     };
+  }
+
+  private buildMessageBlocks(
+    params: ResponsesCreateParams
+  ): {
+    messages: BedrockMessage[];
+    systemMessages: BedrockSystemMessage[];
+  } {
+    if (typeof params.input === 'string') {
+      return {
+        messages: [
+          {
+            role: 'user',
+            content: [{ text: params.input }],
+          },
+        ],
+        systemMessages: [],
+      };
+    }
+
+    const messages: BedrockMessage[] = [];
+    const systemMessages: BedrockSystemMessage[] = [];
+
+    for (const message of params.input) {
+      if (message.role === 'system') {
+        systemMessages.push({ text: message.content });
+        continue;
+      }
+
+      messages.push({
+        role: message.role === 'assistant' ? 'assistant' : 'user',
+        content: [{ text: message.content }],
+      });
+    }
+
+    return { messages, systemMessages };
+  }
+
+  private buildInferenceConfig(
+    params: ResponsesCreateParams
+  ): BedrockConverseRequest['inferenceConfig'] | undefined {
+    if (
+      params.max_output_tokens === undefined &&
+      params.temperature === undefined &&
+      params.top_p === undefined &&
+      params.stop === undefined
+    ) {
+      return undefined;
+    }
+
+    return {
+      ...(params.max_output_tokens !== undefined && {
+        maxTokens: params.max_output_tokens,
+      }),
+      ...(params.temperature !== undefined && {
+        temperature: params.temperature,
+      }),
+      ...(params.top_p !== undefined && { topP: params.top_p }),
+      ...(params.stop !== undefined && { stopSequences: params.stop }),
+    } as const;
   }
 
   private buildToolConfig(
@@ -840,51 +976,79 @@ export class AWSBedrockClient implements AsyncDisposable {
       return error;
     }
 
-    if (error instanceof Error) {
-      if (error.message.includes('timeout')) {
-        return ErrorFactory.fromTimeout(
-          this.config.timeout,
-          correlationId,
-          operation
-        );
-      }
-
-      if (
-        error.message.includes('network') ||
-        error.message.includes('ECONNREFUSED') ||
-        (error as Error & { code?: string }).code === 'ECONNRESET'
-      ) {
-        return ErrorFactory.fromNetworkError(error, correlationId, operation);
-      }
+    const standardError = this.tryMapStandardError(error, correlationId, operation);
+    if (standardError !== undefined) {
+      return standardError;
     }
 
-    if (this.isAxiosError(error)) {
-      const status = error.response?.status ?? 500;
-      const rawData = error.response?.data;
-      let { message } = error;
-
-      if (
-        rawData !== undefined &&
-        typeof rawData === 'object' &&
-        rawData !== null
-      ) {
-        try {
-          message = JSON.stringify(rawData);
-        } catch {
-          message = '[Unserializable AWS Bedrock error payload]';
-        }
-      }
-
-      return new AzureOpenAIError(
-        message,
-        status,
-        correlationId,
-        'bedrock_error',
-        error.code ?? 'unknown',
-        operation
-      );
+    const axiosError = this.tryMapAxiosError(error, correlationId, operation);
+    if (axiosError !== undefined) {
+      return axiosError;
     }
 
+    return this.buildUnknownError(operation, correlationId);
+  }
+
+  private tryMapStandardError(
+    error: unknown,
+    correlationId: string,
+    operation: string
+  ): Error | undefined {
+    if (!(error instanceof Error)) {
+      return undefined;
+    }
+
+    if (error.message.includes('timeout')) {
+      return ErrorFactory.fromTimeout(this.config.timeout, correlationId, operation);
+    }
+
+    if (
+      error.message.includes('network') ||
+      error.message.includes('ECONNREFUSED') ||
+      (error as Error & { code?: string }).code === 'ECONNRESET'
+    ) {
+      return ErrorFactory.fromNetworkError(error, correlationId, operation);
+    }
+
+    return undefined;
+  }
+
+  private tryMapAxiosError(
+    error: unknown,
+    correlationId: string,
+    operation: string
+  ): Error | undefined {
+    if (!this.isAxiosError(error)) {
+      return undefined;
+    }
+
+    const status = error.response?.status ?? 500;
+    const rawData = error.response?.data;
+    let { message } = error;
+
+    if (rawData !== undefined && typeof rawData === 'object' && rawData !== null) {
+      message = this.serializeAxiosPayload(rawData);
+    }
+
+    return new AzureOpenAIError(
+      message,
+      status,
+      correlationId,
+      'bedrock_error',
+      error.code ?? 'unknown',
+      operation
+    );
+  }
+
+  private serializeAxiosPayload(rawData: unknown): string {
+    try {
+      return JSON.stringify(rawData);
+    } catch {
+      return '[Unserializable AWS Bedrock error payload]';
+    }
+  }
+
+  private buildUnknownError(operation: string, correlationId: string): AzureOpenAIError {
     return new AzureOpenAIError(
       `Unknown error during ${operation}`,
       500,
@@ -898,70 +1062,144 @@ export class AWSBedrockClient implements AsyncDisposable {
   private validateConfig(config: AWSBedrockConfig): void {
     const correlationId = uuidv4();
 
-    if (typeof config.baseURL !== 'string' || config.baseURL.length === 0) {
-      throw new ValidationError(
-        'Invalid baseURL: must be a non-empty string',
-        correlationId,
-        'baseURL',
-        config.baseURL,
-        true,
-        'AWSBedrockClient.validateConfig'
-      );
-    }
+    this.assertValidHttpsUrl(config.baseURL, correlationId);
+    this.assertNonEmptyString(config.apiKey, 'apiKey', correlationId, '[REDACTED]');
+    this.assertNonEmptyString(config.region, 'region', correlationId);
+    this.assertPositiveNumber(config.timeout, 'timeout', correlationId);
+    this.assertNonNegativeNumber(config.maxRetries, 'maxRetries', correlationId);
+  }
 
-    if (!config.baseURL.startsWith('https://')) {
+  private assertValidHttpsUrl(
+    value: unknown,
+    correlationId: string
+  ): asserts value is string {
+    this.assertNonEmptyString(value, 'baseURL', correlationId);
+
+    if (typeof value === 'string' && !value.startsWith('https://')) {
       throw new ValidationError(
         'Invalid baseURL: must use HTTPS protocol',
         correlationId,
         'baseURL',
-        config.baseURL,
+        value,
         true,
         'AWSBedrockClient.validateConfig'
       );
     }
+  }
 
-    if (typeof config.apiKey !== 'string' || config.apiKey.length === 0) {
-      throw new ValidationError(
-        'Invalid apiKey: must be a non-empty string',
-        correlationId,
-        'apiKey',
-        '[REDACTED]',
-        true,
-        'AWSBedrockClient.validateConfig'
-      );
+  private assertNonEmptyString(
+    value: unknown,
+    field: string,
+    correlationId: string,
+    safeValue?: string
+  ): asserts value is string {
+    if (typeof value === 'string' && value.length > 0) {
+      return;
     }
 
-    if (typeof config.region !== 'string' || config.region.length === 0) {
-      throw new ValidationError(
-        'Invalid region: must be a non-empty string',
-        correlationId,
-        'region',
-        config.region,
-        true,
-        'AWSBedrockClient.validateConfig'
-      );
+    throw new ValidationError(
+      `Invalid ${field}: must be a non-empty string`,
+      correlationId,
+      field,
+      safeValue ?? value,
+      true,
+      'AWSBedrockClient.validateConfig'
+    );
+  }
+
+  private assertPositiveNumber(
+    value: unknown,
+    field: string,
+    correlationId: string
+  ): asserts value is number {
+    if (typeof value === 'number' && value > 0) {
+      return;
     }
 
-    if (typeof config.timeout !== 'number' || config.timeout <= 0) {
-      throw new ValidationError(
-        'Invalid timeout: must be a positive number',
-        correlationId,
-        'timeout',
-        config.timeout,
-        true,
-        'AWSBedrockClient.validateConfig'
-      );
+    throw new ValidationError(
+      `Invalid ${field}: must be a positive number`,
+      correlationId,
+      field,
+      value,
+      true,
+      'AWSBedrockClient.validateConfig'
+    );
+  }
+
+  private assertNonNegativeNumber(
+    value: unknown,
+    field: string,
+    correlationId: string
+  ): asserts value is number {
+    if (typeof value === 'number' && value >= 0) {
+      return;
     }
 
-    if (typeof config.maxRetries !== 'number' || config.maxRetries < 0) {
-      throw new ValidationError(
-        'Invalid maxRetries: must be a non-negative number',
-        correlationId,
-        'maxRetries',
-        config.maxRetries,
-        true,
-        'AWSBedrockClient.validateConfig'
-      );
+    throw new ValidationError(
+      `Invalid ${field}: must be a non-negative number`,
+      correlationId,
+      field,
+      value,
+      true,
+      'AWSBedrockClient.validateConfig'
+    );
+  }
+
+  private createAbortContext(signal?: AbortSignal): {
+    aborted: () => boolean;
+    cleanup: () => void;
+    markAborted: () => void;
+  } {
+    let aborted = false;
+    const removeAbortListener = registerAbortListener(signal, () => {
+      aborted = true;
+    });
+
+    if (signal?.aborted) {
+      removeAbortListener();
+      throw createAbortError(signal.reason);
+    }
+
+    return {
+      aborted: () => aborted,
+      cleanup: removeAbortListener,
+      markAborted: () => {
+        aborted = true;
+      },
+    };
+  }
+
+  private createTrackedConnection(signal?: AbortSignal): HTTPConnectionResource {
+    const connectionResource = createHTTPConnectionResource(
+      undefined,
+      undefined,
+      undefined
+    );
+    this.activeConnections.add(connectionResource);
+
+    throwIfAborted(signal);
+    return connectionResource;
+  }
+
+  private async cleanupConnectionResource(
+    connectionResource: HTTPConnectionResource,
+    aborted: boolean
+  ): Promise<void> {
+    this.activeConnections.delete(connectionResource);
+
+    if (!aborted || connectionResource.disposed) {
+      return;
+    }
+
+    try {
+      await connectionResource[Symbol.asyncDispose]();
+    } catch (disposeError) {
+      logger.warn('Failed to dispose aborted Bedrock connection', '', {
+        error:
+          disposeError instanceof Error
+            ? disposeError.message
+            : 'Unknown error',
+      });
     }
   }
 

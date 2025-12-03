@@ -273,10 +273,10 @@ export class BedrockMonitor {
           status: 'connected',
           responseTime,
         };
-      } else {
-        this.updateServiceStatus('degraded');
-        return { status: 'disconnected' };
       }
+
+      this.updateServiceStatus('degraded');
+      return { status: 'disconnected' };
     } catch (error) {
       this.updateServiceStatus('unavailable');
 

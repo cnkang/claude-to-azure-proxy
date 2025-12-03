@@ -15,7 +15,7 @@ import {
 
 const expectSyncError = <T extends Error>(
   fn: () => unknown,
-  errorClass: new (...args: any[]) => T,
+  errorClass: new (...args: unknown[]) => T,
   message: string
 ): void => {
   try {
@@ -26,6 +26,15 @@ const expectSyncError = <T extends Error>(
     expect((error as Error).message).toBe(message);
   }
 };
+
+const buildMessages = (
+  count: number,
+  contentFactory: (index: number) => string
+): ClaudeRequest['messages'] =>
+  Array.from({ length: count }, (_, i) => ({
+    role: i % 2 === 0 ? 'user' : 'assistant',
+    content: contentFactory(i),
+  }));
 describe('UniversalRequestProcessor', () => {
   let processor: UniversalRequestProcessor;
   let config: UniversalProcessorConfig;
@@ -194,10 +203,11 @@ describe('UniversalRequestProcessor', () => {
     it('should handle complex conversations with high reasoning effort', async () => {
       const claudeRequest: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
-        messages: Array.from({ length: 15 }, (_, i) => ({
-          role: i % 2 === 0 ? 'user' : 'assistant',
-          content: `Message ${i + 1} with some complex content that requires reasoning`,
-        })) as any,
+        messages: buildMessages(
+          15,
+          (i) =>
+            `Message ${i + 1} with some complex content that requires reasoning`
+        ),
         tools: [
           {
             name: 'calculator',
@@ -485,10 +495,7 @@ describe('UniversalRequestProcessor', () => {
     it('should use medium effort for medium complexity conversations', async () => {
       const claudeRequest: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
-        messages: Array.from({ length: 5 }, (_, i) => ({
-          role: i % 2 === 0 ? 'user' : 'assistant',
-          content: `Message ${i + 1}`,
-        })) as any,
+        messages: buildMessages(5, (i) => `Message ${i + 1}`),
       };
 
       const incomingRequest: IncomingRequest = {
@@ -506,10 +513,10 @@ describe('UniversalRequestProcessor', () => {
     it('should use high effort for complex conversations', async () => {
       const claudeRequest: ClaudeRequest = {
         model: 'claude-3-5-sonnet-20241022',
-        messages: Array.from({ length: 15 }, (_, i) => ({
-          role: i % 2 === 0 ? 'user' : 'assistant',
-          content: `Complex message ${i + 1} with detailed content`,
-        })) as any,
+        messages: buildMessages(
+          15,
+          (i) => `Complex message ${i + 1} with detailed content`
+        ),
       };
 
       const incomingRequest: IncomingRequest = {
@@ -601,7 +608,7 @@ describe('UniversalRequestProcessor', () => {
       const faultyProcessor = new UniversalRequestProcessor({
         ...config,
         // This will cause issues in the transformer
-        swiftKeywords: null as any,
+        swiftKeywords: null as unknown as readonly string[],
       });
 
       const claudeRequest: ClaudeRequest = {

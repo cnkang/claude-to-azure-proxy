@@ -8,7 +8,12 @@
  */
 
 import type { Request, Response } from 'express';
-import { body, param, validationResult } from 'express-validator';
+import {
+  type ValidationError as ExpressValidationError,
+  body,
+  param,
+  validationResult,
+} from 'express-validator';
 import { v4 as uuidv4 } from 'uuid';
 import { ValidationError } from '../errors/index.js';
 import { isE2EBypassRequest } from '../middleware/authentication.js';
@@ -28,6 +33,18 @@ import {
 interface RequestWithSession extends RequestWithCorrelationId {
   sessionId: string;
 }
+
+const formatValidationError = (err: ExpressValidationError): {
+  field: string;
+  message: string;
+  value?: unknown;
+  location?: string;
+} => ({
+  field: err.type === 'field' ? err.path : 'unknown',
+  message: err.msg,
+  value: err.type === 'field' ? err.value : undefined,
+  location: err.type === 'field' ? err.location : undefined,
+});
 
 // SSE connection management
 // Task 11.3: Add chunkCount to interface to avoid dynamic property addition
@@ -290,6 +307,186 @@ function sendHeartbeat(): void {
   }
 }
 
+function handleE2EBypass(
+  req: Request,
+  res: Response,
+  correlationId: string
+): boolean {
+  if (!isE2EBypassRequest(req)) {
+    return false;
+  }
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+
+  const now = Date.now();
+  const startPayload = {
+    type: 'start',
+    correlationId,
+    timestamp: now,
+  };
+  res.write(`data: ${JSON.stringify(startPayload)}\n\n`);
+
+  const endPayload = {
+    type: 'end',
+    correlationId,
+    timestamp: now,
+  };
+  res.write(`data: ${JSON.stringify(endPayload)}\n\n`);
+  res.end();
+  return true;
+}
+
+function validateConversationRequest(
+  req: Request,
+  correlationId: string,
+  conversationId: string
+): void {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new ValidationError(
+      'Invalid conversation ID',
+      correlationId,
+      'conversationId',
+      conversationId
+    );
+  }
+}
+
+function rejectWhenSessionAtLimit(
+  sessionConns: Set<string>,
+  sessionId: string,
+  correlationId: string,
+  res: Response
+): boolean {
+  if (sessionConns.size < SSE_CONFIG.maxConnectionsPerSession) {
+    return false;
+  }
+
+  logger.warn('SSE connection limit reached for session', correlationId, {
+    sessionId,
+    currentConnections: sessionConns.size,
+    maxConnections: SSE_CONFIG.maxConnectionsPerSession,
+  });
+
+  res.status(429).json({
+    error: {
+      type: 'connection_limit_exceeded',
+      message: `Maximum ${SSE_CONFIG.maxConnectionsPerSession} connections per session`,
+      correlationId,
+    },
+  });
+  return true;
+}
+
+function setupSSEHeaders(res: Response): void {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no', // Disable nginx buffering for SSE
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Cache-Control',
+  });
+}
+
+function registerSSEConnection(
+  sessionId: string,
+  conversationId: string,
+  correlationId: string,
+  res: Response,
+  sessionConns: Set<string>
+): { connectionId: string; connection: SSEConnection } {
+  const connectionId = uuidv4();
+  const connection: SSEConnection = {
+    id: connectionId,
+    sessionId,
+    conversationId,
+    response: res,
+    createdAt: new Date(),
+    correlationId,
+    isActive: true,
+    lastMessageTimestamp: Date.now(), // Initialize with creation time
+    chunkCount: 0, // Task 11.3: Initialize chunk counter
+  };
+
+  sseConnections.set(connectionId, connection);
+
+  if (!sessionConnections.has(sessionId)) {
+    sessionConnections.set(sessionId, sessionConns);
+  }
+  sessionConns.add(connectionId);
+
+  const indexKey = `${sessionId}_${conversationId}`;
+  connectionIndex.set(indexKey, connectionId);
+
+  sseStatistics.totalConnectionsCreated++;
+
+  logger.info('SSE connection established', correlationId, {
+    connectionId,
+    sessionId,
+    conversationId,
+    totalCreated: sseStatistics.totalConnectionsCreated,
+  });
+
+  return { connectionId, connection };
+}
+
+function scheduleInitialMessage(
+  connectionId: string,
+  connection: SSEConnection,
+  correlationId: string
+): void {
+  setTimeout(() => {
+    if (!connection.isActive) {
+      logger.warn(
+        'Connection closed before initial message could be sent',
+        correlationId,
+        {
+          connectionId,
+        }
+      );
+      return;
+    }
+
+    const initialMessage: StreamChunk = {
+      type: 'start',
+      correlationId,
+      timestamp: Date.now(),
+    };
+
+    const sent = sendSSEMessage(connectionId, initialMessage);
+    if (sent) {
+      logger.info('Initial SSE message sent', correlationId, {
+        connectionId,
+        delay: 100,
+      });
+    }
+  }, 100); // 100ms delay to ensure client is ready
+}
+
+function registerConnectionEventHandlers(
+  req: Request,
+  connectionId: string,
+  correlationId: string
+): void {
+  req.on('close', () => {
+    closeSSEConnection(connectionId, 'client_disconnect');
+  });
+
+  req.on('error', (error) => {
+    logger.warn('SSE connection error', correlationId, {
+      connectionId,
+      error: error.message,
+    });
+    closeSSEConnection(connectionId, 'connection_error');
+  });
+}
+
 /**
  * Close SSE connection
  *
@@ -300,62 +497,13 @@ function closeSSEConnection(connectionId: string, reason: string): void {
 
   if (connection) {
     connection.isActive = false;
-
-    try {
-      connection.response.end();
-    } catch {
-      // Connection might already be closed
-    }
+    safelyEndResponse(connection);
 
     // Calculate connection duration
     const duration = Date.now() - connection.createdAt.getTime();
 
-    // Task 11.3: Remove connection from map immediately to release Response object
-    sseConnections.delete(connectionId);
-
-    // Remove from session mapping
-    const sessionConns = sessionConnections.get(connection.sessionId);
-    if (sessionConns) {
-      sessionConns.delete(connectionId);
-      if (sessionConns.size === 0) {
-        sessionConnections.delete(connection.sessionId);
-      }
-    }
-
-    // Remove from secondary index
-    const indexKey = `${connection.sessionId}_${connection.conversationId}`;
-    connectionIndex.delete(indexKey);
-
-    // Track statistics
-    sseStatistics.totalConnectionsClosed++;
-
-    // Store connection duration (keep last N durations)
-    sseStatistics.connectionDurations.push(duration);
-    if (
-      sseStatistics.connectionDurations.length > SSE_CONFIG.maxStoredDurations
-    ) {
-      sseStatistics.connectionDurations.shift(); // Remove oldest
-    }
-
-    // Track errors
-    if (reason.includes('error') || reason.includes('timeout')) {
-      sseStatistics.totalErrors++;
-      const errorCount = sseStatistics.errorsByType.get(reason) || 0;
-      sseStatistics.errorsByType.set(reason, errorCount + 1);
-    }
-
-    // Track reconnections (if this is not the first connection for this session)
-    if (reason === 'client_disconnect' || reason.includes('error')) {
-      const reconnectCount =
-        sseStatistics.reconnectionsBySession.get(connection.sessionId) || 0;
-      if (reconnectCount > 0) {
-        sseStatistics.totalReconnections++;
-      }
-      sseStatistics.reconnectionsBySession.set(
-        connection.sessionId,
-        reconnectCount + 1
-      );
-    }
+    removeConnectionIndices(connectionId, connection);
+    updateConnectionStatistics(connection, reason, duration);
 
     logger.info('SSE connection closed', connection.correlationId, {
       connectionId,
@@ -368,6 +516,64 @@ function closeSSEConnection(connectionId: string, reason: string): void {
 
     // Task 11.3: Explicitly nullify connection reference to help GC
     // (connection variable will be garbage collected after this function returns)
+  }
+}
+
+function safelyEndResponse(connection: SSEConnection): void {
+  try {
+    connection.response.end();
+  } catch {
+    // Connection might already be closed
+  }
+}
+
+function removeConnectionIndices(
+  connectionId: string,
+  connection: SSEConnection
+): void {
+  // Task 11.3: Remove connection from map immediately to release Response object
+  sseConnections.delete(connectionId);
+
+  const sessionConns = sessionConnections.get(connection.sessionId);
+  if (sessionConns) {
+    sessionConns.delete(connectionId);
+    if (sessionConns.size === 0) {
+      sessionConnections.delete(connection.sessionId);
+    }
+  }
+
+  const indexKey = `${connection.sessionId}_${connection.conversationId}`;
+  connectionIndex.delete(indexKey);
+}
+
+function updateConnectionStatistics(
+  connection: SSEConnection,
+  reason: string,
+  duration: number
+): void {
+  sseStatistics.totalConnectionsClosed++;
+
+  sseStatistics.connectionDurations.push(duration);
+  if (sseStatistics.connectionDurations.length > SSE_CONFIG.maxStoredDurations) {
+    sseStatistics.connectionDurations.shift(); // Remove oldest
+  }
+
+  if (reason.includes('error') || reason.includes('timeout')) {
+    sseStatistics.totalErrors++;
+    const errorCount = sseStatistics.errorsByType.get(reason) || 0;
+    sseStatistics.errorsByType.set(reason, errorCount + 1);
+  }
+
+  if (reason === 'client_disconnect' || reason.includes('error')) {
+    const reconnectCount =
+      sseStatistics.reconnectionsBySession.get(connection.sessionId) || 0;
+    if (reconnectCount > 0) {
+      sseStatistics.totalReconnections++;
+    }
+    sseStatistics.reconnectionsBySession.set(
+      connection.sessionId,
+      reconnectCount + 1
+    );
   }
 }
 
@@ -391,178 +597,686 @@ export const chatSSEHandler = [
     const conversationId = req.params.conversationId as string;
 
     try {
-      // In E2E bypass mode, return a minimal SSE stream without validation/state
-      if (isE2EBypassRequest(req)) {
-        res.writeHead(200, {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          Connection: 'keep-alive',
-          'X-Accel-Buffering': 'no',
-        });
-
-        const startPayload = {
-          type: 'start',
-          correlationId,
-          timestamp: Date.now(),
-        };
-        res.write(`data: ${JSON.stringify(startPayload)}\n\n`);
-
-        const endPayload = {
-          type: 'end',
-          correlationId,
-          timestamp: Date.now(),
-        };
-        res.write(`data: ${JSON.stringify(endPayload)}\n\n`);
-        res.end();
+      if (handleE2EBypass(req, res, correlationId)) {
         return;
       }
 
-      // Validate request
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        throw new ValidationError(
-          'Invalid conversation ID',
-          correlationId,
-          'conversationId',
-          conversationId
-        );
-      }
+      validateConversationRequest(req, correlationId, conversationId);
 
-      // Check connection limit for session
-      const sessionConns = sessionConnections.get(sessionId) || new Set();
-      if (sessionConns.size >= SSE_CONFIG.maxConnectionsPerSession) {
-        logger.warn('SSE connection limit reached for session', correlationId, {
+      const sessionConns = sessionConnections.get(sessionId) || new Set<string>();
+      if (
+        rejectWhenSessionAtLimit(
+          sessionConns,
           sessionId,
-          currentConnections: sessionConns.size,
-          maxConnections: SSE_CONFIG.maxConnectionsPerSession,
-        });
-
-        res.status(429).json({
-          error: {
-            type: 'connection_limit_exceeded',
-            message: `Maximum ${SSE_CONFIG.maxConnectionsPerSession} connections per session`,
-            correlationId,
-          },
-        });
+          correlationId,
+          res
+        )
+      ) {
         return;
       }
 
-      // Set up SSE headers with nginx compatibility
-      res.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        Connection: 'keep-alive',
-        'X-Accel-Buffering': 'no', // Disable nginx buffering for SSE
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Cache-Control',
-      });
+      setupSSEHeaders(res);
 
-      // Create connection
-      const connectionId = uuidv4();
-      const connection: SSEConnection = {
-        id: connectionId,
+      const { connectionId, connection } = registerSSEConnection(
         sessionId,
         conversationId,
-        response: res,
-        createdAt: new Date(),
         correlationId,
-        isActive: true,
-        lastMessageTimestamp: Date.now(), // Initialize with creation time
-        chunkCount: 0, // Task 11.3: Initialize chunk counter
-      };
+        res,
+        sessionConns
+      );
 
-      // Store connection
-      sseConnections.set(connectionId, connection);
-
-      // Add to session mapping
-      if (!sessionConnections.has(sessionId)) {
-        sessionConnections.set(sessionId, new Set());
-      }
-      sessionConnections.get(sessionId)!.add(connectionId);
-
-      // Add to secondary index for fast lookup
-      const indexKey = `${sessionId}_${conversationId}`;
-      connectionIndex.set(indexKey, connectionId);
-
-      // Track statistics
-      sseStatistics.totalConnectionsCreated++;
-
-      logger.info('SSE connection established', correlationId, {
-        connectionId,
-        sessionId,
-        conversationId,
-        totalCreated: sseStatistics.totalConnectionsCreated,
-      });
-
-      // Send initial connection message after delay to ensure client is ready
-      setTimeout(() => {
-        // Verify connection is still active before sending
-        if (connection.isActive) {
-          const initialMessage: StreamChunk = {
-            type: 'start',
-            correlationId,
-            timestamp: Date.now(),
-          };
-
-          const sent = sendSSEMessage(connectionId, initialMessage);
-          if (sent) {
-            logger.info('Initial SSE message sent', correlationId, {
-              connectionId,
-              delay: 100,
-            });
-          }
-        } else {
-          logger.warn(
-            'Connection closed before initial message could be sent',
-            correlationId,
-            {
-              connectionId,
-            }
-          );
-        }
-      }, 100); // 100ms delay to ensure client is ready
-
-      // Handle client disconnect
-      req.on('close', () => {
-        closeSSEConnection(connectionId, 'client_disconnect');
-      });
-
-      req.on('error', (error) => {
-        logger.warn('SSE connection error', correlationId, {
-          connectionId,
-          error: error.message,
-        });
-        closeSSEConnection(connectionId, 'connection_error');
-      });
+      scheduleInitialMessage(connectionId, connection, correlationId);
+      registerConnectionEventHandlers(req, connectionId, correlationId);
     } catch (error) {
-      logger.error('Failed to establish SSE connection', correlationId, {
+      handleSSEConnectionError(
+        res,
+        error,
+        correlationId,
         sessionId,
-        conversationId,
-        error: error instanceof Error ? error.message : String(error),
-      });
-
-      if (!res.headersSent) {
-        if (error instanceof ValidationError) {
-          res.status(400).json({
-            error: {
-              type: 'validation_error',
-              message: error.message,
-              correlationId,
-            },
-          });
-        } else {
-          res.status(500).json({
-            error: {
-              type: 'sse_connection_error',
-              message: 'Failed to establish streaming connection',
-              correlationId,
-            },
-          });
-        }
-      }
+        conversationId
+      );
     }
   },
 ];
+
+function logIncomingMessageRequest(
+  req: Request,
+  correlationId: string,
+  sessionId: string
+): void {
+  logger.info('Incoming message request', correlationId, {
+    body: req.body,
+    sessionId,
+    headers: {
+      'x-session-id': req.headers['x-session-id'],
+      'content-type': req.headers['content-type'],
+    },
+    conversationId: req.body?.conversationId,
+    messageLength: req.body?.message?.length,
+    hasFiles: !!req.body?.files,
+    hasContextMessages: !!req.body?.contextMessages,
+  });
+}
+
+function validateChatRequestPayload(
+  req: Request,
+  correlationId: string,
+  sessionId: string
+): ChatStreamRequest {
+  const errors = validationResult(req);
+  if (errors.isEmpty()) {
+    return req.body as ChatStreamRequest;
+  }
+
+  const validationErrors = errors.array();
+  logger.error('Chat message validation failed', correlationId, {
+    errors: validationErrors,
+    errorDetails: validationErrors.map(formatValidationError),
+    body: req.body,
+    sessionId,
+    headers: {
+      'x-session-id': req.headers['x-session-id'],
+      'content-type': req.headers['content-type'],
+    },
+  });
+
+  throw new ValidationError(
+    'Invalid chat message request',
+    correlationId,
+    'request',
+    validationErrors
+  );
+}
+
+function ensureContextMessagesValid(
+  contextMessages: readonly ContextMessage[] | undefined,
+  correlationId: string
+): void {
+  if (!contextMessages || !Array.isArray(contextMessages)) {
+    return;
+  }
+
+  logger.debug('Validating context messages', correlationId, {
+    contextMessageCount: contextMessages.length,
+    contextMessages: contextMessages.map((msg) => ({
+      id: msg.id,
+      role: msg.role,
+      hasContent: !!msg.content,
+    })),
+  });
+
+  contextMessages.forEach((msg, index) => {
+    if (msg.id && !isValidMessageId(msg.id)) {
+      logger.warn('Invalid message ID in context messages', correlationId, {
+        index,
+        messageId: msg.id,
+        role: msg.role,
+      });
+      throw new ValidationError(
+        `Invalid message ID in context messages at index ${index}`,
+        correlationId,
+        'contextMessages',
+        msg.id
+      );
+    }
+
+    if (msg.role && !['user', 'assistant', 'system'].includes(msg.role)) {
+      logger.warn('Invalid role in context messages', correlationId, {
+        index,
+        role: msg.role,
+        validRoles: ['user', 'assistant', 'system'],
+      });
+      throw new ValidationError(
+        `Invalid role in context messages at index ${index}: ${msg.role}`,
+        correlationId,
+        'contextMessages',
+        msg.role
+      );
+    }
+
+    if (!msg.content || (typeof msg.content === 'string' && msg.content.trim().length === 0)) {
+      logger.warn('Empty content in context messages', correlationId, {
+        index,
+        role: msg.role,
+        messageId: msg.id,
+      });
+      throw new ValidationError(
+        `Empty content in context messages at index ${index}`,
+        correlationId,
+        'contextMessages',
+        'content'
+      );
+    }
+  });
+
+  logger.debug('Context messages validation passed', correlationId, {
+    validatedCount: contextMessages.length,
+  });
+}
+
+function resolveActiveConnection(
+  sessionId: string,
+  conversationId: string,
+  correlationId: string
+): SSEConnection | undefined {
+  const indexKey = `${sessionId}_${conversationId}`;
+  const connectionId = connectionIndex.get(indexKey);
+  const targetConnection = connectionId
+    ? sseConnections.get(connectionId)
+    : undefined;
+
+  logger.info('Connection lookup for message', correlationId, {
+    indexKey,
+    connectionId,
+    connectionFound: !!targetConnection,
+    connectionActive: targetConnection?.isActive,
+    totalConnections: sseConnections.size,
+    totalIndexEntries: connectionIndex.size,
+    sessionConnections: sessionConnections.get(sessionId)?.size || 0,
+  });
+
+  if (targetConnection && !targetConnection.isActive) {
+    logger.warn('Found inactive connection, cleaning up', correlationId, {
+      connectionId: targetConnection.id,
+      conversationId,
+      sessionId,
+    });
+    closeSSEConnection(targetConnection.id, 'inactive_connection');
+  }
+
+  if (targetConnection?.isActive) {
+    return targetConnection;
+  }
+
+  logger.error('No active connection found for message', correlationId, {
+    conversationId,
+    sessionId,
+    indexKey,
+    connectionId,
+    allConnections: Array.from(sseConnections.entries()).map(([id, conn]) => ({
+      id,
+      sessionId: conn.sessionId,
+      conversationId: conn.conversationId,
+      isActive: conn.isActive,
+      age: Date.now() - conn.createdAt.getTime(),
+    })),
+    allIndexKeys: Array.from(connectionIndex.keys()),
+  });
+
+  return undefined;
+}
+
+function respondNoActiveConnection(
+  res: Response,
+  correlationId: string
+): void {
+  res.status(400).json({
+    error: {
+      type: 'no_active_connection',
+      message: 'No active streaming connection for this conversation',
+      correlationId,
+    },
+  });
+}
+
+function findExistingStream(
+  sessionId: string,
+  conversationId: string
+): SSEConnection | undefined {
+  return Array.from(sseConnections.values()).find(
+    (conn) =>
+      conn.conversationId === conversationId &&
+      conn.sessionId === sessionId &&
+      conn.isActive
+  );
+}
+
+function logStreamProcessing(
+  correlationId: string,
+  conversationId: string,
+  sessionId: string,
+  message: string,
+  model: string,
+  files: ChatStreamRequest['files'],
+  contextMessages: ChatStreamRequest['contextMessages'],
+  existingStream: SSEConnection | undefined
+): void {
+  logger.info('Processing chat message for streaming', correlationId, {
+    conversationId,
+    sessionId,
+    messageLength: message.length,
+    model,
+    hasFiles: !!files?.length,
+    hasContext: !!contextMessages?.length,
+    hasExistingStream: !!existingStream,
+    existingStreamId: existingStream?.id,
+  });
+}
+
+function logMessageTracking(
+  correlationId: string,
+  messageId: string,
+  conversationId: string,
+  sessionId: string
+): void {
+  logger.info(
+    '[MESSAGE-ID-TRACKING] Message ID generated in sendChatMessageHandler',
+    correlationId,
+    {
+      messageId,
+      conversationId,
+      sessionId,
+      stage: 'sendMessage_response',
+      timestamp: new Date().toISOString(),
+    }
+  );
+}
+
+function sendStreamingAck(
+  res: Response,
+  messageId: string,
+  correlationId: string
+): void {
+  res.json({
+    messageId,
+    status: 'streaming',
+    correlationId,
+  });
+}
+
+function buildConnectionSummaries(
+  sessionConns: Set<string>,
+  now: number
+): Array<{
+  id: string;
+  conversationId: string;
+  createdAt: string;
+  duration: number;
+  age: { minutes: number; seconds: number; formatted: string };
+  health: {
+    status: 'healthy' | 'stale' | 'near_timeout';
+    isStale: boolean;
+    isNearTimeout: boolean;
+    timeUntilTimeout: number;
+  };
+  lastMessageTimestamp: number;
+  timeSinceLastMessage: number;
+}> {
+  const connections = [] as Array<{
+    id: string;
+    conversationId: string;
+    createdAt: string;
+    duration: number;
+    age: { minutes: number; seconds: number; formatted: string };
+    health: {
+      status: 'healthy' | 'stale' | 'near_timeout';
+      isStale: boolean;
+      isNearTimeout: boolean;
+      timeUntilTimeout: number;
+    };
+    lastMessageTimestamp: number;
+    timeSinceLastMessage: number;
+  }>;
+
+  for (const connectionId of sessionConns) {
+    const connection = sseConnections.get(connectionId);
+    if (connection?.isActive !== true) {
+      continue;
+    }
+
+    connections.push(createConnectionDetails(connection, now));
+  }
+
+  return connections;
+}
+
+function createConnectionDetails(
+  connection: SSEConnection,
+  now: number
+): {
+  id: string;
+  conversationId: string;
+  createdAt: string;
+  duration: number;
+  age: { minutes: number; seconds: number; formatted: string };
+  health: {
+    status: 'healthy' | 'stale' | 'near_timeout';
+    isStale: boolean;
+    isNearTimeout: boolean;
+    timeUntilTimeout: number;
+  };
+  lastMessageTimestamp: number;
+  timeSinceLastMessage: number;
+} {
+  const connectionAge = now - connection.createdAt.getTime();
+  const ageInMinutes = Math.floor(connectionAge / 60000);
+  const ageInSeconds = Math.floor((connectionAge % 60000) / 1000);
+  const isStale = connectionAge > 5 * 60 * 1000; // 5 minutes without activity
+  const isNearTimeout = connectionAge > SSE_CONFIG.connectionTimeout * 0.8;
+
+  const healthStatus: 'healthy' | 'stale' | 'near_timeout' = isNearTimeout
+    ? 'near_timeout'
+    : isStale
+      ? 'stale'
+      : 'healthy';
+
+  return {
+    id: connection.id,
+    conversationId: connection.conversationId,
+    createdAt: connection.createdAt.toISOString(),
+    duration: connectionAge,
+    age: {
+      minutes: ageInMinutes,
+      seconds: ageInSeconds,
+      formatted: `${ageInMinutes}m ${ageInSeconds}s`,
+    },
+    health: {
+      status: healthStatus,
+      isStale,
+      isNearTimeout,
+      timeUntilTimeout: SSE_CONFIG.connectionTimeout - connectionAge,
+    },
+    lastMessageTimestamp: connection.lastMessageTimestamp,
+    timeSinceLastMessage: now - connection.lastMessageTimestamp,
+  };
+}
+
+function handleConnectionsError(
+  res: Response,
+  error: unknown,
+  correlationId: string,
+  sessionId: string
+): void {
+  logger.error('Failed to get SSE connections', correlationId, {
+    sessionId,
+    error: error instanceof Error ? error.message : String(error),
+  });
+
+  res.status(500).json({
+    error: {
+      type: 'connections_error',
+      message: 'Failed to get connections',
+      correlationId,
+    },
+  });
+}
+
+function validateConnectionRequest(
+  req: Request,
+  correlationId: string,
+  connectionId: string
+): void {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new ValidationError(
+      'Invalid connection ID',
+      correlationId,
+      'connectionId',
+      connectionId
+    );
+  }
+}
+
+function respondConnectionNotFound(res: Response, correlationId: string): void {
+  res.status(404).json({
+    error: {
+      type: 'connection_not_found',
+      message: 'Connection not found',
+      correlationId,
+    },
+  });
+}
+
+function respondAccessDenied(res: Response, correlationId: string): void {
+  res.status(403).json({
+    error: {
+      type: 'access_denied',
+      message: 'Access denied to this connection',
+      correlationId,
+    },
+  });
+}
+
+function handleCloseConnectionError(
+  res: Response,
+  error: unknown,
+  correlationId: string,
+  connectionId: string,
+  sessionId: string
+): void {
+  logger.error('Failed to close SSE connection', correlationId, {
+    connectionId,
+    sessionId,
+    error: error instanceof Error ? error.message : String(error),
+  });
+
+  if (error instanceof ValidationError) {
+    res.status(400).json({
+      error: {
+        type: 'validation_error',
+        message: error.message,
+        correlationId,
+      },
+    });
+    return;
+  }
+
+  res.status(500).json({
+    error: {
+      type: 'connection_close_error',
+      message: 'Failed to close connection',
+      correlationId,
+    },
+  });
+}
+
+interface ConnectionHealthSummary {
+  activeConnections: number;
+  healthyConnections: number;
+  staleConnections: number;
+  connectionsBySession: Map<string, number>;
+}
+
+interface RateSummary {
+  errorRate: number;
+  reconnectionRate: number;
+}
+
+interface MemoryStats {
+  usage: NodeJS.MemoryUsage;
+  percentUsed: number;
+}
+
+function gatherConnectionHealth(now: number): ConnectionHealthSummary {
+  let activeConnections = 0;
+  let healthyConnections = 0;
+  let staleConnections = 0;
+  const connectionsBySession = new Map<string, number>();
+
+  for (const connection of sseConnections.values()) {
+    if (!connection.isActive) {
+      continue;
+    }
+
+    activeConnections++;
+
+    const timeSinceLastMessage = now - connection.lastMessageTimestamp;
+    if (timeSinceLastMessage > 5 * 60 * 1000) {
+      staleConnections++;
+    } else {
+      healthyConnections++;
+    }
+
+    const sessionCount = connectionsBySession.get(connection.sessionId) || 0;
+    connectionsBySession.set(connection.sessionId, sessionCount + 1);
+  }
+
+  return {
+    activeConnections,
+    healthyConnections,
+    staleConnections,
+    connectionsBySession,
+  };
+}
+
+function calculateAverageDuration(): number {
+  return sseStatistics.connectionDurations.length > 0
+    ? sseStatistics.connectionDurations.reduce((a, b) => a + b, 0) /
+        sseStatistics.connectionDurations.length
+    : 0;
+}
+
+function calculateRates(totalConnections: number): RateSummary {
+  if (totalConnections <= 0) {
+    return { errorRate: 0, reconnectionRate: 0 };
+  }
+
+  return {
+    errorRate: (sseStatistics.totalErrors / totalConnections) * 100,
+    reconnectionRate: (sseStatistics.totalReconnections / totalConnections) * 100,
+  };
+}
+
+function getTopErrors(): Array<{ type: string; count: number }> {
+  return Array.from(sseStatistics.errorsByType.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([type, count]) => ({ type, count }));
+}
+
+function getMemoryStats(): MemoryStats {
+  const usage = process.memoryUsage();
+  const percentUsed = (usage.heapUsed / usage.heapTotal) * 100;
+
+  return { usage, percentUsed };
+}
+
+function buildChatStatsResponse(
+  health: ConnectionHealthSummary,
+  averageDuration: number,
+  rates: RateSummary,
+  topErrors: Array<{ type: string; count: number }>,
+  memoryStats: MemoryStats,
+  correlationId: string
+): Record<string, unknown> {
+  const averageConnectionsPerSession =
+    health.connectionsBySession.size > 0
+      ? Array.from(health.connectionsBySession.values()).reduce(
+          (a, b) => a + b,
+          0
+        ) / health.connectionsBySession.size
+      : 0;
+
+  const sessionsWithReconnections = Array.from(
+    sseStatistics.reconnectionsBySession.keys()
+  );
+
+  return {
+    totalConnections: sseConnections.size,
+    activeConnections: health.activeConnections,
+    healthyConnections: health.healthyConnections,
+    staleConnections: health.staleConnections,
+    totalSessions: sessionConnections.size,
+
+    lifetime: {
+      totalConnectionsCreated: sseStatistics.totalConnectionsCreated,
+      totalConnectionsClosed: sseStatistics.totalConnectionsClosed,
+      totalErrors: sseStatistics.totalErrors,
+      totalReconnections: sseStatistics.totalReconnections,
+    },
+
+    averageConnectionDuration: Math.round(averageDuration),
+    averageConnectionDurationFormatted: formatDuration(averageDuration),
+    averageConnectionsPerSession,
+    errorRate: Math.round(rates.errorRate * 100) / 100,
+    reconnectionRate: Math.round(rates.reconnectionRate * 100) / 100,
+
+    topErrors,
+    errorsByType: Object.fromEntries(sseStatistics.errorsByType),
+
+    reconnectionStatistics: {
+      totalReconnections: sseStatistics.totalReconnections,
+      sessionsWithReconnections,
+      averageReconnectionsPerSession:
+        sseStatistics.reconnectionsBySession.size > 0
+          ? sseStatistics.totalReconnections /
+            sseStatistics.reconnectionsBySession.size
+          : 0,
+    },
+
+    memoryUsage: {
+      heapTotal: memoryStats.usage.heapTotal,
+      heapUsed: memoryStats.usage.heapUsed,
+      rss: memoryStats.usage.rss,
+      external: memoryStats.usage.external,
+      heapUsedPercent: Math.round(memoryStats.percentUsed * 100) / 100,
+    },
+
+    connectionIndexSize: connectionIndex.size,
+    sessionConnections: Array.from(sessionConnections.entries()).map(
+      ([sessionId, connections]) => ({
+        sessionId,
+        connections: connections.size,
+      })
+    ),
+    correlationId,
+  };
+}
+
+function handleChatStatsError(
+  res: Response,
+  error: unknown,
+  correlationId: string
+): void {
+  logger.error('Failed to get chat statistics', correlationId, {
+    error: error instanceof Error ? error.message : String(error),
+  });
+
+  res.status(500).json({
+    error: {
+      type: 'chat_stats_error',
+      message: 'Failed to get chat statistics',
+      correlationId,
+    },
+  });
+}
+
+function handleSSEConnectionError(
+  res: Response,
+  error: unknown,
+  correlationId: string,
+  sessionId: string,
+  conversationId: string
+): void {
+  logger.error('Failed to establish SSE connection', correlationId, {
+    sessionId,
+    conversationId,
+    error: error instanceof Error ? error.message : String(error),
+  });
+
+  if (res.headersSent) {
+    return;
+  }
+
+  if (error instanceof ValidationError) {
+    res.status(400).json({
+      error: {
+        type: 'validation_error',
+        message: error.message,
+        correlationId,
+      },
+    });
+    return;
+  }
+
+  res.status(500).json({
+    error: {
+      type: 'sse_connection_error',
+      message: 'Failed to establish streaming connection',
+      correlationId,
+    },
+  });
+}
 
 /**
  * Send chat message with streaming response
@@ -592,219 +1306,39 @@ export const sendChatMessageHandler = [
     const { sessionId } = req as RequestWithSession;
 
     try {
-      // Task 10.1: Log incoming message request for debugging
-      logger.info('Incoming message request', correlationId, {
-        body: req.body,
-        sessionId,
-        headers: {
-          'x-session-id': req.headers['x-session-id'],
-          'content-type': req.headers['content-type'],
-        },
-        conversationId: req.body?.conversationId,
-        messageLength: req.body?.message?.length,
-        hasFiles: !!req.body?.files,
-        hasContextMessages: !!req.body?.contextMessages,
-      });
-
-      // Validate request
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        // Task 10.1: Enhanced error logging with detailed validation failure information
-        logger.error('Chat message validation failed', correlationId, {
-          errors: errors.array(),
-          errorDetails: errors.array().map((err) => ({
-            field: err.type === 'field' ? (err as any).path : 'unknown',
-            message: err.msg,
-            value: err.type === 'field' ? (err as any).value : undefined,
-            location: err.type === 'field' ? (err as any).location : undefined,
-          })),
-          body: req.body,
-          sessionId,
-          headers: {
-            'x-session-id': req.headers['x-session-id'],
-            'content-type': req.headers['content-type'],
-          },
-        });
-        throw new ValidationError(
-          'Invalid chat message request',
-          correlationId,
-          'request',
-          errors.array()
-        );
-      }
+      logIncomingMessageRequest(req, correlationId, sessionId);
 
       const { message, model, files, contextMessages, conversationId } =
-        req.body as ChatStreamRequest;
+        validateChatRequestPayload(req, correlationId, sessionId);
 
-      // Task 10.4: Additional validation for contextMessages if provided
-      if (contextMessages && Array.isArray(contextMessages)) {
-        logger.debug('Validating context messages', correlationId, {
-          contextMessageCount: contextMessages.length,
-          contextMessages: contextMessages.map((msg) => ({
-            id: msg.id,
-            role: msg.role,
-            hasContent: !!msg.content,
-          })),
-        });
+      ensureContextMessagesValid(contextMessages, correlationId);
 
-        for (let i = 0; i < contextMessages.length; i++) {
-          const msg = contextMessages[i];
+      const targetConnection = resolveActiveConnection(
+        sessionId,
+        conversationId,
+        correlationId
+      );
 
-          // Validate message ID if provided (it's optional)
-          if (msg.id && !isValidMessageId(msg.id)) {
-            logger.warn(
-              'Invalid message ID in context messages',
-              correlationId,
-              {
-                index: i,
-                messageId: msg.id,
-                role: msg.role,
-              }
-            );
-            throw new ValidationError(
-              `Invalid message ID in context messages at index ${i}`,
-              correlationId,
-              'contextMessages',
-              msg.id
-            );
-          }
-
-          // Validate role
-          if (msg.role && !['user', 'assistant', 'system'].includes(msg.role)) {
-            logger.warn('Invalid role in context messages', correlationId, {
-              index: i,
-              role: msg.role,
-              validRoles: ['user', 'assistant', 'system'],
-            });
-            throw new ValidationError(
-              `Invalid role in context messages at index ${i}: ${msg.role}`,
-              correlationId,
-              'contextMessages',
-              msg.role
-            );
-          }
-
-          // Validate content exists
-          if (
-            !msg.content ||
-            (typeof msg.content === 'string' && msg.content.trim().length === 0)
-          ) {
-            logger.warn('Empty content in context messages', correlationId, {
-              index: i,
-              role: msg.role,
-              messageId: msg.id,
-            });
-            throw new ValidationError(
-              `Empty content in context messages at index ${i}`,
-              correlationId,
-              'contextMessages',
-              'content'
-            );
-          }
-        }
-
-        logger.debug('Context messages validation passed', correlationId, {
-          validatedCount: contextMessages.length,
-        });
-      }
-
-      // Task 10.2: Find active SSE connection for this conversation and session using secondary index
-      const indexKey = `${sessionId}_${conversationId}`;
-      const connectionId = connectionIndex.get(indexKey);
-      const targetConnection = connectionId
-        ? sseConnections.get(connectionId)
-        : undefined;
-
-      // Task 10.2: Log connection lookup details for debugging
-      logger.info('Connection lookup for message', correlationId, {
-        indexKey,
-        connectionId,
-        connectionFound: !!targetConnection,
-        connectionActive: targetConnection?.isActive,
-        totalConnections: sseConnections.size,
-        totalIndexEntries: connectionIndex.size,
-        sessionConnections: sessionConnections.get(sessionId)?.size || 0,
-      });
-
-      // Verify connection is still active
-      if (targetConnection && !targetConnection.isActive) {
-        // Connection exists but is not active, clean it up
-        logger.warn('Found inactive connection, cleaning up', correlationId, {
-          connectionId: targetConnection.id,
-          conversationId,
-          sessionId,
-        });
-        closeSSEConnection(targetConnection.id, 'inactive_connection');
-      }
-
-      if (!targetConnection?.isActive) {
-        // Task 10.2: Enhanced error logging when no active connection found
-        logger.error('No active connection found for message', correlationId, {
-          conversationId,
-          sessionId,
-          indexKey,
-          connectionId,
-          allConnections: Array.from(sseConnections.entries()).map(
-            ([id, conn]) => ({
-              id,
-              sessionId: conn.sessionId,
-              conversationId: conn.conversationId,
-              isActive: conn.isActive,
-              age: Date.now() - conn.createdAt.getTime(),
-            })
-          ),
-          allIndexKeys: Array.from(connectionIndex.keys()),
-        });
-
-        res.status(400).json({
-          error: {
-            type: 'no_active_connection',
-            message: 'No active streaming connection for this conversation',
-            correlationId,
-          },
-        });
+      if (targetConnection === undefined) {
+        respondNoActiveConnection(res, correlationId);
         return;
       }
 
-      // Task 10.3: Check if there's already an active stream for this conversation
-      const existingStream = Array.from(sseConnections.values()).find(
-        (conn) =>
-          conn.conversationId === conversationId &&
-          conn.sessionId === sessionId &&
-          conn.isActive
-      );
-
-      logger.info('Processing chat message for streaming', correlationId, {
+      const existingStream = findExistingStream(sessionId, conversationId);
+      logStreamProcessing(
+        correlationId,
         conversationId,
         sessionId,
-        messageLength: message.length,
+        message,
         model,
-        hasFiles: !!files?.length,
-        hasContext: !!contextMessages?.length,
-        hasExistingStream: !!existingStream,
-        existingStreamId: existingStream?.id,
-      });
-
-      // Generate message ID for tracking
-      const messageId = uuidv4();
-
-      // Task 9.6.2: Log message ID at sendMessage response stage
-      logger.info(
-        '[MESSAGE-ID-TRACKING] Message ID generated in sendChatMessageHandler',
-        correlationId,
-        {
-          messageId,
-          conversationId,
-          sessionId,
-          stage: 'sendMessage_response',
-          timestamp: new Date().toISOString(),
-        }
+        files,
+        contextMessages,
+        existingStream
       );
 
-      // Note: Start message will be sent by the streaming handler
-      // Do not send duplicate start message here
+      const messageId = uuidv4();
+      logMessageTracking(correlationId, messageId, conversationId, sessionId);
 
-      // Create streaming request
       const streamRequest: ChatStreamRequest = {
         message,
         model,
@@ -813,7 +1347,6 @@ export const sendChatMessageHandler = [
         contextMessages,
       };
 
-      // Process streaming response using the streaming service
       await processStreamingResponse(
         targetConnection.id,
         messageId,
@@ -821,12 +1354,7 @@ export const sendChatMessageHandler = [
         correlationId
       );
 
-      // Return immediate response
-      res.json({
-        messageId,
-        status: 'streaming',
-        correlationId,
-      });
+      sendStreamingAck(res, messageId, correlationId);
     } catch (error) {
       logger.error('Failed to send chat message', correlationId, {
         sessionId,
@@ -1101,51 +1629,7 @@ export const getConnectionsHandler = async (
 
   try {
     const sessionConns = sessionConnections.get(sessionId) ?? new Set<string>();
-    const connections = [];
-    const now = Date.now();
-
-    for (const connectionId of sessionConns) {
-      const connection = sseConnections.get(connectionId);
-      if (connection?.isActive === true) {
-        const connectionAge = now - connection.createdAt.getTime();
-        const ageInMinutes = Math.floor(connectionAge / 60000);
-        const ageInSeconds = Math.floor((connectionAge % 60000) / 1000);
-
-        // Calculate connection health based on age and activity
-        const isStale = connectionAge > 5 * 60 * 1000; // 5 minutes without activity
-        const isNearTimeout =
-          connectionAge > SSE_CONFIG.connectionTimeout * 0.8;
-
-        let healthStatus: 'healthy' | 'stale' | 'near_timeout';
-        if (isNearTimeout) {
-          healthStatus = 'near_timeout';
-        } else if (isStale) {
-          healthStatus = 'stale';
-        } else {
-          healthStatus = 'healthy';
-        }
-
-        connections.push({
-          id: connection.id,
-          conversationId: connection.conversationId,
-          createdAt: connection.createdAt.toISOString(),
-          duration: connectionAge,
-          age: {
-            minutes: ageInMinutes,
-            seconds: ageInSeconds,
-            formatted: `${ageInMinutes}m ${ageInSeconds}s`,
-          },
-          health: {
-            status: healthStatus,
-            isStale,
-            isNearTimeout,
-            timeUntilTimeout: SSE_CONFIG.connectionTimeout - connectionAge,
-          },
-          lastMessageTimestamp: connection.lastMessageTimestamp,
-          timeSinceLastMessage: now - connection.lastMessageTimestamp,
-        });
-      }
-    }
+    const connections = buildConnectionSummaries(sessionConns, Date.now());
 
     res.json({
       connections,
@@ -1154,18 +1638,7 @@ export const getConnectionsHandler = async (
       correlationId,
     });
   } catch (error) {
-    logger.error('Failed to get SSE connections', correlationId, {
-      sessionId,
-      error: error instanceof Error ? error.message : String(error),
-    });
-
-    res.status(500).json({
-      error: {
-        type: 'connections_error',
-        message: 'Failed to get connections',
-        correlationId,
-      },
-    });
+    handleConnectionsError(res, error, correlationId, sessionId);
   }
 };
 
@@ -1185,39 +1658,18 @@ export const closeConnectionHandler = [
     const connectionId = req.params.connectionId as string;
 
     try {
-      // Validate request
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        throw new ValidationError(
-          'Invalid connection ID',
-          correlationId,
-          'connectionId',
-          connectionId
-        );
-      }
+      validateConnectionRequest(req, correlationId, connectionId);
 
       const connection = sseConnections.get(connectionId);
 
       if (!connection) {
-        res.status(404).json({
-          error: {
-            type: 'connection_not_found',
-            message: 'Connection not found',
-            correlationId,
-          },
-        });
+        respondConnectionNotFound(res, correlationId);
         return;
       }
 
       // Validate session access
       if (connection.sessionId !== sessionId) {
-        res.status(403).json({
-          error: {
-            type: 'access_denied',
-            message: 'Access denied to this connection',
-            correlationId,
-          },
-        });
+        respondAccessDenied(res, correlationId);
         return;
       }
 
@@ -1228,29 +1680,13 @@ export const closeConnectionHandler = [
         correlationId,
       });
     } catch (error) {
-      logger.error('Failed to close SSE connection', correlationId, {
+      handleCloseConnectionError(
+        res,
+        error,
+        correlationId,
         connectionId,
-        sessionId,
-        error: error instanceof Error ? error.message : String(error),
-      });
-
-      if (error instanceof ValidationError) {
-        res.status(400).json({
-          error: {
-            type: 'validation_error',
-            message: error.message,
-            correlationId,
-          },
-        });
-      } else {
-        res.status(500).json({
-          error: {
-            type: 'connection_close_error',
-            message: 'Failed to close connection',
-            correlationId,
-          },
-        });
-      }
+        sessionId
+      );
     }
   },
 ];
@@ -1272,145 +1708,24 @@ export const getChatStatsHandler = async (
     cleanupInactiveConnections();
 
     const now = Date.now();
-    let activeConnections = 0;
-    let healthyConnections = 0;
-    let staleConnections = 0;
-    const connectionsBySession = new Map<string, number>();
+    const health = gatherConnectionHealth(now);
+    const avgDuration = calculateAverageDuration();
+    const rates = calculateRates(sseStatistics.totalConnectionsCreated);
+    const topErrors = getTopErrors();
+    const memoryStats = getMemoryStats();
 
-    for (const connection of sseConnections.values()) {
-      if (connection.isActive) {
-        activeConnections++;
-
-        const _age = now - connection.createdAt.getTime();
-        const timeSinceLastMessage = now - connection.lastMessageTimestamp;
-
-        // Track health status
-        if (timeSinceLastMessage > 5 * 60 * 1000) {
-          staleConnections++;
-        } else {
-          healthyConnections++;
-        }
-
-        const sessionCount =
-          connectionsBySession.get(connection.sessionId) || 0;
-        connectionsBySession.set(connection.sessionId, sessionCount + 1);
-      }
-    }
-
-    // Calculate average connection duration
-    const avgDuration =
-      sseStatistics.connectionDurations.length > 0
-        ? sseStatistics.connectionDurations.reduce((a, b) => a + b, 0) /
-          sseStatistics.connectionDurations.length
-        : 0;
-
-    // Calculate error rate
-    const totalConnections = sseStatistics.totalConnectionsCreated;
-    const errorRate =
-      totalConnections > 0
-        ? (sseStatistics.totalErrors / totalConnections) * 100
-        : 0;
-
-    // Calculate reconnection rate
-    const reconnectionRate =
-      totalConnections > 0
-        ? (sseStatistics.totalReconnections / totalConnections) * 100
-        : 0;
-
-    // Get top error types
-    const topErrors = Array.from(sseStatistics.errorsByType.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([type, count]) => ({ type, count }));
-
-    // Task 11.4: Add memory usage metrics
-    const memoryUsage = process.memoryUsage();
-    const memoryPercentUsed =
-      (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
-
-    res.json({
-      // Current state
-      totalConnections: sseConnections.size,
-      activeConnections,
-      healthyConnections,
-      staleConnections,
-      totalSessions: sessionConnections.size,
-
-      // Lifetime statistics
-      lifetime: {
-        totalConnectionsCreated: sseStatistics.totalConnectionsCreated,
-        totalConnectionsClosed: sseStatistics.totalConnectionsClosed,
-        totalErrors: sseStatistics.totalErrors,
-        totalReconnections: sseStatistics.totalReconnections,
-      },
-
-      // Averages and rates
-      averageConnectionDuration: Math.round(avgDuration),
-      averageConnectionDurationFormatted: formatDuration(avgDuration),
-      averageConnectionsPerSession:
-        connectionsBySession.size > 0
-          ? Array.from(connectionsBySession.values()).reduce(
-              (a, b) => a + b,
-              0
-            ) / connectionsBySession.size
-          : 0,
-      errorRate: Math.round(errorRate * 100) / 100, // Round to 2 decimal places
-      reconnectionRate: Math.round(reconnectionRate * 100) / 100,
-
-      // Error breakdown
-      topErrors,
-      errorsByType: Object.fromEntries(sseStatistics.errorsByType),
-
-      // Reconnection statistics
-      reconnectionStatistics: {
-        totalReconnections: sseStatistics.totalReconnections,
-        sessionsWithReconnections: Array.from(
-          sseStatistics.reconnectionsBySession.values()
-        ).filter((count) => count > 1).length,
-        averageReconnectionsPerSession:
-          sseStatistics.reconnectionsBySession.size > 0
-            ? Array.from(sseStatistics.reconnectionsBySession.values()).reduce(
-                (a, b) => a + b,
-                0
-              ) / sseStatistics.reconnectionsBySession.size
-            : 0,
-      },
-
-      // Task 11.4: Memory usage metrics
-      memory: {
-        heapUsed: memoryUsage.heapUsed,
-        heapTotal: memoryUsage.heapTotal,
-        rss: memoryUsage.rss,
-        external: memoryUsage.external,
-        arrayBuffers: memoryUsage.arrayBuffers,
-        percentUsed: Math.round(memoryPercentUsed * 100) / 100,
-        heapUsedMB: Math.round(memoryUsage.heapUsed / 1024 / 1024),
-        heapTotalMB: Math.round(memoryUsage.heapTotal / 1024 / 1024),
-        rssMB: Math.round(memoryUsage.rss / 1024 / 1024),
-      },
-
-      // Configuration
-      config: {
-        maxConnectionsPerSession: SSE_CONFIG.maxConnectionsPerSession,
-        connectionTimeout: SSE_CONFIG.connectionTimeout,
-        heartbeatInterval: SSE_CONFIG.heartbeatInterval,
-        cleanupInterval: SSE_CONFIG.cleanupInterval,
-      },
-
-      correlationId,
-    });
+    res.json(
+      buildChatStatsResponse(
+        health,
+        avgDuration,
+        rates,
+        topErrors,
+        memoryStats,
+        correlationId
+      )
+    );
   } catch (error) {
-    logger.error('Failed to get chat statistics', correlationId, {
-      error: error instanceof Error ? error.message : String(error),
-    });
-
-    res.status(500).json({
-      error: {
-        type: 'stats_error',
-        message: 'Failed to get chat statistics',
-        correlationId,
-      },
-    });
+    handleChatStatsError(res, error, correlationId);
   }
 };
 
@@ -1424,11 +1739,13 @@ function formatDuration(ms: number): string {
 
   if (hours > 0) {
     return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
-  } else if (minutes > 0) {
-    return `${minutes}m ${seconds % 60}s`;
-  } else {
-    return `${seconds}s`;
   }
+
+  if (minutes > 0) {
+    return `${minutes}m ${seconds % 60}s`;
+  }
+
+  return `${seconds}s`;
 }
 
 /**

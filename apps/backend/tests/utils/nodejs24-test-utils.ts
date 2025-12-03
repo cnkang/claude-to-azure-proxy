@@ -67,7 +67,7 @@ export class GCMonitor {
       for (const entry of entries) {
         if (entry.entryType === 'gc') {
           this.events.push({
-            type: (entry as any).detail?.type || 'unknown',
+            type: this.getGCType(entry),
             duration: entry.duration,
             timestamp: entry.startTime,
           });
@@ -84,6 +84,11 @@ export class GCMonitor {
       this.observer = null;
     }
     return [...this.events];
+  }
+
+  private getGCType(entry: PerformanceEntry): string {
+    const detail = (entry as PerformanceEntry & { detail?: { type?: string } }).detail;
+    return typeof detail?.type === 'string' ? detail.type : 'unknown';
   }
 }
 
@@ -159,7 +164,7 @@ export class TestResourceManager {
 /**
  * Create an async resource for testing async context tracking
  */
-export function createTestAsyncResource<T extends (...args: any[]) => any>(
+export function createTestAsyncResource<T extends (...args: unknown[]) => unknown>(
   name: string,
   fn: T
 ): T {

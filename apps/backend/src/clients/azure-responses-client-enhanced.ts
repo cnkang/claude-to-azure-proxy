@@ -179,144 +179,285 @@ export class EnhancedAzureResponsesClient {
     const startTime = Date.now();
     const operation = 'create_completion';
 
+    this.logCompletionStart(params, correlationId);
+
+    if (this.clientConfig.enableCircuitBreaker) {
+      return this.executeWithCircuitBreaker({
+        params,
+        correlationId,
+        requestFormat,
+        originalRequest,
+        startTime,
+        operation,
+      });
+    }
+
+    if (this.clientConfig.enableRetry) {
+      return this.executeWithRetry({
+        params,
+        correlationId,
+        requestFormat,
+        originalRequest,
+        startTime,
+        operation,
+      });
+    }
+
+    return this.executeDirectRequest({
+      params,
+      correlationId,
+      requestFormat,
+      originalRequest,
+      startTime,
+      operation,
+    });
+  }
+
+  private logCompletionStart(
+    params: ResponsesCreateParams,
+    correlationId: string
+  ): void {
     logger.info('Creating Azure OpenAI completion', correlationId, {
       model: params.model,
       hasReasoning: !!params.reasoning,
       stream: params.stream,
       maxOutputTokens: params.max_output_tokens,
     });
+  }
 
-    // Circuit breaker protection
-    if (this.clientConfig.enableCircuitBreaker) {
-      const circuitBreaker = circuitBreakerRegistry.getCircuitBreaker(
-        this.circuitBreakerName
-      );
+  private buildMetadata(
+    attempts: number,
+    totalDurationMs: number,
+    circuitBreakerUsed: boolean,
+    retryUsed: boolean,
+    fallbackUsed: boolean,
+    fallbackType?: string
+  ): ClientResponse<ResponsesResponse>['metadata'] {
+    return {
+      attempts,
+      totalDurationMs,
+      circuitBreakerUsed,
+      retryUsed,
+      fallbackUsed,
+      fallbackType,
+    };
+  }
 
-      const circuitResult = await circuitBreaker.execute(
-        () => this.executeCompletionRequest(params, correlationId),
-        correlationId,
-        operation
-      );
+  private createMappedErrorResponse(
+    error: Error,
+    correlationId: string,
+    requestFormat: ResponseFormat,
+    operation: string,
+    metadata: ClientResponse<ResponsesResponse>['metadata']
+  ): ClientResponse<ResponsesResponse> {
+    const mappingContext: ErrorMappingContext = {
+      correlationId,
+      operation,
+      requestFormat,
+      originalError: error,
+    };
 
-      if (!circuitResult.success) {
-        // Circuit breaker is open or half-open failed
-        if (this.clientConfig.enableFallback) {
-          return this.executeFallback(
-            {
-              correlationId,
-              operation,
-              requestFormat,
-              originalRequest,
-              error: circuitResult.error!,
-              attempt: 1,
-            },
-            startTime
-          );
-        }
+    const mappedError = AzureErrorMapper.mapError(mappingContext);
 
-        // Map circuit breaker error
-        const mappingContext: ErrorMappingContext = {
+    return {
+      success: false,
+      error: mappedError.clientResponse,
+      metadata,
+    };
+  }
+
+  private handleMissingData(
+    correlationId: string,
+    requestFormat: ResponseFormat,
+    operation: string,
+    metadata: ClientResponse<ResponsesResponse>['metadata']
+  ): ClientResponse<ResponsesResponse> {
+    const mappedError = AzureErrorMapper.createFallbackError(
+      correlationId,
+      requestFormat,
+      operation
+    );
+
+    return {
+      success: false,
+      error: mappedError.clientResponse,
+      metadata,
+    };
+  }
+
+  private async executeWithCircuitBreaker({
+    params,
+    correlationId,
+    requestFormat,
+    originalRequest,
+    startTime,
+    operation,
+  }: {
+    params: ResponsesCreateParams;
+    correlationId: string;
+    requestFormat: ResponseFormat;
+    originalRequest: UniversalRequest;
+    startTime: number;
+    operation: string;
+  }): Promise<ClientResponse<ResponsesResponse>> {
+    const circuitBreaker = circuitBreakerRegistry.getCircuitBreaker(
+      this.circuitBreakerName
+    );
+
+    const circuitResult = await circuitBreaker.execute(
+      () => this.executeCompletionRequest(params, correlationId),
+      correlationId,
+      operation
+    );
+
+    const metadata = this.buildMetadata(
+      1,
+      Date.now() - startTime,
+      true,
+      false,
+      false
+    );
+
+    if (circuitResult.success) {
+      if (!circuitResult.data) {
+        return this.handleMissingData(
           correlationId,
-          operation,
           requestFormat,
-          originalError: circuitResult.error!,
-        };
-
-        const mappedError = AzureErrorMapper.mapError(mappingContext);
-
-        return {
-          success: false,
-          error: mappedError.clientResponse,
-          metadata: {
-            attempts: 1,
-            totalDurationMs: Date.now() - startTime,
-            circuitBreakerUsed: true,
-            retryUsed: false,
-            fallbackUsed: false,
-          },
-        };
+          operation,
+          metadata
+        );
       }
 
       return {
         success: true,
-        data: circuitResult.data!,
-        metadata: {
-          attempts: 1,
-          totalDurationMs: Date.now() - startTime,
-          circuitBreakerUsed: true,
-          retryUsed: false,
-          fallbackUsed: false,
-        },
+        data: circuitResult.data,
+        metadata,
       };
     }
 
-    // Direct execution with retry
-    if (this.clientConfig.enableRetry) {
-      const retryContext: AzureRetryContext = {
-        correlationId,
-        operation,
-        requestFormat,
-        originalParams: params,
-      };
+    const circuitError =
+      circuitResult.error ??
+      new Error('Circuit breaker failed without providing an error');
 
-      const retryResult = await this.retryStrategy.executeWithRetry(
-        () => this.executeCompletionRequest(params, correlationId),
-        retryContext
+    if (this.clientConfig.enableFallback) {
+      return this.executeFallback(
+        {
+          correlationId,
+          operation,
+          requestFormat,
+          originalRequest,
+          error: circuitError,
+          attempt: 1,
+        },
+        startTime
       );
+    }
 
-      if (retryResult.success) {
-        return {
-          success: true,
-          data: retryResult.data!,
-          metadata: {
-            attempts: retryResult.attempts,
-            totalDurationMs: retryResult.totalDurationMs,
-            circuitBreakerUsed: false,
-            retryUsed: retryResult.attempts > 1,
-            fallbackUsed: false,
-          },
-        };
-      }
+    return this.createMappedErrorResponse(
+      circuitError,
+      correlationId,
+      requestFormat,
+      operation,
+      metadata
+    );
+  }
 
-      // Retry failed, try fallback
-      if (this.clientConfig.enableFallback) {
-        return this.executeFallback(
-          {
-            correlationId,
-            operation,
-            requestFormat,
-            originalRequest,
-            error: retryResult.error!,
-            attempt: retryResult.attempts,
-          },
-          startTime
+  private async executeWithRetry({
+    params,
+    correlationId,
+    requestFormat,
+    originalRequest,
+    startTime,
+    operation,
+  }: {
+    params: ResponsesCreateParams;
+    correlationId: string;
+    requestFormat: ResponseFormat;
+    originalRequest: UniversalRequest;
+    startTime: number;
+    operation: string;
+  }): Promise<ClientResponse<ResponsesResponse>> {
+    const retryContext: AzureRetryContext = {
+      correlationId,
+      operation,
+      requestFormat,
+      originalParams: params,
+    };
+
+    const retryResult = await this.retryStrategy.executeWithRetry(
+      () => this.executeCompletionRequest(params, correlationId),
+      retryContext
+    );
+
+    const metadata = this.buildMetadata(
+      retryResult.attempts,
+      retryResult.totalDurationMs,
+      false,
+      true,
+      false
+    );
+
+    if (retryResult.success) {
+      if (!retryResult.data) {
+        return this.handleMissingData(
+          correlationId,
+          requestFormat,
+          operation,
+          metadata
         );
       }
 
-      // Map retry failure error
-      const mappingContext: ErrorMappingContext = {
-        correlationId,
-        operation,
-        requestFormat,
-        originalError: retryResult.error!,
-      };
-
-      const mappedError = AzureErrorMapper.mapError(mappingContext);
-
       return {
-        success: false,
-        error: mappedError.clientResponse,
+        success: true,
+        data: retryResult.data,
         metadata: {
-          attempts: retryResult.attempts,
-          totalDurationMs: retryResult.totalDurationMs,
-          circuitBreakerUsed: false,
-          retryUsed: true,
-          fallbackUsed: false,
+          ...metadata,
+          retryUsed: retryResult.attempts > 1,
         },
       };
     }
 
-    // Direct execution without retry
+    const retryError =
+      retryResult.error ?? new Error('Retry failed without providing an error');
+
+    if (this.clientConfig.enableFallback) {
+      return this.executeFallback(
+        {
+          correlationId,
+          operation,
+          requestFormat,
+          originalRequest,
+          error: retryError,
+          attempt: retryResult.attempts,
+        },
+        startTime
+      );
+    }
+
+    return this.createMappedErrorResponse(
+      retryError,
+      correlationId,
+      requestFormat,
+      operation,
+      metadata
+    );
+  }
+
+  private async executeDirectRequest({
+    params,
+    correlationId,
+    requestFormat,
+    originalRequest,
+    startTime,
+    operation,
+  }: {
+    params: ResponsesCreateParams;
+    correlationId: string;
+    requestFormat: ResponseFormat;
+    originalRequest: UniversalRequest;
+    startTime: number;
+    operation: string;
+  }): Promise<ClientResponse<ResponsesResponse>> {
     try {
       const response = await this.executeCompletionRequest(
         params,
@@ -326,16 +467,15 @@ export class EnhancedAzureResponsesClient {
       return {
         success: true,
         data: response,
-        metadata: {
-          attempts: 1,
-          totalDurationMs: Date.now() - startTime,
-          circuitBreakerUsed: false,
-          retryUsed: false,
-          fallbackUsed: false,
-        },
+        metadata: this.buildMetadata(
+          1,
+          Date.now() - startTime,
+          false,
+          false,
+          false
+        ),
       };
     } catch (error) {
-      // Direct execution failed, try fallback
       if (this.clientConfig.enableFallback) {
         return this.executeFallback(
           {
@@ -350,27 +490,21 @@ export class EnhancedAzureResponsesClient {
         );
       }
 
-      // Map direct execution error
-      const mappingContext: ErrorMappingContext = {
+      return this.createMappedErrorResponse(
+        error instanceof Error
+          ? error
+          : new Error('Unexpected Azure completion error'),
         correlationId,
-        operation,
         requestFormat,
-        originalError: error,
-      };
-
-      const mappedError = AzureErrorMapper.mapError(mappingContext);
-
-      return {
-        success: false,
-        error: mappedError.clientResponse,
-        metadata: {
-          attempts: 1,
-          totalDurationMs: Date.now() - startTime,
-          circuitBreakerUsed: false,
-          retryUsed: false,
-          fallbackUsed: false,
-        },
-      };
+        operation,
+        this.buildMetadata(
+          1,
+          Date.now() - startTime,
+          false,
+          false,
+          false
+        )
+      );
     }
   }
 
@@ -482,9 +616,17 @@ export class EnhancedAzureResponsesClient {
         };
       }
 
+      const fallbackError =
+        fallbackResult.error ??
+        AzureErrorMapper.createFallbackError(
+          context.correlationId,
+          context.requestFormat,
+          context.operation
+        ).clientResponse;
+
       return {
         success: false,
-        error: fallbackResult.error!,
+        error: fallbackError,
         metadata: {
           attempts: context.attempt,
           totalDurationMs: Date.now() - startTime,

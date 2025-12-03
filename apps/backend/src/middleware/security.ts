@@ -88,10 +88,12 @@ const defaultRateLimitDefinitions: Record<
   },
 };
 
+type RateLimitTimestampState = { last: number; counter: number };
+
 const rateLimitNamespaceStore = new WeakMap<Request['app'], string>();
 const rateLimitTimestampStateStore = new WeakMap<
   Request['app'],
-  { last: number; counter: number }
+  RateLimitTimestampState
 >();
 const patchedResponses = new WeakSet<Response>();
 
@@ -132,6 +134,28 @@ const resolveRateLimitNamespace = (app: Request['app']): string => {
   return namespace;
 };
 
+const applyMonotonicTimestamp = (
+  record: Record<string, unknown>,
+  state: RateLimitTimestampState
+): void => {
+  const rawTimestamp = Number(record.timestamp);
+  if (!Number.isFinite(rawTimestamp)) {
+    return;
+  }
+
+  let adjustedTimestamp = rawTimestamp;
+  if (rawTimestamp <= state.last) {
+    state.counter += 1;
+    adjustedTimestamp = state.last + state.counter;
+  } else {
+    state.counter = 0;
+    state.last = rawTimestamp;
+  }
+
+  state.last = adjustedTimestamp;
+  record.timestamp = adjustedTimestamp;
+};
+
 const ensureMonotonicTimestamp = (req: Request, res: Response): void => {
   if (process.env.NODE_ENV !== 'test') {
     return;
@@ -153,20 +177,7 @@ const ensureMonotonicTimestamp = (req: Request, res: Response): void => {
 
   res.json = (body: unknown): Response => {
     if (body !== null && typeof body === 'object') {
-      const record = body as Record<string, unknown>;
-      const rawTimestamp = Number(record.timestamp);
-      if (Number.isFinite(rawTimestamp)) {
-        let adjustedTimestamp = rawTimestamp;
-        if (rawTimestamp <= state.last) {
-          state.counter += 1;
-          adjustedTimestamp = state.last + state.counter;
-        } else {
-          state.counter = 0;
-          state.last = rawTimestamp;
-        }
-        state.last = adjustedTimestamp;
-        record.timestamp = adjustedTimestamp;
-      }
+      applyMonotonicTimestamp(body as Record<string, unknown>, state as RateLimitTimestampState);
     }
 
     return originalJson(body);
@@ -256,45 +267,46 @@ type KnownHeaderName =
   | 'content-length'
   | 'content-type';
 
+const HEADER_LOOKUP: Record<KnownHeaderName, keyof IncomingHttpHeaders> = {
+  'cf-connecting-ip': 'cf-connecting-ip',
+  'x-real-ip': 'x-real-ip',
+  'x-forwarded-for': 'x-forwarded-for',
+  'x-correlation-id': 'x-correlation-id',
+  'content-length': 'content-length',
+  'content-type': 'content-type',
+};
+
+const normalizeSingleHeaderValue = (value: unknown): string | undefined => {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const normalizeHeaderValue = (
+  headerValue: string | string[] | undefined
+): string | undefined => {
+  const directValue = normalizeSingleHeaderValue(headerValue);
+  if (directValue !== undefined) {
+    return directValue;
+  }
+
+  if (!Array.isArray(headerValue)) {
+    return undefined;
+  }
+
+  return headerValue
+    .map((entry) => normalizeSingleHeaderValue(entry))
+    .find((value): value is string => value !== undefined);
+};
+
 const extractHeaderValue = (
   headers: IncomingHttpHeaders,
   name: KnownHeaderName
 ): string | undefined => {
-  const headerValue: string | string[] | undefined = (() => {
-    switch (name) {
-      case 'cf-connecting-ip':
-        return headers['cf-connecting-ip'];
-      case 'x-real-ip':
-        return headers['x-real-ip'];
-      case 'x-forwarded-for':
-        return headers['x-forwarded-for'];
-      case 'x-correlation-id':
-        return headers['x-correlation-id'];
-      case 'content-length':
-        return headers['content-length'];
-      case 'content-type':
-        return headers['content-type'];
-      default:
-        return undefined;
-    }
-  })();
-  if (typeof headerValue === 'string') {
-    const trimmed = headerValue.trim();
-    return trimmed.length > 0 ? trimmed : undefined;
-  }
-
-  if (Array.isArray(headerValue)) {
-    for (const entry of headerValue) {
-      if (typeof entry === 'string') {
-        const trimmed = entry.trim();
-        if (trimmed.length > 0) {
-          return trimmed;
-        }
-      }
-    }
-  }
-
-  return undefined;
+  return normalizeHeaderValue(headers[HEADER_LOOKUP[name]]);
 };
 
 const extractClientIpFromHeader = (

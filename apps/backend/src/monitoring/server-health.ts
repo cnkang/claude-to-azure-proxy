@@ -133,8 +133,7 @@ export class ServerHealthMonitor {
       errorCount: metrics.errorCount,
       errorRate:
         metrics.totalRequests > 0
-          ? ((metrics.errorCount / metrics.totalRequests) * 100).toFixed(2) +
-            '%'
+          ? `${((metrics.errorCount / metrics.totalRequests) * 100).toFixed(2)}%`
           : '0%',
       heapUsed: Math.round(metrics.memoryUsage.heapUsed / 1024 / 1024), // MB
       heapTotal: Math.round(metrics.memoryUsage.heapTotal / 1024 / 1024), // MB
@@ -146,8 +145,9 @@ export class ServerHealthMonitor {
       logger.warn('Server health degraded', '', {
         errorCount: metrics.errorCount,
         totalRequests: metrics.totalRequests,
-        errorRate:
-          ((metrics.errorCount / metrics.totalRequests) * 100).toFixed(2) + '%',
+        errorRate: `${(
+          (metrics.errorCount / metrics.totalRequests) * 100
+        ).toFixed(2)}%`,
       });
     }
   }

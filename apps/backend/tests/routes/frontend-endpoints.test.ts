@@ -5,6 +5,7 @@
  * conversation CRUD, chat streaming, and context management.
  */
 
+import type { Application } from 'express';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import config from '../../src/config/index.js';
@@ -12,7 +13,7 @@ import { ProxyServer, createServerConfig } from '../../src/index.js';
 
 describe('Frontend API Endpoints', () => {
   let server: ProxyServer;
-  let app: any;
+  let app: Application;
   let sessionId: string;
 
   beforeEach(async () => {

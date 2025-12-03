@@ -65,6 +65,18 @@ export interface SecurityEventSummary {
   readonly severity: 'low' | 'medium' | 'high' | 'critical';
 }
 
+type RequestMetadata = {
+  correlationId: string;
+  requestFormat: RequestFormat;
+  responseFormat: ResponseFormat;
+  responseTime: number;
+  success: boolean;
+  errorType?: string;
+  circuitBreakerUsed: boolean;
+  retryCount: number;
+  fallbackUsed: boolean;
+};
+
 /**
  * Azure Responses API monitoring class
  */
@@ -89,19 +101,22 @@ export class AzureResponsesMonitor {
   public recordRequest(
     params: ResponsesCreateParams,
     response: ResponsesResponse | null,
-    metadata: {
-      correlationId: string;
-      requestFormat: RequestFormat;
-      responseFormat: ResponseFormat;
-      responseTime: number;
-      success: boolean;
-      errorType?: string;
-      circuitBreakerUsed: boolean;
-      retryCount: number;
-      fallbackUsed: boolean;
-    }
+    metadata: RequestMetadata
   ): void {
-    const requestMetric: RequestMetrics = {
+    const requestMetric = this.buildRequestMetric(params, response, metadata);
+
+    this.storeRequestMetric(requestMetric);
+    this.recordUsageMetrics(params, response, metadata);
+    this.recordReliabilityMetrics(params.model, metadata);
+    this.logRequestOutcome(requestMetric, params, metadata);
+  }
+
+  private buildRequestMetric(
+    params: ResponsesCreateParams,
+    response: ResponsesResponse | null,
+    metadata: RequestMetadata
+  ): RequestMetrics {
+    return {
       correlationId: metadata.correlationId,
       timestamp: new Date().toISOString(),
       requestFormat: metadata.requestFormat,
@@ -119,45 +134,51 @@ export class AzureResponsesMonitor {
       retryCount: metadata.retryCount,
       fallbackUsed: metadata.fallbackUsed,
     };
+  }
 
-    // Store request metric
+  private storeRequestMetric(requestMetric: RequestMetrics): void {
     this.requestMetrics.push(requestMetric);
     if (this.requestMetrics.length > this.maxMetricsHistory) {
       this.requestMetrics.shift();
     }
+  }
 
-    // Record business metrics
+  private recordUsageMetrics(
+    params: ResponsesCreateParams,
+    response: ResponsesResponse | null,
+    metadata: RequestMetadata
+  ): void {
     recordBusinessMetric('requests_total', 'requests', 1, {
       format: metadata.requestFormat,
       model: params.model,
       success: metadata.success.toString(),
     });
 
-    if (metadata.success && response) {
-      recordBusinessMetric(
-        'tokens_used',
-        'completions',
-        response.usage.total_tokens,
-        {
-          model: params.model,
-          reasoning_effort: params.reasoning?.effort ?? 'none',
-        }
-      );
-
-      const reasoningTokens = response.usage.reasoning_tokens;
-      if (typeof reasoningTokens === 'number' && reasoningTokens > 0) {
-        recordBusinessMetric(
-          'reasoning_tokens_used',
-          'completions',
-          reasoningTokens,
-          {
-            model: params.model,
-            reasoning_effort: params.reasoning?.effort ?? 'none',
-          }
-        );
-      }
+    if (!metadata.success || response === null) {
+      return;
     }
 
+    const reasoningEffort = params.reasoning?.effort ?? 'none';
+    recordBusinessMetric('tokens_used', 'completions', response.usage.total_tokens, {
+      model: params.model,
+      reasoning_effort: reasoningEffort,
+    });
+
+    const reasoningTokens = response.usage.reasoning_tokens;
+    if (typeof reasoningTokens === 'number' && reasoningTokens > 0) {
+      recordBusinessMetric(
+        'reasoning_tokens_used',
+        'completions',
+        reasoningTokens,
+        {
+          model: params.model,
+          reasoning_effort: reasoningEffort,
+        }
+      );
+    }
+  }
+
+  private recordReliabilityMetrics(model: string, metadata: RequestMetadata): void {
     if (!metadata.success) {
       recordBusinessMetric('errors_total', 'errors', 1, {
         error_type: metadata.errorType ?? 'unknown',
@@ -167,23 +188,28 @@ export class AzureResponsesMonitor {
 
     if (metadata.circuitBreakerUsed) {
       recordBusinessMetric('circuit_breaker_trips', 'errors', 1, {
-        model: params.model,
+        model,
       });
     }
 
     if (metadata.retryCount > 0) {
       recordBusinessMetric('retry_attempts', 'requests', metadata.retryCount, {
-        model: params.model,
+        model,
       });
     }
 
     if (metadata.fallbackUsed) {
       recordBusinessMetric('fallback_usage', 'requests', 1, {
-        model: params.model,
+        model,
       });
     }
+  }
 
-    // Log structured request data (without sensitive information)
+  private logRequestOutcome(
+    requestMetric: RequestMetrics,
+    params: ResponsesCreateParams,
+    metadata: RequestMetadata
+  ): void {
     logger.info(
       'Azure Responses API request completed',
       metadata.correlationId,
@@ -243,82 +269,101 @@ export class AzureResponsesMonitor {
    * Get comprehensive metrics
    */
   public getMetrics(): AzureResponsesMetrics {
-    const totalRequests = this.requestMetrics.length;
-    const successfulRequests = this.requestMetrics.filter((m) => m.success);
-    const failedRequests = this.requestMetrics.filter((m) => !m.success);
-
-    const totalResponseTime = this.requestMetrics.reduce(
-      (sum, m) => sum + m.responseTime,
-      0
+    const summary = this.summarizeRequestMetrics();
+    const reasoningEffortDistribution = this.buildDistributionFromMetrics(
+      this.requestMetrics,
+      (metric) => metric.reasoningEffort ?? 'none'
     );
-    const totalTokens = successfulRequests.reduce(
-      (sum, m) => sum + m.totalTokens,
-      0
+    const formatDistribution = this.buildDistributionFromMetrics(
+      this.requestMetrics,
+      (metric) => metric.requestFormat
+    ) as Record<RequestFormat, number>;
+    const errorDistribution = this.buildDistributionFromMetrics(
+      this.requestMetrics.filter((metric) => !metric.success),
+      (metric) => metric.errorType ?? 'unknown'
     );
-    const totalReasoningTokens = successfulRequests.reduce(
-      (sum, m) => sum + m.reasoningTokens,
-      0
-    );
-
-    // Calculate reasoning effort distribution
-    const reasoningEffortDistributionMap = new Map<string, number>();
-    for (const metric of this.requestMetrics) {
-      const effortKey = metric.reasoningEffort ?? 'none';
-      const currentCount = reasoningEffortDistributionMap.get(effortKey) ?? 0;
-      reasoningEffortDistributionMap.set(effortKey, currentCount + 1);
-    }
-    const reasoningEffortDistribution = Object.fromEntries(
-      reasoningEffortDistributionMap
-    ) as Record<string, number>;
-
-    // Calculate format distribution
-    const formatDistribution: Record<RequestFormat, number> = {
-      claude: 0,
-      openai: 0,
-    };
-    for (const metric of this.requestMetrics) {
-      if (metric.requestFormat === 'claude') {
-        formatDistribution.claude += 1;
-      } else {
-        formatDistribution.openai += 1;
-      }
-    }
-
-    // Calculate error distribution
-    const errorDistributionMap = new Map<string, number>();
-    for (const metric of failedRequests) {
-      const errorType = metric.errorType ?? 'unknown';
-      const currentCount = errorDistributionMap.get(errorType) ?? 0;
-      errorDistributionMap.set(errorType, currentCount + 1);
-    }
-    const errorDistribution = Object.fromEntries(
-      errorDistributionMap
-    ) as Record<string, number>;
 
     return {
-      requestCount: totalRequests,
-      successCount: successfulRequests.length,
-      errorCount: failedRequests.length,
+      requestCount: summary.totalRequests,
+      successCount: summary.successCount,
+      errorCount: summary.errorCount,
       averageResponseTime:
-        totalRequests > 0 ? totalResponseTime / totalRequests : 0,
-      totalTokensUsed: totalTokens,
-      reasoningTokensUsed: totalReasoningTokens,
+        summary.totalRequests > 0
+          ? summary.totalResponseTime / summary.totalRequests
+          : 0,
+      totalTokensUsed: summary.totalTokens,
+      reasoningTokensUsed: summary.totalReasoningTokens,
       averageReasoningTokens:
-        successfulRequests.length > 0
-          ? totalReasoningTokens / successfulRequests.length
+        summary.successCount > 0
+          ? summary.totalReasoningTokens / summary.successCount
           : 0,
       reasoningEffortDistribution,
       formatDistribution,
       errorDistribution,
-      circuitBreakerTrips: this.requestMetrics.filter(
-        (m) => m.circuitBreakerUsed
-      ).length,
-      retryAttempts: this.requestMetrics.reduce(
-        (sum, m) => sum + m.retryCount,
-        0
-      ),
-      fallbackUsage: this.requestMetrics.filter((m) => m.fallbackUsed).length,
+      circuitBreakerTrips: summary.circuitBreakerTrips,
+      retryAttempts: summary.retryAttempts,
+      fallbackUsage: summary.fallbackUsage,
     };
+  }
+
+  private summarizeRequestMetrics(): {
+    totalRequests: number;
+    successCount: number;
+    errorCount: number;
+    totalResponseTime: number;
+    totalTokens: number;
+    totalReasoningTokens: number;
+    circuitBreakerTrips: number;
+    retryAttempts: number;
+    fallbackUsage: number;
+  } {
+    return this.requestMetrics.reduce(
+      (acc, metric) => {
+        acc.totalRequests += 1;
+        acc.totalResponseTime += metric.responseTime;
+        acc.retryAttempts += metric.retryCount;
+
+        if (metric.circuitBreakerUsed) {
+          acc.circuitBreakerTrips += 1;
+        }
+
+        if (metric.fallbackUsed) {
+          acc.fallbackUsage += 1;
+        }
+
+        if (metric.success) {
+          acc.successCount += 1;
+          acc.totalTokens += metric.totalTokens;
+          acc.totalReasoningTokens += metric.reasoningTokens;
+        } else {
+          acc.errorCount += 1;
+        }
+
+        return acc;
+      },
+      {
+        totalRequests: 0,
+        successCount: 0,
+        errorCount: 0,
+        totalResponseTime: 0,
+        totalTokens: 0,
+        totalReasoningTokens: 0,
+        circuitBreakerTrips: 0,
+        retryAttempts: 0,
+        fallbackUsage: 0,
+      }
+    );
+  }
+
+  private buildDistributionFromMetrics(
+    metrics: RequestMetrics[],
+    selector: (metric: RequestMetrics) => string
+  ): Record<string, number> {
+    return metrics.reduce((acc, metric) => {
+      const key = selector(metric);
+      acc[key] = (acc[key] ?? 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
   }
 
   /**
@@ -492,8 +537,7 @@ export class AzureResponsesMonitor {
         failed: metrics.errorCount,
         successRate:
           metrics.requestCount > 0
-            ? ((metrics.successCount / metrics.requestCount) * 100).toFixed(1) +
-              '%'
+            ? `${((metrics.successCount / metrics.requestCount) * 100).toFixed(1)}%`
             : '0%',
       },
       performance: {
@@ -508,10 +552,10 @@ export class AzureResponsesMonitor {
         averageReasoning: Math.round(metrics.averageReasoningTokens),
         reasoningPercentage:
           metrics.totalTokensUsed > 0
-            ? (
+            ? `${(
                 (metrics.reasoningTokensUsed / metrics.totalTokensUsed) *
                 100
-              ).toFixed(1) + '%'
+              ).toFixed(1)}%`
             : '0%',
       },
       formats: metrics.formatDistribution,
@@ -527,8 +571,7 @@ export class AzureResponsesMonitor {
     // Log warnings for concerning metrics
     if (metrics.errorCount > metrics.successCount) {
       logger.warn('High error rate detected', '', {
-        errorRate:
-          ((metrics.errorCount / metrics.requestCount) * 100).toFixed(1) + '%',
+        errorRate: `${((metrics.errorCount / metrics.requestCount) * 100).toFixed(1)}%`,
         errorDistribution: metrics.errorDistribution,
       });
     }
@@ -611,6 +654,61 @@ export interface HealthCheckData {
   };
 }
 
+const determineHealthStatus = (
+  metrics: AzureResponsesMetrics,
+  memoryPercentage: number
+): 'healthy' | 'unhealthy' | 'degraded' => {
+  if (
+    (metrics.errorCount > metrics.successCount && metrics.requestCount > 10) ||
+    memoryPercentage > 90
+  ) {
+    return 'unhealthy';
+  }
+
+  if (
+    metrics.circuitBreakerTrips > 0 ||
+    metrics.fallbackUsage > 0 ||
+    memoryPercentage > 80
+  ) {
+    return 'degraded';
+  }
+
+  return 'healthy';
+};
+
+const buildServiceStatus = (
+  metrics: AzureResponsesMetrics
+): HealthCheckData['services'] => ({
+  azureOpenAI: {
+    status: metrics.errorCount === 0 ? 'connected' : 'degraded',
+    responseTime: metrics.averageResponseTime,
+    lastCheck: new Date().toISOString(),
+  },
+  circuitBreakers: {},
+});
+
+const buildMetricsSnapshot = (
+  metrics: AzureResponsesMetrics,
+  memoryUsage: NodeJS.MemoryUsage,
+  memoryPercentage: number
+): HealthCheckData['metrics'] => ({
+  requests: {
+    total: metrics.requestCount,
+    successful: metrics.successCount,
+    failed: metrics.errorCount,
+    averageResponseTime: metrics.averageResponseTime,
+  },
+  tokens: {
+    total: metrics.totalTokensUsed,
+    reasoning: metrics.reasoningTokensUsed,
+  },
+  memory: {
+    used: memoryUsage.heapUsed,
+    total: memoryUsage.heapTotal,
+    percentage: memoryPercentage,
+  },
+});
+
 /**
  * Create health check endpoint handler
  */
@@ -622,26 +720,9 @@ export function createHealthCheckHandler() {
     const metrics = monitor.getMetrics();
     const memoryUsage = process.memoryUsage();
     const uptime = (Date.now() - startTime) / 1000;
-
-    // Determine overall health status
-    let status: 'healthy' | 'unhealthy' | 'degraded' = 'healthy';
-
-    if (
-      metrics.errorCount > metrics.successCount &&
-      metrics.requestCount > 10
-    ) {
-      status = 'unhealthy';
-    } else if (metrics.circuitBreakerTrips > 0 || metrics.fallbackUsage > 0) {
-      status = 'degraded';
-    }
-
     const memoryPercentage =
       (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
-    if (memoryPercentage > 90) {
-      status = 'unhealthy';
-    } else if (memoryPercentage > 80) {
-      status = status === 'healthy' ? 'degraded' : status;
-    }
+    const status = determineHealthStatus(metrics, memoryPercentage);
 
     return {
       status,
@@ -649,31 +730,8 @@ export function createHealthCheckHandler() {
       uptime,
       version: process.env.npm_package_version ?? '1.0.0',
       environment: process.env.NODE_ENV ?? 'development',
-      services: {
-        azureOpenAI: {
-          status: metrics.errorCount === 0 ? 'connected' : 'degraded',
-          responseTime: metrics.averageResponseTime,
-          lastCheck: new Date().toISOString(),
-        },
-        circuitBreakers: {}, // Would be populated with actual circuit breaker states
-      },
-      metrics: {
-        requests: {
-          total: metrics.requestCount,
-          successful: metrics.successCount,
-          failed: metrics.errorCount,
-          averageResponseTime: metrics.averageResponseTime,
-        },
-        tokens: {
-          total: metrics.totalTokensUsed,
-          reasoning: metrics.reasoningTokensUsed,
-        },
-        memory: {
-          used: memoryUsage.heapUsed,
-          total: memoryUsage.heapTotal,
-          percentage: memoryPercentage,
-        },
-      },
+      services: buildServiceStatus(metrics),
+      metrics: buildMetricsSnapshot(metrics, memoryUsage, memoryPercentage),
     };
   };
 }

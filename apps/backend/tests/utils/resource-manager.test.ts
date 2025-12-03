@@ -329,12 +329,14 @@ describe('StreamResource', () => {
   });
 
   it('should handle streams without end method', async () => {
-    const streamWithoutEnd = {
+    const streamWithoutEnd: Pick<Readable, 'destroyed'> & {
+      destroy: (error?: Error) => void;
+    } = {
       destroyed: false,
       destroy: vi.fn(),
     };
 
-    const resource = new StreamResource(streamWithoutEnd as any);
+    const resource = new StreamResource(streamWithoutEnd as unknown as Readable);
 
     await resource[Symbol.asyncDispose]();
 

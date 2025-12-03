@@ -76,7 +76,6 @@ describe('Security Validation - Input Sanitization', () => {
         .set('Content-Type', 'application/json')
         .send(maliciousPayload);
 
-      console.log('sanitize response', response.status, response.body);
       expect(response.status).toBe(200);
       // Content should be sanitized but request should succeed
       expect(response.body.success).toBe(true);
@@ -229,7 +228,6 @@ describe('Security Validation - Input Sanitization', () => {
         .set('Content-Type', 'application/json')
         .send(payload);
 
-      console.log('length response', response.status, response.body);
       expect(response.status).toBe(400);
       expect(response.body.error.type).toBe('invalid_request_error');
       expect(response.body.error.message).toContain('Validation failed');
@@ -460,7 +458,7 @@ describe('Security Validation - Input Sanitization', () => {
 
   describe('Request Sanitization', () => {
     it('should sanitize malicious strings in request body', async () => {
-      let sanitizedBody: any;
+      let sanitizedBody: Record<string, unknown> | undefined;
 
       app.post('/test', validateContentType(), sanitizeRequest, (req, res) => {
         sanitizedBody = req.body;
@@ -479,9 +477,17 @@ describe('Security Validation - Input Sanitization', () => {
         .send(maliciousPayload);
 
       expect(response.status).toBe(200);
-      expect(sanitizedBody.message).not.toContain('<script>');
-      expect(sanitizedBody.description).not.toContain(SCRIPT_PROTOCOL);
-      expect(sanitizedBody.data).not.toContain('data:text/html');
+
+      const message = sanitizedBody?.message;
+      const description = sanitizedBody?.description;
+      const data = sanitizedBody?.data;
+
+      expect(typeof message).toBe('string');
+      expect(typeof description).toBe('string');
+      expect(typeof data).toBe('string');
+      expect(message as string).not.toContain('<script>');
+      expect(description as string).not.toContain(SCRIPT_PROTOCOL);
+      expect(data as string).not.toContain('data:text/html');
     });
 
     it('should handle circular references gracefully', async () => {
@@ -507,7 +513,7 @@ describe('Security Validation - Input Sanitization', () => {
     });
 
     it('should sanitize nested objects', async () => {
-      let sanitizedBody: any;
+      let sanitizedBody: Record<string, unknown> | undefined;
 
       app.post('/test', validateContentType(), sanitizeRequest, (req, res) => {
         sanitizedBody = req.body;
@@ -531,8 +537,18 @@ describe('Security Validation - Input Sanitization', () => {
         .send(nestedPayload);
 
       expect(response.status).toBe(200);
-      expect(sanitizedBody.user.profile.bio).not.toContain('<script>');
-      expect(sanitizedBody.items[0].description).not.toContain(SCRIPT_PROTOCOL);
+      const sanitizedUser = sanitizedBody?.user as
+        | Record<string, unknown>
+        | undefined;
+      const sanitizedProfile = sanitizedUser?.profile as
+        | Record<string, unknown>
+        | undefined;
+      const sanitizedItems = sanitizedBody?.items as
+        | Array<Record<string, unknown>>
+        | undefined;
+
+      expect(sanitizedProfile?.bio).not.toContain('<script>');
+      expect(sanitizedItems?.[0]?.description).not.toContain(SCRIPT_PROTOCOL);
     });
   });
 
@@ -608,7 +624,7 @@ describe('Security Validation - Input Sanitization', () => {
       );
 
       // Create deeply nested object (depth > 10)
-      let deepObject: any = { value: 'test' };
+      let deepObject: Record<string, unknown> = { value: 'test' };
       for (let i = 0; i < 12; i++) {
         deepObject = { nested: deepObject };
       }

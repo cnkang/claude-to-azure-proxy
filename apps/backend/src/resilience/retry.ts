@@ -105,101 +105,191 @@ export class RetryStrategy {
     operationName?: string,
     signal?: AbortSignal
   ): Promise<RetryResult<T>> {
-    const startTime = performance.now();
+    const context = this.createExecutionContext();
     const attempts: RetryAttempt[] = [];
-    let lastError: Error | undefined;
-    let delayBeforeAttempt = 0;
 
     for (let attempt = 1; attempt <= this.config.maxAttempts; attempt++) {
-      if (attempt > 1 && delayBeforeAttempt > 0) {
-        try {
-          await this.delay(delayBeforeAttempt, signal);
-        } catch (delayError) {
-          lastError = delayError as Error;
-          if (isAbortError(lastError)) {
-            break;
-          }
-          throw delayError;
-        }
+      const delayError = await this.applyDelayBeforeAttempt(
+        attempt,
+        context.delayBeforeAttempt,
+        signal
+      );
+
+      if (delayError !== undefined) {
+        context.lastError = delayError;
+        break;
       }
 
-      const attemptStartTime = performance.now();
-      const recordedDelay = attempt === 1 ? 0 : delayBeforeAttempt;
-      let attemptTimestamp: Date | undefined;
+      const { result, error, durationMs, timestamp } =
+        await this.runAttemptWithTiming(
+          operation,
+          correlationId,
+          operationName,
+          signal
+        );
 
-      try {
-        const operationPromise = operation();
-        attemptTimestamp = new Date(performance.timeOrigin + attemptStartTime);
+      this.recordAttempt(
+        attempts,
+        attempt,
+        context.delayBeforeAttempt,
+        durationMs,
+        timestamp,
+        error
+      );
 
-        // Add timeout wrapper if configured
-        const result =
-          this.config.timeoutMs !== undefined && this.config.timeoutMs > 0
-            ? await this.withTimeout(
-                operationPromise,
-                this.config.timeoutMs,
-                correlationId,
-                operationName,
-                signal
-              )
-            : await operationPromise;
-
-        // Success - record attempt and return
-        const attemptDurationMs = performance.now() - attemptStartTime;
-        attempts.push({
-          attemptNumber: attempt,
-          delayMs: recordedDelay,
-          durationMs: attemptDurationMs,
-          timestamp:
-            attemptTimestamp ??
-            new Date(performance.timeOrigin + attemptStartTime),
-        });
-
-        const totalDurationMs = performance.now() - startTime;
-        this.updateMetrics(true, attempt, totalDurationMs);
-
-        return {
-          success: true,
-          data: result,
+      if (result !== undefined) {
+        return this.buildSuccessResult(
+          result,
           attempts,
-          totalDurationMs,
-        };
-      } catch (error) {
-        lastError = error as Error;
-
-        const attemptDurationMs = performance.now() - attemptStartTime;
-        attempts.push({
-          attemptNumber: attempt,
-          delayMs: recordedDelay,
-          durationMs: attemptDurationMs,
-          error: lastError,
-          timestamp:
-            attemptTimestamp ??
-            new Date(performance.timeOrigin + attemptStartTime),
-        });
-
-        if (isAbortError(lastError)) {
-          break;
-        }
-
-        // Check if error is retryable
-        if (
-          !this.isRetryableError(lastError) ||
-          attempt === this.config.maxAttempts
-        ) {
-          break;
-        }
-
-        delayBeforeAttempt = this.calculateDelay(attempt);
+          context.startTime,
+          attempt
+        );
       }
+
+      context.lastError = error;
+
+      if (this.shouldStopRetry(attempt, error)) {
+        break;
+      }
+
+      context.delayBeforeAttempt = this.calculateDelay(attempt);
     }
 
-    // All attempts failed
-    const totalDurationMs = performance.now() - startTime;
+    return this.buildFailureResult(attempts, context);
+  }
 
-    if (lastError !== undefined && isAbortError(lastError)) {
+  private createExecutionContext(): {
+    startTime: number;
+    delayBeforeAttempt: number;
+    lastError?: Error;
+  } {
+    return {
+      startTime: performance.now(),
+      delayBeforeAttempt: 0,
+    };
+  }
+
+  private async applyDelayBeforeAttempt(
+    attempt: number,
+    delayBeforeAttempt: number,
+    signal?: AbortSignal
+  ): Promise<Error | undefined> {
+    if (attempt === 1 || delayBeforeAttempt <= 0) {
+      return undefined;
+    }
+
+    try {
+      await this.delay(delayBeforeAttempt, signal);
+      return undefined;
+    } catch (delayError) {
+      const error = delayError as Error;
+      if (isAbortError(error)) {
+        return error;
+      }
+
+      throw delayError;
+    }
+  }
+
+  private async runAttemptWithTiming<T>(
+    operation: () => Promise<T>,
+    correlationId: string,
+    operationName: string | undefined,
+    signal: AbortSignal | undefined
+  ): Promise<{
+    result?: T;
+    error?: Error;
+    durationMs: number;
+    timestamp: Date;
+  }> {
+    const attemptStartTime = performance.now();
+    const timestamp = new Date(performance.timeOrigin + attemptStartTime);
+
+    try {
+      const operationPromise = operation();
+      const result =
+        this.config.timeoutMs !== undefined && this.config.timeoutMs > 0
+          ? await this.withTimeout(
+              operationPromise,
+              this.config.timeoutMs,
+              correlationId,
+              operationName,
+              signal
+            )
+          : await operationPromise;
+
+      return {
+        result,
+        durationMs: performance.now() - attemptStartTime,
+        timestamp,
+      };
+    } catch (error) {
+      return {
+        error: error as Error,
+        durationMs: performance.now() - attemptStartTime,
+        timestamp,
+      };
+    }
+  }
+
+  private recordAttempt(
+    attempts: RetryAttempt[],
+    attemptNumber: number,
+    delayMs: number,
+    durationMs: number,
+    timestamp: Date,
+    error?: Error
+  ): void {
+    attempts.push({
+      attemptNumber,
+      delayMs: attemptNumber === 1 ? 0 : delayMs,
+      durationMs,
+      error,
+      timestamp,
+    });
+  }
+
+  private shouldStopRetry(attempt: number, error?: Error): boolean {
+    if (error === undefined) {
+      return false;
+    }
+
+    if (isAbortError(error)) {
+      return true;
+    }
+
+    return (
+      !this.isRetryableError(error) || attempt === this.config.maxAttempts
+    );
+  }
+
+  private buildSuccessResult<T>(
+    data: T,
+    attempts: readonly RetryAttempt[],
+    startTime: number,
+    attemptNumber: number
+  ): RetryResult<T> {
+    const totalDurationMs = performance.now() - startTime;
+    this.updateMetrics(true, attemptNumber, totalDurationMs);
+
+    return {
+      success: true,
+      data,
+      attempts,
+      totalDurationMs,
+    };
+  }
+
+  private buildFailureResult<T>(
+    attempts: readonly RetryAttempt[],
+    context: { startTime: number; lastError?: Error }
+  ): RetryResult<T> {
+    const totalDurationMs = performance.now() - context.startTime;
+
+    if (context.lastError !== undefined && isAbortError(context.lastError)) {
       return {
         success: false,
-        error: lastError,
+        error: context.lastError,
         attempts,
         totalDurationMs,
       };
@@ -209,7 +299,7 @@ export class RetryStrategy {
 
     return {
       success: false,
-      error: lastError,
+      error: context.lastError,
       attempts,
       totalDurationMs,
     };
@@ -475,12 +565,16 @@ export class RetryStrategyRegistry {
     name: string,
     config?: Partial<RetryConfig>
   ): RetryStrategy {
-    if (!this.strategies.has(name)) {
-      const mergedConfig = { ...this.defaultConfig, ...config };
-      this.strategies.set(name, new RetryStrategy(name, mergedConfig));
+    const existingStrategy = this.strategies.get(name);
+    if (existingStrategy !== undefined) {
+      return existingStrategy;
     }
 
-    return this.strategies.get(name)!;
+    const mergedConfig = { ...this.defaultConfig, ...config };
+    const strategy = new RetryStrategy(name, mergedConfig);
+    this.strategies.set(name, strategy);
+
+    return strategy;
   }
 
   /**

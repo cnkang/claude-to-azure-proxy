@@ -22,22 +22,20 @@ export interface TestDataOptions {
 /**
  * Factory for creating Claude API requests
  */
-export class ClaudeRequestFactory {
-  private static counter = 0;
+class ClaudeRequestFactoryImpl {
+  private counter = 0;
 
-  static create(options: TestDataOptions = {}): ClaudeRequest {
+  create(options: TestDataOptions = {}): ClaudeRequest {
     const {
       size = 'medium',
       includeOptional = false,
-      seed = ClaudeRequestFactory.counter++,
+      seed = this.counter++,
     } = options;
 
     const prompts = {
       small: `Test prompt ${seed}`,
       medium: `This is a medium-sized test prompt ${seed} with some additional content to make it more realistic.`,
-      large:
-        `This is a large test prompt ${seed} `.repeat(100) +
-        'End of large prompt.',
+      large: `${`This is a large test prompt ${seed} `.repeat(100)}End of large prompt.`,
     };
 
     const promptText =
@@ -81,73 +79,83 @@ export class ClaudeRequestFactory {
     return baseRequest;
   }
 
-  static createBatch(
+  createBatch(
     count: number,
     options: TestDataOptions = {}
   ): ClaudeRequest[] {
     return Array.from({ length: count }, (_, i) =>
-      ClaudeRequestFactory.create({ ...options, seed: i })
+      this.create({ ...options, seed: i })
     );
   }
 
-  static createInvalid(
-    type: 'missing_field' | 'invalid_type' | 'out_of_range' | 'malicious'
-  ): Record<string, unknown> {
-    const base = ClaudeRequestFactory.create();
-
-    switch (type) {
-      case 'missing_field': {
-        const result: Record<string, unknown> = {
-          model: base.model,
-          max_tokens: base.max_tokens,
-        };
-        if (base.temperature !== undefined) {
-          result.temperature = base.temperature;
-        }
-        if (base.top_p !== undefined) {
-          result.top_p = base.top_p;
-        }
-        if (base.top_k !== undefined) {
-          result.top_k = base.top_k;
-        }
-        if (base.stop_sequences !== undefined) {
-          result.stop_sequences = base.stop_sequences;
-        }
-        if (base.stream !== undefined) {
-          result.stream = base.stream;
-        }
-        return result;
-      }
-
-      case 'invalid_type':
-        return {
-          ...base,
-          max_tokens: 'invalid_number',
-        } as Record<string, unknown>;
-
-      case 'out_of_range':
-        return {
-          ...base,
-          max_tokens: 200000, // Exceeds limit
-          temperature: 3.0, // Exceeds limit
-        } as Record<string, unknown>;
-
-      case 'malicious':
-        return {
-          ...base,
-          prompt: '<script>alert("xss")</script>',
-          model: 'claude{{user.secret}}',
-        } as Record<string, unknown>;
-
-      default:
-        return base as Record<string, unknown>;
+  private createMissingField(base: ClaudeRequest): Record<string, unknown> {
+    const result: Record<string, unknown> = {
+      model: base.model,
+      max_tokens: base.max_tokens,
+    };
+    if (base.temperature !== undefined) {
+      result.temperature = base.temperature;
     }
+    if (base.top_p !== undefined) {
+      result.top_p = base.top_p;
+    }
+    if (base.top_k !== undefined) {
+      result.top_k = base.top_k;
+    }
+    if (base.stop_sequences !== undefined) {
+      result.stop_sequences = base.stop_sequences;
+    }
+    if (base.stream !== undefined) {
+      result.stream = base.stream;
+    }
+    return result;
   }
 
-  static createEdgeCase(
+  private createInvalidType(base: ClaudeRequest): Record<string, unknown> {
+    return {
+      ...base,
+      max_tokens: 'invalid_number',
+    } as Record<string, unknown>;
+  }
+
+  private createOutOfRange(base: ClaudeRequest): Record<string, unknown> {
+    return {
+      ...base,
+      max_tokens: 200000, // Exceeds limit
+      temperature: 3.0, // Exceeds limit
+    } as Record<string, unknown>;
+  }
+
+  private createMalicious(base: ClaudeRequest): Record<string, unknown> {
+    return {
+      ...base,
+      prompt: '<script>alert("xss")</script>',
+      model: 'claude{{user.secret}}',
+    } as Record<string, unknown>;
+  }
+
+  createInvalid(
+    type: 'missing_field' | 'invalid_type' | 'out_of_range' | 'malicious'
+  ): Record<string, unknown> {
+    const base = this.create();
+
+    const builders: Record<
+      typeof type,
+      (request: ClaudeRequest) => Record<string, unknown>
+    > = {
+      missing_field: this.createMissingField.bind(this),
+      invalid_type: this.createInvalidType.bind(this),
+      out_of_range: this.createOutOfRange.bind(this),
+      malicious: this.createMalicious.bind(this),
+    };
+
+    return builders[type](base);
+  }
+
+  createEdgeCase(
     type: 'empty' | 'unicode' | 'very_long' | 'special_chars'
   ): ClaudeRequest {
-    const base = ClaudeRequestFactory.create();
+    const base = this.create();
 
     let content: string;
     let maxTokens: number | undefined;
@@ -163,7 +171,7 @@ export class ClaudeRequestFactory {
         break;
 
       case 'very_long':
-        content = 'Very long prompt: ' + 'x'.repeat(50000);
+        content = `Very long prompt: ${'x'.repeat(50000)}`;
         maxTokens = 131072;
         break;
 
@@ -190,24 +198,25 @@ export class ClaudeRequestFactory {
   }
 }
 
+export const ClaudeRequestFactory = new ClaudeRequestFactoryImpl();
+
 /**
  * Factory for creating Azure OpenAI responses
  */
-export class AzureResponseFactory {
-  private static counter = 0;
+class AzureResponseFactoryImpl {
+  private counter = 0;
 
-  static create(options: TestDataOptions = {}): OpenAIResponse {
+  create(options: TestDataOptions = {}): OpenAIResponse {
     const {
       size = 'medium',
       includeOptional = false,
-      seed = AzureResponseFactory.counter++,
+      seed = this.counter++,
     } = options;
 
     const contents = {
       small: `Response ${seed}`,
       medium: `This is a medium response ${seed} with some content.`,
-      large:
-        `This is a large response ${seed} `.repeat(200) + 'End of response.',
+      large: `${`This is a large response ${seed} `.repeat(200)}End of response.`,
     };
 
     const contentText =
@@ -249,19 +258,19 @@ export class AzureResponseFactory {
     return baseResponse;
   }
 
-  static createBatch(
+  createBatch(
     count: number,
     options: TestDataOptions = {}
   ): OpenAIResponse[] {
     return Array.from({ length: count }, (_, i) =>
-      AzureResponseFactory.create({ ...options, seed: i })
+      this.create({ ...options, seed: i })
     );
   }
 
-  static createWithFinishReason(
+  createWithFinishReason(
     reason: 'stop' | 'length' | 'content_filter'
   ): OpenAIResponse {
-    const response = AzureResponseFactory.create();
+    const response = this.create();
     return {
       ...response,
       choices: [
@@ -273,8 +282,8 @@ export class AzureResponseFactory {
     };
   }
 
-  static createWithNullContent(): OpenAIResponse {
-    const response = AzureResponseFactory.create();
+  createWithNullContent(): OpenAIResponse {
+    const response = this.create();
     return {
       ...response,
       choices: [
@@ -359,36 +368,33 @@ export class AzureResponseFactory {
   }
 }
 
-/**
- * Factory for creating Azure OpenAI errors
- */
-export class AzureErrorFactory {
-  static create(type = 'invalid_request_error', message?: string): OpenAIError {
-    const messages: Record<string, string> = {
-      invalid_request_error: 'The request is invalid',
-      authentication_error: 'Invalid API key',
-      permission_error: 'Permission denied',
-      not_found_error: 'Resource not found',
-      rate_limit_error: 'Rate limit exceeded',
-      api_error: 'Internal API error',
-      overloaded_error: 'Service overloaded',
-    };
+const azureErrorMessages: Record<string, string> = {
+  invalid_request_error: 'The request is invalid',
+  authentication_error: 'Invalid API key',
+  permission_error: 'Permission denied',
+  not_found_error: 'Resource not found',
+  rate_limit_error: 'Rate limit exceeded',
+  api_error: 'Internal API error',
+  overloaded_error: 'Service overloaded',
+};
 
-    const defaultMessage = messages[type] ?? 'Unknown error';
-    return {
-      error: {
-        message: message ?? defaultMessage,
-        type,
-        code: `${type}_code`,
-      },
-    };
-  }
+function buildAzureError(type = 'invalid_request_error', message?: string): OpenAIError {
+  const defaultMessage = azureErrorMessages[type] ?? 'Unknown error';
+  return {
+    error: {
+      message: message ?? defaultMessage,
+      type,
+      code: `${type}_code`,
+    },
+  };
+}
 
-  static createBatch(types: readonly string[]): OpenAIError[] {
-    return types.map((type) => AzureErrorFactory.create(type));
-  }
-
-  static createWithSensitiveData(): OpenAIError {
+export const AzureErrorFactory = {
+  create: buildAzureError,
+  createBatch(types: readonly string[]): OpenAIError[] {
+    return types.map(buildAzureError);
+  },
+  createWithSensitiveData(): OpenAIError {
     return {
       error: {
         message: 'Error with email user@example.com and Bearer token123',
@@ -396,207 +402,203 @@ export class AzureErrorFactory {
         code: 'sensitive_data',
       },
     };
+  },
+};
+
+let azureStreamResponseCounter = 0;
+
+function createAzureStreamResponse(
+  options: { content?: string; isComplete?: boolean; seed?: number } = {}
+): AzureOpenAIStreamResponse {
+  const {
+    content = 'Stream content',
+    isComplete = false,
+    seed = azureStreamResponseCounter++,
+  } = options;
+
+  return {
+    id: `chatcmpl-stream-${seed}`,
+    object: 'chat.completion.chunk',
+    created: 1640995200 + seed,
+    model: 'gpt-4',
+    choices: [
+      {
+        index: 0,
+        delta: {
+          role: 'assistant',
+          content: isComplete ? undefined : content,
+        },
+        finish_reason: isComplete ? 'stop' : null,
+      },
+    ],
+  };
+}
+
+function createAzureStreamResponseSequence(
+  contents: readonly string[]
+): AzureOpenAIStreamResponse[] {
+  const responses = contents.map((content, i) =>
+    createAzureStreamResponse({ content, seed: i })
+  );
+
+  responses.push(
+    createAzureStreamResponse({
+      isComplete: true,
+      seed: contents.length,
+    })
+  );
+
+  return responses;
+}
+
+export const AzureStreamResponseFactory = {
+  create: createAzureStreamResponse,
+  createSequence: createAzureStreamResponseSequence,
+};
+
+function buildOpenAIPrompt(
+  complexity: 'simple' | 'medium' | 'complex',
+  language: string
+): string {
+  switch (complexity) {
+    case 'simple':
+      return `Write a simple ${language} function`;
+    case 'complex':
+      return `Design a scalable ${language} microservice architecture with database integration`;
+    default:
+      return `Create a ${language} class with methods and error handling`;
   }
 }
 
-/**
- * Factory for creating Azure OpenAI stream responses
- */
-export class AzureStreamResponseFactory {
-  private static counter = 0;
+function createOpenAIRequest(
+  options: {
+    includeOptional?: boolean;
+    language?: string;
+    complexity?: 'simple' | 'medium' | 'complex';
+  } = {}
+): OpenAIRequest {
+  const {
+    includeOptional = false,
+    language = 'typescript',
+    complexity = 'medium',
+  } = options;
 
-  static create(
-    options: { content?: string; isComplete?: boolean; seed?: number } = {}
-  ): AzureOpenAIStreamResponse {
-    const {
-      content = 'Stream content',
-      isComplete = false,
-      seed = AzureStreamResponseFactory.counter++,
-    } = options;
+  const prompt = buildOpenAIPrompt(complexity, language);
 
-    return {
-      id: `chatcmpl-stream-${seed}`,
-      object: 'chat.completion.chunk',
-      created: 1640995200 + seed,
-      model: 'gpt-4',
-      choices: [
-        {
-          index: 0,
-          delta: {
-            role: 'assistant',
-            content: isComplete ? undefined : content,
-          },
-          finish_reason: isComplete ? 'stop' : null,
-        },
-      ],
-    };
-  }
-
-  static createSequence(
-    contents: readonly string[]
-  ): AzureOpenAIStreamResponse[] {
-    const responses = contents.map((content, i) =>
-      AzureStreamResponseFactory.create({ content, seed: i })
-    );
-
-    // Add completion marker
-    responses.push(
-      AzureStreamResponseFactory.create({
-        isComplete: true,
-        seed: contents.length,
-      })
-    );
-
-    return responses;
-  }
-}
-
-/**
- * Factory for creating OpenAI format requests
- */
-export class OpenAIRequestFactory {
-  private static readonly counter = 0;
-
-  static create(
-    options: {
-      includeOptional?: boolean;
-      language?: string;
-      complexity?: 'simple' | 'medium' | 'complex';
-    } = {}
-  ): OpenAIRequest {
-    const {
-      includeOptional = false,
-      language = 'typescript',
-      complexity = 'medium',
-    } = options;
-
-    const prompt = (() => {
-      switch (complexity) {
-        case 'simple':
-          return `Write a simple ${language} function`;
-        case 'complex':
-          return `Design a scalable ${language} microservice architecture with database integration`;
-        case 'medium':
-        default:
-          return `Create a ${language} class with methods and error handling`;
-      }
-    })();
-
-    const baseRequest: OpenAIRequest = {
-      model: 'gpt-4',
-      messages: [
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-    };
-
-    if (includeOptional) {
-      return {
-        ...baseRequest,
-        max_tokens: 1000,
-        temperature: 0.7,
-        top_p: 0.9,
-        stream: false,
-      };
-    }
-
-    return baseRequest;
-  }
-
-  static createMultiTurn(turnCount: number): OpenAIRequest {
-    const messages: OpenAIRequest['messages'] = [];
-
-    for (let i = 0; i < turnCount; i++) {
-      messages.push({
-        role: i % 2 === 0 ? 'user' : 'assistant',
-        content:
-          i % 2 === 0 ? `User message ${i + 1}` : `Assistant response ${i + 1}`,
-      });
-    }
-
-    // Ensure last message is from user
-    if (messages[messages.length - 1]?.role !== 'user') {
-      messages.push({
+  const baseRequest: OpenAIRequest = {
+    model: 'gpt-4',
+    messages: [
+      {
         role: 'user',
-        content: 'Continue the conversation',
-      });
-    }
+        content: prompt,
+      },
+    ],
+  };
 
+  if (includeOptional) {
     return {
-      model: 'gpt-4',
-      messages,
+      ...baseRequest,
+      max_tokens: 1000,
+      temperature: 0.7,
+      top_p: 0.9,
+      stream: false,
     };
   }
+
+  return baseRequest;
 }
 
-/**
- * Factory for creating Claude responses
- */
-export class ClaudeResponseFactory {
-  private static counter = 0;
+function createOpenAIMultiTurn(turnCount: number): OpenAIRequest {
+  const messages: OpenAIRequest['messages'] = [];
 
-  static create(options: TestDataOptions = {}): ClaudeCompletionResponse {
-    const {
-      size = 'medium',
-      includeOptional = false,
-      seed = ClaudeResponseFactory.counter++,
-    } = options;
-
-    const completions = {
-      small: `Claude response ${seed}`,
-      medium: `This is a Claude response ${seed} with some content.`,
-      large: `This is a large Claude response ${seed} `.repeat(100) + 'End.',
-    };
-
-    const completionText =
-      size === 'small'
-        ? completions.small
-        : size === 'medium'
-          ? completions.medium
-          : completions.large;
-
-    const baseResponse: ClaudeCompletionResponse = {
-      id: `claude-${seed}`,
-      type: 'completion',
-      completion: completionText,
-      model: 'claude-3-5-sonnet-20241022',
-      stop_reason: 'stop_sequence',
-    };
-
-    if (includeOptional) {
-      return {
-        ...baseResponse,
-        usage: {
-          input_tokens: 10 + seed,
-          output_tokens: 15 + seed,
-        },
-      };
-    }
-
-    return baseResponse;
+  for (let i = 0; i < turnCount; i++) {
+    messages.push({
+      role: i % 2 === 0 ? 'user' : 'assistant',
+      content:
+        i % 2 === 0 ? `User message ${i + 1}` : `Assistant response ${i + 1}`,
+    });
   }
 
-  static createError(
-    type = 'invalid_request_error',
-    message?: string
-  ): ClaudeError {
+  if (messages[messages.length - 1]?.role !== 'user') {
+    messages.push({
+      role: 'user',
+      content: 'Continue the conversation',
+    });
+  }
+
+  return {
+    model: 'gpt-4',
+    messages,
+  };
+}
+
+export const OpenAIRequestFactory = {
+  create: createOpenAIRequest,
+  createMultiTurn: createOpenAIMultiTurn,
+};
+
+let claudeResponseCounter = 0;
+
+function createClaudeResponse(
+  options: TestDataOptions = {}
+): ClaudeCompletionResponse {
+  const {
+    size = 'medium',
+    includeOptional = false,
+    seed = claudeResponseCounter++,
+  } = options;
+
+  const completions = {
+    small: `Claude response ${seed}`,
+    medium: `This is a Claude response ${seed} with some content.`,
+    large: `${`This is a large Claude response ${seed} `.repeat(100)}End.`,
+  };
+
+  const completionText =
+    size === 'small'
+      ? completions.small
+      : size === 'medium'
+        ? completions.medium
+        : completions.large;
+
+  const baseResponse: ClaudeCompletionResponse = {
+    id: `claude-${seed}`,
+    type: 'completion',
+    completion: completionText,
+    model: 'claude-3-5-sonnet-20241022',
+    stop_reason: 'stop_sequence',
+  };
+
+  if (includeOptional) {
     return {
-      type: 'error',
-      error: {
-        type,
-        message: message ?? `Claude error: ${type}`,
+      ...baseResponse,
+      usage: {
+        input_tokens: 10 + seed,
+        output_tokens: 15 + seed,
       },
     };
   }
+
+  return baseResponse;
 }
 
-/**
- * Factory for creating malicious/security test data
- */
-export class MaliciousDataFactory {
-  static getXSSPayloads(): string[] {
+function createClaudeError(type = 'invalid_request_error', message?: string): ClaudeError {
+  return {
+    type: 'error',
+    error: {
+      type,
+      message: message ?? `Claude error: ${type}`,
+    },
+  };
+}
+
+export const ClaudeResponseFactory = {
+  create: createClaudeResponse,
+  createError: createClaudeError,
+};
+
+export const MaliciousDataFactory = {
+  getXSSPayloads(): string[] {
     return [
       '<script>alert("xss")</script>',
       '<img src=x onerror=alert(1)>',
@@ -608,9 +610,9 @@ export class MaliciousDataFactory {
       '<div onclick="alert(1)">Click me</div>',
       '<a href="javascript:alert(1)">Link</a>',
     ];
-  }
+  },
 
-  static getInjectionPayloads(): string[] {
+  getInjectionPayloads(): string[] {
     return [
       '{{user.password}}',
       '${user.secret}',
@@ -621,21 +623,21 @@ export class MaliciousDataFactory {
       '{{constructor.constructor("alert(1)")()}}',
       '<script>{{user.data}}</script>',
     ];
-  }
+  },
 
-  static getControlCharacters(): string[] {
+  getControlCharacters(): string[] {
     return [
-      'Hello\x00World',
-      'Test\x01String',
-      'Content\x02Here',
-      'Data\x1FEnd',
-      'Text\x7FMore',
-      'Line\x0ABreak',
-      'Tab\x09Separated',
+      'Hello\\x00World',
+      'Test\\x01String',
+      'Content\\x02Here',
+      'Data\\x1FEnd',
+      'Text\\x7FMore',
+      'Line\\x0ABreak',
+      'Tab\\x09Separated',
     ];
-  }
+  },
 
-  static getSQLInjectionPayloads(): string[] {
+  getSQLInjectionPayloads(): string[] {
     return [
       "'; DROP TABLE users; --",
       "' OR '1'='1",
@@ -645,9 +647,9 @@ export class MaliciousDataFactory {
       "admin'--",
       "' OR 'a'='a",
     ];
-  }
+  },
 
-  static getPathTraversalPayloads(): string[] {
+  getPathTraversalPayloads(): string[] {
     return [
       '../../../etc/passwd',
       '..\\..\\..\\windows\\system32\\config\\sam',
@@ -656,15 +658,15 @@ export class MaliciousDataFactory {
       '..%252f..%252f..%252fetc%252fpasswd',
       '..%c0%af..%c0%af..%c0%afetc%c0%afpasswd',
     ];
-  }
+  },
 
-  static createMaliciousObject(): Record<string, unknown> {
+  createMaliciousObject(): Record<string, unknown> {
     return {
       xss: '<script>alert("xss")</script>',
       injection: '{{user.secret}}',
       sql: "'; DROP TABLE users; --",
       path: '../../../etc/passwd',
-      control: 'Hello\x00World',
+      control: 'Hello\\x00World',
       nested: {
         deep: {
           malicious: '<img onerror=alert(1) src=x>',
@@ -678,92 +680,91 @@ export class MaliciousDataFactory {
         { nested: 'javascript:alert(1)' },
       ],
     };
-  }
+  },
+};
+
+function createLargeRequest(sizeKB: number): ClaudeRequest {
+  const promptSize = sizeKB * 1024;
+  const content = 'x'.repeat(promptSize);
+
+  return {
+    model: 'claude-3-5-sonnet-20241022',
+    messages: [
+      {
+        role: 'user',
+        content,
+      },
+    ],
+    max_tokens: 100,
+  };
 }
 
-/**
- * Factory for creating performance test data
- */
-export class PerformanceDataFactory {
-  static createLargeRequest(sizeKB: number): ClaudeRequest {
-    const promptSize = sizeKB * 1024;
-    const content = 'x'.repeat(promptSize);
+function createLargeResponse(sizeKB: number): OpenAIResponse {
+  const contentSize = sizeKB * 1024;
+  const content = 'x'.repeat(contentSize);
 
-    return {
-      model: 'claude-3-5-sonnet-20241022',
-      messages: [
-        {
-          role: 'user',
+  return {
+    id: 'chatcmpl-large',
+    object: 'chat.completion',
+    created: 1640995200,
+    model: 'gpt-4',
+    choices: [
+      {
+        index: 0,
+        message: {
+          role: 'assistant',
           content,
         },
-      ],
-      max_tokens: 100,
-    };
-  }
-
-  static createLargeResponse(sizeKB: number): OpenAIResponse {
-    const contentSize = sizeKB * 1024;
-    const content = 'x'.repeat(contentSize);
-
-    return {
-      id: 'chatcmpl-large',
-      object: 'chat.completion',
-      created: 1640995200,
-      model: 'gpt-4',
-      choices: [
-        {
-          index: 0,
-          message: {
-            role: 'assistant',
-            content,
-          },
-          finish_reason: 'stop',
-        },
-      ],
-    };
-  }
-
-  static createDeepObject(depth: number): Record<string, unknown> | string {
-    if (depth === 0) {
-      return 'Deep content with <script>alert("deep")</script>';
-    }
-
-    const levelKey = `level${depth}`;
-    const result: Record<string, unknown> = {
-      safe: `Safe content at level ${depth}`,
-    };
-    result[levelKey] = PerformanceDataFactory.createDeepObject(depth - 1);
-    return result;
-  }
-
-  static createWideObject(width: number): Record<string, unknown> {
-    const obj: Record<string, unknown> = {};
-
-    for (let i = 0; i < width; i++) {
-      const fieldKey = `field${i}`;
-      obj[fieldKey] =
-        i % 10 === 0 ? '<script>alert("wide")</script>' : `Safe content ${i}`;
-    }
-
-    return obj;
-  }
+        finish_reason: 'stop',
+      },
+    ],
+  };
 }
 
-/**
- * Factory for creating authentication test data
- */
-export class AuthTestDataFactory {
-  static getValidApiKeys(): string[] {
+function createDeepObject(depth: number): Record<string, unknown> | string {
+  if (depth === 0) {
+    return 'Deep content with <script>alert("deep")</script>';
+  }
+
+  const levelKey = `level${depth}`;
+  const result: Record<string, unknown> = {
+    safe: `Safe content at level ${depth}`,
+  };
+  result[levelKey] = createDeepObject(depth - 1);
+  return result;
+}
+
+function createWideObject(width: number): Record<string, unknown> {
+  const obj: Record<string, unknown> = {};
+
+  for (let i = 0; i < width; i++) {
+    const fieldKey = `field${i}`;
+    obj[fieldKey] =
+      i % 10 === 0 ? '<script>alert("wide")</script>' : `Safe content ${i}`;
+  }
+
+  return obj;
+}
+
+export const PerformanceDataFactory = {
+  createLargeRequest,
+  createLargeResponse,
+  createDeepObject,
+  createWideObject,
+};
+
+export const AuthTestDataFactory = {
+  getValidApiKeys(): string[] {
     return [
       'a'.repeat(32),
       'b'.repeat(64),
       'test-api-key-12345678901234567890123456789012',
-      'sk-' + 'x'.repeat(48),
-      'claude-api-' + 'y'.repeat(40),
+      `sk-${'x'.repeat(48)}`,
+      `claude-api-${'y'.repeat(40)}`,
     ];
-  }
+  },
 
-  static getInvalidApiKeys(): unknown[] {
+  getInvalidApiKeys(): unknown[] {
     return [
       '',
       'short',
@@ -774,20 +775,20 @@ export class AuthTestDataFactory {
       {},
       [],
     ];
-  }
+  },
 
-  static createAuthHeaders(
+  createAuthHeaders(
     type: 'bearer' | 'api-key',
     key: string
   ): Record<string, string> {
     if (type === 'bearer') {
       return { authorization: `Bearer ${key}` };
-    } else {
-      return { 'x-api-key': key };
     }
-  }
 
-  static createMalformedAuthHeaders(): Record<string, string>[] {
+    return { 'x-api-key': key };
+  },
+
+  createMalformedAuthHeaders(): Record<string, string>[] {
     return [
       { authorization: 'Bearer' }, // Missing token
       { authorization: 'Basic dGVzdA==' }, // Wrong type
@@ -796,147 +797,144 @@ export class AuthTestDataFactory {
       { 'X-API-KEY': 'test' }, // Wrong case
       {}, // No auth headers
     ];
-  }
-}
+  },
+};
 
-/**
- * Factory for creating Responses API responses
- */
-export class ResponsesResponseFactory {
-  private static counter = 0;
+let responsesResponseCounter = 0;
 
-  static create(
-    options: {
-      content?: string;
-      includeReasoning?: boolean;
-      includeUsage?: boolean;
-      includeToolCalls?: boolean;
-      reasoningContent?: string;
-    } = {}
-  ): ResponsesResponse {
-    const {
-      content = 'Test response content',
-      includeReasoning = false,
-      includeUsage = true,
-      includeToolCalls = false,
-      reasoningContent = 'Test reasoning content',
-    } = options;
+function createResponsesResponse(
+  options: {
+    content?: string;
+    includeReasoning?: boolean;
+    includeUsage?: boolean;
+    includeToolCalls?: boolean;
+    reasoningContent?: string;
+  } = {}
+): ResponsesResponse {
+  const {
+    content = 'Test response content',
+    includeReasoning = false,
+    includeUsage = true,
+    includeToolCalls = false,
+    reasoningContent = 'Test reasoning content',
+  } = options;
 
-    const responseId = `resp-${Date.now()}-${ResponsesResponseFactory.counter++}`;
+  const responseId = `resp-${Date.now()}-${responsesResponseCounter++}`;
 
-    const output: ResponsesResponse['output'] = [
-      {
-        type: 'text',
-        text: content,
+  const output: ResponsesResponse['output'] = [
+    {
+      type: 'text',
+      text: content,
+    },
+  ];
+
+  if (includeReasoning) {
+    output.unshift({
+      type: 'reasoning',
+      reasoning: {
+        content: reasoningContent,
+        status: 'completed',
       },
-    ];
-
-    if (includeReasoning) {
-      output.unshift({
-        type: 'reasoning',
-        reasoning: {
-          content: reasoningContent,
-          status: 'completed',
-        },
-      });
-    }
-
-    if (includeToolCalls) {
-      output.push({
-        type: 'tool_call',
-        tool_call: {
-          id: `${responseId}-tool`,
-          type: 'function',
-          function: {
-            name: 'test_function',
-            arguments: JSON.stringify({ value: 1 }),
-          },
-        },
-      });
-    }
-
-    const response: ResponsesResponse = {
-      id: responseId,
-      object: 'response',
-      created: Math.floor(Date.now() / 1000),
-      model: 'gpt-5-codex',
-      output,
-      usage: includeUsage
-        ? {
-            input_tokens: 10,
-            output_tokens: 20,
-            total_tokens: 30,
-            reasoning_tokens: includeReasoning ? 5 : undefined,
-          }
-        : {
-            input_tokens: 0,
-            output_tokens: 0,
-            total_tokens: 0,
-          },
-    };
-
-    return response;
+    });
   }
 
-  static createStreamChunk(
-    options: {
-      content?: string;
-      isComplete?: boolean;
-      includeReasoning?: boolean;
-    } = {}
-  ): ResponsesStreamChunk {
-    const {
-      content = 'Stream chunk',
-      isComplete = false,
-      includeReasoning = false,
-    } = options;
-
-    const chunkId = `resp_stream_${Date.now()}_${ResponsesResponseFactory.counter++}`;
-
-    const output: ResponsesStreamChunk['output'] = [];
-
-    if (includeReasoning && !isComplete) {
-      output.push({
-        type: 'reasoning',
-        reasoning: {
-          content: 'Reasoning in progress...',
-          status: 'in_progress',
+  if (includeToolCalls) {
+    output.push({
+      type: 'tool_call',
+      tool_call: {
+        id: `${responseId}-tool`,
+        type: 'function',
+        function: {
+          name: 'test_function',
+          arguments: JSON.stringify({ value: 1 }),
         },
-      });
-    }
-
-    if (!isComplete) {
-      output.push({
-        type: 'text',
-        text: content,
-      });
-    }
-
-    const streamChunk: ResponsesStreamChunk = {
-      id: chunkId,
-      object: 'response.chunk',
-      created: Math.floor(Date.now() / 1000),
-      model: 'gpt-5-codex',
-      output,
-    };
-
-    if (isComplete) {
-      streamChunk.usage = {
-        prompt_tokens: 0,
-        completion_tokens: 0,
-        total_tokens: 0,
-      };
-    }
-
-    return streamChunk;
+      },
+    });
   }
+
+  const response: ResponsesResponse = {
+    id: responseId,
+    object: 'response',
+    created: Math.floor(Date.now() / 1000),
+    model: 'gpt-5-codex',
+    output,
+    usage: includeUsage
+      ? {
+          input_tokens: 10,
+          output_tokens: 20,
+          total_tokens: 30,
+          reasoning_tokens: includeReasoning ? 5 : undefined,
+        }
+      : {
+          input_tokens: 0,
+          output_tokens: 0,
+          total_tokens: 0,
+        },
+  };
+
+  return response;
 }
 
-/**
- * Utility functions for test data
- */
-export class TestDataUtils {
-  static randomString(length: number): string {
+function createResponsesStreamChunk(
+  options: {
+    content?: string;
+    isComplete?: boolean;
+    includeReasoning?: boolean;
+  } = {}
+): ResponsesStreamChunk {
+  const {
+    content = 'Stream chunk',
+    isComplete = false,
+    includeReasoning = false,
+  } = options;
+
+  const chunkId = `resp_stream_${Date.now()}_${responsesResponseCounter++}`;
+
+  const output: ResponsesStreamChunk['output'] = [];
+
+  if (includeReasoning && !isComplete) {
+    output.push({
+      type: 'reasoning',
+      reasoning: {
+        content: 'Reasoning in progress...',
+        status: 'in_progress',
+      },
+    });
+  }
+
+  if (!isComplete) {
+    output.push({
+      type: 'text',
+      text: content,
+    });
+  }
+
+  const streamChunk: ResponsesStreamChunk = {
+    id: chunkId,
+    object: 'response.chunk',
+    created: Math.floor(Date.now() / 1000),
+    model: 'gpt-5-codex',
+    output,
+  };
+
+  if (isComplete) {
+    streamChunk.usage = {
+      prompt_tokens: 0,
+      completion_tokens: 0,
+      total_tokens: 0,
+    };
+  }
+
+  return streamChunk;
+}
+
+export const ResponsesResponseFactory = {
+  create: createResponsesResponse,
+  createStreamChunk: createResponsesStreamChunk,
+};
+
+export const TestDataUtils = {
+  randomString(length: number): string {
     const chars =
       'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let result = '';
@@ -944,31 +942,31 @@ export class TestDataUtils {
       result += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return result;
-  }
+  },
 
-  static randomInt(min: number, max: number): number {
+  randomInt(min: number, max: number): number {
     return Math.floor(Math.random() * (max - min + 1)) + min;
-  }
+  },
 
-  static randomFloat(min: number, max: number): number {
+  randomFloat(min: number, max: number): number {
     return Math.random() * (max - min) + min;
-  }
+  },
 
-  static randomChoice<T>(array: readonly T[]): T {
+  randomChoice<T>(array: readonly T[]): T {
     return array[Math.floor(Math.random() * array.length)];
-  }
+  },
 
-  static createCorrelationId(): string {
+  createCorrelationId(): string {
     return `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  }
+  },
 
-  static createTimestamp(): string {
+  createTimestamp(): string {
     return new Date().toISOString();
-  }
+  },
 
-  static sleep(ms: number): Promise<void> {
+  sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
-  }
-}
+  },
+};
 
-// All factories are already exported above with their class declarations
+// All factories are already exported above with their declarations

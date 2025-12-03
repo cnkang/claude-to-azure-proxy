@@ -109,8 +109,7 @@ export function configureGarbageCollection(
   }
 
   // Note: V8 flags must be set at startup, this is for documentation
-  // eslint-disable-next-line no-console
-  console.log('Recommended V8 flags:', v8Flags.join(' '));
+  logger.info('Recommended V8 flags', '', { flags: v8Flags.join(' ') });
 }
 
 /**
@@ -236,7 +235,9 @@ export class MemoryPressureHandler {
 
     if (heapUsedRatio >= this.thresholds.critical) {
       return 'critical';
-    } else if (heapUsedRatio >= this.thresholds.warning) {
+    }
+
+    if (heapUsedRatio >= this.thresholds.warning) {
       return 'warning';
     }
 
