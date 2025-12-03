@@ -21,6 +21,11 @@ import {
 import type { RequestWithCorrelationId } from '../types/index.js';
 import { isValidConversationId } from '../utils/validation.js';
 
+// Extended request interface with session information
+interface RequestWithSession extends RequestWithCorrelationId {
+  sessionId: string;
+}
+
 // Conversation data structures for API responses
 interface ConversationSummary {
   readonly id: string;
@@ -130,7 +135,7 @@ export const getConversationsHandler = [
 
   async (req: Request, res: Response): Promise<void> => {
     const correlationId = (req as RequestWithCorrelationId).correlationId;
-    const sessionId = (req as any).sessionId as string;
+    const sessionId = (req as RequestWithSession).sessionId;
 
     try {
       // Validate request
@@ -231,7 +236,7 @@ export const createConversationHandler = [
 
   async (req: Request, res: Response): Promise<void> => {
     const correlationId = (req as RequestWithCorrelationId).correlationId;
-    const sessionId = (req as any).sessionId as string;
+    const sessionId = (req as RequestWithSession).sessionId;
 
     try {
       // Validate request
@@ -330,7 +335,7 @@ export const getConversationHandler = [
 
   async (req: Request, res: Response): Promise<void> => {
     const correlationId = (req as RequestWithCorrelationId).correlationId;
-    const sessionId = (req as any).sessionId as string;
+    const sessionId = (req as RequestWithSession).sessionId;
     const conversationId = req.params.conversationId as string;
 
     try {
@@ -426,7 +431,7 @@ export const updateConversationHandler = [
 
   async (req: Request, res: Response): Promise<void> => {
     const correlationId = (req as RequestWithCorrelationId).correlationId;
-    const sessionId = (req as any).sessionId as string;
+    const sessionId = (req as RequestWithSession).sessionId;
     const conversationId = req.params.conversationId as string;
 
     try {
@@ -513,7 +518,7 @@ export const deleteConversationHandler = [
 
   async (req: Request, res: Response): Promise<void> => {
     const correlationId = (req as RequestWithCorrelationId).correlationId;
-    const sessionId = (req as any).sessionId as string;
+    const sessionId = (req as RequestWithSession).sessionId;
     const conversationId = req.params.conversationId as string;
 
     try {
@@ -603,7 +608,7 @@ export const addMessageHandler = [
 
   async (req: Request, res: Response): Promise<void> => {
     const correlationId = (req as RequestWithCorrelationId).correlationId;
-    const sessionId = (req as any).sessionId as string;
+    const sessionId = (req as RequestWithSession).sessionId;
     const conversationId = req.params.conversationId as string;
 
     try {
