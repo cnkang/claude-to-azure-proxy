@@ -1204,6 +1204,12 @@ function buildChatStatsResponse(
           : 0,
     },
 
+    config: {
+      maxConnectionsPerSession: SSE_CONFIG.maxConnectionsPerSession,
+      connectionTimeout: SSE_CONFIG.connectionTimeout,
+      heartbeatInterval: SSE_CONFIG.heartbeatInterval,
+    },
+
     memoryUsage: {
       heapTotal: memoryStats.usage.heapTotal,
       heapUsed: memoryStats.usage.heapUsed,
