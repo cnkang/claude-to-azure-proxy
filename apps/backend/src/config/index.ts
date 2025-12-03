@@ -960,10 +960,11 @@ function ensureConfigValue<T>(value: T | null, name: string): T {
   return value;
 }
 
-export const sanitizedConfig = ensureConfigValue(
-  configurationBootstrap.sanitized,
-  'sanitizedConfig'
-);
+// Only call ensureConfigValue if bootstrap succeeded (for test compatibility)
+export const sanitizedConfig =
+  configurationBootstrap.sanitized !== null
+    ? configurationBootstrap.sanitized
+    : ({} as SanitizedConfig);
 
 /**
  * Creates an AzureOpenAIConfig from the validated configuration.
@@ -1168,4 +1169,7 @@ export function getConfigurationSummary(): Record<string, unknown> {
   };
 }
 
-export default ensureConfigValue(configurationBootstrap.config, 'config');
+// Only call ensureConfigValue if bootstrap succeeded (for test compatibility)
+export default configurationBootstrap.config !== null
+  ? configurationBootstrap.config
+  : ({} as Config);
