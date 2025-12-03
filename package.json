@@ -83,7 +83,7 @@
     "docs:api": "npx swagger-ui-serve docs/api-specification.yaml",
     "docs:generate": "npx typedoc --options typedoc.json",
     "docs:serve": "npx http-server docs/api -p 3001 -o",
-    "sast:biome": "mkdir -p security-reports && biome lint --reporter json --files apps/backend/src apps/backend/tests > security-reports/biome-results.json",
+    "sast:biome": "mkdir -p security-reports && biome lint --reporter json apps/backend/src apps/backend/tests > security-reports/biome-results.json",
     "sast:all": "pnpm run sast:biome && pnpm run quality:security",
     "pre-commit:check": "pnpm run type-check && pnpm run lint && pnpm run test && pnpm run format:check",
     "pre-commit:fix": "pnpm run lint:fix && pnpm run format",
@@ -123,13 +123,7 @@
     "postinstall": "node -e \"if (process.env.NODE_ENV !== 'production' && !process.env.CI) { try { require('husky').install() } catch (e) {} }\""
   },
   "packageManager": "pnpm@10.20.0+sha512.cf9998222162dd85864d0a8102e7892e7ba4ceadebbf5a31f9c2fce48dfce317a9c53b9f6464d1ef9042cba2e02ae02a9f7c143a2b438cd93c91840f0192b9dd",
-  "keywords": [
-    "claude",
-    "azure",
-    "openai",
-    "proxy",
-    "api"
-  ],
+  "keywords": ["claude", "azure", "openai", "proxy", "api"],
   "author": "",
   "license": "MIT",
   "engines": {
@@ -161,6 +155,7 @@
     "@vitest/coverage-v8": "^4.0.14",
     "@vitest/ui": "^4.0.14",
     "concurrently": "^9.2.1",
+    "fast-check": "^4.3.0",
     "glob": "^12.0.0",
     "http-server": "^14.1.1",
     "husky": "^9.1.7",
@@ -178,7 +173,7 @@
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx,mjs,cjs,json,jsonc}": [
-      "pnpm exec biome check --write"
+      "pnpm exec biome check --write --no-errors-on-unmatched"
     ]
   },
   "pnpm": {
@@ -187,9 +182,6 @@
       "body-parser": ">=2.2.1",
       "express": ">=5.2.0"
     },
-    "onlyBuiltDependencies": [
-      "@biomejs/biome",
-      "@swc/core"
-    ]
+    "onlyBuiltDependencies": ["@biomejs/biome", "@swc/core"]
   }
 }

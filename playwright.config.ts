@@ -1,5 +1,5 @@
-import { defineConfig, devices } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
+import { defineConfig, devices } from '@playwright/test';
 
 const isCI = process.env.CI === 'true' || process.env.CI === '1';
 const resolveEnv = (value: string | undefined, fallback: string): string =>

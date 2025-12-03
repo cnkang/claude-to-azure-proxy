@@ -2,24 +2,20 @@
   "$schema": "https://json.schemastore.org/tsconfig",
   "extends": "./base.json",
   "compilerOptions": {
-    /* Environment */
     "lib": ["ES2022"],
     "moduleResolution": "Bundler",
     "target": "ES2022",
 
-    /* Node.js specific */
     "types": ["node"],
     "allowJs": true,
     "checkJs": false,
 
-    /* Emit */
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
     "outDir": "./dist",
     "rootDir": "./src",
 
-    /* Module Resolution */
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
@@ -27,11 +23,9 @@
       "@repo/shared-utils": ["../../packages/shared-utils/src"]
     },
 
-    /* Build */
     "incremental": true,
     "tsBuildInfoFile": "./dist/.tsbuildinfo",
 
-    /* Advanced */
     "preserveWatchOutput": true,
     "pretty": true
   },

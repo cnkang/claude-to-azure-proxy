@@ -5,10 +5,10 @@
  * This compiles the backend code with proper module resolution
  */
 
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { transformFile } from '@swc/core';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { glob } from 'glob';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -114,7 +114,7 @@ try {
     // Write source map if enabled
     if (result.map !== undefined && !isProduction) {
       // eslint-disable-next-line security/detect-non-literal-fs-filename
-      writeFileSync(outputPath + '.map', result.map);
+      writeFileSync(`${outputPath}.map`, result.map);
     }
   }
 
