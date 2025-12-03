@@ -8,32 +8,32 @@ import axios, {
   type AxiosRequestConfig,
   type AxiosResponse,
 } from 'axios';
+import config, { createAzureOpenAIConfig } from '../config/index';
+import { ErrorFactory } from '../errors/index';
+import { logger } from '../middleware/logging';
 import { circuitBreakerRegistry } from '../resilience/circuit-breaker';
-import {
-  AzureRetryStrategy,
-  type AzureRetryContext,
-} from '../utils/azure-retry-strategy';
-import {
-  FallbackHandler,
-  type FallbackContext,
-} from '../utils/fallback-handler';
+import type {
+  AzureOpenAIConfig,
+  ClaudeError,
+  OpenAIError,
+  ResponseFormat,
+  ResponsesCreateParams,
+  ResponsesResponse,
+  UniversalRequest,
+  UniversalResponse,
+} from '../types/index';
 import {
   AzureErrorMapper,
   type ErrorMappingContext,
 } from '../utils/azure-error-mapper';
-import { logger } from '../middleware/logging';
-import config, { createAzureOpenAIConfig } from '../config/index';
-import { ErrorFactory } from '../errors/index';
-import type {
-  AzureOpenAIConfig,
-  ResponsesCreateParams,
-  ResponsesResponse,
-  ResponseFormat,
-  UniversalRequest,
-  UniversalResponse,
-  ClaudeError,
-  OpenAIError,
-} from '../types/index';
+import {
+  type AzureRetryContext,
+  AzureRetryStrategy,
+} from '../utils/azure-retry-strategy';
+import {
+  type FallbackContext,
+  FallbackHandler,
+} from '../utils/fallback-handler';
 
 export interface EnhancedClientConfig extends AzureOpenAIConfig {
   readonly enableCircuitBreaker: boolean;

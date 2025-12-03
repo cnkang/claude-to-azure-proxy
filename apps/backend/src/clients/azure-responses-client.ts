@@ -22,58 +22,58 @@
  * ```
  */
 
+import { Agent as HttpAgent } from 'node:http';
+import { Agent as HttpsAgent } from 'node:https';
+import { performance } from 'node:perf_hooks';
 import { OpenAI } from 'openai';
 import type {
   Response as OpenAIResponse,
+  ResponseUsage as OpenAIResponseUsage,
+  ResponseCompletedEvent,
   ResponseCreateParamsNonStreaming,
   ResponseCreateParamsStreaming,
   ResponseFunctionToolCall,
   ResponseOutputItem,
+  ResponseOutputItemAddedEvent,
   ResponseOutputMessage,
   ResponseReasoningItem,
-  ResponseStreamEvent,
-  ResponseTextDeltaEvent,
   ResponseReasoningTextDeltaEvent,
   ResponseReasoningTextDoneEvent,
-  ResponseCompletedEvent,
-  ResponseOutputItemAddedEvent,
-  ResponseUsage as OpenAIResponseUsage,
+  ResponseStreamEvent,
+  ResponseTextDeltaEvent,
 } from 'openai/resources/responses/responses';
+import { v4 as uuidv4 } from 'uuid';
+import {
+  AzureOpenAIError,
+  ErrorFactory,
+  ValidationError,
+} from '../errors/index';
+import { logger } from '../middleware/logging';
+import {
+  type HTTPConnectionResource,
+  type StreamResource,
+  createHTTPConnectionResource,
+  createStreamResource,
+} from '../runtime/resource-manager';
 import type {
   AzureOpenAIConfig,
+  ResponseOutput,
   ResponsesCreateParams,
   ResponsesResponse,
   ResponsesStreamChunk,
-  ResponseOutput,
 } from '../types/index';
 import {
-  ValidationError,
-  AzureOpenAIError,
-  ErrorFactory,
-} from '../errors/index';
-import { v4 as uuidv4 } from 'uuid';
-import { performance } from 'node:perf_hooks';
-import { Agent as HttpAgent } from 'node:http';
-import { Agent as HttpsAgent } from 'node:https';
-import { logger } from '../middleware/logging';
+  createAbortError,
+  isAbortError,
+  registerAbortListener,
+  throwIfAborted,
+} from '../utils/abort-utils';
+import { memoryManager } from '../utils/memory-manager';
 import {
   assertValidResponsesResponse,
   assertValidResponsesStreamChunk,
   validateResponsesCreateParams,
 } from '../utils/responses-validator';
-import {
-  createHTTPConnectionResource,
-  createStreamResource,
-  type HTTPConnectionResource,
-  type StreamResource,
-} from '../runtime/resource-manager';
-import { memoryManager } from '../utils/memory-manager';
-import {
-  createAbortError,
-  isAbortError,
-  throwIfAborted,
-  registerAbortListener,
-} from '../utils/abort-utils';
 
 /**
  * Azure OpenAI v1 Responses API client with comprehensive error handling and monitoring.
@@ -1001,6 +1001,66 @@ export class AzureResponsesClient implements AsyncDisposable {
   }
 
   /**
+   * Checks if an error is a custom error that should be re-thrown as-is
+   */
+  private isCustomError(error: Error): boolean {
+    return (
+      error instanceof ValidationError || error instanceof AzureOpenAIError
+    );
+  }
+
+  /**
+   * Checks if an error is a timeout error
+   */
+  private isTimeoutError(error: Error): boolean {
+    return error.message.includes('timeout');
+  }
+
+  /**
+   * Checks if an error is a network error
+   */
+  private isNetworkError(error: Error): boolean {
+    return (
+      error.message.includes('network') ||
+      error.message.includes('ECONNREFUSED')
+    );
+  }
+
+  /**
+   * Checks if an error is an OpenAI SDK error
+   */
+  private isOpenAISDKError(error: unknown): boolean {
+    return error !== null && typeof error === 'object' && 'error' in error;
+  }
+
+  /**
+   * Transforms an Error instance into the appropriate error type
+   */
+  private transformErrorInstance(
+    error: Error,
+    correlationId: string,
+    operation: string
+  ): Error {
+    if (this.isCustomError(error)) {
+      return error;
+    }
+
+    if (this.isTimeoutError(error)) {
+      return ErrorFactory.fromTimeout(
+        this.config.timeout,
+        correlationId,
+        operation
+      );
+    }
+
+    if (this.isNetworkError(error)) {
+      return ErrorFactory.fromNetworkError(error, correlationId, operation);
+    }
+
+    return ErrorFactory.fromAzureOpenAIError(error, correlationId, operation);
+  }
+
+  /**
    * Handles and transforms API errors into standardized format.
    *
    * @private
@@ -1015,38 +1075,14 @@ export class AzureResponsesClient implements AsyncDisposable {
       return createAbortError(error);
     }
 
-    // Handle direct Error instances first (including our validation errors)
     if (error instanceof Error) {
-      // If it's already one of our custom errors, just re-throw it
-      if (
-        error instanceof ValidationError ||
-        error instanceof AzureOpenAIError
-      ) {
-        return error;
-      }
-
-      if (error.message.includes('timeout')) {
-        return ErrorFactory.fromTimeout(
-          this.config.timeout,
-          correlationId,
-          operation
-        );
-      }
-
-      if (
-        error.message.includes('network') ||
-        error.message.includes('ECONNREFUSED')
-      ) {
-        return ErrorFactory.fromNetworkError(error, correlationId, operation);
-      }
+      return this.transformErrorInstance(error, correlationId, operation);
     }
 
-    // Handle OpenAI SDK errors using existing error factory
-    if (error !== null && typeof error === 'object' && 'error' in error) {
+    if (this.isOpenAISDKError(error)) {
       return ErrorFactory.fromAzureOpenAIError(error, correlationId, operation);
     }
 
-    // Default error
     return new AzureOpenAIError(
       `Unknown error during ${operation}`,
       500,

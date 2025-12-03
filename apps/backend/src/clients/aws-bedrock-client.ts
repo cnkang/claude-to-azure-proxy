@@ -6,6 +6,9 @@
  * and response handling across cloud providers.
  */
 
+import { Agent as HttpAgent } from 'node:http';
+import { Agent as HttpsAgent } from 'node:https';
+import { performance } from 'node:perf_hooks';
 import axios, {
   type AxiosInstance,
   type AxiosResponse,
@@ -13,52 +16,49 @@ import axios, {
   type InternalAxiosRequestConfig,
 } from 'axios';
 import { v4 as uuidv4 } from 'uuid';
-import { performance } from 'node:perf_hooks';
-import { Agent as HttpAgent } from 'node:http';
-import { Agent as HttpsAgent } from 'node:https';
 
+import {
+  AzureOpenAIError,
+  ErrorFactory,
+  ValidationError,
+} from '../errors/index';
+import { logger } from '../middleware/logging';
+import {
+  type HTTPConnectionResource,
+  type StreamResource,
+  createHTTPConnectionResource,
+  createStreamResource,
+} from '../runtime/resource-manager';
 import type {
   AWSBedrockConfig,
-  ResponsesCreateParams,
-  ResponsesResponse,
-  ResponsesStreamChunk,
-  ResponseOutput,
-  ResponseUsage,
+  BedrockContentBlock,
   BedrockConverseRequest,
+  BedrockConverseResponse,
   BedrockMessage,
+  BedrockStream,
+  BedrockStreamChunk,
   BedrockSystemMessage,
   BedrockToolConfig,
   BedrockToolUse,
   BedrockUsage,
-  BedrockContentBlock,
-  BedrockConverseResponse,
-  BedrockStreamChunk,
-  BedrockStream,
+  ResponseOutput,
+  ResponseUsage,
+  ResponsesCreateParams,
+  ResponsesResponse,
+  ResponsesStreamChunk,
 } from '../types/index';
 import {
-  ValidationError,
-  AzureOpenAIError,
-  ErrorFactory,
-} from '../errors/index';
-import { logger } from '../middleware/logging';
+  createAbortError,
+  isAbortError,
+  registerAbortListener,
+  throwIfAborted,
+} from '../utils/abort-utils';
+import { memoryManager } from '../utils/memory-manager';
 import {
   assertValidResponsesResponse,
   assertValidResponsesStreamChunk,
   validateResponsesCreateParams,
 } from '../utils/responses-validator';
-import {
-  createHTTPConnectionResource,
-  createStreamResource,
-  type HTTPConnectionResource,
-  type StreamResource,
-} from '../runtime/resource-manager';
-import { memoryManager } from '../utils/memory-manager';
-import {
-  createAbortError,
-  isAbortError,
-  throwIfAborted,
-  registerAbortListener,
-} from '../utils/abort-utils';
 
 /**
  * AWS Bedrock Converse API client with validation shared with the Azure client.
@@ -987,7 +987,7 @@ export class AWSBedrockClient implements AsyncDisposable {
         }
 
         config.__retryCount = retryCount + 1;
-        const delay = Math.min(1000 * Math.pow(2, retryCount), 8000);
+        const delay = Math.min(1000 * 2 ** retryCount, 8000);
 
         logger.warn('Retrying AWS Bedrock request', uuidv4(), {
           attempt: config.__retryCount,
