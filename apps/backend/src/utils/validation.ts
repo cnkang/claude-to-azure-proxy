@@ -47,7 +47,9 @@ export const isValidConversationId = (value: string): boolean => {
   const testPattern = /^test-[a-z0-9-]+$/i;
 
   return (
-    uuidPattern.test(value) || convPattern.test(value) || testPattern.test(value)
+    uuidPattern.test(value) ||
+    convPattern.test(value) ||
+    testPattern.test(value)
   );
 };
 

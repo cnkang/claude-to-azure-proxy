@@ -5,19 +5,19 @@
  */
 
 import type {
-  ClaudeRequest,
-  ClaudeMessage,
   ClaudeContentBlock,
-  ConversationContext,
-  ReasoningEffort,
+  ClaudeMessage,
+  ClaudeRequest,
   ComplexityFactors,
-  LanguageContext,
-  ProgrammingLanguage,
-  Framework,
-  TaskComplexity,
+  ConversationContext,
   DevelopmentType,
-  TaskComplexityIndicators,
+  Framework,
+  LanguageContext,
   LanguageIndicators,
+  ProgrammingLanguage,
+  ReasoningEffort,
+  TaskComplexity,
+  TaskComplexityIndicators,
 } from '../types/index';
 
 type DeepReadonly<T> = T extends (infer U)[]
@@ -1276,73 +1276,115 @@ export class ReasoningDecisionEngineService implements ReasoningDecisionEngine {
   public decideReasoningEffort(
     factors: DeepReadonly<ComplexityFactors>
   ): ReasoningEffort | undefined {
-    // Skip reasoning for very simple completions
-    if (
-      factors.isSimpleCompletion &&
-      factors.contentLength < this.simpleCompletionThreshold
-    ) {
+    if (this.shouldSkipReasoning(factors)) {
       return undefined;
     }
 
-    // Calculate complexity score
-    let complexityScore = 0;
+    const complexityScore = this.calculateComplexityScore(factors);
+    return this.determineReasoningLevel(complexityScore);
+  }
 
-    // Content length factor
-    if (factors.contentLength > 5000) {
-      complexityScore += 0.8;
-    } else if (factors.contentLength > 2000) {
-      complexityScore += 0.6;
-    } else if (factors.contentLength > 500) {
-      complexityScore += 0.3;
-    }
+  /**
+   * Check if reasoning should be skipped for simple completions
+   */
+  private shouldSkipReasoning(
+    factors: DeepReadonly<ComplexityFactors>
+  ): boolean {
+    return (
+      factors.isSimpleCompletion &&
+      factors.contentLength < this.simpleCompletionThreshold
+    );
+  }
 
-    // Keyword factors
+  /**
+   * Calculate overall complexity score from factors
+   */
+  private calculateComplexityScore(
+    factors: DeepReadonly<ComplexityFactors>
+  ): number {
+    let score = 0;
+
+    score += this.getContentLengthScore(factors.contentLength);
+    score += this.getKeywordScore(factors);
+    score += this.getCodeBlockScore(factors.codeBlockCount);
+    score += this.getLanguageComplexityScore(
+      factors.languageContext.complexity
+    );
+    score += this.getConversationDepthScore(factors.conversationDepth);
+    score += this.getMultiLanguageScore(factors.hasMultipleLanguages);
+
+    return score;
+  }
+
+  /**
+   * Get score based on content length
+   */
+  private getContentLengthScore(contentLength: number): number {
+    if (contentLength > 5000) return 0.8;
+    if (contentLength > 2000) return 0.6;
+    if (contentLength > 500) return 0.3;
+    return 0;
+  }
+
+  /**
+   * Get score based on keyword factors
+   */
+  private getKeywordScore(factors: DeepReadonly<ComplexityFactors>): number {
+    let score = 0;
     if (factors.hasArchitecturalKeywords) {
-      complexityScore += this.architecturalKeywordWeight;
+      score += this.architecturalKeywordWeight;
     }
     if (factors.hasAlgorithmicKeywords) {
-      complexityScore += this.algorithmicKeywordWeight;
+      score += this.algorithmicKeywordWeight;
     }
     if (factors.hasComplexFrameworkPatterns) {
-      complexityScore += this.frameworkComplexityWeight;
+      score += this.frameworkComplexityWeight;
     }
+    return score;
+  }
 
-    // Code block factor
-    if (factors.codeBlockCount > 3) {
-      complexityScore += 0.4;
-    } else if (factors.codeBlockCount > 1) {
-      complexityScore += 0.2;
-    }
+  /**
+   * Get score based on code block count
+   */
+  private getCodeBlockScore(codeBlockCount: number): number {
+    if (codeBlockCount > 3) return 0.4;
+    if (codeBlockCount > 1) return 0.2;
+    return 0;
+  }
 
-    // Language complexity factor
-    if (factors.languageContext.complexity === 'architectural') {
-      complexityScore += 0.6;
-    } else if (factors.languageContext.complexity === 'complex') {
-      complexityScore += 0.4;
-    }
+  /**
+   * Get score based on language complexity
+   */
+  private getLanguageComplexityScore(complexity: string): number {
+    if (complexity === 'architectural') return 0.6;
+    if (complexity === 'complex') return 0.4;
+    return 0;
+  }
 
-    // Conversation depth factor
-    if (factors.conversationDepth > 10) {
-      complexityScore += this.conversationDepthWeight;
-    }
+  /**
+   * Get score based on conversation depth
+   */
+  private getConversationDepthScore(conversationDepth: number): number {
+    return conversationDepth > 10 ? this.conversationDepthWeight : 0;
+  }
 
-    // Multi-language factor
-    if (factors.hasMultipleLanguages) {
-      complexityScore += 0.2;
-    }
+  /**
+   * Get score for multi-language factor
+   */
+  private getMultiLanguageScore(hasMultipleLanguages: boolean): number {
+    return hasMultipleLanguages ? 0.2 : 0;
+  }
 
-    // Determine reasoning level based on score
-    if (complexityScore >= 1.0) {
-      return 'high';
-    } else if (complexityScore >= 0.6) {
-      return 'medium';
-    } else if (complexityScore >= 0.3) {
-      return 'low';
-    } else if (complexityScore > 0) {
-      return 'low'; // Changed from 'minimal' to 'low' for gpt-5-codex compatibility
-    }
-
-    // No reasoning needed
+  /**
+   * Determine reasoning level based on complexity score
+   */
+  private determineReasoningLevel(
+    complexityScore: number
+  ): ReasoningEffort | undefined {
+    if (complexityScore >= 1.0) return 'high';
+    if (complexityScore >= 0.6) return 'medium';
+    if (complexityScore >= 0.3) return 'low';
+    if (complexityScore > 0) return 'low';
     return undefined;
   }
 }

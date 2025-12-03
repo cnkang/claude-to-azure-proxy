@@ -1,118 +1,118 @@
-import express from 'express';
-import cors from 'cors';
-import { json, urlencoded } from 'express';
+import fs from 'node:fs';
+import path from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { getHeapStatistics } from 'node:v8';
-import path from 'path';
-import fs from 'fs';
 import { parseEnvInt } from '@repo/shared-utils';
+import cors from 'cors';
+import express from 'express';
+import { json, urlencoded } from 'express';
 import type { Request, Response } from 'express';
-import type { ServerConfig, RequestWithCorrelationId } from './types/index';
 import loadedConfig, {
   sanitizedConfig,
   createAzureOpenAIConfig,
 } from './config/index';
 import type { Config } from './config/index';
 import {
-  helmetConfig,
-  globalRateLimit,
-  correlationIdMiddleware,
-  timeoutMiddleware,
-  corsOptions,
-} from './middleware/security';
-import {
-  requestLoggingMiddleware,
-  errorLoggingMiddleware,
-  logger,
-} from './middleware/logging';
-import {
-  enhancedErrorHandler,
-  memoryManagementMiddleware,
-  responseGuard,
-  loadShedding,
-} from './middleware/index';
+  initializePerformanceOptimizations,
+  memoryPressureHandler,
+  performanceMonitor,
+} from './config/performance';
 import { secureAuthenticationMiddleware } from './middleware/authentication';
 import {
-  createStaticAssetsMiddleware,
-  createSPAFallbackMiddleware,
+  enhancedErrorHandler,
+  loadShedding,
+  memoryManagementMiddleware,
+  responseGuard,
+} from './middleware/index';
+import {
+  errorLoggingMiddleware,
+  logger,
+  requestLoggingMiddleware,
+} from './middleware/logging';
+import {
+  correlationIdMiddleware,
+  corsOptions,
+  globalRateLimit,
+  helmetConfig,
+  timeoutMiddleware,
+} from './middleware/security';
+import {
   createDevelopmentProxyMiddleware,
+  createSPAFallbackMiddleware,
+  createStaticAssetsMiddleware,
   logFrontendBuildStatus,
 } from './middleware/static-assets';
-import { healthCheckHandler } from './routes/health';
+import { getHealthMonitor } from './monitoring/health-monitor';
 import {
-  modelsHandler,
-  getModelsHandler,
-  getModelDetailsHandler,
-  checkModelHealthHandler,
-} from './routes/models';
-import { metricsHandler, detailedMetricsHandler } from './routes/metrics';
-import { completionsRateLimit, completionsHandler } from './routes/completions';
+  type PerformanceAlert,
+  cleanupGlobalPerformanceAlerts,
+  getPerformanceAlertSystem,
+} from './monitoring/performance-alerts';
 import {
-  uploadFileHandler,
-  getFileHandler,
-  deleteFileHandler,
-} from './routes/upload';
+  cleanupServerHealthMonitor,
+  getServerHealthMonitor,
+} from './monitoring/server-health';
+import { checkFeatureAvailability } from './resilience/graceful-degradation';
+import { simpleChatHandler } from './routes/chat-simple.js';
+import {
+  chatSSEHandler,
+  closeConnectionHandler,
+  getChatStatsHandler,
+  getConnectionsHandler,
+  sendChatMessageHandler,
+} from './routes/chat-stream';
+import { completionsHandler, completionsRateLimit } from './routes/completions';
 import { getClientConfig } from './routes/config';
+import {
+  compressContextHandler,
+  createCompressedConversationHandler,
+  extendContextHandler,
+  getContextStatsHandler,
+  getContextUsageHandler,
+} from './routes/context';
+import {
+  addMessageHandler,
+  createConversationHandler,
+  deleteConversationHandler,
+  getConversationHandler,
+  getConversationStatsHandler,
+  getConversationsHandler,
+  updateConversationHandler,
+} from './routes/conversations';
+import { healthCheckHandler } from './routes/health';
+import { detailedMetricsHandler, metricsHandler } from './routes/metrics';
+import {
+  checkModelHealthHandler,
+  getModelDetailsHandler,
+  getModelsHandler,
+  modelsHandler,
+} from './routes/models';
 import {
   createSessionHandler,
   getSessionHandler,
-  validateSessionMiddleware,
   getSessionStatsHandler,
+  validateSessionMiddleware,
 } from './routes/session';
 import {
-  getConversationsHandler,
-  createConversationHandler,
-  getConversationHandler,
-  updateConversationHandler,
-  deleteConversationHandler,
-  addMessageHandler,
-  getConversationStatsHandler,
-} from './routes/conversations';
+  deleteFileHandler,
+  getFileHandler,
+  uploadFileHandler,
+} from './routes/upload';
 import {
-  chatSSEHandler,
-  sendChatMessageHandler,
-  getConnectionsHandler,
-  closeConnectionHandler,
-  getChatStatsHandler,
-} from './routes/chat-stream';
-import { simpleChatHandler } from './routes/chat-simple.js';
-import {
-  getContextUsageHandler,
-  extendContextHandler,
-  compressContextHandler,
-  createCompressedConversationHandler,
-  getContextStatsHandler,
-} from './routes/context';
-import { getHealthMonitor } from './monitoring/health-monitor';
-import { checkFeatureAvailability } from './resilience/graceful-degradation';
-import { memoryManager, startMemoryMonitoring } from './utils/memory-manager';
-import { StructuredLogger } from './utils/structured-logger';
-import {
-  resourceManager,
-  createHTTPConnectionResource,
-} from './runtime/resource-manager';
-import {
-  initializePerformanceOptimizations,
-  performanceMonitor,
-  memoryPressureHandler,
-} from './config/performance';
-import {
-  getOptimizedHTTPClient,
   cleanupGlobalHTTPClient,
+  getOptimizedHTTPClient,
 } from './runtime/optimized-http-client';
 import {
-  getOptimizedSSEHandler,
   cleanupGlobalSSEHandler,
+  getOptimizedSSEHandler,
 } from './runtime/optimized-streaming-handler';
 import {
-  getPerformanceAlertSystem,
-  cleanupGlobalPerformanceAlerts,
-  type PerformanceAlert,
-} from './monitoring/performance-alerts';
-import {
-  getServerHealthMonitor,
-  cleanupServerHealthMonitor,
-} from './monitoring/server-health';
+  createHTTPConnectionResource,
+  resourceManager,
+} from './runtime/resource-manager';
+import type { RequestWithCorrelationId, ServerConfig } from './types/index';
+import { memoryManager, startMemoryMonitoring } from './utils/memory-manager';
+import { StructuredLogger } from './utils/structured-logger';
 
 /**
  * @fileoverview Main application entry point for the Claude-to-Azure OpenAI Proxy Server.
@@ -269,13 +269,13 @@ export class ProxyServer {
 
     // Request processing middleware
     this.app.use(correlationIdMiddleware);
-    
+
     // Response guard middleware to prevent duplicate header sends (Requirement 8.2)
     this.app.use(responseGuard);
-    
+
     // Load shedding middleware for graceful degradation (Requirement 8.4)
     this.app.use(loadShedding);
-    
+
     const configuredTimeout = this.config.azureOpenAI?.timeout;
     const timeoutMs =
       typeof configuredTimeout === 'number'
@@ -835,7 +835,7 @@ export class ProxyServer {
     this.app.use((req: Request, res: Response, next: () => void) => {
       const startTime = performance.now();
       const { correlationId } = req as RequestWithCorrelationId;
-      
+
       // Track request in server health monitor (Requirement 8)
       const serverHealthMonitor = getServerHealthMonitor();
       serverHealthMonitor.recordRequest();

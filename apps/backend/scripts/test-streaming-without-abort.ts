@@ -7,10 +7,10 @@
  * Usage: pnpm tsx apps/backend/scripts/test-streaming-without-abort.ts
  */
 
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import axios from 'axios';
 import * as dotenv from 'dotenv';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
 
 // Load environment variables
 const __filename = fileURLToPath(import.meta.url);

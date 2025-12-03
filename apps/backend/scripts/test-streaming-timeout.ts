@@ -22,7 +22,7 @@ interface TestResult {
  */
 async function testStreamingWithTimeout(
   timeoutMs: number,
-  useAbortController: boolean = true
+  useAbortController = true
 ): Promise<TestResult> {
   const startTime = Date.now();
   let chunksReceived = 0;

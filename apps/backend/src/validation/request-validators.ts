@@ -4,9 +4,9 @@
  * Migrated from express-validator for security reasons (CVE-2025-56200)
  */
 
+import { createRequire } from 'node:module';
+import type { NextFunction, Request, Response } from 'express';
 import Joi from 'joi';
-import type { Request, Response, NextFunction } from 'express';
-import { createRequire } from 'module';
 import { ValidationError } from '../errors/index';
 import { logger } from '../middleware/logging';
 import type { RequestWithCorrelationId } from '../types/index.js';
@@ -221,15 +221,11 @@ const contentBlockSchema = Joi.object({
   type: Joi.string()
     .valid('text', 'image', 'tool_use', 'tool_result')
     .required(),
-  text: Joi.when('type', {
-    is: 'text',
-    then: Joi.string()
-      .allow('')
-      .max(VALIDATION_LIMITS.MAX_MESSAGE_LENGTH)
-      .optional()
-      .default('[Content was sanitized and removed for security]'),
-    otherwise: Joi.optional(),
-  }),
+  text: Joi.string()
+    .allow('')
+    .max(VALIDATION_LIMITS.MAX_MESSAGE_LENGTH)
+    .optional()
+    .default('[Content was sanitized and removed for security]'),
 }).unknown(true);
 
 /**
@@ -776,7 +772,10 @@ export function validateContentType(
     const forceEmptyContentType = req.get('x-null-content-type') === '1';
 
     if (forceEmptyContentType && typeof req.headers === 'object') {
-      delete (req.headers as Record<string, unknown>)['content-type'];
+      Reflect.deleteProperty(
+        req.headers as Record<string, unknown>,
+        'content-type'
+      );
     }
 
     if (
@@ -837,7 +836,7 @@ export function validateRequestSize(maxSizeBytes: number = 10 * 1024 * 1024) {
     if (typeof contentLength === 'string' && contentLength.trim().length > 0) {
       const size = Number.parseInt(contentLength, 10);
 
-      if (isNaN(size)) {
+      if (Number.isNaN(size)) {
         logger.warn('Invalid Content-Length header', correlationId, {
           path: req.path,
           method: req.method,

@@ -1,14 +1,14 @@
+import { logger } from '../middleware/logging';
 import type {
-  ResponsesResponse,
-  ResponsesStreamChunk,
-  ResponseOutput,
+  ClaudeContentBlock,
+  ClaudeError,
   ClaudeResponse,
   ClaudeStreamChunk,
-  ClaudeError,
-  ClaudeContentBlock,
+  ResponseOutput,
   ResponsesAPIError,
+  ResponsesResponse,
+  ResponsesStreamChunk,
 } from '../types/index';
-import { logger } from '../middleware/logging';
 
 /**
  * Transforms Azure OpenAI Responses API responses to Claude format

@@ -22,7 +22,10 @@ export const createAbortError = (reason?: unknown): Error => {
     message = reason;
   }
 
-  const abortError = new Error(message) as Error & { code: string; cause?: unknown };
+  const abortError = new Error(message) as Error & {
+    code: string;
+    cause?: unknown;
+  };
   abortError.name = ABORT_ERROR_NAME;
   abortError.code = ABORT_ERROR_CODE;
   if (cause !== undefined) {
@@ -50,7 +53,10 @@ const isAbortErrorInstance = (
   }
 
   const errorWithCode = error as Error & { code?: string };
-  if (typeof errorWithCode.code === 'string' && ABORT_ERROR_CODES.has(errorWithCode.code)) {
+  if (
+    typeof errorWithCode.code === 'string' &&
+    ABORT_ERROR_CODES.has(errorWithCode.code)
+  ) {
     return true;
   }
 

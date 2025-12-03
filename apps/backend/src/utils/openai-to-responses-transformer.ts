@@ -1,15 +1,15 @@
 import { v4 as uuidv4 } from 'uuid';
-import type {
-  OpenAIRequest,
-  OpenAIMessage,
-  OpenAIToolDefinition,
-  ResponsesCreateParams,
-  ResponseMessage,
-  ReasoningEffort,
-  ConversationContext,
-  OpenAIToolCall,
-} from '../types/index';
 import { ValidationError } from '../errors/index';
+import type {
+  ConversationContext,
+  OpenAIMessage,
+  OpenAIRequest,
+  OpenAIToolCall,
+  OpenAIToolDefinition,
+  ReasoningEffort,
+  ResponseMessage,
+  ResponsesCreateParams,
+} from '../types/index';
 
 type UnknownRecord = Record<string, unknown>;
 type ToolChoice = OpenAIRequest['tool_choice'];
@@ -596,9 +596,7 @@ export class OpenAIToResponsesTransformer {
   /**
    * Validate response format configuration
    */
-  private validateResponseFormat(
-    responseFormat: unknown
-  ): ResponseFormat {
+  private validateResponseFormat(responseFormat: unknown): ResponseFormat {
     if (!responseFormat) {
       return undefined;
     }

@@ -13,21 +13,21 @@ type DeepReadonly<T> = T extends (infer U)[]
 
 import { logger } from '../middleware/logging';
 import { gracefulDegradationManager } from '../resilience/graceful-degradation';
-import {
-  AzureErrorMapper,
-  type ErrorMappingContext,
-} from './azure-error-mapper';
 import type {
+  ClaudeError,
   ClaudeRequest,
   ClaudeResponse,
-  ClaudeError,
+  OpenAIError,
   OpenAIRequest,
   OpenAIResponse,
-  OpenAIError,
   ResponseFormat,
   UniversalRequest,
   UniversalResponse,
 } from '../types/index';
+import {
+  AzureErrorMapper,
+  type ErrorMappingContext,
+} from './azure-error-mapper';
 
 export interface FallbackContext {
   readonly correlationId: string;
@@ -73,7 +73,9 @@ export class FallbackHandler {
           attempt: context.attempt,
           metadata: {
             requestFormat: context.requestFormat,
-            originalRequest: this.sanitizeRequest(context.originalRequest),
+            originalRequest: FallbackHandler.sanitizeRequest(
+              context.originalRequest
+            ),
           },
         });
 
@@ -99,7 +101,7 @@ export class FallbackHandler {
     }
 
     // Fall back to static responses
-    return this.createStaticFallbackResponse(context);
+    return FallbackHandler.createStaticFallbackResponse(context);
   }
 
   /**
@@ -109,9 +111,9 @@ export class FallbackHandler {
     context: DeepReadonly<FallbackContext>
   ): FallbackResult {
     if (context.requestFormat === 'claude') {
-      return this.createClaudeFallbackResponse(context);
+      return FallbackHandler.createClaudeFallbackResponse(context);
     } else {
-      return this.createOpenAIFallbackResponse(context);
+      return FallbackHandler.createOpenAIFallbackResponse(context);
     }
   }
 
@@ -124,7 +126,7 @@ export class FallbackHandler {
     const claudeRequest = context.originalRequest as ClaudeRequest;
 
     // Check if this is a service unavailable error
-    if (this.isServiceUnavailableError(context.error)) {
+    if (FallbackHandler.isServiceUnavailableError(context.error)) {
       const error: ClaudeError = {
         type: 'error',
         error: {
@@ -150,13 +152,13 @@ export class FallbackHandler {
       content: [
         {
           type: 'text',
-          text: this.generateFallbackMessage(claudeRequest),
+          text: FallbackHandler.generateFallbackMessage(claudeRequest),
         },
       ],
       model: claudeRequest.model || 'claude-3-5-sonnet-20241022',
       stop_reason: 'end_turn',
       usage: {
-        input_tokens: this.estimateInputTokens(claudeRequest),
+        input_tokens: FallbackHandler.estimateInputTokens(claudeRequest),
         output_tokens: 50, // Estimated tokens for fallback message
       },
     };
@@ -183,7 +185,7 @@ export class FallbackHandler {
     const openAIRequest = context.originalRequest as OpenAIRequest;
 
     // Check if this is a service unavailable error
-    if (this.isServiceUnavailableError(context.error)) {
+    if (FallbackHandler.isServiceUnavailableError(context.error)) {
       const error: OpenAIError = {
         error: {
           message:
@@ -212,15 +214,15 @@ export class FallbackHandler {
           index: 0,
           message: {
             role: 'assistant',
-            content: this.generateFallbackMessage(openAIRequest),
+            content: FallbackHandler.generateFallbackMessage(openAIRequest),
           },
           finish_reason: 'stop',
         },
       ],
       usage: {
-        prompt_tokens: this.estimateInputTokens(openAIRequest),
+        prompt_tokens: FallbackHandler.estimateInputTokens(openAIRequest),
         completion_tokens: 50, // Estimated tokens for fallback message
-        total_tokens: this.estimateInputTokens(openAIRequest) + 50,
+        total_tokens: FallbackHandler.estimateInputTokens(openAIRequest) + 50,
       },
     };
 
@@ -247,11 +249,11 @@ export class FallbackHandler {
     const lastMessage = messages[messages.length - 1];
 
     // Analyze the request to provide contextual fallback
-    if (this.isCodeRequest(lastMessage)) {
+    if (FallbackHandler.isCodeRequest(lastMessage)) {
       return "I apologize, but I'm experiencing temporary difficulties processing your coding request. The service should be restored shortly. Please try again in a few moments.";
     }
 
-    if (this.isQuestionRequest(lastMessage)) {
+    if (FallbackHandler.isQuestionRequest(lastMessage)) {
       return "I'm currently experiencing technical difficulties and cannot process your question at the moment. Please try again shortly, and I'll be happy to help.";
     }
 

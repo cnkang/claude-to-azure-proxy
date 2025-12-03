@@ -1,31 +1,31 @@
 /* eslint-disable @typescript-eslint/prefer-readonly-parameter-types */
 import { v4 as uuidv4 } from 'uuid';
-// Removed express-validator for security reasons (CVE-2025-56200)
-// Using joi validation instead
-import type {
-  IncomingRequest,
-  RequestFormat,
-  ResponseFormat,
-  UniversalRequest,
-  ClaudeRequest,
-  ClaudeMessage,
-  ClaudeContentBlock,
-  OpenAIRequest,
-  OpenAIMessage,
-  ResponsesCreateParams,
-  ReasoningEffort,
-  ConversationContext,
-  DeepReadonly,
-  ModelRoutingConfig,
-  ModelRoutingDecision,
-  ModelProvider,
-} from '../types/index';
 import {
   ValidationError,
   InternalServerError as _InternalServerError,
 } from '../errors/index';
-import { FormatDetectionService } from './format-detection';
+// Removed express-validator for security reasons (CVE-2025-56200)
+// Using joi validation instead
+import type {
+  ClaudeContentBlock,
+  ClaudeMessage,
+  ClaudeRequest,
+  ConversationContext,
+  DeepReadonly,
+  IncomingRequest,
+  ModelProvider,
+  ModelRoutingConfig,
+  ModelRoutingDecision,
+  OpenAIMessage,
+  OpenAIRequest,
+  ReasoningEffort,
+  RequestFormat,
+  ResponseFormat,
+  ResponsesCreateParams,
+  UniversalRequest,
+} from '../types/index';
 import { ClaudeToResponsesTransformer } from './claude-to-responses-transformer';
+import { FormatDetectionService } from './format-detection';
 import { OpenAIToResponsesTransformer } from './openai-to-responses-transformer';
 import { createReasoningEffortAnalyzer } from './reasoning-effort-analyzer';
 

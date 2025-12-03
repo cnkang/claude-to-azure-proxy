@@ -45,7 +45,7 @@ function getTestConfig(): TestConfig {
 async function testStreamingWithAbortController(
   config: TestConfig
 ): Promise<void> {
-  console.log('\n=== Testing WITH AbortController ===\n');
+  console.log('=== Testing WITH AbortController ===');
 
   const abortController = new AbortController();
   const startTime = Date.now();
@@ -53,10 +53,10 @@ async function testStreamingWithAbortController(
 
   // Log signal state at key points
   const logSignalState = (point: string) => {
-    console.log(`[${point}] Signal state:`);
-    console.log(`  - aborted: ${abortController.signal.aborted}`);
-    console.log(`  - reason: ${abortController.signal.reason}`);
-    console.log(`  - elapsed: ${Date.now() - startTime}ms\n`);
+  console.log(`[${point}] Signal state:`);
+  console.log('  - aborted:', abortController.signal.aborted);
+  console.log('  - reason:', abortController.signal.reason);
+  console.log('  - elapsed:', `${Date.now() - startTime}ms`);
   };
 
   try {
@@ -134,9 +134,9 @@ async function testStreamingWithAbortController(
     });
 
     response.data.on('end', () => {
-      console.log(`\n✅ Stream ended successfully`);
-      console.log(`   Chunks: ${chunkCount}`);
-      console.log(`   Content length: ${contentReceived.length}`);
+      console.log('✅ Stream ended successfully');
+      console.log('   Chunks:', chunkCount);
+      console.log('   Content length:', contentReceived.length);
       logSignalState('ON END');
     });
 
@@ -159,7 +159,7 @@ async function testStreamingWithAbortController(
 async function testStreamingWithoutAbortController(
   config: TestConfig
 ): Promise<void> {
-  console.log('\n=== Testing WITHOUT AbortController ===\n');
+  console.log('=== Testing WITHOUT AbortController ===');
 
   const startTime = Date.now();
   let chunkCount = 0;

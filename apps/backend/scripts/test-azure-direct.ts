@@ -21,7 +21,7 @@ const AZURE_OPENAI_ENDPOINT = process.env.AZURE_OPENAI_ENDPOINT;
 const AZURE_OPENAI_API_KEY = process.env.AZURE_OPENAI_API_KEY;
 // Use first model from comma-separated list
 const AZURE_OPENAI_MODEL = process.env.AZURE_OPENAI_MODEL?.split(',')[0].trim();
-const AZURE_OPENAI_TIMEOUT = parseInt(
+const AZURE_OPENAI_TIMEOUT = Number.parseInt(
   process.env.AZURE_OPENAI_TIMEOUT || '120000',
   10
 );
@@ -52,20 +52,18 @@ const createTestRequest = () => ({
  * Test 1: Direct call WITHOUT AbortController
  */
 async function testWithoutAbortController(): Promise<void> {
-  console.log(
-    '\n=== TEST 1: Direct Azure OpenAI Call WITHOUT AbortController ===\n'
-  );
+  console.log('=== TEST 1: Direct Azure OpenAI Call WITHOUT AbortController ===');
 
   const correlationId = uuidv4();
   const requestPayload = createTestRequest();
   const endpoint = `${AZURE_OPENAI_ENDPOINT}/openai/v1/responses`;
 
   console.log('Configuration:');
-  console.log(`  Endpoint: ${endpoint}`);
-  console.log(`  Model: ${AZURE_OPENAI_MODEL}`);
-  console.log(`  Timeout: ${AZURE_OPENAI_TIMEOUT}ms`);
-  console.log(`  Correlation ID: ${correlationId}`);
-  console.log(`  Request: ${JSON.stringify(requestPayload, null, 2)}`);
+  console.log('  Endpoint:', endpoint);
+  console.log('  Model:', AZURE_OPENAI_MODEL);
+  console.log('  Timeout:', `${AZURE_OPENAI_TIMEOUT}ms`);
+  console.log('  Correlation ID:', correlationId);
+  console.log('  Request:', JSON.stringify(requestPayload, null, 2));
   console.log('');
 
   const startTime = Date.now();

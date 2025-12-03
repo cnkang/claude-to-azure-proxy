@@ -12,20 +12,20 @@ type DeepReadonly<T> = T extends (infer U)[]
       : T;
 
 import {
-  AzureOpenAIError,
-  ValidationError,
   AuthenticationError,
+  AzureOpenAIError,
+  BaseError,
+  NetworkError,
   RateLimitError,
   ServiceUnavailableError,
-  NetworkError,
   TimeoutError,
-  BaseError,
+  ValidationError,
 } from '../errors/index';
 import type {
+  AzureOpenAIErrorResponse,
   ClaudeError,
   OpenAIError,
   ResponseFormat,
-  AzureOpenAIErrorResponse,
 } from '../types/index';
 
 export interface ErrorMappingContext {
@@ -50,8 +50,11 @@ export class AzureErrorMapper {
   public static mapError(
     context: DeepReadonly<ErrorMappingContext>
   ): MappedError {
-    const baseError = this.createBaseError(context);
-    const clientResponse = this.createClientResponse(baseError, context);
+    const baseError = AzureErrorMapper.createBaseError(context);
+    const clientResponse = AzureErrorMapper.createClientResponse(
+      baseError,
+      context
+    );
 
     return {
       error: baseError,
@@ -68,7 +71,7 @@ export class AzureErrorMapper {
     const { correlationId, operation, originalError } = context;
 
     // Handle network and timeout errors
-    if (this.isNetworkError(originalError)) {
+    if (AzureErrorMapper.isNetworkError(originalError)) {
       return new NetworkError(
         'Network error occurred while communicating with Azure OpenAI',
         correlationId,
@@ -77,8 +80,8 @@ export class AzureErrorMapper {
       );
     }
 
-    if (this.isTimeoutError(originalError)) {
-      const timeoutMs = this.extractTimeoutValue(originalError);
+    if (AzureErrorMapper.isTimeoutError(originalError)) {
+      const timeoutMs = AzureErrorMapper.extractTimeoutValue(originalError);
       return new TimeoutError(
         'Request to Azure OpenAI timed out',
         correlationId,
@@ -88,8 +91,12 @@ export class AzureErrorMapper {
     }
 
     // Handle Azure OpenAI API errors
-    if (this.isAzureOpenAIError(originalError)) {
-      return this.mapAzureOpenAIError(originalError, correlationId, operation);
+    if (AzureErrorMapper.isAzureOpenAIError(originalError)) {
+      return AzureErrorMapper.mapAzureOpenAIError(
+        originalError,
+        correlationId,
+        operation
+      );
     }
 
     // Handle BaseError instances (including RateLimitError, ValidationError, etc.)
@@ -155,24 +162,27 @@ export class AzureErrorMapper {
           azureErrorCode: errorCode,
         });
 
-      case 'rate_limit_error':
-        const retryAfter = this.extractRetryAfter(azureError);
+      case 'rate_limit_error': {
+        const retryAfter = AzureErrorMapper.extractRetryAfter(azureError);
         return new RateLimitError(
           errorMessage,
           correlationId,
           retryAfter,
           operation
         );
+      }
 
       case 'api_error':
-      case 'overloaded_error':
-        const serviceRetryAfter = this.extractRetryAfter(azureError);
+      case 'overloaded_error': {
+        const serviceRetryAfter =
+          AzureErrorMapper.extractRetryAfter(azureError);
         return new ServiceUnavailableError(
           errorMessage,
           correlationId,
           serviceRetryAfter,
           operation
         );
+      }
 
       case 'not_found_error':
         return new ValidationError(
@@ -184,8 +194,8 @@ export class AzureErrorMapper {
           operation
         );
 
-      default:
-        const statusCode = this.mapErrorTypeToStatusCode(errorType);
+      default: {
+        const statusCode = AzureErrorMapper.mapErrorTypeToStatusCode(errorType);
         return new AzureOpenAIError(
           errorMessage,
           statusCode,
@@ -194,6 +204,7 @@ export class AzureErrorMapper {
           errorCode,
           operation
         );
+      }
     }
   }
 
@@ -205,9 +216,9 @@ export class AzureErrorMapper {
     context: DeepReadonly<ErrorMappingContext>
   ): ClaudeError | OpenAIError {
     if (context.requestFormat === 'claude') {
-      return this.createClaudeError(baseError);
+      return AzureErrorMapper.createClaudeError(baseError);
     } else {
-      return this.createOpenAIError(baseError);
+      return AzureErrorMapper.createOpenAIError(baseError);
     }
   }
 
@@ -220,7 +231,7 @@ export class AzureErrorMapper {
     return {
       type: 'error',
       error: {
-        type: this.mapToClaudeErrorType(baseError),
+        type: AzureErrorMapper.mapToClaudeErrorType(baseError),
         message: baseError.message,
       },
     };
@@ -235,7 +246,7 @@ export class AzureErrorMapper {
     return {
       error: {
         message: baseError.message,
-        type: this.mapToOpenAIErrorType(baseError),
+        type: AzureErrorMapper.mapToOpenAIErrorType(baseError),
         code: baseError.errorCode.toLowerCase(),
       },
     };
@@ -366,7 +377,7 @@ export class AzureErrorMapper {
     const message = error instanceof Error ? error.message : '';
     const timeoutMatch = message.match(/(\d+)\s*ms/);
     return timeoutMatch?.[1] !== undefined
-      ? parseInt(timeoutMatch[1], 10)
+      ? Number.parseInt(timeoutMatch[1], 10)
       : 120000;
   }
 
@@ -437,8 +448,8 @@ export class AzureErrorMapper {
 
     const clientResponse =
       requestFormat === 'claude'
-        ? this.createClaudeError(baseError)
-        : this.createOpenAIError(baseError);
+        ? AzureErrorMapper.createClaudeError(baseError)
+        : AzureErrorMapper.createOpenAIError(baseError);
 
     return {
       error: baseError,

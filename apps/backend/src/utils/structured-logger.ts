@@ -1,6 +1,6 @@
-import { logger } from '../middleware/logging';
+import { PerformanceObserver, performance } from 'node:perf_hooks';
 import type { SecurityLogEntry } from '@repo/shared-types';
-import { performance, PerformanceObserver } from 'node:perf_hooks';
+import { logger } from '../middleware/logging';
 
 export interface SecurityEventContext {
   readonly correlationId: string;
@@ -179,13 +179,13 @@ export class StructuredLogger {
     if (entry.duration > 100) {
       logger.warn(message, '', {
         ...entry,
-        gcTypeName: gcTypeNames[parseInt(entry.type, 10)] ?? 'Unknown',
+        gcTypeName: gcTypeNames[Number.parseInt(entry.type, 10)] ?? 'Unknown',
         threshold: 100,
       });
     } else {
       logger.debug(message, '', {
         ...entry,
-        gcTypeName: gcTypeNames[parseInt(entry.type, 10)] ?? 'Unknown',
+        gcTypeName: gcTypeNames[Number.parseInt(entry.type, 10)] ?? 'Unknown',
       });
     }
   }

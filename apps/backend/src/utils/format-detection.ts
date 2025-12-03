@@ -3,12 +3,12 @@
  * Provides accurate format identification and response format determination
  */
 
+import { logger } from '../middleware/logging';
 import type {
   IncomingRequest,
   RequestFormat,
   ResponseFormat,
 } from '../types/index';
-import { logger } from '../middleware/logging';
 
 /**
  * Interface for format detection service

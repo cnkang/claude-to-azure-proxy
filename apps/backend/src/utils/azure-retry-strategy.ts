@@ -3,17 +3,17 @@
  * Implements exponential backoff with jitter and Azure-specific error handling
  */
 
-import { RetryStrategy, type RetryConfig } from '../resilience/retry';
+import { logger } from '../middleware/logging';
+import { type RetryConfig, RetryStrategy } from '../resilience/retry';
+import type {
+  AzureOpenAIErrorResponse,
+  ResponseFormat,
+  ResponsesCreateParams,
+} from '../types/index';
 import {
   AzureErrorMapper,
   type ErrorMappingContext,
 } from './azure-error-mapper';
-import { logger } from '../middleware/logging';
-import type {
-  ResponsesCreateParams,
-  ResponseFormat,
-  AzureOpenAIErrorResponse,
-} from '../types/index';
 
 type DeepReadonly<T> = T extends (infer U)[]
   ? readonly DeepReadonly<U>[]
@@ -50,10 +50,7 @@ export class AzureRetryStrategy {
   private readonly retryStrategy: RetryStrategy;
   private readonly config: RetryConfig;
 
-  constructor(
-    name: string = 'azure-openai',
-    config: Partial<RetryConfig> = {}
-  ) {
+  constructor(name = 'azure-openai', config: Partial<RetryConfig> = {}) {
     this.config = {
       maxAttempts: 3,
       baseDelayMs: 1000,
@@ -316,7 +313,7 @@ export function createAzureRetryConfig(
 /**
  * Create retry configurations for different operation types with dynamic timeout
  */
-export function createAzureRetryConfigs(baseTimeoutMs: number = 120000) {
+export function createAzureRetryConfigs(baseTimeoutMs = 120000) {
   return {
     /**
      * Configuration for completion requests

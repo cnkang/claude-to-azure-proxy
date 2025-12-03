@@ -3,10 +3,10 @@
  * Provides secure handling of API keys and sensitive configuration
  */
 
-import { createHash, timingSafeEqual } from 'crypto';
-import { logger } from '../middleware/logging';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import config from '../config/index';
 import { ConfigurationError } from '../errors/index';
+import { logger } from '../middleware/logging';
 
 /**
  * Secure credential manager

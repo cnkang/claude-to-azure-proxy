@@ -13,9 +13,9 @@
  * Requirements: 9.1, 9.2, 9.3, 9.6
  */
 
+import { resolve } from 'node:path';
 import axios, { type AxiosResponse } from 'axios';
 import { config } from 'dotenv';
-import { resolve } from 'path';
 
 // Load environment variables
 config({ path: resolve(process.cwd(), '.env') });

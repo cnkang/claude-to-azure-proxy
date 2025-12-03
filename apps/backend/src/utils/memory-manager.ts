@@ -14,6 +14,7 @@
  */
 
 import { PerformanceObserver, performance } from 'node:perf_hooks';
+import type { PerformanceEntry } from 'node:perf_hooks';
 import { getHeapStatistics } from 'node:v8';
 import { logger } from '../middleware/logging';
 
@@ -398,59 +399,10 @@ export class MemoryManager {
   private setupGCObserver(): void {
     try {
       this.gcObserver = new PerformanceObserver((list) => {
-        const entries = list.getEntries();
-
-        for (const entry of entries) {
-          const gcEntry = entry as typeof entry & {
-            readonly kind?: number;
-            readonly flags?: number;
-          };
-
-          // Map GC kind to readable type
-          const gcType = this.mapGCKindToType(gcEntry.kind ?? 0);
-          const duration = gcEntry.duration;
-
-          // Estimate memory before/after (approximation)
-          const currentMemory = process.memoryUsage().heapUsed;
-          const estimatedFreed = Math.max(0, duration * 1000); // Rough estimation
-
-          const gcEvent: GCEvent = {
-            type: gcType,
-            duration,
-            timestamp: gcEntry.startTime + performance.timeOrigin,
-            memoryBefore: currentMemory + estimatedFreed,
-            memoryAfter: currentMemory,
-            memoryFreed: estimatedFreed,
-          };
-
-          this.gcEvents.push(gcEvent);
-          this.totalGCCollections += 1;
-          this.totalGCDuration += duration;
-
-          // Keep only recent GC events
-          if (this.gcEvents.length > this.config.maxGCEvents) {
-            this.gcEvents.shift();
-          }
-
-          // Log significant GC events
-          if (duration > 100) {
-            // Log GC events longer than 100ms
-            logger.warn('Long garbage collection detected', '', {
-              type: gcType,
-              duration: Math.round(duration),
-              memoryFreed: estimatedFreed,
-            });
-          }
-
-          // Provide GC suggestions if enabled
-          if (this.config.enableGCSuggestions && duration > 50) {
-            this.suggestGCOptimizations(gcEvent);
-          }
-        }
+        this.handleGCEntries(list.getEntries());
       });
 
       this.gcObserver.observe({ entryTypes: ['gc'] });
-
       logger.debug('GC observer initialized', '', {});
     } catch (error) {
       logger.warn('Failed to initialize GC observer', '', {
@@ -458,6 +410,83 @@ export class MemoryManager {
         suggestion:
           'GC monitoring may not be available in this Node.js version',
       });
+    }
+  }
+
+  /**
+   * Handle GC entries from performance observer
+   */
+  private handleGCEntries(entries: readonly PerformanceEntry[]): void {
+    for (const entry of entries) {
+      const gcEntry = entry as PerformanceEntry & {
+        readonly kind?: number;
+        readonly flags?: number;
+      };
+
+      const gcEvent = this.createGCEvent(gcEntry);
+      this.recordGCEvent(gcEvent);
+      this.logSignificantGCEvent(gcEvent);
+      this.provideSuggestionsIfNeeded(gcEvent);
+    }
+  }
+
+  /**
+   * Create GC event from performance entry
+   */
+  private createGCEvent(
+    gcEntry: PerformanceEntry & {
+      readonly kind?: number;
+      readonly flags?: number;
+    }
+  ): GCEvent {
+    const gcType = this.mapGCKindToType(gcEntry.kind ?? 0);
+    const duration = gcEntry.duration;
+    const currentMemory = process.memoryUsage().heapUsed;
+    const estimatedFreed = Math.max(0, duration * 1000);
+
+    return {
+      type: gcType,
+      duration,
+      timestamp: gcEntry.startTime + performance.timeOrigin,
+      memoryBefore: currentMemory + estimatedFreed,
+      memoryAfter: currentMemory,
+      memoryFreed: estimatedFreed,
+    };
+  }
+
+  /**
+   * Record GC event and update statistics
+   */
+  private recordGCEvent(gcEvent: GCEvent): void {
+    this.gcEvents.push(gcEvent);
+    this.totalGCCollections += 1;
+    this.totalGCDuration += gcEvent.duration;
+
+    // Keep only recent GC events
+    if (this.gcEvents.length > this.config.maxGCEvents) {
+      this.gcEvents.shift();
+    }
+  }
+
+  /**
+   * Log significant GC events
+   */
+  private logSignificantGCEvent(gcEvent: GCEvent): void {
+    if (gcEvent.duration > 100) {
+      logger.warn('Long garbage collection detected', '', {
+        type: gcEvent.type,
+        duration: Math.round(gcEvent.duration),
+        memoryFreed: gcEvent.memoryFreed,
+      });
+    }
+  }
+
+  /**
+   * Provide GC suggestions if enabled and needed
+   */
+  private provideSuggestionsIfNeeded(gcEvent: GCEvent): void {
+    if (this.config.enableGCSuggestions && gcEvent.duration > 50) {
+      this.suggestGCOptimizations(gcEvent);
     }
   }
 
@@ -640,12 +669,12 @@ export class MemoryManager {
     // Calculate R-squared for trend strength
     const yMean = sumY / n;
     const ssTotal = heapUsages.reduce(
-      (sum, usage) => sum + Math.pow(usage - yMean, 2),
+      (sum, usage) => sum + (usage - yMean) ** 2,
       0
     );
     const ssResidual = heapUsages.reduce((sum, usage, index) => {
       const predicted = slope * index + intercept;
-      return sum + Math.pow(usage - predicted, 2);
+      return sum + (usage - predicted) ** 2;
     }, 0);
     const rSquared = 1 - ssResidual / ssTotal;
 
@@ -831,64 +860,118 @@ export class MemoryManager {
   ): readonly string[] {
     const recommendations: string[] = [];
 
+    this.addLeakRecommendations(recommendations, leakDetected);
+    this.addTrendRecommendations(recommendations, analysis.trend);
+    this.addEfficiencyRecommendations(
+      recommendations,
+      analysis.memoryEfficiency
+    );
+    this.addAccelerationRecommendations(
+      recommendations,
+      analysis.growthAcceleration
+    );
+    this.addGrowthRateRecommendations(recommendations, growthRate);
+    this.addDefaultRecommendations(recommendations);
+
+    return recommendations;
+  }
+
+  /**
+   * Add leak-specific recommendations
+   */
+  private addLeakRecommendations(
+    recommendations: string[],
+    leakDetected: boolean
+  ): void {
     if (leakDetected) {
       recommendations.push(
-        'Memory leak detected - immediate investigation required'
-      );
-      recommendations.push('Review recent code changes for unclosed resources');
-      recommendations.push(
-        'Check for event listener leaks and unclosed connections'
-      );
-      recommendations.push(
+        'Memory leak detected - immediate investigation required',
+        'Review recent code changes for unclosed resources',
+        'Check for event listener leaks and unclosed connections',
         'Consider taking heap snapshots for detailed analysis'
       );
     }
+  }
 
-    if (analysis.trend === 'growing') {
-      recommendations.push('Memory usage is consistently growing');
-      recommendations.push('Review object lifecycle and cleanup patterns');
+  /**
+   * Add trend-based recommendations
+   */
+  private addTrendRecommendations(
+    recommendations: string[],
+    trend: string
+  ): void {
+    if (trend === 'growing') {
       recommendations.push(
+        'Memory usage is consistently growing',
+        'Review object lifecycle and cleanup patterns',
         'Consider implementing object pooling for frequently created objects'
       );
-    }
-
-    if (analysis.trend === 'volatile') {
-      recommendations.push('Memory usage is highly variable');
+    } else if (trend === 'volatile') {
       recommendations.push(
-        'Review request handling patterns for memory spikes'
-      );
-      recommendations.push(
+        'Memory usage is highly variable',
+        'Review request handling patterns for memory spikes',
         'Consider implementing request-based memory monitoring'
       );
     }
+  }
 
-    if (analysis.memoryEfficiency < 0.5) {
-      recommendations.push('Garbage collection appears ineffective');
-      recommendations.push('Review large object allocations and retention');
+  /**
+   * Add efficiency-based recommendations
+   */
+  private addEfficiencyRecommendations(
+    recommendations: string[],
+    memoryEfficiency: number
+  ): void {
+    if (memoryEfficiency < 0.5) {
       recommendations.push(
+        'Garbage collection appears ineffective',
+        'Review large object allocations and retention',
         'Consider manual garbage collection during low-traffic periods'
       );
     }
+  }
 
-    if (analysis.growthAcceleration > 0) {
-      recommendations.push('Memory growth is accelerating');
-      recommendations.push('Prioritize memory leak investigation');
+  /**
+   * Add acceleration-based recommendations
+   */
+  private addAccelerationRecommendations(
+    recommendations: string[],
+    growthAcceleration: number
+  ): void {
+    if (growthAcceleration > 0) {
+      recommendations.push(
+        'Memory growth is accelerating',
+        'Prioritize memory leak investigation'
+      );
     }
+  }
 
+  /**
+   * Add growth rate recommendations
+   */
+  private addGrowthRateRecommendations(
+    recommendations: string[],
+    growthRate: number
+  ): void {
     const growthRateKB = growthRate / 1024;
     if (growthRateKB > 100) {
       recommendations.push(
-        `High memory growth rate: ${Math.round(growthRateKB)}KB per sample`
+        `High memory growth rate: ${Math.round(growthRateKB)}KB per sample`,
+        'Monitor memory usage more frequently'
       );
-      recommendations.push('Monitor memory usage more frequently');
     }
+  }
 
+  /**
+   * Add default recommendations if none were added
+   */
+  private addDefaultRecommendations(recommendations: string[]): void {
     if (recommendations.length === 0) {
-      recommendations.push('Memory usage appears normal');
-      recommendations.push('Continue regular monitoring');
+      recommendations.push(
+        'Memory usage appears normal',
+        'Continue regular monitoring'
+      );
     }
-
-    return recommendations;
   }
 
   /**

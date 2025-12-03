@@ -3,8 +3,8 @@
  * Can be used to replace express-validator if needed for security reasons
  */
 
+import type { NextFunction, Request, Response } from 'express';
 import Joi from 'joi';
-import type { Request, Response, NextFunction } from 'express';
 import { ValidationError } from '../errors/index';
 import { logger } from '../middleware/logging';
 import type { RequestWithCorrelationId } from '../types/index.js';
@@ -53,15 +53,11 @@ const contentBlockSchema = Joi.object({
   type: Joi.string()
     .valid('text', 'image', 'tool_use', 'tool_result')
     .required(),
-  text: Joi.when('type', {
-    is: 'text',
-    then: Joi.string()
-      .allow('')
-      .max(VALIDATION_LIMITS.MAX_MESSAGE_LENGTH)
-      .optional()
-      .default('[Content was sanitized and removed for security]'),
-    otherwise: Joi.optional(),
-  }),
+  text: Joi.string()
+    .allow('')
+    .max(VALIDATION_LIMITS.MAX_MESSAGE_LENGTH)
+    .optional()
+    .default('[Content was sanitized and removed for security]'),
 }).unknown(true);
 
 const messageSchema = Joi.object({

@@ -1,6 +1,6 @@
-// Core TypeScript interfaces for the application
-import type { Request, Response, NextFunction } from 'express';
 import type { Readable } from 'node:stream';
+// Core TypeScript interfaces for the application
+import type { NextFunction, Request, Response } from 'express';
 
 export interface ServerConfig {
   readonly port: number;

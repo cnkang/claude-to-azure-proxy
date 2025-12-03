@@ -1,16 +1,16 @@
+import { logger } from '../middleware/logging';
 import type {
-  ResponsesResponse,
-  ResponsesStreamChunk,
-  ResponseOutput,
-  OpenAIResponse,
-  OpenAIStreamChunk,
+  OpenAIChoice,
   OpenAIError,
   OpenAIMessage,
-  OpenAIChoice,
+  OpenAIResponse,
+  OpenAIStreamChunk,
   OpenAIToolCall,
+  ResponseOutput,
   ResponsesAPIError,
+  ResponsesResponse,
+  ResponsesStreamChunk,
 } from '../types/index';
-import { logger } from '../middleware/logging';
 
 /**
  * Transforms Azure OpenAI Responses API responses to OpenAI format
@@ -222,59 +222,89 @@ export class ResponsesToOpenAITransformer {
   private createOpenAIMessage(
     output: readonly ResponseOutput[]
   ): OpenAIMessage {
+    const { content, toolCalls } = this.extractContentAndToolCalls(output);
+    return this.buildOpenAIMessage(content, toolCalls);
+  }
+
+  /**
+   * Extract content and tool calls from output array
+   */
+  private extractContentAndToolCalls(output: readonly ResponseOutput[]): {
+    content: string;
+    toolCalls: OpenAIToolCall[];
+  } {
     let content = '';
     const toolCalls: OpenAIToolCall[] = [];
 
     for (const outputItem of output) {
-      // Skip reasoning content - it should not be included in final response
-      if (outputItem.type === 'reasoning') {
-        logger.debug(
-          'Skipping reasoning content from output',
-          this.correlationId,
-          {
-            reasoningStatus: outputItem.reasoning?.status,
-            reasoningLength: outputItem.reasoning?.content.length ?? 0,
-          }
-        );
+      if (this.shouldSkipOutputItem(outputItem)) {
         continue;
       }
 
-      // Collect text content
       if (outputItem.type === 'text' && outputItem.text !== undefined) {
         content += outputItem.text;
       }
 
-      // Collect tool calls
       if (outputItem.type === 'tool_call' && outputItem.tool_call) {
-        const toolCall = outputItem.tool_call;
-        toolCalls.push({
-          id: toolCall.id,
-          type: 'function',
-          function: {
-            name: toolCall.function.name,
-            arguments: toolCall.function.arguments,
-          },
-        });
+        toolCalls.push(this.convertToOpenAIToolCall(outputItem.tool_call));
       }
     }
 
-    // Create message with tool calls if present
-    if (toolCalls.length > 0) {
-      const message: OpenAIMessage = {
-        role: 'assistant',
-        content: content || null,
-        tool_calls: toolCalls,
-      };
-      return message;
-    }
+    return { content, toolCalls };
+  }
 
-    // Create message without tool calls
-    const message: OpenAIMessage = {
+  /**
+   * Check if output item should be skipped
+   */
+  private shouldSkipOutputItem(outputItem: ResponseOutput): boolean {
+    if (outputItem.type === 'reasoning') {
+      logger.debug(
+        'Skipping reasoning content from output',
+        this.correlationId,
+        {
+          reasoningStatus: outputItem.reasoning?.status,
+          reasoningLength: outputItem.reasoning?.content.length ?? 0,
+        }
+      );
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Convert tool call to OpenAI format
+   */
+  private convertToOpenAIToolCall(toolCall: {
+    id: string;
+    function: { name: string; arguments: string };
+  }): OpenAIToolCall {
+    return {
+      id: toolCall.id,
+      type: 'function',
+      function: {
+        name: toolCall.function.name,
+        arguments: toolCall.function.arguments,
+      },
+    };
+  }
+
+  /**
+   * Build OpenAI message from content and tool calls
+   */
+  private buildOpenAIMessage(
+    content: string,
+    toolCalls: OpenAIToolCall[]
+  ): OpenAIMessage {
+    const baseMessage: OpenAIMessage = {
       role: 'assistant',
       content: content || null,
     };
 
-    return message;
+    if (toolCalls.length > 0) {
+      return { ...baseMessage, tool_calls: toolCalls };
+    }
+
+    return baseMessage;
   }
 
   /**
@@ -382,7 +412,6 @@ export class ResponsesToOpenAITransformer {
         return 'authentication_error';
       case 'rate_limit':
         return 'rate_limit_error';
-      case 'server_error':
       default:
         return 'api_error';
     }

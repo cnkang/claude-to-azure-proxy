@@ -11,9 +11,9 @@ async function testAzureConfig(): Promise<void> {
   console.log('🔍 Testing Azure OpenAI Configuration...\n');
 
   console.log('Configuration:');
-  console.log(`  Endpoint: ${config.AZURE_OPENAI_ENDPOINT}`);
-  console.log(`  API Key: ${config.AZURE_OPENAI_API_KEY.substring(0, 8)}...`);
-  console.log(`  Model: ${config.AZURE_OPENAI_MODEL}\n`);
+  console.log('  Endpoint:', config.AZURE_OPENAI_ENDPOINT);
+  console.log('  API Key:', `${config.AZURE_OPENAI_API_KEY.substring(0, 8)}...`);
+  console.log('  Model:', config.AZURE_OPENAI_MODEL);
 
   // Parse models
   const models = config.AZURE_OPENAI_MODEL.split(',').map((m) => m.trim());

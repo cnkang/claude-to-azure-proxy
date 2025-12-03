@@ -1,14 +1,14 @@
+import { ValidationError } from '../errors/index';
+import { logger } from '../middleware/logging';
 import type {
-  ResponsesStreamChunk,
   ClaudeStreamChunk,
   OpenAIStreamChunk,
   ResponseFormat,
   ResponsesAPIError,
+  ResponsesStreamChunk,
 } from '../types/index';
-import { logger } from '../middleware/logging';
 import { createResponsesToClaudeTransformer } from './responses-to-claude-transformer';
 import { createResponsesToOpenAITransformer } from './responses-to-openai-transformer';
-import { ValidationError } from '../errors/index';
 
 /**
  * Handles streaming responses from Azure OpenAI Responses API

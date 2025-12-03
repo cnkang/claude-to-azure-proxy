@@ -28,14 +28,14 @@
  * ```
  */
 
+import { logger } from '../middleware/logging';
 import type {
+  ClaudeContentBlock,
+  ClaudeRequest,
+  ConversationConfig,
   ConversationContext,
   ConversationMetrics,
-  ConversationConfig,
-  ClaudeRequest,
-  ClaudeContentBlock,
 } from '../types/index';
-import { logger } from '../middleware/logging';
 
 type DeepReadonly<T> = T extends (infer U)[]
   ? readonly DeepReadonly<U>[]

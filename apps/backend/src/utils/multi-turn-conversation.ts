@@ -25,19 +25,19 @@
  * ```
  */
 
+import { ValidationError } from '../errors/index';
+import { logger } from '../middleware/logging';
 import type {
-  ClaudeRequest,
   ClaudeContentBlock,
-  ResponsesCreateParams,
-  ResponsesResponse,
+  ClaudeRequest,
   ConversationContext,
   ConversationMetrics,
+  ResponsesCreateParams,
+  ResponsesResponse,
 } from '../types/index';
 import { isRecord } from '../types/index';
 import type { ConversationManager } from './conversation-manager';
 import { createConversationManager } from './conversation-manager';
-import { logger } from '../middleware/logging';
-import { ValidationError } from '../errors/index';
 
 /**
  * Configuration for multi-turn conversation handling.
@@ -604,7 +604,7 @@ export class MultiTurnConversationHandlerImpl
   public addToConversationHistory<TEntry extends ConversationTranscriptEntry>(
     conversationId: string,
     entry: Readonly<TEntry>,
-    correlationId: string = 'manual-history-entry'
+    correlationId = 'manual-history-entry'
   ): void {
     try {
       const content =
