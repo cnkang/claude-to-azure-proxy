@@ -180,7 +180,8 @@
     "overrides": {
       "js-yaml": "4.1.1",
       "body-parser": ">=2.2.1",
-      "express": ">=5.2.0"
+      "express": ">=5.2.0",
+      "jsdom": "^27.2.0"
     },
     "onlyBuiltDependencies": ["@biomejs/biome", "@swc/core"]
   }
