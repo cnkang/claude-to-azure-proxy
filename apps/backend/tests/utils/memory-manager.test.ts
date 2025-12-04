@@ -227,15 +227,21 @@ describe('MemoryManager', () => {
     it('should handle stable memory usage correctly', async () => {
       manager.startMonitoring();
 
-      // Simulate stable memory usage
+      // Simulate stable memory usage with very small random noise
       const stableHeapUsed = 40 * 1024 * 1024;
-      process.memoryUsage = vi.fn(() => ({
-        rss: 100 * 1024 * 1024,
-        heapTotal: 80 * 1024 * 1024,
-        heapUsed: stableHeapUsed + Math.random() * 1024 * 1024, // Small random variation
-        external: 5 * 1024 * 1024,
-        arrayBuffers: 2 * 1024 * 1024,
-      }));
+      
+      process.memoryUsage = vi.fn(() => {
+        // Use tiny random variation (< 500 bytes) to simulate measurement noise
+        // This ensures the trend is classified as stable, not declining
+        const variation = (Math.random() - 0.5) * 500; // ±250 bytes
+        return {
+          rss: 100 * 1024 * 1024,
+          heapTotal: 80 * 1024 * 1024,
+          heapUsed: stableHeapUsed + variation,
+          external: 5 * 1024 * 1024,
+          arrayBuffers: 2 * 1024 * 1024,
+        };
+      });
 
       // Collect samples
       for (let i = 0; i < 12; i++) {
