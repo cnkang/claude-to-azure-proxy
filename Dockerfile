@@ -94,11 +94,12 @@ FROM base AS runner
 WORKDIR /app
 
 # Install security updates and create non-root user
-# Update ssl_client to fix CVE-2024-58251 (MEDIUM severity)
-# Update busybox to fix CVE-2025-46394 (LOW severity)
+# Update packages to fix security vulnerabilities
+# - ssl_client: CVE-2024-58251 (MEDIUM severity)
+# - busybox: CVE-2025-46394 (LOW severity)
+# Note: ssl_client and busybox must be upgraded together as they are tightly coupled
 RUN apk update && \
     apk upgrade --no-cache && \
-    apk add --no-cache ssl_client=1.38.2-r0 busybox=1.37.0-r20 && \
     rm -rf /var/cache/apk/* && \
     addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 appuser
