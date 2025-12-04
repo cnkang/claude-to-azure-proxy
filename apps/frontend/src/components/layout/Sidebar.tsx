@@ -30,7 +30,12 @@ import { Glass } from '../ui/Glass';
 import { GlassSheetContent } from '../ui/GlassSheet';
 import { Button } from '../ui/button';
 import { ScrollArea } from '../ui/scroll-area';
-import { Sheet, SheetContent, SheetTitle } from '../ui/sheet';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+} from '../ui/sheet';
 
 /**
  * Sidebar props
@@ -809,8 +814,11 @@ export function Sidebar({
             height: '100dvh',
           }}
         >
-          {/* Hidden title for accessibility */}
+          {/* Hidden title and description for accessibility */}
           <SheetTitle className="sr-only">{t('sidebar.navigation')}</SheetTitle>
+          <SheetDescription className="sr-only">
+            {t('sidebar.navigationDescription')}
+          </SheetDescription>
 
           <div className="h-full" inert={!isOpen ? true : undefined}>
             <GlassSheetContent

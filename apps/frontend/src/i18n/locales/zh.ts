@@ -45,6 +45,7 @@ export default {
   },
   sidebar: {
     navigation: '主导航',
+    navigationDescription: '访问您的对话、创建新聊天并管理您的会话',
     newConversation: '新对话',
     creatingConversation: '创建中...',
     conversations: '对话列表',

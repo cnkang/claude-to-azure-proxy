@@ -45,6 +45,8 @@ export default {
   },
   sidebar: {
     navigation: 'Main navigation',
+    navigationDescription:
+      'Access your conversations, create new chats, and manage your session',
     newConversation: 'New Conversation',
     creatingConversation: 'Creating...',
     conversations: 'Conversations',
